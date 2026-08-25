@@ -30,12 +30,13 @@ const initialBranches: Branch[] = [
 ];
 
 const initialUsers: AppUser[] = [
-  { id: 'USR-01', name: 'أحمد كشك', phone: '01558282760', role: 'ADMIN', branch: 'الفرع الرئيسي — بنها' },
-  { id: 'USR-02', name: 'أحمد حسن (فني معاينات)', phone: '01011111111', role: 'TECHNICIAN', branch: 'مركز الستائر والمعاينات' },
-  { id: 'USR-03', name: 'محمد علي (فني تركيبات)', phone: '01022222222', role: 'TECHNICIAN', branch: 'مركز الستائر والمعاينات' },
-  { id: 'USR-04', name: 'موظف الفرع الثاني', phone: '01033333333', role: 'BRANCH_STAFF', branch: 'فرع الأقمشة الثاني — بنها' },
-  { id: 'USR-05', name: 'موظف الفرع الثالث', phone: '01044444444', role: 'BRANCH_STAFF', branch: 'فرع السوارية والستائر الثالث — بنها' },
-  { id: 'USR-06', name: 'مشرف الورشة المركزية', phone: '01055555555', role: 'WORKSHOP', branch: 'الورشة المركزية للتفصيل' },
+  { id: 'USR-01', name: 'openappo', phone: '01558282760', role: 'ADMIN', branch: 'المدير العام' },
+  { id: 'USR-02', name: 'أحمد كشك (مدير المحل)', phone: '01063821000', role: 'ADMIN', branch: 'الفرع الرئيسي — بنها' },
+  { id: 'USR-03', name: 'أحمد حسن (فني معاينات)', phone: '01011111111', role: 'TECHNICIAN', branch: 'مركز المعاينات والتركيبات' },
+  { id: 'USR-04', name: 'محمد علي (فني تركيبات)', phone: '01022222222', role: 'TECHNICIAN', branch: 'مركز المعاينات والتركيبات' },
+  { id: 'USR-05', name: 'موظف الفرع الثاني', phone: '01033333333', role: 'BRANCH_STAFF', branch: 'فرع الأقمشة الثاني — بنها' },
+  { id: 'USR-06', name: 'موظف الفرع الثالث', phone: '01044444444', role: 'BRANCH_STAFF', branch: 'فرع السوارية الثالث — بنها' },
+  { id: 'USR-07', name: 'مشرف الورشة المركزية', phone: '01055555555', role: 'WORKSHOP', branch: 'الورشة المركزية للتفصيل' },
 ];
 
 const roleLabels: Record<string, string> = {

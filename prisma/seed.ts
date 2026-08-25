@@ -6,69 +6,112 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🌱 Seeding database...');
 
-  // Hash the default password
   const hashedPassword = await bcrypt.hash('123456', 10);
 
-  // Create admin user
-  const admin = await prisma.user.upsert({
+  // 1. General Manager (openappo)
+  const superAdmin = await prisma.user.upsert({
     where: { phone: '01558282760' },
+    update: {
+      name: 'openappo',
+      password: hashedPassword,
+      role: 'ADMIN',
+      branch: 'الفرع الرئيسي — بنها',
+    },
+    create: {
+      name: 'openappo',
+      phone: '01558282760',
+      password: hashedPassword,
+      role: 'ADMIN',
+      branch: 'الفرع الرئيسي — بنها',
+    },
+  });
+  console.log('✅ Super Admin (openappo) created:', superAdmin.phone);
+
+  // 2. Store Owner / Manager (أحمد كشك)
+  const storeOwner = await prisma.user.upsert({
+    where: { phone: '01063821000' },
     update: {
       name: 'أحمد كشك',
       password: hashedPassword,
       role: 'ADMIN',
-      branch: 'الفرع الرئيسي',
+      branch: 'الفرع الرئيسي — بنها',
     },
     create: {
       name: 'أحمد كشك',
-      phone: '01558282760',
+      phone: '01063821000',
       password: hashedPassword,
       role: 'ADMIN',
-      branch: 'الفرع الرئيسي',
+      branch: 'الفرع الرئيسي — بنها',
     },
   });
-  console.log('✅ Admin user created:', admin.phone);
+  console.log('✅ Store Owner (أحمد كشك) created:', storeOwner.phone);
 
-  // Create technician users
-  const technician1 = await prisma.user.upsert({
+  // 3. Technician users
+  await prisma.user.upsert({
     where: { phone: '01011111111' },
     update: {},
     create: {
       name: 'أحمد حسن',
       phone: '01011111111',
-      password: await bcrypt.hash('123456', 10),
+      password: hashedPassword,
       role: 'TECHNICIAN',
-      branch: 'الفرع الرئيسي',
+      branch: 'مركز المعاينات والتركيبات',
     },
   });
 
-  const technician2 = await prisma.user.upsert({
+  await prisma.user.upsert({
     where: { phone: '01022222222' },
     update: {},
     create: {
       name: 'محمد علي',
       phone: '01022222222',
-      password: await bcrypt.hash('123456', 10),
+      password: hashedPassword,
       role: 'TECHNICIAN',
-      branch: 'الفرع الرئيسي',
+      branch: 'مركز المعاينات والتركيبات',
     },
   });
 
-  // Create branch staff
+  // 4. Branch staff
   await prisma.user.upsert({
     where: { phone: '01033333333' },
     update: {},
     create: {
-      name: 'موظف فرع ثاني',
+      name: 'موظف الفرع الثاني',
       phone: '01033333333',
-      password: await bcrypt.hash('123456', 10),
+      password: hashedPassword,
       role: 'BRANCH_STAFF',
-      branch: 'فرع ثاني',
+      branch: 'فرع الأقمشة الثاني — بنها',
+    },
+  });
+
+  await prisma.user.upsert({
+    where: { phone: '01044444444' },
+    update: {},
+    create: {
+      name: 'موظف الفرع الثالث',
+      phone: '01044444444',
+      password: hashedPassword,
+      role: 'BRANCH_STAFF',
+      branch: 'فرع السوارية الثالث — بنها',
+    },
+  });
+
+  // 5. Workshop supervisor
+  await prisma.user.upsert({
+    where: { phone: '01055555555' },
+    update: {},
+    create: {
+      name: 'مشرف الورشة المركزية',
+      phone: '01055555555',
+      password: hashedPassword,
+      role: 'WORKSHOP',
+      branch: 'الورشة المركزية للتفصيل',
     },
   });
 
   console.log('✅ Users seeded');
 
-  // Create suppliers
+  // Suppliers & Inventory
   const supplier1 = await prisma.supplier.upsert({
     where: { id: 'sup-001' },
     update: {},
@@ -91,13 +134,10 @@ async function main() {
       phone: '01011223344',
       address: 'المنصورة',
       balance: -1800,
-      notes: 'مورد بلاك آوت وتول',
+      notes: 'مورد بلاك آوت وتول ومواسير',
     },
   });
 
-  console.log('✅ Suppliers seeded');
-
-  // Create inventory items
   const inventoryItems = [
     { code: 'SAT-01', name: 'ستان سواريه', category: 'سواريه', quantityMeters: 120, costPerMeter: 320, pricePerMeter: 450, supplierId: supplier1.id },
     { code: 'SLK-01', name: 'حرير طبيعي', category: 'سواريه', quantityMeters: 45, costPerMeter: 650, pricePerMeter: 900, supplierId: supplier1.id },
@@ -118,9 +158,9 @@ async function main() {
   }
 
   console.log('✅ Inventory seeded');
-  console.log('');
   console.log('🎉 Seeding complete!');
-  console.log('📱 Admin login: 01558282760 / 123456');
+  console.log('📱 Super Admin (General Manager): 01558282760 (openappo) / 123456');
+  console.log('📱 Store Manager (Ahmed Kishk): 01063821000 (أحمد كشك) / 123456');
 }
 
 main()
