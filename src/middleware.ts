@@ -21,26 +21,30 @@ export async function middleware(request: NextRequest) {
   const token = request.cookies.get(AUTH_COOKIE)?.value;
 
   if (!token) {
-    return NextResponse.redirect(new URL('/login', request.url));
+    const loginUrl = request.nextUrl.clone();
+    loginUrl.pathname = '/login';
+    return NextResponse.redirect(loginUrl);
   }
 
   const payload = await verifyToken(token);
   if (!payload) {
-    const response = NextResponse.redirect(new URL('/login', request.url));
+    const loginUrl = request.nextUrl.clone();
+    loginUrl.pathname = '/login';
+    const response = NextResponse.redirect(loginUrl);
     response.cookies.delete(AUTH_COOKIE);
     return response;
   }
 
   // Inject user info in headers for server components
   const requestHeaders = new Headers(request.headers);
-  requestHeaders.set('x-user-id', payload.userId);
-  requestHeaders.set('x-user-name', payload.name);
-  requestHeaders.set('x-user-role', payload.role);
-  requestHeaders.set('x-user-branch', payload.branch);
+  requestHeaders.set('x-user-id', payload.userId || '');
+  requestHeaders.set('x-user-name', payload.name || '');
+  requestHeaders.set('x-user-role', payload.role || '');
+  requestHeaders.set('x-user-branch', payload.branch || '');
 
   return NextResponse.next({ request: { headers: requestHeaders } });
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|public).*)'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|logo.png|public).*)'],
 };
