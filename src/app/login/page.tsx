@@ -41,99 +41,109 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-sm">
-        {/* Logo */}
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Ambient background glows */}
+      <div className="absolute -top-40 -right-40 w-96 h-96 bg-amber-500/15 rounded-full blur-3xl pointer-events-none"></div>
+      <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-brand-gold/10 rounded-full blur-3xl pointer-events-none"></div>
+
+      <div className="w-full max-w-md relative z-10">
+        {/* Logo and Brand Title */}
         <div className="flex flex-col items-center mb-8">
-          <div className="w-24 h-24 bg-surface-container-lowest p-3 rounded-2xl flex items-center justify-center shadow-lg border border-outline-variant mb-4 text-primary">
+          <div className="w-24 h-24 bg-white p-2.5 rounded-3xl flex items-center justify-center shadow-2xl border-2 border-brand-gold mb-4 text-primary transition-transform hover:scale-105 duration-300">
             <Logo size="xl" />
           </div>
-          <h1 className="font-display font-bold text-2xl text-primary">أحمد كشك</h1>
-          <p className="text-on-surface-variant text-sm mt-1">للأقمشة والستائر — القاهرة</p>
+          <h1 className="font-display font-bold text-3xl text-white tracking-tight flex items-center gap-2">
+            أحمد كشك
+            <span className="w-2.5 h-2.5 rounded-full bg-brand-gold inline-block animate-pulse"></span>
+          </h1>
+          <p className="text-brand-gold font-medium text-sm mt-1.5">نظام إدارة الأقمشة والستائر الفاخرة — القاهرة</p>
         </div>
 
         {/* Card */}
-        <div className="bg-surface-container-lowest rounded-2xl shadow-xl border border-surface-container-highest p-8">
-          <h2 className="font-display font-bold text-xl text-primary mb-1 text-center">تسجيل الدخول</h2>
-          <p className="text-on-surface-variant text-sm text-center mb-6">أدخل رقم هاتفك وكلمة السر</p>
+        <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-8 shadow-2xl backdrop-blur-xl">
+          <div className="mb-6 text-center">
+            <h2 className="font-display font-bold text-xl text-white">تسجيل الدخول للنظام</h2>
+            <p className="text-slate-400 text-xs mt-1">أدخل رقم هاتفك وكلمة السر للوصول إلى حسابك</p>
+          </div>
 
           <form onSubmit={handleLogin} className="flex flex-col gap-4">
-            {/* Phone */}
+            {error && (
+              <div className="bg-rose-950/60 border border-rose-800/80 text-rose-300 px-4 py-3 rounded-2xl text-xs flex items-center gap-2.5 animate-shake">
+                <span className="material-symbols-outlined text-[20px] shrink-0 text-rose-400">error</span>
+                <span>{error}</span>
+              </div>
+            )}
+
+            {/* Phone input */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-mono text-on-surface-variant">رقم الهاتف</label>
+              <label className="text-xs font-bold text-slate-300">رقم الهاتف</label>
               <div className="relative">
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-[20px] text-on-surface-variant">
-                  phone_iphone
-                </span>
                 <input
                   type="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  placeholder="01xxxxxxxxx"
-                  dir="ltr"
-                  className="w-full border border-outline-variant rounded-lg py-3 pr-10 pl-4 text-sm focus:outline-none focus:border-primary transition-colors bg-surface-container-low text-primary placeholder:text-on-surface-variant"
+                  placeholder="01558282760"
                   required
+                  className="w-full bg-slate-950/80 border border-slate-800 rounded-2xl py-3 px-4 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/20 transition-all font-mono"
+                  dir="ltr"
                 />
+                <span className="material-symbols-outlined absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-[18px]">
+                  smartphone
+                </span>
               </div>
             </div>
 
-            {/* Password */}
+            {/* Password input */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-mono text-on-surface-variant">كلمة السر</label>
+              <label className="text-xs font-bold text-slate-300">كلمة السر</label>
               <div className="relative">
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-[20px] text-on-surface-variant">
-                  lock
-                </span>
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="أدخل كلمة السر"
-                  className="w-full border border-outline-variant rounded-lg py-3 pr-10 pl-10 text-sm focus:outline-none focus:border-primary transition-colors bg-surface-container-low text-primary"
+                  placeholder="••••••"
                   required
+                  className="w-full bg-slate-950/80 border border-slate-800 rounded-2xl py-3 px-4 pl-12 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/20 transition-all"
+                  dir="ltr"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-[20px] text-on-surface-variant hover:text-primary transition-colors"
+                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
                 >
-                  {showPassword ? 'visibility_off' : 'visibility'}
+                  <span className="material-symbols-outlined text-[20px]">
+                    {showPassword ? 'visibility_off' : 'visibility'}
+                  </span>
                 </button>
               </div>
             </div>
 
-            {/* Error */}
-            {error && (
-              <div className="bg-error-container text-on-error-container text-sm rounded-lg px-4 py-3 flex items-center gap-2">
-                <span className="material-symbols-outlined text-[18px]">error</span>
-                {error}
-              </div>
-            )}
-
-            {/* Submit */}
+            {/* Submit button */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-primary text-on-primary py-3 rounded-lg font-bold text-sm hover:bg-inverse-surface transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-2"
+              className="mt-3 w-full bg-brand-gold hover:bg-brand-gold-hover text-slate-950 py-3.5 rounded-2xl font-display font-bold text-sm transition-all shadow-gold disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
             >
               {loading ? (
                 <>
-                  <span className="material-symbols-outlined text-[18px] animate-spin">refresh</span>
+                  <span className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin"></span>
                   جاري تسجيل الدخول...
                 </>
               ) : (
                 <>
-                  <span className="material-symbols-outlined text-[18px]">login</span>
-                  دخول
+                  <span>دخول النظام</span>
+                  <span className="material-symbols-outlined text-[18px]">arrow_back</span>
                 </>
               )}
             </button>
           </form>
-        </div>
 
-        <p className="text-center text-xs text-on-surface-variant mt-6">
-          نظام أحمد كشك — Powered by OpenAppo
-        </p>
+          <div className="mt-6 pt-4 border-t border-slate-800/80 text-center">
+            <span className="text-[11px] text-slate-500 font-mono">
+              المستخدم الافتراضي: 01558282760 / 123456
+            </span>
+          </div>
+        </div>
       </div>
     </div>
   );

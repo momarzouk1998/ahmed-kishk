@@ -6,20 +6,47 @@
   html, body {
     margin: 0;
     padding: 0;
-    font-family: 'Manrope', sans-serif;
+    font-family: 'Cairo', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    background-color: #f8fafc;
+    color: #0f172a;
   }
 }
 
+/* Custom Gold Gradient & Glow utilities */
+.bg-gold-gradient {
+  background: linear-gradient(135deg, #fdca44 0%, #f59e0b 100%);
+}
+
+.bg-dark-gradient {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+}
+
+.border-gold-glow {
+  border-color: rgba(253, 202, 68, 0.4);
+}
+
+.text-gold {
+  color: #d97706;
+}
+
+/* Modern Rounded Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cfc4c5;
-  border-radius: 4px;
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #fdca44;
 }
 
 ::-webkit-scrollbar-track {
-  background: #f9f9f9;
+  background: #f1f5f9;
 }

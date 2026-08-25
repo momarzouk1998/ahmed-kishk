@@ -29,11 +29,11 @@ export default function Sidebar() {
   const navItems = [
     { label: 'لوحة التحكم', icon: 'dashboard', href: '/' },
     { label: 'المعاينات والمقاسات', icon: 'square_foot', href: '/inspections' },
-    { label: 'الطلبات (Pipeline)', icon: 'pending_actions', href: '/orders' },
-    { label: 'بيع القماش (POS)', icon: 'storefront', href: '/fabric-sales' },
+    { label: 'الطلبات والورشة', icon: 'pending_actions', href: '/orders' },
+    { label: 'بيع الأقمشة بالمتر (POS)', icon: 'storefront', href: '/fabric-sales' },
     { label: 'سجل العملاء والديون', icon: 'group', href: '/customers' },
     { label: 'الموردون والحسابات', icon: 'local_shipping', href: '/suppliers' },
-    { label: 'المخزون (الأقمشة بالمتر)', icon: 'texture', href: '/inventory' },
+    { label: 'المخزون والأصناف', icon: 'texture', href: '/inventory' },
     { label: 'التقارير والإحصائيات', icon: 'bar_chart', href: '/reports' },
     { label: 'الفروع والمستخدمين', icon: 'corporate_fare', href: '/branches' },
     { label: 'إعدادات الهوية والتطبيق', icon: 'settings', href: '/settings' },
@@ -52,61 +52,68 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="fixed right-0 top-0 h-full w-72 bg-surface-container-lowest border-l border-surface-container-highest z-50 flex flex-col">
+    <aside className="fixed right-0 top-0 h-full w-72 bg-[#0f172a] text-slate-100 border-l border-slate-800/80 z-50 flex flex-col shadow-2xl">
       {/* Logo Header */}
-      <div className="p-6 flex items-center gap-3 border-b border-surface-container-low">
-        <div className="w-10 h-10 bg-surface-container-high rounded-xl p-1 flex items-center justify-center border border-outline-variant shadow-sm text-primary">
+      <div className="p-5 flex items-center gap-3.5 border-b border-slate-800">
+        <div className="w-12 h-12 bg-white p-1 rounded-2xl flex items-center justify-center border-2 border-brand-gold shadow-gold text-primary shrink-0">
           <Logo size="md" />
         </div>
         <div className="flex flex-col">
-          <span className="font-display font-bold text-lg text-primary leading-tight">أحمد كشك</span>
-          <span className="text-xs text-on-surface-variant">للأقمشة والستائر — القاهرة</span>
+          <span className="font-display font-bold text-lg text-white leading-tight flex items-center gap-1.5">
+            أحمد كشك
+            <span className="w-2 h-2 rounded-full bg-brand-gold inline-block animate-pulse"></span>
+          </span>
+          <span className="text-xs text-brand-gold font-medium">للأقمشة والستائر الفاخرة</span>
         </div>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
+      <nav className="flex-1 px-3 py-4 space-y-1.5 overflow-y-auto">
         {navItems.map((item) => {
           const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
           return (
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center px-4 py-2.5 rounded-lg transition-all ${
+              className={`flex items-center px-3.5 py-2.5 rounded-xl transition-all duration-200 ${
                 isActive
-                  ? 'bg-primary-container text-on-primary-container shadow-sm font-bold'
-                  : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
+                  ? 'bg-brand-gold text-slate-950 font-bold shadow-gold translate-x-[-2px]'
+                  : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
               }`}
             >
-              <span className="material-symbols-outlined ml-3 text-[20px]">{item.icon}</span>
+              <span className={`material-symbols-outlined ml-3 text-[20px] ${isActive ? 'text-slate-950' : 'text-slate-400'}`}>
+                {item.icon}
+              </span>
               <span className="text-sm">{item.label}</span>
             </Link>
           );
         })}
       </nav>
 
-      {/* User Footer */}
-      <div className="p-4 border-t border-surface-container-low space-y-2">
+      {/* User Footer Card */}
+      <div className="p-3.5 border-t border-slate-800 bg-slate-950/50 space-y-2">
         <Link
           href="/profile"
-          className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-colors hover:bg-surface-container-high ${
-            pathname === '/profile' ? 'bg-primary-container' : 'bg-surface-container-low'
+          className={`flex items-center gap-3 p-2.5 rounded-xl cursor-pointer transition-colors border ${
+            pathname === '/profile'
+              ? 'bg-slate-800 border-brand-gold text-white'
+              : 'bg-slate-900/80 border-slate-800 hover:border-slate-700 text-slate-300'
           }`}
         >
-          <div className="w-9 h-9 rounded-full bg-primary/10 border border-outline-variant flex items-center justify-center font-bold text-primary text-sm">
+          <div className="w-9 h-9 rounded-full bg-brand-gold text-slate-950 flex items-center justify-center font-bold text-sm shadow">
             {user?.name?.charAt(0) || 'م'}
           </div>
           <div className="flex flex-col overflow-hidden flex-1">
-            <span className="text-sm font-bold truncate text-primary">{user?.name || 'مدير النظام'}</span>
-            <span className="text-xs text-on-surface-variant font-mono">
-              {user ? roleLabels[user.role] || user.role : 'مدير'}
+            <span className="text-sm font-bold truncate text-white">{user?.name || 'مدير النظام'}</span>
+            <span className="text-xs text-brand-gold font-medium truncate">
+              {user ? roleLabels[user.role] || user.role : 'مدير عام'}
             </span>
           </div>
-          <span className="material-symbols-outlined text-[16px] text-on-surface-variant">person</span>
+          <span className="material-symbols-outlined text-[16px] text-slate-400">arrow_back_ios</span>
         </Link>
         <button
           onClick={handleLogout}
-          className="w-full flex items-center justify-center gap-2 text-xs text-error hover:bg-error-container py-2 rounded-lg transition-colors font-mono"
+          className="w-full flex items-center justify-center gap-1.5 text-xs text-rose-400 hover:bg-rose-950/40 hover:text-rose-300 py-2 rounded-lg transition-colors font-medium"
         >
           <span className="material-symbols-outlined text-[16px]">logout</span>
           تسجيل الخروج

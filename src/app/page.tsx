@@ -1,125 +1,175 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import Sidebar from '@/components/Sidebar';
 import Header from '@/components/Header';
 import Link from 'next/link';
 
 const stats = [
-  { label: 'معاينات هذا الشهر', value: '24', icon: 'square_foot', color: 'bg-primary', desc: '+3 هذا الأسبوع' },
-  { label: 'طلبات قيد التنفيذ', value: '8', icon: 'pending', color: 'bg-secondary', desc: '2 في الورشة' },
-  { label: 'إجمالي العملاء', value: '142', icon: 'group', color: 'bg-primary-container', desc: '12 جديد الشهر' },
-  { label: 'مبيعات القماش', value: '18,500 ج', icon: 'texture', color: 'bg-surface-container-highest', desc: 'هذا الشهر' },
+  { label: 'معاينات هذا الشهر', value: '24', icon: 'square_foot', bg: 'bg-amber-500/10 text-amber-600', border: 'border-amber-200', desc: '+4 هذا الأسبوع' },
+  { label: 'أوامر تصنيع بالورشة', value: '8', icon: 'precision_manufacturing', bg: 'bg-slate-900/10 text-slate-800', border: 'border-slate-200', desc: '3 جاهزة للتركيب' },
+  { label: 'إجمالي العملاء', value: '142', icon: 'groups', bg: 'bg-blue-500/10 text-blue-600', border: 'border-blue-200', desc: '12 عميل جديد' },
+  { label: 'مبيعات الأقمشة بالمتر', value: '118,500 ج', icon: 'point_of_sale', bg: 'bg-emerald-500/10 text-emerald-600', border: 'border-emerald-200', desc: 'هذا الشهر' },
 ];
 
 const recentInspections = [
-  { name: 'محمود عبد الرحمن', phone: '01012345678', address: 'التجمع الخامس', date: 'اليوم 4:00 م', status: 'مُجدول', stage: 'معاينة' },
-  { name: 'سارة أحمد', phone: '01298765432', address: 'الشيخ زايد', date: 'غداً 2:00 م', status: 'قيد الانتظار', stage: 'معاينة' },
-  { name: 'شركة المعمار', phone: '01155556666', address: 'المهندسين', date: 'أمس', status: 'مكتمل', stage: 'اختيار قماش' },
+  { name: 'محمود عبد الرحمن', phone: '01012345678', address: 'التجمع الخامس، فيلا 42', date: 'اليوم 4:00 م', status: 'مُجدول', stage: 'معاينة' },
+  { name: 'سارة أحمد', phone: '01298765432', address: 'الشيخ زايد، بيفرلي هيلز', date: 'غداً 2:00 م', status: 'قيد الانتظار', stage: 'معاينة' },
+  { name: 'شركة المعمار للمقاولات', phone: '01155556666', address: 'المهندسين، البطل أحمد عبد العزيز', date: 'أمس', status: 'مكتمل', stage: 'اختيار قماش' },
 ];
 
 const quickSales = [
-  { fabric: 'ستان سواريه', meters: 5.5, total: 2475 },
-  { fabric: 'حرير طبيعي', meters: 3, total: 2700 },
-  { fabric: 'كريب مزدوج', meters: 8, total: 2400 },
+  { fabric: 'ستان سواريه ناعم', meters: 5.5, total: 2475, branch: 'الفرع الرئيسي' },
+  { fabric: 'حرير طبيعي ممتاز', meters: 3.0, total: 2700, branch: 'فرع ثانٍ' },
+  { fabric: 'كريب مزدوج أسباني', meters: 8.0, total: 2400, branch: 'الفرع الرئيسي' },
 ];
 
 export default function DashboardPage() {
   return (
-    <div className="min-h-screen bg-background text-on-surface">
+    <div className="min-h-screen bg-slate-50 text-slate-900">
       <Sidebar />
-      <Header title="لوحة التحكم" />
+      <Header title="لوحة القيادة الرئيسية" />
       <div className="pr-72 pt-16">
         <main className="px-8 py-8 flex flex-col gap-8">
-          <div>
-            <h1 className="font-display font-bold text-3xl text-primary">مرحباً بك 👋</h1>
-            <p className="text-on-surface-variant mt-1">نظام إدارة أحمد كشك للأقمشة والستائر — القاهرة</p>
+          {/* Welcome Banner with Luxury Gold Accents */}
+          <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-slate-800 rounded-3xl p-8 text-white shadow-xl relative overflow-hidden border border-slate-800">
+            <div className="absolute top-0 right-0 w-96 h-96 bg-brand-gold/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div className="relative z-10 flex flex-wrap items-center justify-between gap-6">
+              <div>
+                <span className="px-3 py-1 rounded-full text-xs font-bold bg-brand-gold/20 text-brand-gold border border-brand-gold/30 inline-block mb-3">
+                  مرحباً بك في نظام أحمد كشك
+                </span>
+                <h1 className="font-display font-black text-3xl tracking-tight">
+                  إدارة الأقمشة وتفصيل الستائر الفاخرة
+                </h1>
+                <p className="text-slate-300 text-sm mt-2 max-w-xl">
+                  متابعة المعاينات الميدانية، رفع المقاسات الدقيقة، أوامر تشغيل الورشة، ونقاط بيع الأقمشة بالمتر لجميع الفروع.
+                </p>
+              </div>
+
+              <div className="flex gap-3">
+                <Link
+                  href="/inspections"
+                  className="bg-brand-gold hover:bg-brand-gold-hover text-slate-950 px-5 py-3 rounded-2xl font-bold text-sm transition-all shadow-gold flex items-center gap-2"
+                >
+                  <span className="material-symbols-outlined text-[18px]">add_box</span>
+                  طلب معاينة ومقاسات
+                </Link>
+                <Link
+                  href="/fabric-sales"
+                  className="bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 px-5 py-3 rounded-2xl font-bold text-sm transition-all flex items-center gap-2"
+                >
+                  <span className="material-symbols-outlined text-[18px]">point_of_sale</span>
+                  نقطة البيع (POS)
+                </Link>
+              </div>
+            </div>
           </div>
 
-          {/* Stats */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Stats Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {stats.map((s, i) => (
-              <div key={i} className="bg-surface-container-lowest rounded-xl p-5 border border-surface-container-highest shadow-sm">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className={`w-10 h-10 ${s.color} text-on-primary rounded-lg flex items-center justify-center`}>
+              <div key={i} className={`bg-white rounded-2xl p-5 border ${s.border} shadow-soft hover:shadow-md transition-all`}>
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-bold text-slate-500">{s.label}</span>
+                  <div className={`w-10 h-10 ${s.bg} rounded-xl flex items-center justify-center`}>
                     <span className="material-symbols-outlined text-[20px]">{s.icon}</span>
                   </div>
-                  <span className="text-xs text-on-surface-variant font-mono">{s.label}</span>
                 </div>
-                <div className="font-display font-bold text-2xl text-primary">{s.value}</div>
-                <div className="text-xs text-on-surface-variant mt-1">{s.desc}</div>
+                <div className="font-display font-black text-2xl text-slate-900">{s.value}</div>
+                <div className="text-xs text-slate-400 font-medium mt-1">{s.desc}</div>
               </div>
             ))}
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* Recent Inspections */}
-            <div className="bg-surface-container-lowest rounded-xl border border-surface-container-highest p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="font-display font-bold text-lg text-primary">آخر المعاينات</h2>
-                <Link href="/inspections" className="text-xs font-mono text-on-surface-variant hover:text-primary transition-colors">عرض الكل ←</Link>
+            <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200/80 p-6 shadow-soft">
+              <div className="flex justify-between items-center mb-5">
+                <div>
+                  <h2 className="font-display font-bold text-lg text-slate-900">أحدث طلبات المعاينة والمقاسات</h2>
+                  <p className="text-xs text-slate-500 mt-0.5">متابعة الفنيين ومواعيد زيارة العملاء</p>
+                </div>
+                <Link href="/inspections" className="text-xs font-bold text-brand-gold-dark hover:underline flex items-center gap-1">
+                  عرض الكل ←
+                </Link>
               </div>
+
               <div className="flex flex-col gap-3">
                 {recentInspections.map((r, i) => (
-                  <div key={i} className="flex justify-between items-center p-3 bg-surface-container-low rounded-lg hover:bg-surface-container-high transition-colors">
+                  <div key={i} className="flex justify-between items-center p-4 bg-slate-50 border border-slate-100 rounded-xl hover:border-slate-200 transition-all">
                     <div>
-                      <div className="font-bold text-sm text-primary">{r.name}</div>
-                      <div className="text-xs text-on-surface-variant flex items-center gap-1 mt-0.5">
+                      <div className="font-bold text-sm text-slate-900">{r.name}</div>
+                      <div className="text-xs text-slate-500 flex items-center gap-1 mt-1">
                         <span className="material-symbols-outlined text-[14px]">location_on</span>
-                        {r.address} • {r.date}
+                        {r.address}
                       </div>
                     </div>
-                    <div className="flex flex-col items-end gap-1">
-                      <span className={`text-xs px-2 py-0.5 rounded font-mono ${
-                        r.status === 'مُجدول' ? 'bg-secondary-container text-on-secondary-container'
-                        : r.status === 'مكتمل' ? 'bg-primary text-on-primary'
-                        : 'bg-surface-container text-on-surface-variant'
+                    <div className="flex flex-col items-end gap-1.5">
+                      <span className={`text-xs px-2.5 py-0.5 rounded-full font-mono font-bold ${
+                        r.status === 'مُجدول' ? 'bg-amber-100 text-amber-900 border border-amber-200'
+                        : r.status === 'مكتمل' ? 'bg-emerald-100 text-emerald-900 border border-emerald-200'
+                        : 'bg-slate-200 text-slate-800'
                       }`}>{r.status}</span>
-                      <span className="text-xs text-on-surface-variant">{r.stage}</span>
+                      <span className="text-[11px] text-slate-400 font-mono">{r.date}</span>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Quick Fabric Sales */}
-            <div className="bg-surface-container-lowest rounded-xl border border-surface-container-highest p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="font-display font-bold text-lg text-primary">مبيعات القماش السريعة</h2>
-                <Link href="/fabric-sales" className="text-xs font-mono text-on-surface-variant hover:text-primary transition-colors">عرض الكل ←</Link>
-              </div>
-              <div className="flex flex-col gap-3">
-                {quickSales.map((s, i) => (
-                  <div key={i} className="flex justify-between items-center p-3 bg-surface-container-low rounded-lg">
-                    <div>
-                      <div className="font-bold text-sm text-primary">{s.fabric}</div>
-                      <div className="text-xs text-on-surface-variant font-mono">{s.meters} متر</div>
-                    </div>
-                    <div className="font-bold text-primary font-mono">{s.total.toLocaleString()} ج</div>
+            {/* Quick Fabric Sales & POS Widget */}
+            <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200/80 p-6 shadow-soft flex flex-col justify-between">
+              <div>
+                <div className="flex justify-between items-center mb-5">
+                  <div>
+                    <h2 className="font-display font-bold text-lg text-slate-900">مبيعات الأقمشة السريعة</h2>
+                    <p className="text-xs text-slate-500 mt-0.5">المبيعات المباشرة بالمتر</p>
                   </div>
-                ))}
+                  <Link href="/fabric-sales" className="text-xs font-bold text-brand-gold-dark hover:underline">
+                    شاشة POS ←
+                  </Link>
+                </div>
+
+                <div className="flex flex-col gap-3">
+                  {quickSales.map((s, i) => (
+                    <div key={i} className="flex justify-between items-center p-3.5 bg-slate-50 border border-slate-100 rounded-xl">
+                      <div>
+                        <div className="font-bold text-sm text-slate-900">{s.fabric}</div>
+                        <div className="text-xs text-slate-500 font-mono mt-0.5">{s.meters} متر • {s.branch}</div>
+                      </div>
+                      <div className="font-bold text-slate-900 font-mono text-sm">{s.total.toLocaleString()} ج.م</div>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <Link href="/fabric-sales/new" className="mt-4 flex items-center justify-center gap-2 w-full bg-secondary-container text-on-secondary-container py-3 rounded-lg text-sm font-bold hover:bg-secondary hover:text-on-secondary transition-colors">
-                <span className="material-symbols-outlined text-[18px]">add</span>
-                بيع قماش جديد
+
+              <Link
+                href="/fabric-sales"
+                className="mt-6 flex items-center justify-center gap-2 w-full bg-brand-gold hover:bg-brand-gold-hover text-slate-950 py-3.5 rounded-2xl text-sm font-bold shadow-gold transition-all"
+              >
+                <span className="material-symbols-outlined text-[18px]">point_of_sale</span>
+                فتح شاشة الكاشير وبيع القماش بالمتر
               </Link>
             </div>
           </div>
 
           {/* Stages Pipeline */}
-          <div className="bg-surface-container-lowest rounded-xl border border-surface-container-highest p-6">
-            <h2 className="font-display font-bold text-lg text-primary mb-4">مراحل العمل (Pipeline)</h2>
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-soft">
+            <h2 className="font-display font-bold text-lg text-slate-900 mb-1">دورة العمل والطلبات (Pipeline)</h2>
+            <p className="text-xs text-slate-500 mb-5">مراحل تنفيذ طلبات الستائر من المعاينة حتى التركيب النهائي</p>
+
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               {[
-                { stage: 'معاينة', icon: 'home_search', count: 5, color: 'border-outline-variant' },
-                { stage: 'اختيار قماش', icon: 'texture', count: 3, color: 'border-secondary' },
-                { stage: 'ورشة', icon: 'precision_manufacturing', count: 2, color: 'border-on-surface-variant' },
-                { stage: 'تركيب', icon: 'build', count: 1, color: 'border-primary' },
+                { stage: '1. رفع المقاسات والمعاينة', count: 5, icon: 'square_foot', color: 'border-amber-300 bg-amber-50/50 text-amber-900' },
+                { stage: '2. اختيار الأقمشة والخامات', count: 3, icon: 'texture', color: 'border-blue-300 bg-blue-50/50 text-blue-900' },
+                { stage: '3. الورشة المركزية للتفصيل', count: 2, icon: 'precision_manufacturing', color: 'border-purple-300 bg-purple-50/50 text-purple-900' },
+                { stage: '4. التركيب النهائي والتسليم', count: 1, icon: 'build_circle', color: 'border-emerald-300 bg-emerald-50/50 text-emerald-900' },
               ].map((p, i) => (
-                <div key={i} className={`p-4 border-2 ${p.color} rounded-xl flex flex-col items-center gap-2`}>
-                  <span className="material-symbols-outlined text-[28px] text-on-surface-variant">{p.icon}</span>
-                  <div className="font-display font-bold text-xl text-primary">{p.count}</div>
-                  <div className="text-xs text-on-surface-variant text-center">{p.stage}</div>
+                <div key={i} className={`p-5 border-2 ${p.color} rounded-2xl flex flex-col items-center text-center gap-2 shadow-xs`}>
+                  <span className="material-symbols-outlined text-[32px]">{p.icon}</span>
+                  <div className="font-display font-black text-2xl mt-1">{p.count} طلبات</div>
+                  <div className="text-xs font-bold">{p.stage}</div>
                 </div>
               ))}
             </div>

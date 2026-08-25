@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'أحمد كشك — نظام المعاينات والستاير والأقمشة',
-  description: 'نظام إداري متكامل لإدارة مقاسات الستاير، المعاينات الميدانية، والمبيعات لمؤسسة أحمد كشك',
+  title: 'أحمد كشك — للأقمشة والستائر الفاخرة',
+  description: 'نظام إداري متكامل لإدارة مقاسات الستائر، المعاينات الميدانية، والمبيعات لمؤسسة أحمد كشك',
   icons: {
     icon: '/logo.png',
     shortcut: '/logo.png',
@@ -21,8 +21,9 @@ export default function RootLayout({
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        {/* Google Fonts: Cairo (Arabic Primary) + JetBrains Mono */}
         <link
-          href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@600;700&family=JetBrains+Mono:wght@500&family=Manrope:wght@400;500;600;700&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap"
           rel="stylesheet"
         />
         <link
@@ -30,7 +31,7 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="bg-background font-body text-on-surface antialiased min-h-screen">
+      <body className="bg-background font-body text-on-surface antialiased min-h-screen selection:bg-brand-gold selection:text-brand-dark">
         {children}
       </body>
     </html>
