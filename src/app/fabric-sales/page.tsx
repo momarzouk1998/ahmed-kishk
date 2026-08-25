@@ -27,9 +27,9 @@ const fabricCategories = [
 ];
 
 const demoSales = [
-  { id: 'FS-001', date: '2026-08-25', branch: 'بنها الرئيسي', customer: 'بيع سريع', items: [{ name: 'ستان سواريه', meters: 5.5, price: 450 }], total: 2475 },
-  { id: 'FS-002', date: '2026-08-25', branch: 'فرع ثاني', customer: 'أستاذة هدى', items: [{ name: 'حرير طبيعي', meters: 3, price: 900 }], total: 2700 },
-  { id: 'FS-003', date: '2026-08-24', branch: 'بنها الرئيسي', customer: 'بيع سريع', items: [{ name: 'كريب مزدوج', meters: 8, price: 300 }], total: 2400 },
+  { id: 'FS-001', date: '2026-08-25', branch: 'الفرع الرئيسي — القاهرة', customer: 'بيع سريع', items: [{ name: 'ستان سواريه', meters: 5.5, price: 450 }], total: 2475 },
+  { id: 'FS-002', date: '2026-08-25', branch: 'فرع ثانٍ — القاهرة', customer: 'أستاذة هدى', items: [{ name: 'حرير طبيعي', meters: 3, price: 900 }], total: 2700 },
+  { id: 'FS-003', date: '2026-08-24', branch: 'الفرع الرئيسي — القاهرة', customer: 'بيع سريع', items: [{ name: 'كريب مزدوج', meters: 8, price: 300 }], total: 2400 },
 ];
 
 interface CartItem {
@@ -43,7 +43,7 @@ export default function FabricSalesPage() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [activeCategory, setActiveCategory] = useState('سواريه');
   const [customerName, setCustomerName] = useState('');
-  const [branch, setBranch] = useState('بنها الرئيسي');
+  const [branch, setBranch] = useState('الفرع الرئيسي — القاهرة');
   const [sales, setSales] = useState(demoSales);
   const [view, setView] = useState<'pos' | 'history'>('pos');
 
@@ -115,9 +115,9 @@ export default function FabricSalesPage() {
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-mono text-on-surface-variant">الفرع</label>
                     <select value={branch} onChange={e => setBranch(e.target.value)} className="border border-outline-variant rounded p-2.5 text-sm focus:outline-none focus:border-primary">
-                      <option>بنها الرئيسي</option>
-                      <option>فرع ثاني</option>
-                      <option>فرع ثالث</option>
+                      <option>الفرع الرئيسي — القاهرة</option>
+                      <option>فرع الأقمشة الثاني — القاهرة</option>
+                      <option>فرع السوارية الثالث — القاهرة</option>
                     </select>
                   </div>
                 </div>

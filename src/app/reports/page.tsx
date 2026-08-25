@@ -99,19 +99,19 @@ export default function ReportsPage() {
                   </thead>
                   <tbody>
                     <tr className="border-b border-surface-container-low">
-                      <td className="p-3 font-bold text-primary">الفرع الرئيسي — بنها</td>
+                      <td className="p-3 font-bold text-primary">الفرع الرئيسي — القاهرة</td>
                       <td className="p-3 text-xs text-on-surface-variant">ستائر + أقمشة</td>
                       <td className="p-3 text-center font-mono">32</td>
                       <td className="p-3 text-left font-mono font-bold text-primary">78,500 ج</td>
                     </tr>
                     <tr className="border-b border-surface-container-low">
-                      <td className="p-3 font-bold text-primary">فرع الأقمشة الثاني — بنها</td>
+                      <td className="p-3 font-bold text-primary">فرع الأقمشة الثاني — القاهرة</td>
                       <td className="p-3 text-xs text-on-surface-variant">أقمشة فقط</td>
                       <td className="p-3 text-center font-mono">14</td>
                       <td className="p-3 text-left font-mono font-bold text-primary">21,400 ج</td>
                     </tr>
                     <tr className="border-b border-surface-container-low">
-                      <td className="p-3 font-bold text-primary">فرع السوارية الثالث — بنها</td>
+                      <td className="p-3 font-bold text-primary">فرع السوارية الثالث — القاهرة</td>
                       <td className="p-3 text-xs text-on-surface-variant">أقمشة سوارية</td>
                       <td className="p-3 text-center font-mono">7</td>
                       <td className="p-3 text-left font-mono font-bold text-primary">13,400 ج</td>

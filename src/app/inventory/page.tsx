@@ -19,15 +19,15 @@ interface InventoryItem {
 }
 
 const initialItems: InventoryItem[] = [
-  { id: 'INV-001', code: 'SAT-01', name: 'ستان سواريه ناعم', category: 'سواريه', unit: 'متر', quantity: 120, costPrice: 320, sellPrice: 450, branch: 'بنها الرئيسي', minAlert: 30, supplier: 'شركة النيل' },
-  { id: 'INV-002', code: 'SLK-01', name: 'حرير طبيعي ممتاز', category: 'سواريه', unit: 'متر', quantity: 45, costPrice: 650, sellPrice: 900, branch: 'بنها الرئيسي', minAlert: 15, supplier: 'شركة النيل' },
-  { id: 'INV-003', code: 'CRP-01', name: 'كريب مزدوج أسباني', category: 'سواريه', unit: 'متر', quantity: 200, costPrice: 200, sellPrice: 300, branch: 'فرع ثانٍ — بنها', minAlert: 40, supplier: 'شركة النيل' },
-  { id: 'INV-004', code: 'CHF-01', name: 'شيفون ناعم مطرز', category: 'سواريه', unit: 'متر', quantity: 180, costPrice: 150, sellPrice: 250, branch: 'فرع ثالث — بنها', minAlert: 25, supplier: 'مستورد الشرق' },
-  { id: 'INV-005', code: 'VLV-01', name: 'قطيفة ستائر ثقيلة', category: 'ستائر', unit: 'متر', quantity: 95, costPrice: 260, sellPrice: 380, branch: 'بنها الرئيسي', minAlert: 20, supplier: 'مصنع الدلتا' },
-  { id: 'INV-006', code: 'BLK-01', name: 'بلاك آوت عازل ضوء 100%', category: 'ستائر', unit: 'متر', quantity: 160, costPrice: 180, sellPrice: 280, branch: 'بنها الرئيسي', minAlert: 50, supplier: 'مصنع الدلتا' },
-  { id: 'INV-007', code: 'TRK-01', name: 'تراك سقف ألومنيوم (مجاري)', category: 'تراكات ومواسير', unit: 'متر', quantity: 300, costPrice: 45, sellPrice: 85, branch: 'بنها الرئيسي', minAlert: 50, supplier: 'مصنع الدلتا' },
-  { id: 'INV-008', code: 'ROD-01', name: 'مواسير استيل مذهبة', category: 'تراكات ومواسير', unit: 'متر', quantity: 80, costPrice: 90, sellPrice: 160, branch: 'بنها الرئيسي', minAlert: 20, supplier: 'مصنع الدلتا' },
-  { id: 'INV-009', code: 'TAP-01', name: 'شريط كشكشة 3 فتلة', category: 'أشرطة وإكسسوارات', unit: 'متر', quantity: 500, costPrice: 8, sellPrice: 18, branch: 'بنها الرئيسي', minAlert: 100, supplier: 'مستورد الشرق' },
+  { id: 'INV-001', code: 'SAT-01', name: 'ستان سواريه ناعم', category: 'سواريه', unit: 'متر', quantity: 120, costPrice: 320, sellPrice: 450, branch: 'الفرع الرئيسي — القاهرة', minAlert: 30, supplier: 'شركة النيل' },
+  { id: 'INV-002', code: 'SLK-01', name: 'حرير طبيعي ممتاز', category: 'سواريه', unit: 'متر', quantity: 45, costPrice: 650, sellPrice: 900, branch: 'الفرع الرئيسي — القاهرة', minAlert: 15, supplier: 'شركة النيل' },
+  { id: 'INV-003', code: 'CRP-01', name: 'كريب مزدوج أسباني', category: 'سواريه', unit: 'متر', quantity: 200, costPrice: 200, sellPrice: 300, branch: 'فرع ثانٍ — القاهرة', minAlert: 40, supplier: 'شركة النيل' },
+  { id: 'INV-004', code: 'CHF-01', name: 'شيفون ناعم مطرز', category: 'سواريه', unit: 'متر', quantity: 180, costPrice: 150, sellPrice: 250, branch: 'فرع ثالث — القاهرة', minAlert: 25, supplier: 'مستورد الشرق' },
+  { id: 'INV-005', code: 'VLV-01', name: 'قطيفة ستائر ثقيلة', category: 'ستائر', unit: 'متر', quantity: 95, costPrice: 260, sellPrice: 380, branch: 'الفرع الرئيسي — القاهرة', minAlert: 20, supplier: 'مصنع الدلتا' },
+  { id: 'INV-006', code: 'BLK-01', name: 'بلاك آوت عازل ضوء 100%', category: 'ستائر', unit: 'متر', quantity: 160, costPrice: 180, sellPrice: 280, branch: 'الفرع الرئيسي — القاهرة', minAlert: 50, supplier: 'مصنع الدلتا' },
+  { id: 'INV-007', code: 'TRK-01', name: 'تراك سقف ألومنيوم (مجاري)', category: 'تراكات ومواسير', unit: 'متر', quantity: 300, costPrice: 45, sellPrice: 85, branch: 'الفرع الرئيسي — القاهرة', minAlert: 50, supplier: 'مصنع الدلتا' },
+  { id: 'INV-008', code: 'ROD-01', name: 'مواسير استيل مذهبة', category: 'تراكات ومواسير', unit: 'متر', quantity: 80, costPrice: 90, sellPrice: 160, branch: 'الفرع الرئيسي — القاهرة', minAlert: 20, supplier: 'مصنع الدلتا' },
+  { id: 'INV-009', code: 'TAP-01', name: 'شريط كشكشة 3 فتلة', category: 'أشرطة وإكسسوارات', unit: 'متر', quantity: 500, costPrice: 8, sellPrice: 18, branch: 'الفرع الرئيسي — القاهرة', minAlert: 100, supplier: 'مستورد الشرق' },
 ];
 
 export default function InventoryPage() {
@@ -47,7 +47,7 @@ export default function InventoryPage() {
   const [quantity, setQuantity] = useState<number>(100);
   const [costPrice, setCostPrice] = useState<number>(100);
   const [sellPrice, setSellPrice] = useState<number>(150);
-  const [branch, setBranch] = useState('بنها الرئيسي');
+  const [branch, setBranch] = useState('الفرع الرئيسي — القاهرة');
   const [supplier, setSupplier] = useState('شركة النيل');
 
   const filtered = items.filter((item) => {
@@ -163,9 +163,9 @@ export default function InventoryPage() {
                 className="border border-outline-variant rounded-lg p-2 text-xs font-mono bg-surface-container-lowest"
               >
                 <option value="الكل">كل الفروع</option>
-                <option value="بنها الرئيسي">بنها الرئيسي</option>
-                <option value="فرع ثانٍ — بنها">فرع ثانٍ — بنها</option>
-                <option value="فرع ثالث — بنها">فرع ثالث — بنها</option>
+                <option value="الفرع الرئيسي — القاهرة">الفرع الرئيسي — القاهرة</option>
+                <option value="فرع ثانٍ — القاهرة">فرع ثانٍ — القاهرة</option>
+                <option value="فرع ثالث — القاهرة">فرع ثالث — القاهرة</option>
               </select>
 
               <div className="relative">
@@ -323,9 +323,9 @@ export default function InventoryPage() {
                     onChange={(e) => setBranch(e.target.value)}
                     className="border border-outline-variant rounded p-2 text-sm focus:outline-none focus:border-primary"
                   >
-                    <option value="بنها الرئيسي">بنها الرئيسي</option>
-                    <option value="فرع ثانٍ — بنها">فرع ثانٍ — بنها</option>
-                    <option value="فرع ثالث — بنها">فرع ثالث — بنها</option>
+                    <option value="الفرع الرئيسي — القاهرة">الفرع الرئيسي — القاهرة</option>
+                    <option value="فرع ثانٍ — القاهرة">فرع ثانٍ — القاهرة</option>
+                    <option value="فرع ثالث — القاهرة">فرع ثالث — القاهرة</option>
                   </select>
                 </div>
               </div>

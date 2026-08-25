@@ -33,7 +33,7 @@ export default function DashboardPage() {
         <main className="px-8 py-8 flex flex-col gap-8">
           <div>
             <h1 className="font-display font-bold text-3xl text-primary">مرحباً بك 👋</h1>
-            <p className="text-on-surface-variant mt-1">نظام إدارة أحمد كشك للأقمشة والستائر — بنها</p>
+            <p className="text-on-surface-variant mt-1">نظام إدارة أحمد كشك للأقمشة والستائر — القاهرة</p>
           </div>
 
           {/* Stats */}

@@ -15,14 +15,14 @@ async function main() {
       name: 'openappo',
       password: hashedPassword,
       role: 'ADMIN',
-      branch: 'الفرع الرئيسي — بنها',
+      branch: 'الفرع الرئيسي — القاهرة',
     },
     create: {
       name: 'openappo',
       phone: '01558282760',
       password: hashedPassword,
       role: 'ADMIN',
-      branch: 'الفرع الرئيسي — بنها',
+      branch: 'الفرع الرئيسي — القاهرة',
     },
   });
   console.log('✅ Super Admin (openappo) created:', superAdmin.phone);
@@ -34,14 +34,14 @@ async function main() {
       name: 'أحمد كشك',
       password: hashedPassword,
       role: 'ADMIN',
-      branch: 'الفرع الرئيسي — بنها',
+      branch: 'الفرع الرئيسي — القاهرة',
     },
     create: {
       name: 'أحمد كشك',
       phone: '01063821000',
       password: hashedPassword,
       role: 'ADMIN',
-      branch: 'الفرع الرئيسي — بنها',
+      branch: 'الفرع الرئيسي — القاهرة',
     },
   });
   console.log('✅ Store Owner (أحمد كشك) created:', storeOwner.phone);

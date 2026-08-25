@@ -5,10 +5,10 @@ import Sidebar from '@/components/Sidebar';
 import Header from '@/components/Header';
 
 const demoOrders = [
-  { id: 'ORD-001', customer: 'محمود عبد الرحمن', phone: '01012345678', stage: 'اختيار قماش', total: 12600, date: '2026-08-24', technician: 'أحمد حسن', installDate: '2026-09-05', branch: 'بنها الرئيسي', notes: 'صالة + غرفة نوم' },
-  { id: 'ORD-002', customer: 'شركة المعمار', phone: '01155556666', stage: 'ورشة', total: 28400, date: '2026-08-20', technician: 'محمد علي', installDate: '2026-09-10', branch: 'بنها الرئيسي', notes: '6 غرف' },
-  { id: 'ORD-003', customer: 'أسرة محمود سعيد', phone: '01099887766', stage: 'تركيب', total: 7800, date: '2026-08-18', technician: 'علي إبراهيم', installDate: '2026-08-27', branch: 'فرع ثاني', notes: 'صالة فقط' },
-  { id: 'ORD-004', customer: 'نادي الأحمدي', phone: '01033445566', stage: 'مكتمل', total: 54000, date: '2026-08-10', technician: 'أحمد حسن', installDate: '2026-08-20', branch: 'بنها الرئيسي', notes: 'قاعة اجتماعات كبرى' },
+  { id: 'ORD-001', customer: 'محمود عبد الرحمن', phone: '01012345678', stage: 'اختيار قماش', total: 12600, date: '2026-08-24', technician: 'أحمد حسن', installDate: '2026-09-05', branch: 'الفرع الرئيسي — القاهرة', notes: 'صالة + غرفة نوم' },
+  { id: 'ORD-002', customer: 'شركة المعمار', phone: '01155556666', stage: 'ورشة', total: 28400, date: '2026-08-20', technician: 'محمد علي', installDate: '2026-09-10', branch: 'الفرع الرئيسي — القاهرة', notes: '6 غرف' },
+  { id: 'ORD-003', customer: 'أسرة محمود سعيد', phone: '01099887766', stage: 'تركيب', total: 7800, date: '2026-08-18', technician: 'علي إبراهيم', installDate: '2026-08-27', branch: 'فرع ثانٍ — القاهرة', notes: 'صالة فقط' },
+  { id: 'ORD-004', customer: 'نادي الأحمدي', phone: '01033445566', stage: 'مكتمل', total: 54000, date: '2026-08-10', technician: 'أحمد حسن', installDate: '2026-08-20', branch: 'الفرع الرئيسي — القاهرة', notes: 'قاعة اجتماعات كبرى' },
 ];
 
 const stages = ['اختيار قماش', 'ورشة', 'تركيب', 'مكتمل'];

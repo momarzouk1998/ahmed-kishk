@@ -24,7 +24,7 @@ async function ensureDefaultUsers() {
             phone: '01063821000',
             password: hashedPassword,
             role: 'ADMIN',
-            branch: 'الفرع الرئيسي — بنها',
+            branch: 'الفرع الرئيسي — القاهرة',
           },
         ],
         skipDuplicates: true,

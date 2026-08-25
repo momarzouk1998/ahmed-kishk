@@ -22,20 +22,20 @@ interface AppUser {
 }
 
 const initialBranches: Branch[] = [
-  { id: 'BR-01', name: 'الفرع الرئيسي — بنها', type: 'بيع أقمشة', city: 'بنها', manager: 'أحمد كشك', staffCount: 2 },
-  { id: 'BR-02', name: 'فرع الأقمشة الثاني — بنها', type: 'بيع أقمشة', city: 'بنها', manager: 'محمود السيد', staffCount: 1 },
-  { id: 'BR-03', name: 'فرع السوارية والستائر الثالث — بنها', type: 'بيع أقمشة', city: 'بنها', manager: 'إبراهيم علي', staffCount: 1 },
-  { id: 'BR-04', name: 'مركز الستائر والمعاينات', type: 'ستائر ومعاينات', city: 'بنها', manager: 'أحمد حسن', staffCount: 2 },
-  { id: 'BR-05', name: 'الورشة المركزية للتفصيل', type: 'ورشة تصنيع', city: 'بنها', manager: 'عم مصطفى', staffCount: 2 },
+  { id: 'BR-01', name: 'الفرع الرئيسي — القاهرة', type: 'بيع أقمشة', city: 'القاهرة', manager: 'أحمد كشك', staffCount: 2 },
+  { id: 'BR-02', name: 'فرع الأقمشة الثاني — القاهرة', type: 'بيع أقمشة', city: 'القاهرة', manager: 'محمود السيد', staffCount: 1 },
+  { id: 'BR-03', name: 'فرع السوارية والستائر الثالث — القاهرة', type: 'بيع أقمشة', city: 'القاهرة', manager: 'إبراهيم علي', staffCount: 1 },
+  { id: 'BR-04', name: 'مركز الستائر والمعاينات', type: 'ستائر ومعاينات', city: 'القاهرة', manager: 'أحمد حسن', staffCount: 2 },
+  { id: 'BR-05', name: 'الورشة المركزية للتفصيل', type: 'ورشة تصنيع', city: 'القاهرة', manager: 'عم مصطفى', staffCount: 2 },
 ];
 
 const initialUsers: AppUser[] = [
   { id: 'USR-01', name: 'openappo', phone: '01558282760', role: 'ADMIN', branch: 'المدير العام' },
-  { id: 'USR-02', name: 'أحمد كشك (مدير المحل)', phone: '01063821000', role: 'ADMIN', branch: 'الفرع الرئيسي — بنها' },
+  { id: 'USR-02', name: 'أحمد كشك (مدير المحل)', phone: '01063821000', role: 'ADMIN', branch: 'الفرع الرئيسي — القاهرة' },
   { id: 'USR-03', name: 'أحمد حسن (فني معاينات)', phone: '01011111111', role: 'TECHNICIAN', branch: 'مركز المعاينات والتركيبات' },
   { id: 'USR-04', name: 'محمد علي (فني تركيبات)', phone: '01022222222', role: 'TECHNICIAN', branch: 'مركز المعاينات والتركيبات' },
-  { id: 'USR-05', name: 'موظف الفرع الثاني', phone: '01033333333', role: 'BRANCH_STAFF', branch: 'فرع الأقمشة الثاني — بنها' },
-  { id: 'USR-06', name: 'موظف الفرع الثالث', phone: '01044444444', role: 'BRANCH_STAFF', branch: 'فرع السوارية الثالث — بنها' },
+  { id: 'USR-05', name: 'موظف الفرع الثاني', phone: '01033333333', role: 'BRANCH_STAFF', branch: 'فرع الأقمشة الثاني — القاهرة' },
+  { id: 'USR-06', name: 'موظف الفرع الثالث', phone: '01044444444', role: 'BRANCH_STAFF', branch: 'فرع السوارية الثالث — القاهرة' },
   { id: 'USR-07', name: 'مشرف الورشة المركزية', phone: '01055555555', role: 'WORKSHOP', branch: 'الورشة المركزية للتفصيل' },
 ];
 
@@ -63,7 +63,7 @@ export default function BranchesPage() {
   const [userName, setUserName] = useState('');
   const [userPhone, setUserPhone] = useState('');
   const [userRole, setUserRole] = useState<'ADMIN' | 'TECHNICIAN' | 'BRANCH_STAFF' | 'WORKSHOP'>('BRANCH_STAFF');
-  const [userBranch, setUserBranch] = useState('الفرع الرئيسي — بنها');
+  const [userBranch, setUserBranch] = useState('الفرع الرئيسي — القاهرة');
 
   const handleAddUser = (e: React.FormEvent) => {
     e.preventDefault();

@@ -6,10 +6,10 @@ import Header from '@/components/Header';
 
 export default function SettingsPage() {
   const [storeName, setStoreName] = useState('أحمد كشك للأقمشة والستائر');
-  const [subTitle, setSubTitle] = useState('بنها — الفرع الرئيسي');
+  const [subTitle, setSubTitle] = useState('القاهرة — الفرع الرئيسي');
   const [phone, setPhone] = useState('01558282760');
   const [whatsapp, setWhatsapp] = useState('201558282760');
-  const [address, setAddress] = useState('بنها — القليوبية');
+  const [address, setAddress] = useState('القاهرة — مصر');
   const [footerNote, setFooterNote] = useState('شكراً لتعاملكم مع محلات أحمد كشك. البضاعة المباعة لا ترد ولا تستبدل بعد القص.');
   const [saved, setSaved] = useState(false);
 

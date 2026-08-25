@@ -78,7 +78,7 @@ export default function CustomersPage() {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
-  const [city, setCity] = useState('بنها');
+  const [city, setCity] = useState('القاهرة');
   const [notes, setNotes] = useState('');
 
   const filtered = customers.filter(
@@ -112,7 +112,7 @@ export default function CustomersPage() {
     setName('');
     setPhone('');
     setAddress('');
-    setCity('بنها');
+    setCity('القاهرة');
     setNotes('');
   };
 

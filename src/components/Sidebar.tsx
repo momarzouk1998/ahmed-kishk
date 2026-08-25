@@ -59,7 +59,7 @@ export default function Sidebar() {
         </div>
         <div className="flex flex-col">
           <span className="font-display font-bold text-lg text-primary leading-tight">أحمد كشك</span>
-          <span className="text-xs text-on-surface-variant">للأقمشة والستائر — بنها</span>
+          <span className="text-xs text-on-surface-variant">للأقمشة والستائر — القاهرة</span>
         </div>
       </div>
 

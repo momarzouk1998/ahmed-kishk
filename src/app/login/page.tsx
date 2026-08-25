@@ -48,7 +48,7 @@ export default function LoginPage() {
             <img src="/logo.png" alt="أحمد كشك" className="w-full h-full object-contain" />
           </div>
           <h1 className="font-display font-bold text-2xl text-primary">أحمد كشك</h1>
-          <p className="text-on-surface-variant text-sm mt-1">للأقمشة والستائر — بنها</p>
+          <p className="text-on-surface-variant text-sm mt-1">للأقمشة والستائر — القاهرة</p>
         </div>
 
         {/* Card */}
