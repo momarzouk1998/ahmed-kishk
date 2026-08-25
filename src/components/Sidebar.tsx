@@ -18,8 +18,10 @@ export default function Sidebar() {
 
   useEffect(() => {
     fetch('/api/auth/profile')
-      .then(r => r.json())
-      .then(d => { if (d.user) setUser(d.user); })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.user) setUser(d.user);
+      })
       .catch(() => {});
   }, []);
 
@@ -27,19 +29,20 @@ export default function Sidebar() {
     { label: 'لوحة التحكم', icon: 'dashboard', href: '/' },
     { label: 'المعاينات والمقاسات', icon: 'square_foot', href: '/inspections' },
     { label: 'الطلبات (Pipeline)', icon: 'pending_actions', href: '/orders' },
-    { label: 'بيع القماش', icon: 'storefront', href: '/fabric-sales' },
-    { label: 'العملاء', icon: 'group', href: '/customers' },
-    { label: 'الموردون', icon: 'local_shipping', href: '/suppliers' },
-    { label: 'المخزون (الأقمشة)', icon: 'texture', href: '/inventory' },
+    { label: 'بيع القماش (POS)', icon: 'storefront', href: '/fabric-sales' },
+    { label: 'سجل العملاء والديون', icon: 'group', href: '/customers' },
+    { label: 'الموردون والحسابات', icon: 'local_shipping', href: '/suppliers' },
+    { label: 'المخزون (الأقمشة بالمتر)', icon: 'texture', href: '/inventory' },
+    { label: 'التقارير والإحصائيات', icon: 'bar_chart', href: '/reports' },
     { label: 'الفروع والمستخدمين', icon: 'corporate_fare', href: '/branches' },
-    { label: 'الإعدادات', icon: 'settings', href: '/settings' },
+    { label: 'إعدادات الهوية والتطبيق', icon: 'settings', href: '/settings' },
   ];
 
   const roleLabels: Record<string, string> = {
     ADMIN: 'مدير النظام',
-    TECHNICIAN: 'فني',
+    TECHNICIAN: 'فني معاينات',
     BRANCH_STAFF: 'موظف فرع',
-    WORKSHOP: 'ورشة',
+    WORKSHOP: 'مسؤول ورشة',
   };
 
   const handleLogout = async () => {
@@ -49,7 +52,7 @@ export default function Sidebar() {
 
   return (
     <aside className="fixed right-0 top-0 h-full w-72 bg-surface-container-lowest border-l border-surface-container-highest z-50 flex flex-col">
-      {/* Logo */}
+      {/* Logo Header */}
       <div className="p-6 flex items-center gap-3 border-b border-surface-container-low">
         <div className="w-10 h-10 bg-primary text-on-primary rounded-lg flex items-center justify-center font-bold text-xl">
           AK
@@ -60,7 +63,7 @@ export default function Sidebar() {
         </div>
       </div>
 
-      {/* Nav */}
+      {/* Navigation */}
       <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
         {navItems.map((item) => {
           const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
@@ -85,14 +88,18 @@ export default function Sidebar() {
       <div className="p-4 border-t border-surface-container-low space-y-2">
         <Link
           href="/profile"
-          className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-colors hover:bg-surface-container-high ${pathname === '/profile' ? 'bg-primary-container' : 'bg-surface-container-low'}`}
+          className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-colors hover:bg-surface-container-high ${
+            pathname === '/profile' ? 'bg-primary-container' : 'bg-surface-container-low'
+          }`}
         >
           <div className="w-9 h-9 rounded-full bg-primary/10 border border-outline-variant flex items-center justify-center font-bold text-primary text-sm">
             {user?.name?.charAt(0) || 'م'}
           </div>
           <div className="flex flex-col overflow-hidden flex-1">
-            <span className="text-sm font-bold truncate text-primary">{user?.name || '...'}</span>
-            <span className="text-xs text-on-surface-variant">{user ? roleLabels[user.role] || user.role : ''} — {user?.branch}</span>
+            <span className="text-sm font-bold truncate text-primary">{user?.name || 'مدير النظام'}</span>
+            <span className="text-xs text-on-surface-variant font-mono">
+              {user ? roleLabels[user.role] || user.role : 'مدير'}
+            </span>
           </div>
           <span className="material-symbols-outlined text-[16px] text-on-surface-variant">person</span>
         </Link>
