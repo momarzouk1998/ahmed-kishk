@@ -74,6 +74,15 @@ jobs:
               -e NODE_ENV="production" \
               ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
 
+            echo "⏳ Waiting for app to be ready..."
+            sleep 5
+
+            echo "🗄️ Running database migrations..."
+            docker exec ahmed-kishk npx prisma db push --skip-generate || true
+
+            echo "🌱 Seeding database (upsert — safe to run multiple times)..."
+            docker exec ahmed-kishk npx tsx prisma/seed.ts || true
+
             echo "🧹 Cleaning up unused docker images..."
             docker image prune -f
 
