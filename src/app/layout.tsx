@@ -4,6 +4,11 @@ import './globals.css';
 export const metadata: Metadata = {
   title: 'أحمد كشك — نظام المعاينات والستاير والأقمشة',
   description: 'نظام إداري متكامل لإدارة مقاسات الستاير، المعاينات الميدانية، والمبيعات لمؤسسة أحمد كشك',
+  icons: {
+    icon: '/logo.png',
+    shortcut: '/logo.png',
+    apple: '/logo.png',
+  },
 };
 
 export default function RootLayout({

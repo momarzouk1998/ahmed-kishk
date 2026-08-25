@@ -48,15 +48,13 @@ export default function SettingsPage() {
               </h2>
 
               <div className="flex items-center gap-6 pb-4 border-b border-surface-container-high">
-                <div className="w-20 h-20 bg-primary text-on-primary rounded-2xl flex items-center justify-center font-display font-bold text-3xl shadow-md">
-                  AK
+                <div className="w-20 h-20 bg-surface-container-lowest p-2 rounded-2xl flex items-center justify-center border border-outline-variant shadow-md">
+                  <img src="/logo.png" alt="أحمد كشك" className="w-full h-full object-contain" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-sm text-primary">لوجو المحل الرسمي</h3>
+                  <h3 className="font-bold text-sm text-primary">لوجو المحل الرسمي (المعتمد)</h3>
                   <p className="text-xs text-on-surface-variant mt-0.5">يظهر أعلى المعاينات، الفواتير، وكشوف الحسابات.</p>
-                  <button type="button" className="mt-2 text-xs text-secondary font-bold underline">
-                    تغيير الصورة / الشعار
-                  </button>
+                  <span className="inline-block mt-2 text-xs text-primary font-mono bg-primary-container px-2 py-0.5 rounded">logo.png بدون خلفية</span>
                 </div>
               </div>
 
