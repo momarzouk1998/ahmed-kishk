@@ -15,10 +15,9 @@ env:
 
 jobs:
   deploy:
-    name: 🚀 Deploy to DigitalOcean Droplet
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    name: 🚀 Deploy via SSH
     runs-on: ubuntu-latest
-
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     steps:
       - name: 📡 Deploy via SSH to DigitalOcean Server
         uses: appleboy/ssh-action@v1.0.3
@@ -28,7 +27,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             echo "🔑 Logging into GHCR on server..."
-            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u momarzouk1998 --password-stdin || echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u momarzouk1998 --password-stdin
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin || echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
             echo "📥 Pulling latest Docker image from GHCR..."
             docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
@@ -48,14 +47,14 @@ jobs:
               -e NODE_ENV="production" \
               ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
 
-            echo "⏳ Waiting for app to be ready..."
-            sleep 5
+            echo "⏳ Waiting 10s for container startup..."
+            sleep 10
 
-            echo "🗄️ Running database migrations..."
-            docker exec ahmed-kishk npx prisma db push --skip-generate || true
+            echo "🗄️ Pushing Prisma schema to database..."
+            docker exec ahmed-kishk sh -c "node node_modules/prisma/build/index.js db push --skip-generate --accept-data-loss" || echo "db push warning"
 
             echo "🌱 Seeding database..."
-            docker exec ahmed-kishk npx tsx prisma/seed.ts || true
+            docker exec ahmed-kishk sh -c "node node_modules/tsx/dist/cli.mjs prisma/seed.ts" || docker exec ahmed-kishk npx tsx prisma/seed.ts || echo "seed warning"
 
             echo "🧹 Cleaning up unused docker images..."
             docker image prune -f

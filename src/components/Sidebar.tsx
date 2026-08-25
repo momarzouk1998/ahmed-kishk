@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import Logo from '@/components/Logo';
 
 interface CurrentUser {
   name: string;
@@ -54,8 +55,8 @@ export default function Sidebar() {
     <aside className="fixed right-0 top-0 h-full w-72 bg-surface-container-lowest border-l border-surface-container-highest z-50 flex flex-col">
       {/* Logo Header */}
       <div className="p-6 flex items-center gap-3 border-b border-surface-container-low">
-        <div className="w-10 h-10 bg-surface-container-high rounded-xl p-1 flex items-center justify-center border border-outline-variant shadow-sm">
-          <img src="/logo.png" alt="أحمد كشك" className="w-full h-full object-contain" />
+        <div className="w-10 h-10 bg-surface-container-high rounded-xl p-1 flex items-center justify-center border border-outline-variant shadow-sm text-primary">
+          <Logo size="md" />
         </div>
         <div className="flex flex-col">
           <span className="font-display font-bold text-lg text-primary leading-tight">أحمد كشك</span>

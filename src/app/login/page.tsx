@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Logo from '@/components/Logo';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -44,8 +45,8 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
-          <div className="w-24 h-24 bg-surface-container-lowest p-2 rounded-2xl flex items-center justify-center shadow-lg border border-outline-variant mb-4">
-            <img src="/logo.png" alt="أحمد كشك" className="w-full h-full object-contain" />
+          <div className="w-24 h-24 bg-surface-container-lowest p-3 rounded-2xl flex items-center justify-center shadow-lg border border-outline-variant mb-4 text-primary">
+            <Logo size="xl" />
           </div>
           <h1 className="font-display font-bold text-2xl text-primary">أحمد كشك</h1>
           <p className="text-on-surface-variant text-sm mt-1">للأقمشة والستائر — القاهرة</p>
