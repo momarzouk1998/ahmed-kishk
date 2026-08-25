@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import Sidebar from '@/components/Sidebar';
-import Header from '@/components/Header';
+import PageShell from '@/components/PageShell';
 
 // Quick Fabric Sale — like Rocket Cashier but custom for Ahmed Kishk
 const fabricCategories = [
@@ -86,19 +85,16 @@ export default function FabricSalesPage() {
   const currentItems = fabricCategories.find(c => c.category === activeCategory)?.items || [];
 
   return (
-    <div className="min-h-screen bg-background">
-      <Sidebar />
-      <Header title="بيع القماش" />
-      <div className="pr-72 pt-16">
-        <main className="px-8 py-8 flex flex-col gap-6">
+    <PageShell title="بيع القماش">
+      <div className="flex flex-col gap-6">
           <div className="flex justify-between items-center flex-wrap gap-4">
             <div>
-              <h1 className="font-display font-bold text-2xl text-primary">بيع القماش</h1>
-              <p className="text-on-surface-variant text-sm mt-1">بيع سريع بالمتر مع تتبع المخزون وحساب الأرباح.</p>
+              <h1 className="font-display font-bold text-xl sm:text-2xl text-primary">بيع القماش</h1>
+              <p className="text-on-surface-variant text-xs sm:text-sm mt-1">بيع سريع بالمتر مع تتبع المخزون وحساب الأرباح.</p>
             </div>
-            <div className="flex gap-2">
-              <button onClick={() => setView('pos')} className={`px-4 py-2 rounded text-sm font-mono border transition-colors ${view === 'pos' ? 'bg-primary text-on-primary border-primary' : 'border-outline-variant text-on-surface-variant'}`}>نقطة البيع</button>
-              <button onClick={() => setView('history')} className={`px-4 py-2 rounded text-sm font-mono border transition-colors ${view === 'history' ? 'bg-primary text-on-primary border-primary' : 'border-outline-variant text-on-surface-variant'}`}>سجل المبيعات</button>
+            <div className="flex gap-2 w-full sm:w-auto">
+              <button onClick={() => setView('pos')} className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded text-xs sm:text-sm font-mono border transition-colors ${view === 'pos' ? 'bg-primary text-on-primary border-primary' : 'border-outline-variant text-on-surface-variant'}`}>نقطة البيع</button>
+              <button onClick={() => setView('history')} className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded text-xs sm:text-sm font-mono border transition-colors ${view === 'history' ? 'bg-primary text-on-primary border-primary' : 'border-outline-variant text-on-surface-variant'}`}>سجل المبيعات</button>
             </div>
           </div>
 
@@ -157,7 +153,7 @@ export default function FabricSalesPage() {
               </div>
 
               {/* Cart */}
-              <div className="bg-surface-container-lowest rounded-xl border border-surface-container-highest p-5 flex flex-col gap-4 h-fit sticky top-20">
+              <div className="bg-surface-container-lowest rounded-xl border border-surface-container-highest p-4 sm:p-5 flex flex-col gap-4 lg:sticky lg:top-20">
                 <h2 className="font-bold text-lg text-primary flex items-center gap-2">
                   <span className="material-symbols-outlined">shopping_cart</span>
                   الفاتورة
@@ -211,7 +207,8 @@ export default function FabricSalesPage() {
             </div>
           ) : (
             <div className="bg-surface-container-lowest rounded-xl border border-surface-container-highest overflow-hidden">
-              <table className="w-full text-right">
+              <div className="overflow-x-auto">
+              <table className="w-full text-right min-w-[600px]">
                 <thead className="bg-surface-container-low text-xs font-mono text-on-surface-variant">
                   <tr>
                     <th className="p-4">رقم الفاتورة</th>
@@ -237,10 +234,10 @@ export default function FabricSalesPage() {
                   ))}
                 </tbody>
               </table>
+              </div>
             </div>
           )}
-        </main>
       </div>
-    </div>
+    </PageShell>
   );
 }

@@ -46,21 +46,21 @@ export default function LoginPage() {
       <div className="absolute -top-40 -right-40 w-96 h-96 bg-amber-500/15 rounded-full blur-3xl pointer-events-none"></div>
       <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-brand-gold/10 rounded-full blur-3xl pointer-events-none"></div>
 
-      <div className="w-full max-w-md relative z-10">
+      <div className="w-full max-w-md relative z-10 px-4">
         {/* Logo and Brand Title */}
-        <div className="flex flex-col items-center mb-8">
-          <div className="w-24 h-24 bg-white p-2.5 rounded-3xl flex items-center justify-center shadow-2xl border-2 border-brand-gold mb-4 text-primary transition-transform hover:scale-105 duration-300">
+        <div className="flex flex-col items-center mb-6 sm:mb-8">
+          <div className="w-20 h-20 sm:w-24 sm:h-24 bg-white p-2 sm:p-2.5 rounded-2xl sm:rounded-3xl flex items-center justify-center shadow-2xl border-2 border-brand-gold mb-3 sm:mb-4 text-primary transition-transform hover:scale-105 duration-300">
             <Logo size="xl" />
           </div>
-          <h1 className="font-display font-bold text-3xl text-white tracking-tight flex items-center gap-2">
+          <h1 className="font-display font-bold text-2xl sm:text-3xl text-white tracking-tight flex items-center gap-2">
             أحمد كشك
             <span className="w-2.5 h-2.5 rounded-full bg-brand-gold inline-block animate-pulse"></span>
           </h1>
-          <p className="text-brand-gold font-medium text-sm mt-1.5">نظام إدارة الأقمشة والستائر الفاخرة — القاهرة</p>
+          <p className="text-brand-gold font-medium text-xs sm:text-sm mt-1.5 text-center">نظام إدارة الأقمشة والستائر الفاخرة — القاهرة</p>
         </div>
 
         {/* Card */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-8 shadow-2xl backdrop-blur-xl">
+        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl sm:rounded-3xl p-5 sm:p-8 shadow-2xl backdrop-blur-xl">
           <div className="mb-6 text-center">
             <h2 className="font-display font-bold text-xl text-white">تسجيل الدخول للنظام</h2>
             <p className="text-slate-400 text-xs mt-1">أدخل رقم هاتفك وكلمة السر للوصول إلى حسابك</p>

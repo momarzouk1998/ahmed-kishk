@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import Sidebar from '@/components/Sidebar';
-import Header from '@/components/Header';
+import PageShell from '@/components/PageShell';
 
 interface Customer {
   id: string;
@@ -117,22 +116,19 @@ export default function CustomersPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <Sidebar />
-      <Header title="سجل العملاء والديون" />
-      <div className="pr-72 pt-16">
-        <main className="px-8 py-8 flex flex-col gap-6">
+    <PageShell title="سجل العملاء والديون">
+      <div className="flex flex-col gap-6">
           {/* Title bar */}
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <h1 className="font-display font-bold text-2xl text-primary">إدارة العملاء وكشف الحساب</h1>
-              <p className="text-on-surface-variant text-sm mt-1">
+              <h1 className="font-display font-bold text-xl sm:text-2xl text-primary">إدارة العملاء وكشف الحساب</h1>
+              <p className="text-on-surface-variant text-xs sm:text-sm mt-1">
                 ملف موحد لكل عميل يشمل المعاينات، الطلبات، الفواتير، والمديونيات.
               </p>
             </div>
             <button
               onClick={() => setShowAddModal(true)}
-              className="bg-primary text-on-primary px-5 py-2.5 rounded-lg hover:bg-inverse-surface transition-colors flex items-center gap-2 font-bold text-sm shadow"
+              className="bg-primary text-on-primary px-4 sm:px-5 py-2.5 rounded-lg hover:bg-inverse-surface transition-colors flex items-center gap-2 font-bold text-xs sm:text-sm shadow w-full sm:w-auto justify-center"
             >
               <span className="material-symbols-outlined text-[18px]">person_add</span>
               إضافة عميل جديد
@@ -140,7 +136,7 @@ export default function CustomersPage() {
           </div>
 
           {/* Stats Bar */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
             <div className="bg-surface-container-lowest p-5 rounded-xl border border-surface-container-highest">
               <div className="text-xs text-on-surface-variant font-mono">إجمالي العملاء</div>
               <div className="font-display font-bold text-2xl text-primary mt-1">{customers.length}</div>
@@ -183,7 +179,8 @@ export default function CustomersPage() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             {/* Customer List Table */}
             <div className="lg:col-span-7 bg-surface-container-lowest rounded-xl border border-surface-container-highest overflow-hidden">
-              <table className="w-full text-right">
+              <div className="overflow-x-auto">
+              <table className="w-full text-right min-w-[480px]">
                 <thead className="bg-surface-container-low text-xs font-mono text-on-surface-variant border-b border-surface-container-high">
                   <tr>
                     <th className="p-3.5">العميل</th>
@@ -222,10 +219,11 @@ export default function CustomersPage() {
                   ))}
                 </tbody>
               </table>
+              </div>
             </div>
 
             {/* Selected Customer Card / Statement */}
-            <div className="lg:col-span-5 bg-surface-container-lowest rounded-xl border border-surface-container-highest p-6 sticky top-20">
+            <div className="lg:col-span-5 bg-surface-container-lowest rounded-xl border border-surface-container-highest p-4 sm:p-6 lg:sticky lg:top-20">
               {selected ? (
                 <div className="flex flex-col gap-5">
                   <div className="flex justify-between items-start border-b border-surface-container-high pb-4">
@@ -314,13 +312,12 @@ export default function CustomersPage() {
               )}
             </div>
           </div>
-        </main>
       </div>
 
       {/* Add Customer Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="bg-surface-container-lowest rounded-2xl shadow-2xl p-6 w-full max-w-md">
+          <div className="bg-surface-container-lowest rounded-2xl shadow-2xl p-5 sm:p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <h2 className="font-display font-bold text-xl text-primary mb-4">إضافة عميل جديد</h2>
             <form onSubmit={handleAddCustomer} className="flex flex-col gap-3">
               <div className="flex flex-col gap-1">
@@ -388,6 +385,6 @@ export default function CustomersPage() {
           </div>
         </div>
       )}
-    </div>
+    </PageShell>
   );
 }

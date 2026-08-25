@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import Sidebar from '@/components/Sidebar';
-import Header from '@/components/Header';
+import PageShell from '@/components/PageShell';
 
 interface WorkshopTask {
   id: string;
@@ -107,17 +106,11 @@ export default function WorkshopPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
-      <Sidebar />
-      <Header title="الورشة المركزية وأوامر التفصيل" />
-      <div className="pr-72 pt-16">
-        <main className="px-8 py-8 flex flex-col gap-6">
+    <PageShell title="الورشة المركزية وأوامر التفصيل">
+      <div className="flex flex-col gap-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-200 inline-block mb-1">
-                الورشة المركزية للتفصيل والتجهيز
-              </span>
-              <h1 className="font-display font-black text-2xl text-slate-900">أوامر التصنيع وتفصيل الستائر</h1>
+              <h1 className="font-display font-bold text-xl sm:text-2xl text-primary">الورشة المركزية وأوامر التفصيل</h1>
               <p className="text-slate-500 text-sm mt-0.5">متابعة قص وخياطة كل ستارة، تركيب الأشرطة، وتجهيز الإكسسوارات للفنيين.</p>
             </div>
 
@@ -280,8 +273,7 @@ export default function WorkshopPage() {
               )}
             </div>
           </div>
-        </main>
       </div>
-    </div>
+    </PageShell>
   );
 }

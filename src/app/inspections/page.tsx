@@ -1,8 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import Sidebar from '@/components/Sidebar';
-import Header from '@/components/Header';
+import React, { useState } from 'react';
+import PageShell from '@/components/PageShell';
 
 interface FabricLayer {
   layer: string;
@@ -339,26 +338,20 @@ export default function InspectionsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
-      <Sidebar />
-      <Header title="المعاينات ورفع المقاسات الذكي" />
-      <div className="pr-72 pt-16">
-        <main className="px-8 py-8 flex flex-col gap-6">
+    <PageShell title="المعاينات ورفع المقاسات">
+      <div className="flex flex-col gap-6">
           {/* Header Bar */}
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
-              <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-200 inline-block mb-1">
-                حساب الأمتار والتسعير الذكي (Fullness Factor)
-              </span>
-              <h1 className="font-display font-black text-2xl text-slate-900">المعاينات والمقاسات وجدول التسعير</h1>
-              <p className="text-slate-500 text-sm mt-0.5">معادلات كشكشة دقيقة لكل خامة + جدول تسعير تفاعلي يربط القماش والشريط والتركيب.</p>
+              <h1 className="font-display font-bold text-xl sm:text-2xl text-primary">المعاينات ورفع المقاسات</h1>
+              <p className="text-on-surface-variant text-xs sm:text-sm mt-1">تسجيل طلبات المعاينة الميدانية ومقاسات وتفاصيل كل غرفة.</p>
             </div>
             <button
               onClick={() => {
                 setCustName(''); setCustPhone(''); setCustAddress(''); setScheduleTime(''); setReqNotes('');
                 setShowNewRequestModal(true);
               }}
-              className="bg-brand-gold hover:bg-brand-gold-hover text-slate-950 px-5 py-2.5 rounded-xl font-bold text-sm shadow-gold flex items-center gap-2 transition-all"
+              className="bg-primary text-on-primary px-4 sm:px-5 py-2.5 rounded-lg hover:bg-inverse-surface transition-colors flex items-center gap-2 font-bold text-xs sm:text-sm shadow w-full sm:w-auto justify-center"
             >
               <span className="material-symbols-outlined text-[18px]">add_box</span>
               طلب معاينة جديد
@@ -404,25 +397,25 @@ export default function InspectionsPage() {
             {/* Right: Selected Request Detail */}
             <div className="lg:col-span-8 bg-white rounded-2xl border border-slate-200 shadow-soft">
               {/* Header */}
-              <div className="flex flex-wrap items-center justify-between p-6 border-b border-slate-100 gap-4">
-                <div>
+              <div className="flex flex-wrap items-center justify-between p-4 sm:p-6 border-b border-slate-100 gap-4">
+                <div className="min-w-0">
                   <span className="text-xs font-mono font-bold text-brand-gold-dark">{selected.id}</span>
-                  <h2 className="font-bold text-2xl text-slate-900">{selected.customerName}</h2>
-                  <p className="text-xs text-slate-500 mt-0.5" dir="ltr">{selected.phone} {selected.address && `| ${selected.address}`}</p>
+                  <h2 className="font-bold text-xl sm:text-2xl text-slate-900 truncate">{selected.customerName}</h2>
+                  <p className="text-xs text-slate-500 mt-0.5 truncate" dir="ltr">{selected.phone} {selected.address && `| ${selected.address}`}</p>
                 </div>
-                <div className="flex gap-2 flex-wrap">
-                  <button onClick={handleShareWhatsApp} className="border border-slate-200 text-slate-700 px-3.5 py-2 rounded-xl text-xs font-bold hover:border-slate-400 flex items-center gap-1.5 shadow-xs">
+                <div className="flex gap-2 flex-wrap w-full sm:w-auto">
+                  <button onClick={handleShareWhatsApp} className="flex-1 sm:flex-none justify-center border border-slate-200 text-slate-700 px-3.5 py-2 rounded-xl text-xs font-bold hover:border-slate-400 flex items-center gap-1.5 shadow-xs">
                     <span className="material-symbols-outlined text-[16px]">share</span> واتساب
                   </button>
-                  <button onClick={() => window.print()} className="border border-slate-200 text-slate-700 px-3.5 py-2 rounded-xl text-xs font-bold hover:border-slate-400 flex items-center gap-1.5 shadow-xs">
+                  <button onClick={() => window.print()} className="flex-1 sm:flex-none justify-center border border-slate-200 text-slate-700 px-3.5 py-2 rounded-xl text-xs font-bold hover:border-slate-400 flex items-center gap-1.5 shadow-xs">
                     <span className="material-symbols-outlined text-[16px]">print</span> طباعة المقايسة
                   </button>
                 </div>
               </div>
 
               {/* Tabs */}
-              <div className="flex items-center justify-between border-b border-slate-100 px-6">
-                <div className="flex">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 px-4 sm:px-6 gap-3 sm:gap-0">
+                <div className="flex overflow-x-auto -mb-px scrollbar-none">
                   {[
                     { id: 'rooms', label: `الغرف والمقاسات (${selected.rooms.length})` },
                     { id: 'pricing', label: 'مصفوفة وجدول التسعير الذكي' },
@@ -446,7 +439,7 @@ export default function InspectionsPage() {
                     setRoomName(`غرفة ${selected.rooms.length + 1}`);
                     setShowRoomModal(true);
                   }}
-                  className="bg-brand-gold hover:bg-brand-gold-hover text-slate-950 px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 shadow-gold"
+                  className="bg-brand-gold hover:bg-brand-gold-hover text-slate-950 px-3.5 py-2 sm:py-1.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1 shadow-gold sm:mb-2"
                 >
                   <span className="material-symbols-outlined text-[16px]">add</span>
                   رفع مقاسات غرفة
@@ -455,7 +448,7 @@ export default function InspectionsPage() {
 
               {/* Tab 1: Rooms Overview */}
               {activeTab === 'rooms' && (
-                <div className="p-6 flex flex-col gap-4">
+                <div className="p-4 sm:p-6 flex flex-col gap-4">
                   {selected.rooms.length === 0 ? (
                     <div className="text-center py-12 bg-slate-50 rounded-2xl border border-dashed border-slate-300">
                       <span className="material-symbols-outlined text-[48px] text-slate-400 block mb-2">square_foot</span>
@@ -502,8 +495,8 @@ export default function InspectionsPage() {
                         </div>
 
                         {/* Fabrics table */}
-                        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden text-xs">
-                          <table className="w-full text-right">
+                        <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto text-xs">
+                          <table className="w-full text-right min-w-[480px]">
                             <thead className="bg-slate-50 font-mono text-slate-500 border-b border-slate-200">
                               <tr>
                                 <th className="p-2.5">الخامة</th>
@@ -546,10 +539,10 @@ export default function InspectionsPage() {
 
               {/* Tab 2: Smart Pricing Matrix */}
               {activeTab === 'pricing' && (
-                <div className="p-6 flex flex-col gap-4">
-                  <h3 className="font-bold text-base text-slate-900">جدول تفكيك التكلفة والأرباح لكل غرفة</h3>
-                  <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-soft">
-                    <table className="w-full text-right text-xs">
+                <div className="p-4 sm:p-6 flex flex-col gap-4">
+                  <h3 className="font-bold text-sm sm:text-base text-slate-900">جدول تفكيك التكلفة والأرباح لكل غرفة</h3>
+                  <div className="border border-slate-200 rounded-2xl overflow-x-auto bg-white shadow-soft">
+                    <table className="w-full text-right text-xs min-w-[700px]">
                       <thead className="bg-slate-50 text-slate-600 font-mono border-b border-slate-200">
                         <tr>
                           <th className="p-3.5">الغرفة</th>
@@ -591,7 +584,7 @@ export default function InspectionsPage() {
 
               {/* Tab 3: Info */}
               {activeTab === 'info' && (
-                <div className="p-6 grid grid-cols-2 gap-4">
+                <div className="p-4 sm:p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
                     <span className="text-xs text-slate-500 font-bold block">الفني المسؤول:</span>
                     <span className="font-bold text-slate-900 text-sm mt-1 block">{selected.technician}</span>
@@ -601,7 +594,7 @@ export default function InspectionsPage() {
                     <span className="font-bold text-slate-900 text-sm font-mono mt-1 block">{selected.scheduledAt ? new Date(selected.scheduledAt).toLocaleString('ar-EG') : 'لم يحدد'}</span>
                   </div>
                   {selected.notes && (
-                    <div className="col-span-2 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                    <div className="sm:col-span-2 p-4 bg-slate-50 rounded-xl border border-slate-200">
                       <span className="text-xs text-slate-500 font-bold block mb-1">ملاحظات المعاينة:</span>
                       <p className="text-sm text-slate-900">{selected.notes}</p>
                     </div>
@@ -610,14 +603,13 @@ export default function InspectionsPage() {
               )}
             </div>
           </div>
-        </main>
       </div>
 
       {/* Modal: New Request */}
       {showNewRequestModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-lg">
-            <h2 className="font-display font-bold text-xl text-slate-900 mb-4">إنشاء طلب معاينة ومقاسات جديد</h2>
+          <div className="bg-white rounded-2xl shadow-2xl p-5 sm:p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <h2 className="font-display font-bold text-lg sm:text-xl text-slate-900 mb-4">إنشاء طلب معاينة ومقاسات جديد</h2>
             <form onSubmit={handleSaveNewRequest} className="flex flex-col gap-3">
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1">
@@ -671,7 +663,7 @@ export default function InspectionsPage() {
       {/* Modal: Smart Room Measurement & Fullness Factor */}
       {showRoomModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-2xl my-8">
+          <div className="bg-white rounded-2xl shadow-2xl p-5 sm:p-6 w-full max-w-2xl my-4 sm:my-8 max-h-[95vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <div>
                 <span className="text-xs font-bold text-brand-gold-dark font-mono">حاسبة الأمتار والتسعير الدقيق</span>
@@ -883,6 +875,6 @@ export default function InspectionsPage() {
           </div>
         </div>
       )}
-    </div>
+    </PageShell>
   );
 }

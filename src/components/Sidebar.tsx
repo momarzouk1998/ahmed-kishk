@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import Logo from '@/components/Logo';
+import { useSidebar } from '@/components/SidebarContext';
 
 interface CurrentUser {
   name: string;
@@ -15,6 +16,7 @@ interface CurrentUser {
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const { isOpen, close } = useSidebar();
   const [user, setUser] = useState<CurrentUser | null>(null);
 
   useEffect(() => {
@@ -25,6 +27,12 @@ export default function Sidebar() {
       })
       .catch(() => {});
   }, []);
+
+  // Close drawer when route changes
+  useEffect(() => {
+    close();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
 
   const navItems = [
     { label: 'لوحة التحكم', icon: 'dashboard', href: '/' },
@@ -52,8 +60,8 @@ export default function Sidebar() {
     router.push('/login');
   };
 
-  return (
-    <aside className="fixed right-0 top-0 h-full w-72 bg-[#0f172a] text-slate-100 border-l border-slate-800/80 z-50 flex flex-col shadow-2xl">
+  const sidebarContent = (
+    <>
       {/* Logo Header */}
       <div className="p-5 flex items-center gap-3.5 border-b border-slate-800">
         <div className="w-12 h-12 bg-white p-1 rounded-2xl flex items-center justify-center border-2 border-brand-gold shadow-gold text-primary shrink-0">
@@ -78,7 +86,7 @@ export default function Sidebar() {
               href={item.href}
               className={`flex items-center px-3.5 py-2.5 rounded-xl transition-all duration-200 ${
                 isActive
-                  ? 'bg-brand-gold text-slate-950 font-bold shadow-gold translate-x-[-2px]'
+                  ? 'bg-brand-gold text-slate-950 font-bold shadow-gold lg:translate-x-[-2px]'
                   : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
               }`}
             >
@@ -110,7 +118,7 @@ export default function Sidebar() {
               {user ? roleLabels[user.role] || user.role : 'مدير عام'}
             </span>
           </div>
-          <span className="material-symbols-outlined text-[16px] text-slate-400">arrow_back_ios</span>
+          <span className="material-symbols-outlined text-[16px] text-slate-400 hidden lg:inline">arrow_back_ios</span>
         </Link>
         <button
           onClick={handleLogout}
@@ -120,6 +128,47 @@ export default function Sidebar() {
           تسجيل الخروج
         </button>
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Desktop sidebar (>= lg) - always visible */}
+      <aside className="hidden lg:flex fixed right-0 top-0 h-full w-72 bg-[#0f172a] text-slate-100 border-l border-slate-800/80 z-50 flex-col shadow-2xl">
+        {sidebarContent}
+      </aside>
+
+      {/* Mobile drawer (< lg) */}
+      <div
+        className={`lg:hidden fixed inset-0 z-[60] ${isOpen ? '' : 'pointer-events-none'}`}
+        aria-hidden={!isOpen}
+      >
+        {/* Backdrop */}
+        <div
+          onClick={close}
+          className={`absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${
+            isOpen ? 'opacity-100' : 'opacity-0'
+          }`}
+        />
+
+        {/* Drawer panel - slides from right (RTL start) */}
+        <aside
+          className={`absolute top-0 right-0 h-full w-72 max-w-[85vw] bg-[#0f172a] text-slate-100 border-l border-slate-800/80 flex flex-col shadow-2xl transition-transform duration-300 ease-out ${
+            isOpen ? 'translate-x-0' : 'translate-x-full'
+          }`}
+        >
+          {/* Close button */}
+          <button
+            onClick={close}
+            className="absolute top-4 left-4 w-9 h-9 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-white flex items-center justify-center transition-colors z-10"
+            aria-label="إغلاق القائمة"
+          >
+            <span className="material-symbols-outlined text-[20px]">close</span>
+          </button>
+
+          {sidebarContent}
+        </aside>
+      </div>
+    </>
   );
 }

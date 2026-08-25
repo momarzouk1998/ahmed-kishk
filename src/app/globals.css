@@ -50,3 +50,20 @@
 ::-webkit-scrollbar-track {
   background: #f1f5f9;
 }
+
+/* Hide horizontal scrollbar utility (for tab bars, etc.) */
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+/* Smooth drawer animation */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

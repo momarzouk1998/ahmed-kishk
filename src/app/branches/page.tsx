@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import Sidebar from '@/components/Sidebar';
-import Header from '@/components/Header';
+import PageShell from '@/components/PageShell';
 
 interface Branch {
   id: string;
@@ -84,21 +83,18 @@ export default function BranchesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <Sidebar />
-      <Header title="الفروع والمستخدمين والصلاحيات" />
-      <div className="pr-72 pt-16">
-        <main className="px-8 py-8 flex flex-col gap-6">
+    <PageShell title="الفروع والمستخدمين والصلاحيات">
+      <div className="flex flex-col gap-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <h1 className="font-display font-bold text-2xl text-primary">إدارة الفروع والمستخدمين والصلاحيات</h1>
-              <p className="text-on-surface-variant text-sm mt-1">
+              <h1 className="font-display font-bold text-xl sm:text-2xl text-primary">إدارة الفروع والمستخدمين والصلاحيات</h1>
+              <p className="text-on-surface-variant text-xs sm:text-sm mt-1">
                 التحكم في فروع الأقمشة والستائر، الـ 6 مستخدمين المحددين، وتوزيع أدوار الفنيين وموظفي الفروع والورشة.
               </p>
             </div>
             <button
               onClick={() => setShowAddUserModal(true)}
-              className="bg-primary text-on-primary px-5 py-2.5 rounded-lg hover:bg-inverse-surface transition-colors flex items-center gap-2 font-bold text-sm shadow"
+              className="bg-primary text-on-primary px-4 sm:px-5 py-2.5 rounded-lg hover:bg-inverse-surface transition-colors flex items-center gap-2 font-bold text-xs sm:text-sm shadow w-full sm:w-auto justify-center"
             >
               <span className="material-symbols-outlined text-[18px]">person_add</span>
               إضافة مستخدم جديد
@@ -106,7 +102,7 @@ export default function BranchesPage() {
           </div>
 
           {/* Tabs */}
-          <div className="flex border-b border-surface-container-high">
+          <div className="flex border-b border-surface-container-high overflow-x-auto">
             {[
               { id: 'users', label: `المستخدمون (${users.length})`, icon: 'group' },
               { id: 'branches', label: `الفروع والورش (${branches.length})`, icon: 'storefront' },
@@ -128,7 +124,8 @@ export default function BranchesPage() {
           {/* Tab 1: Users */}
           {activeTab === 'users' && (
             <div className="bg-surface-container-lowest rounded-xl border border-surface-container-highest overflow-hidden">
-              <table className="w-full text-right">
+              <div className="overflow-x-auto">
+              <table className="w-full text-right min-w-[600px]">
                 <thead className="bg-surface-container-low text-xs font-mono text-on-surface-variant border-b border-surface-container-high">
                   <tr>
                     <th className="p-3.5">الكود</th>
@@ -156,12 +153,13 @@ export default function BranchesPage() {
                   ))}
                 </tbody>
               </table>
+              </div>
             </div>
           )}
 
           {/* Tab 2: Branches */}
           {activeTab === 'branches' && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
               {branches.map((b) => (
                 <div key={b.id} className="bg-surface-container-lowest p-6 rounded-xl border border-surface-container-highest flex flex-col gap-3">
                   <div className="flex justify-between items-start">
@@ -182,7 +180,7 @@ export default function BranchesPage() {
 
           {/* Tab 3: Permissions Matrix */}
           {activeTab === 'roles' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               {Object.entries(roleLabels).map(([roleKey, label]) => (
                 <div key={roleKey} className="bg-surface-container-lowest p-6 rounded-xl border border-surface-container-highest flex flex-col gap-3">
                   <div className="font-bold text-lg text-primary flex items-center gap-2">
@@ -202,13 +200,12 @@ export default function BranchesPage() {
               ))}
             </div>
           )}
-        </main>
       </div>
 
       {/* Add User Modal */}
       {showAddUserModal && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="bg-surface-container-lowest rounded-2xl shadow-2xl p-6 w-full max-w-md">
+          <div className="bg-surface-container-lowest rounded-2xl shadow-2xl p-5 sm:p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <h2 className="font-display font-bold text-xl text-primary mb-4">إضافة مستخدم جديد</h2>
             <form onSubmit={handleAddUser} className="flex flex-col gap-3">
               <div className="flex flex-col gap-1">
@@ -276,6 +273,6 @@ export default function BranchesPage() {
           </div>
         </div>
       )}
-    </div>
+    </PageShell>
   );
 }

@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import Sidebar from '@/components/Sidebar';
-import Header from '@/components/Header';
+import PageShell from '@/components/PageShell';
 
 interface OrderItem {
   id: string;
@@ -173,22 +172,19 @@ export default function OrdersPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-on-surface">
-      <Sidebar />
-      <Header title="الطلبات (Pipeline) والورشة" />
-      <div className="pr-72 pt-16">
-        <main className="px-8 py-8 flex flex-col gap-6">
+    <PageShell title="الطلبات (Pipeline) والورشة">
+      <div className="flex flex-col gap-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <h1 className="font-display font-bold text-2xl text-primary">الطلبات ومراحل العمل</h1>
-              <p className="text-on-surface-variant text-sm mt-1">متابعة وتعديل أوامر التصنيع والتركيب وحالات التسليم.</p>
+              <h1 className="font-display font-bold text-xl sm:text-2xl text-primary">الطلبات ومراحل العمل</h1>
+              <p className="text-on-surface-variant text-xs sm:text-sm mt-1">متابعة وتعديل أوامر التصنيع والتركيب وحالات التسليم.</p>
             </div>
             <button
               onClick={() => {
                 setCustomer(''); setPhone(''); setStage('اختيار قماش'); setTotal(12000); setPaid(6000);
                 setNotes(''); setShowNewModal(true);
               }}
-              className="bg-primary text-on-primary px-5 py-2.5 rounded-lg hover:bg-inverse-surface transition-colors flex items-center gap-2 font-bold text-sm shadow"
+              className="bg-primary text-on-primary px-4 sm:px-5 py-2.5 rounded-lg hover:bg-inverse-surface transition-colors flex items-center gap-2 font-bold text-xs sm:text-sm shadow w-full sm:w-auto justify-center"
             >
               <span className="material-symbols-outlined text-[18px]">add_box</span>
               إنشاء طلب / أوردر جديد
@@ -196,7 +192,7 @@ export default function OrdersPage() {
           </div>
 
           {/* Kanban Stage Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
             {stages.map(s => {
               const count = orders.filter(o => o.stage === s).length;
               const totalAmount = orders.filter(o => o.stage === s).reduce((sum, o) => sum + o.total, 0);
@@ -230,10 +226,11 @@ export default function OrdersPage() {
           </div>
 
           {/* Table & Details Split */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 items-start">
             {/* Orders Table */}
             <div className="lg:col-span-8 bg-surface-container-lowest rounded-xl border border-surface-container-highest overflow-hidden">
-              <table className="w-full text-right">
+              <div className="overflow-x-auto">
+              <table className="w-full text-right min-w-[680px]">
                 <thead className="bg-surface-container-low text-xs font-mono text-on-surface-variant">
                   <tr>
                     <th className="p-3.5">الطلب</th>
@@ -289,10 +286,11 @@ export default function OrdersPage() {
                   ))}
                 </tbody>
               </table>
+              </div>
             </div>
 
             {/* Selected Order Card / Statement */}
-            <div className="lg:col-span-4 bg-surface-container-lowest rounded-xl border border-surface-container-highest p-6 sticky top-20">
+            <div className="lg:col-span-4 bg-surface-container-lowest rounded-xl border border-surface-container-highest p-4 sm:p-6 lg:sticky lg:top-20">
               {selected ? (
                 <div className="flex flex-col gap-4">
                   <div className="flex justify-between items-start border-b border-surface-container-high pb-3">
@@ -363,13 +361,12 @@ export default function OrdersPage() {
               )}
             </div>
           </div>
-        </main>
       </div>
 
       {/* Modal 1: Create Order */}
       {showNewModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-surface-container-lowest rounded-2xl shadow-2xl p-6 w-full max-w-lg">
+          <div className="bg-surface-container-lowest rounded-2xl shadow-2xl p-5 sm:p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <h2 className="font-display font-bold text-xl text-primary mb-4">إنشاء طلب / أوردر ستائر جديد</h2>
             <form onSubmit={handleCreateOrder} className="flex flex-col gap-3">
               <div className="grid grid-cols-2 gap-3">
@@ -443,7 +440,7 @@ export default function OrdersPage() {
       {/* Modal 2: Edit Order */}
       {showEditModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-surface-container-lowest rounded-2xl shadow-2xl p-6 w-full max-w-lg">
+          <div className="bg-surface-container-lowest rounded-2xl shadow-2xl p-5 sm:p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <h2 className="font-display font-bold text-xl text-primary mb-4">تعديل بيانات الأوردر — {selected.id}</h2>
             <form onSubmit={handleSaveEdit} className="flex flex-col gap-3">
               <div className="grid grid-cols-2 gap-3">
@@ -513,6 +510,6 @@ export default function OrdersPage() {
           </div>
         </div>
       )}
-    </div>
+    </PageShell>
   );
 }

@@ -1,23 +1,19 @@
 'use client';
 
 import React, { useState } from 'react';
-import Sidebar from '@/components/Sidebar';
-import Header from '@/components/Header';
+import PageShell from '@/components/PageShell';
 
 export default function ReportsPage() {
   const [reportType, setReportType] = useState<'sales' | 'profits' | 'inventory' | 'curtains' | 'ledgers'>('sales');
   const [period, setPeriod] = useState<'today' | 'thisMonth' | 'thisYear'>('thisMonth');
 
   return (
-    <div className="min-h-screen bg-background text-on-surface">
-      <Sidebar />
-      <Header title="التقارير والإحصائيات الشاملة" />
-      <div className="pr-72 pt-16">
-        <main className="px-8 py-8 flex flex-col gap-6">
+    <PageShell title="التقارير والإحصائيات الشاملة">
+      <div className="flex flex-col gap-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <h1 className="font-display font-bold text-2xl text-primary">التقارير والإحصائيات الشاملة</h1>
-              <p className="text-on-surface-variant text-sm mt-1">
+              <h1 className="font-display font-bold text-xl sm:text-2xl text-primary">التقارير والإحصائيات الشاملة</h1>
+              <p className="text-on-surface-variant text-xs sm:text-sm mt-1">
                 تقارير مبيعات الأقمشة والستائر، صافي الأرباح، حركة المخزون وأداء الفنيين.
               </p>
             </div>
@@ -67,7 +63,7 @@ export default function ReportsPage() {
           {/* Report Content Panel */}
           {reportType === 'sales' && (
             <div className="flex flex-col gap-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                 <div className="bg-surface-container-lowest p-5 rounded-xl border border-surface-container-highest">
                   <div className="text-xs font-mono text-on-surface-variant">مبيعات الأقمشة بالمتر</div>
                   <div className="font-display font-bold text-2xl text-primary mt-1">18,500 ج.م</div>
@@ -88,7 +84,8 @@ export default function ReportsPage() {
               {/* Sales Table Breakdown */}
               <div className="bg-surface-container-lowest rounded-xl border border-surface-container-highest p-6">
                 <h3 className="font-bold text-base text-primary mb-4">المبيعات حسب الفرع والموظف</h3>
-                <table className="w-full text-right text-sm">
+                <div className="overflow-x-auto">
+                <table className="w-full text-right text-sm min-w-[480px]">
                   <thead className="bg-surface-container-low text-xs font-mono text-on-surface-variant">
                     <tr>
                       <th className="p-3">الفرع</th>
@@ -118,13 +115,14 @@ export default function ReportsPage() {
                     </tr>
                   </tbody>
                 </table>
+                </div>
               </div>
             </div>
           )}
 
           {reportType === 'profits' && (
             <div className="flex flex-col gap-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                 <div className="bg-surface-container-lowest p-5 rounded-xl border border-surface-container-highest">
                   <div className="text-xs font-mono text-on-surface-variant">إجمالي الإيرادات</div>
                   <div className="font-display font-bold text-2xl text-primary mt-1">113,300 ج.م</div>
@@ -165,7 +163,7 @@ export default function ReportsPage() {
           )}
 
           {reportType === 'curtains' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
               <div className="bg-surface-container-lowest p-6 rounded-xl border border-surface-container-highest">
                 <h3 className="font-bold text-base text-primary mb-3">حالات المعاينات والطلبات</h3>
                 <div className="space-y-2 text-sm">
@@ -207,7 +205,7 @@ export default function ReportsPage() {
           )}
 
           {reportType === 'ledgers' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
               <div className="bg-surface-container-lowest p-6 rounded-xl border border-surface-container-highest">
                 <h3 className="font-bold text-base text-primary mb-3">ديون العملاء المستحقة</h3>
                 <div className="font-display font-bold text-3xl text-error mb-4">12,600 ج.م</div>
@@ -221,8 +219,7 @@ export default function ReportsPage() {
               </div>
             </div>
           )}
-        </main>
       </div>
-    </div>
+    </PageShell>
   );
 }

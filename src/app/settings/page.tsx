@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import Sidebar from '@/components/Sidebar';
-import Header from '@/components/Header';
+import PageShell from '@/components/PageShell';
 
 export default function SettingsPage() {
   const [storeName, setStoreName] = useState('أحمد كشك للأقمشة والستائر');
@@ -20,14 +19,11 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-on-surface">
-      <Sidebar />
-      <Header title="إعدادات النظام والهوية" />
-      <div className="pr-72 pt-16">
-        <main className="px-8 py-8 max-w-4xl mx-auto flex flex-col gap-6">
+    <PageShell title="إعدادات النظام والهوية">
+      <div className="max-w-4xl mx-auto flex flex-col gap-6">
           <div>
-            <h1 className="font-display font-bold text-2xl text-primary">إعدادات النظام وهوية الفواتير</h1>
-            <p className="text-on-surface-variant text-sm mt-1">
+            <h1 className="font-display font-bold text-xl sm:text-2xl text-primary">إعدادات النظام وهوية الفواتير</h1>
+            <p className="text-on-surface-variant text-xs sm:text-sm mt-1">
               تخصيص اللوجو والهوية التجارية للفواتير الإلكترونية، المعاينات، وإعدادات المتجر.
             </p>
           </div>
@@ -58,7 +54,7 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-mono text-on-surface-variant">اسم المحل الرسمي</label>
                   <input
@@ -85,7 +81,7 @@ export default function SettingsPage() {
                 بيانات الاتصال على الفواتير
               </h2>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-mono text-on-surface-variant">رقم التليفون الأساسي</label>
                   <input
@@ -132,8 +128,7 @@ export default function SettingsPage() {
               حفظ جميع الإعدادات والهوية
             </button>
           </form>
-        </main>
       </div>
-    </div>
+    </PageShell>
   );
 }

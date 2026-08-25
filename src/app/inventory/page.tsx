@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import Sidebar from '@/components/Sidebar';
-import Header from '@/components/Header';
+import PageShell from '@/components/PageShell';
 
 interface InventoryItem {
   id: string;
@@ -95,24 +94,18 @@ export default function InventoryPage() {
   const totalAvailableMeters = items.reduce((sum, i) => sum + (i.totalQuantity - i.reservedQuantity), 0);
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
-      <Sidebar />
-      <Header title="المخزون وحجز الأقمشة" />
-      <div className="pr-72 pt-16">
-        <main className="px-8 py-8 flex flex-col gap-6">
+    <PageShell title="المخزون والأصناف بالمتر">
+      <div className="flex flex-col gap-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-200 inline-block mb-1">
-                إدارة المخزون الفعلي والمحجوز
-              </span>
-              <h1 className="font-display font-black text-2xl text-slate-900">مخزون الأقمشة والخامات بالمتر</h1>
-              <p className="text-slate-500 text-sm mt-0.5">
-                تتبع الكميات الكلية، الكميات المحجوزة لأوامر الورشة، والمتاح الفعلي للبيع لكل فرع.
+              <h1 className="font-display font-bold text-xl sm:text-2xl text-primary">إدارة المخزون والأصناف بالمتر</h1>
+              <p className="text-on-surface-variant text-xs sm:text-sm mt-1">
+                تتبع كميات الأقمشة بالمتر، التراكات، المواسير، الأشرطة، وهامش الربح لكل فرع.
               </p>
             </div>
             <button
               onClick={() => setShowAddModal(true)}
-              className="bg-brand-gold hover:bg-brand-gold-hover text-slate-950 px-5 py-2.5 rounded-xl transition-all flex items-center gap-2 font-bold text-sm shadow-gold"
+              className="bg-primary text-on-primary px-4 sm:px-5 py-2.5 rounded-lg hover:bg-inverse-surface transition-colors flex items-center gap-2 font-bold text-xs sm:text-sm shadow w-full sm:w-auto justify-center"
             >
               <span className="material-symbols-outlined text-[18px]">add_box</span>
               إضافة صنف جديد للمخزن
@@ -120,7 +113,7 @@ export default function InventoryPage() {
           </div>
 
           {/* Stats Bar */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-soft">
               <div className="text-xs text-slate-500 font-bold">إجمالي الأصناف</div>
               <div className="font-display font-black text-2xl text-slate-900 mt-1">{items.length} صنف</div>
@@ -185,7 +178,8 @@ export default function InventoryPage() {
 
           {/* Inventory Table */}
           <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-soft">
-            <table className="w-full text-right">
+            <div className="overflow-x-auto">
+            <table className="w-full text-right min-w-[700px]">
               <thead className="bg-slate-50 text-xs font-mono text-slate-500 border-b border-slate-200">
                 <tr>
                   <th className="p-3.5">الكود</th>
@@ -244,14 +238,14 @@ export default function InventoryPage() {
                 })}
               </tbody>
             </table>
+            </div>
           </div>
-        </main>
       </div>
 
       {/* Add Item Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-lg">
+          <div className="bg-white rounded-2xl shadow-2xl p-5 sm:p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <h2 className="font-display font-bold text-xl text-slate-900 mb-4">إضافة صنف جديد للمخزن</h2>
             <form onSubmit={handleAddItem} className="flex flex-col gap-3">
               <div className="grid grid-cols-2 gap-3">
@@ -314,6 +308,6 @@ export default function InventoryPage() {
           </div>
         </div>
       )}
-    </div>
+    </PageShell>
   );
 }

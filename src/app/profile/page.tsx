@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import Sidebar from '@/components/Sidebar';
-import Header from '@/components/Header';
+import PageShell from '@/components/PageShell';
 import { useRouter } from 'next/navigation';
 
 export default function ProfilePage() {
@@ -88,14 +87,11 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <Sidebar />
-      <Header title="الملف الشخصي" />
-      <div className="pr-72 pt-16">
-        <main className="px-8 py-8 max-w-2xl mx-auto flex flex-col gap-6">
+    <PageShell title="الملف الشخصي">
+      <div className="max-w-2xl mx-auto flex flex-col gap-6">
           <div>
-            <h1 className="font-display font-bold text-2xl text-primary">الملف الشخصي</h1>
-            <p className="text-on-surface-variant text-sm mt-1">إدارة بياناتك الشخصية وكلمة السر.</p>
+            <h1 className="font-display font-bold text-xl sm:text-2xl text-primary">الملف الشخصي</h1>
+            <p className="text-on-surface-variant text-xs sm:text-sm mt-1">إدارة بياناتك الشخصية وكلمة السر.</p>
           </div>
 
           {/* Avatar Card */}
@@ -223,8 +219,7 @@ export default function ProfilePage() {
             <span className="material-symbols-outlined text-[18px]">logout</span>
             تسجيل الخروج
           </button>
-        </main>
       </div>
-    </div>
+    </PageShell>
   );
 }
