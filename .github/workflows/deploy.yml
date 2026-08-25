@@ -1,48 +1,22 @@
-name: Build & Deploy — Ahmed Kishk
+name: Deploy to Server
 
 on:
-  push:
+  workflow_run:
+    workflows: ["Build & Push to GHCR"]
+    types:
+      - completed
     branches:
       - main
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: momarzouk1998/ahmed-kishk
 
 jobs:
-  build-and-push:
-    name: 🐳 Build Docker Image & Push to GHCR
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-
-    steps:
-      - name: 📥 Checkout repository
-        uses: actions/checkout@v4
-
-      - name: 🔑 Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: ⚙️ Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: 📦 Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
   deploy:
     name: 🚀 Deploy to DigitalOcean Droplet
-    needs: build-and-push
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
 
     steps:
@@ -54,7 +28,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             echo "🔑 Logging into GHCR on server..."
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin || echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u momarzouk1998 --password-stdin || echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u momarzouk1998 --password-stdin
 
             echo "📥 Pulling latest Docker image from GHCR..."
             docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
@@ -80,7 +54,7 @@ jobs:
             echo "🗄️ Running database migrations..."
             docker exec ahmed-kishk npx prisma db push --skip-generate || true
 
-            echo "🌱 Seeding database (upsert — safe to run multiple times)..."
+            echo "🌱 Seeding database..."
             docker exec ahmed-kishk npx tsx prisma/seed.ts || true
 
             echo "🧹 Cleaning up unused docker images..."
