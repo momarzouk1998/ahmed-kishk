@@ -35,13 +35,13 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  // HTTP headers only accept ASCII (byte values 0–255).
-  // Encode Arabic / Unicode values with encodeURIComponent before setting them.
+  // Only pass ASCII-safe values in HTTP headers.
+  // userId is a UUID (safe). role is ASCII-safe (ADMIN, TECHNICIAN, etc.)
+  // Arabic values (name, branch) are NOT passed through headers — components
+  // should read them directly from the JWT cookie via the /api/auth/profile route.
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set('x-user-id', payload.userId || '');
-  requestHeaders.set('x-user-name', encodeURIComponent(payload.name || ''));
-  requestHeaders.set('x-user-role', encodeURIComponent(payload.role || ''));
-  requestHeaders.set('x-user-branch', encodeURIComponent(payload.branch || ''));
+  requestHeaders.set('x-user-role', payload.role || '');
 
   return NextResponse.next({ request: { headers: requestHeaders } });
 }
