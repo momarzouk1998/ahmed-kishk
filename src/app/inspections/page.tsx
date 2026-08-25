@@ -1,15 +1,15 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Sidebar from '@/components/Sidebar';
 import Header from '@/components/Header';
-
-type InspectionStatus = 'مُجدول' | 'قيد الانتظار' | 'مكتمل' | 'ملغي';
-type InspectionStage = 'معاينة' | 'اختيار قماش' | 'ورشة' | 'تركيب';
 
 interface FabricLayer {
   layer: string;
   code: string;
+  fullness: number; // e.g. 2.5x for sheer, 1.8x for heavy, 1.2x for blackout
+  pricePerMeter: number;
+  meters: number;
   tape: boolean;
   eyelet: boolean;
 }
@@ -22,10 +22,14 @@ interface Room {
   heightCm: number;
   sides: number;
   installationType: string;
+  trackPricePerMeter: number;
   ceilingType: string;
   fabrics: FabricLayer[];
-  meters: number;
-  avgPrice: number;
+  tapePricePerMeter: number;
+  tailoringFeePerSide: number;
+  installFee: number;
+  totalCost: number;
+  totalSellPrice: number;
 }
 
 interface InspectionRequest {
@@ -35,247 +39,227 @@ interface InspectionRequest {
   address: string;
   scheduledAt: string;
   technician: string;
-  status: InspectionStatus;
-  stage: InspectionStage;
+  status: 'مُجدول' | 'قيد الانتظار' | 'مكتمل' | 'ملغي';
+  stage: 'معاينة' | 'اختيار قماش' | 'ورشة' | 'تركيب';
   rooms: Room[];
   notes: string;
 }
 
-const initialRequests: InspectionRequest[] = [
+const defaultRooms: Room[] = [
   {
-    id: 'INS-001',
-    customerName: 'محمود عبد الرحمن',
-    phone: '01012345678',
-    address: 'التجمع الخامس، فيلا 42',
-    scheduledAt: '2026-08-26T16:00',
-    technician: 'أحمد حسن',
-    status: 'مُجدول',
-    stage: 'معاينة',
-    notes: 'شقة 3 غرف + صالة',
-    rooms: [
-      {
-        id: 'r1',
-        name: 'الصالة الرئيسية',
-        type: 'بلكونة',
-        widthCm: 350,
-        heightCm: 280,
-        sides: 2,
-        installationType: 'مجرى سقف',
-        ceilingType: 'جيبسون بورد',
-        fabrics: [
-          { layer: 'خفيف (تول)', code: 'T-402', tape: true, eyelet: false },
-          { layer: 'ثقيل', code: 'V-990', tape: false, eyelet: true }
-        ],
-        meters: 15.75,
-        avgPrice: 450
-      },
-      {
-        id: 'r2',
-        name: 'غرفة النوم الرئيسية',
-        type: 'شباك',
-        widthCm: 200,
-        heightCm: 260,
-        sides: 2,
-        installationType: 'مواسير',
-        ceilingType: 'عادي',
-        fabrics: [
-          { layer: 'بلاك آوت', code: 'BL-220', tape: true, eyelet: false }
-        ],
-        meters: 9,
-        avgPrice: 380
-      }
-    ]
+    id: 'r1',
+    name: 'الصالة الرئيسية (بلكونة)',
+    type: 'بلكونة',
+    widthCm: 350,
+    heightCm: 280,
+    sides: 2,
+    installationType: 'مجرى سقف (تراك ألومنيوم)',
+    trackPricePerMeter: 85,
+    ceilingType: 'جيبسون بورد / بيت نور',
+    tapePricePerMeter: 18,
+    tailoringFeePerSide: 150,
+    installFee: 200,
+    fabrics: [
+      { layer: 'تول خفيف', code: 'T-402', fullness: 2.5, pricePerMeter: 160, meters: 8.75, tape: true, eyelet: false },
+      { layer: 'قطيفة تركي ثقيل', code: 'V-990', fullness: 1.8, pricePerMeter: 380, meters: 6.30, tape: true, eyelet: true },
+    ],
+    totalCost: 3250,
+    totalSellPrice: 5150,
   },
   {
-    id: 'INS-002',
-    customerName: 'سارة أحمد',
-    phone: '01298765432',
-    address: 'الشيخ زايد، كمبوند بيفرلي هيلز',
-    scheduledAt: '2026-08-27T12:00',
-    technician: 'محمد علي',
-    status: 'قيد الانتظار',
-    stage: 'معاينة',
-    notes: 'طلب معاينة لشقة عروسة',
-    rooms: []
-  },
-  {
-    id: 'INS-003',
-    customerName: 'شركة المعمار',
-    phone: '01155556666',
-    address: 'المهندسين، شارع البطل أحمد عبد العزيز',
-    scheduledAt: '2026-08-24T11:00',
-    technician: 'محمد علي',
-    status: 'مكتمل',
-    stage: 'اختيار قماش',
-    notes: 'مكتب تجاري — 6 غرف',
-    rooms: []
+    id: 'r2',
+    name: 'غرفة النوم الرئيسية',
+    type: 'شباك',
+    widthCm: 200,
+    heightCm: 260,
+    sides: 2,
+    installationType: 'مواسير استيل مذهبة',
+    trackPricePerMeter: 160,
+    ceilingType: 'سقف عادي',
+    tapePricePerMeter: 18,
+    tailoringFeePerSide: 120,
+    installFee: 150,
+    fabrics: [
+      { layer: 'بلاك آوت عازل ضوء', code: 'BL-220', fullness: 1.3, pricePerMeter: 280, meters: 2.60, tape: true, eyelet: true },
+      { layer: 'شيفون ناعم', code: 'SH-10', fullness: 2.2, pricePerMeter: 180, meters: 4.40, tape: true, eyelet: false },
+    ],
+    totalCost: 1850,
+    totalSellPrice: 3100,
   }
 ];
 
 export default function InspectionsPage() {
-  const [requests, setRequests] = useState<InspectionRequest[]>(initialRequests);
+  const [requests, setRequests] = useState<InspectionRequest[]>([
+    {
+      id: 'INS-001',
+      customerName: 'محمود عبد الرحمن',
+      phone: '01012345678',
+      address: 'التجمع الخامس، فيلا 42',
+      scheduledAt: '2026-08-26T16:00',
+      technician: 'أحمد حسن',
+      status: 'مُجدول',
+      stage: 'معاينة',
+      notes: 'شقة 3 غرف + صالة بلكونة',
+      rooms: defaultRooms,
+    },
+    {
+      id: 'INS-002',
+      customerName: 'سارة أحمد',
+      phone: '01298765432',
+      address: 'الشيخ زايد، كمبوند بيفرلي هيلز',
+      scheduledAt: '2026-08-27T12:00',
+      technician: 'محمد علي',
+      status: 'قيد الانتظار',
+      stage: 'معاينة',
+      notes: 'شقة عروسة',
+      rooms: [],
+    }
+  ]);
+
   const [selectedId, setSelectedId] = useState<string>('INS-001');
-  const [activeTab, setActiveTab] = useState<'rooms' | 'info'>('rooms');
+  const [activeTab, setActiveTab] = useState<'rooms' | 'pricing' | 'info'>('rooms');
   const [filterStatus, setFilterStatus] = useState<string>('الكل');
 
   // Modals
   const [showNewRequestModal, setShowNewRequestModal] = useState(false);
-  const [showEditRequestModal, setShowEditRequestModal] = useState(false);
   const [showRoomModal, setShowRoomModal] = useState(false);
   const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
 
-  // New/Edit Request Form state
+  // New Request state
   const [custName, setCustName] = useState('');
   const [custPhone, setCustPhone] = useState('');
   const [custAddress, setCustAddress] = useState('');
   const [scheduleTime, setScheduleTime] = useState('');
   const [techName, setTechName] = useState('أحمد حسن');
-  const [reqStatus, setReqStatus] = useState<InspectionStatus>('مُجدول');
   const [reqNotes, setReqNotes] = useState('');
 
-  // Room Form state
+  // Room Measurement & Smart Calculation State
   const [roomName, setRoomName] = useState('الصالة');
   const [roomType, setRoomType] = useState<'شباك' | 'بلكونة'>('شباك');
   const [widthCm, setWidthCm] = useState<number>(250);
   const [heightCm, setHeightCm] = useState<number>(270);
   const [sides, setSides] = useState<number>(2);
-  const [installType, setInstallType] = useState('مجرى سقف');
-  const [ceilingType, setCeilingType] = useState('جيبسون بورد');
-  const [sheerSelected, setSheerSelected] = useState(true);
+  const [installType, setInstallType] = useState('مجرى سقف (تراك ألومنيوم)');
+  const [trackPrice, setTrackPrice] = useState<number>(85);
+  const [ceilingType, setCeilingType] = useState('جيبسون بورد / بيت نور');
+
+  // Layer 1: Sheer (تول)
+  const [hasSheer, setHasSheer] = useState(true);
   const [sheerCode, setSheerCode] = useState('T-101');
-  const [heavySelected, setHeavySelected] = useState(true);
+  const [sheerFullness, setSheerFullness] = useState<number>(2.5); // 2.5x standard
+  const [sheerPrice, setSheerPrice] = useState<number>(160);
+
+  // Layer 2: Heavy (ثقيل)
+  const [hasHeavy, setHasHeavy] = useState(true);
   const [heavyCode, setHeavyCode] = useState('V-202');
-  const [blackoutSelected, setBlackoutSelected] = useState(false);
+  const [heavyFullness, setHeavyFullness] = useState<number>(1.8); // 1.8x standard
+  const [heavyPrice, setHeavyPrice] = useState<number>(380);
+
+  // Layer 3: Blackout (بلاك آوت)
+  const [hasBlackout, setHasBlackout] = useState(false);
   const [blackoutCode, setBlackoutCode] = useState('BL-01');
-  const [tapeSelected, setTapeSelected] = useState(true);
-  const [eyeletSelected, setEyeletSelected] = useState(false);
-  const [avgPrice, setAvgPrice] = useState<number>(400);
+  const [blackoutFullness, setBlackoutFullness] = useState<number>(1.3); // 1.3x flat/subtle
+  const [blackoutPrice, setBlackoutPrice] = useState<number>(280);
+
+  // Accessories & Fees
+  const [tapePrice, setTapePrice] = useState<number>(18);
+  const [tailorFeePerSide, setTailorFeePerSide] = useState<number>(120);
+  const [installFee, setInstallFee] = useState<number>(150);
+
+  // Load from API on mount
+  useEffect(() => {
+    fetch('/api/inspections')
+      .then(res => res.json())
+      .then(data => {
+        if (data.inspections && data.inspections.length > 0) {
+          // Format from DB
+          const formatted = data.inspections.map((ins: any) => ({
+            id: ins.id,
+            customerName: ins.customer?.name || 'عميل',
+            phone: ins.customer?.phone || '',
+            address: ins.address || '',
+            scheduledAt: ins.scheduledAt || '',
+            technician: ins.assignedTo?.name || 'أحمد حسن',
+            status: ins.status === 'SCHEDULED' ? 'مُجدول' : ins.status === 'COMPLETED' ? 'مكتمل' : 'قيد الانتظار',
+            stage: ins.stage || 'معاينة',
+            notes: ins.notes || '',
+            rooms: (ins.rooms || []).map((rm: any) => ({
+              id: rm.id,
+              name: rm.roomName,
+              type: rm.roomType === 'BALCONY' ? 'بلكونة' : 'شباك',
+              widthCm: rm.widthCm,
+              heightCm: rm.heightCm,
+              sides: rm.sides,
+              installationType: rm.installationType === 'RODS' ? 'مواسير استيل' : 'مجرى سقف',
+              trackPricePerMeter: 85,
+              ceilingType: rm.ceilingType === 'HOLLOW_GYPSUM' ? 'جيبسون بورد' : 'سقف عادي',
+              tapePricePerMeter: 18,
+              tailoringFeePerSide: 120,
+              installFee: 150,
+              fabrics: (rm.fabrics || []).map((fb: any) => ({
+                layer: fb.layerName,
+                code: fb.fabricCode,
+                fullness: fb.layerName.includes('تول') ? 2.5 : fb.layerName.includes('بلاك') ? 1.3 : 1.8,
+                pricePerMeter: rm.avgPricePerMeter || 250,
+                meters: rm.fabricMeters || 0,
+                tape: fb.hasPleatedTape,
+                eyelet: fb.hasEyeletRings,
+              })),
+              totalCost: rm.estimatedCost || 0,
+              totalSellPrice: (rm.estimatedCost || 0) * 1.45,
+            })),
+          }));
+          setRequests(formatted);
+          setSelectedId(formatted[0].id);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const selected = requests.find(r => r.id === selectedId) || requests[0];
   const filtered = filterStatus === 'الكل' ? requests : requests.filter(r => r.status === filterStatus);
 
-  const statusColors: Record<InspectionStatus, string> = {
-    'مُجدول': 'bg-secondary-container text-on-secondary-container',
-    'قيد الانتظار': 'bg-surface-container text-on-surface-variant',
-    'مكتمل': 'bg-primary text-on-primary',
-    'ملغي': 'bg-error-container text-on-error-container',
-  };
+  // Dynamic calculations for room
+  const widthM = widthCm / 100;
+  const sheerMetersCalc = Number((widthM * sheerFullness).toFixed(2));
+  const heavyMetersCalc = Number((widthM * heavyFullness).toFixed(2));
+  const blackoutMetersCalc = Number((widthM * blackoutFullness).toFixed(2));
 
-  const stageColors: Record<InspectionStage, string> = {
-    'معاينة': 'text-on-surface-variant',
-    'اختيار قماش': 'text-secondary',
-    'ورشة': 'text-on-surface',
-    'تركيب': 'text-primary',
-  };
+  // Smart Room Total Calculation
+  const calculateRoomTotals = () => {
+    let fabricTotalCost = 0;
+    let tapeMeters = 0;
 
-  // Open Create Request Modal
-  const openCreateModal = () => {
-    setCustName('');
-    setCustPhone('');
-    setCustAddress('');
-    setScheduleTime('');
-    setTechName('أحمد حسن');
-    setReqStatus('مُجدول');
-    setReqNotes('');
-    setShowNewRequestModal(true);
-  };
-
-  // Open Edit Request Modal
-  const openEditModal = () => {
-    if (!selected) return;
-    setCustName(selected.customerName);
-    setCustPhone(selected.phone);
-    setCustAddress(selected.address);
-    setScheduleTime(selected.scheduledAt);
-    setTechName(selected.technician);
-    setReqStatus(selected.status);
-    setReqNotes(selected.notes);
-    setShowEditRequestModal(true);
-  };
-
-  // Save new request
-  const handleSaveNewRequest = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!custName || !custPhone) return;
-    const newReq: InspectionRequest = {
-      id: `INS-${String(requests.length + 1).padStart(3, '0')}`,
-      customerName: custName,
-      phone: custPhone,
-      address: custAddress,
-      scheduledAt: scheduleTime,
-      technician: techName,
-      status: reqStatus,
-      stage: 'معاينة',
-      notes: reqNotes,
-      rooms: []
-    };
-    setRequests([newReq, ...requests]);
-    setSelectedId(newReq.id);
-    setShowNewRequestModal(false);
-  };
-
-  // Save edited request
-  const handleSaveEditRequest = (e: React.FormEvent) => {
-    e.preventDefault();
-    setRequests(prev => prev.map(r => r.id === selected.id ? {
-      ...r,
-      customerName: custName,
-      phone: custPhone,
-      address: custAddress,
-      scheduledAt: scheduleTime,
-      technician: techName,
-      status: reqStatus,
-      notes: reqNotes,
-    } : r));
-    setShowEditRequestModal(false);
-  };
-
-  // Open Room Modal (New or Edit)
-  const openRoomModal = (room?: Room) => {
-    if (room) {
-      setEditingRoomId(room.id);
-      setRoomName(room.name);
-      setRoomType(room.type);
-      setWidthCm(room.widthCm);
-      setHeightCm(room.heightCm);
-      setSides(room.sides);
-      setInstallType(room.installationType);
-      setCeilingType(room.ceilingType);
-      setSheerSelected(room.fabrics.some(f => f.layer.includes('خفيف')));
-      setHeavySelected(room.fabrics.some(f => f.layer.includes('ثقيل')));
-      setBlackoutSelected(room.fabrics.some(f => f.layer.includes('بلاك')));
-      setTapeSelected(room.fabrics.some(f => f.tape));
-      setEyeletSelected(room.fabrics.some(f => f.eyelet));
-      setAvgPrice(room.avgPrice);
-    } else {
-      setEditingRoomId(null);
-      setRoomName(`غرفة ${selected.rooms.length + 1}`);
-      setRoomType('شباك');
-      setWidthCm(250);
-      setHeightCm(270);
-      setSides(2);
-      setInstallType('مجرى سقف');
-      setCeilingType('جيبسون بورد');
-      setSheerSelected(true);
-      setHeavySelected(true);
-      setBlackoutSelected(false);
-      setTapeSelected(true);
-      setEyeletSelected(false);
-      setAvgPrice(400);
+    if (hasSheer) {
+      fabricTotalCost += sheerMetersCalc * sheerPrice;
+      tapeMeters += sheerMetersCalc;
     }
-    setShowRoomModal(true);
+    if (hasHeavy) {
+      fabricTotalCost += heavyMetersCalc * heavyPrice;
+      tapeMeters += heavyMetersCalc;
+    }
+    if (hasBlackout) {
+      fabricTotalCost += blackoutMetersCalc * blackoutPrice;
+      tapeMeters += blackoutMetersCalc;
+    }
+
+    const trackCost = widthM * trackPrice;
+    const tapeCost = tapeMeters * tapePrice;
+    const tailoringCost = sides * tailorFeePerSide;
+    const finalCost = Math.round(fabricTotalCost + trackCost + tapeCost + tailoringCost + installFee);
+    const finalSellPrice = Math.round(finalCost * 1.35); // 35% margin standard
+
+    return { finalCost, finalSellPrice };
   };
 
-  // Save Room (Add / Edit)
   const handleSaveRoom = (e: React.FormEvent) => {
     e.preventDefault();
-    // Calculate estimated meters = (width in meters * 2.5 fullness factor) * sides
-    const meters = Number(((widthCm / 100) * 2.2 * (sides === 2 ? 1.2 : 1)).toFixed(2));
-    
+    const { finalCost, finalSellPrice } = calculateRoomTotals();
+
     const fabrics: FabricLayer[] = [];
-    if (sheerSelected) fabrics.push({ layer: 'خفيف (تول)', code: sheerCode, tape: tapeSelected, eyelet: eyeletSelected });
-    if (heavySelected) fabrics.push({ layer: 'ثقيل', code: heavyCode, tape: tapeSelected, eyelet: eyeletSelected });
-    if (blackoutSelected) fabrics.push({ layer: 'بلاك آوت', code: blackoutCode, tape: tapeSelected, eyelet: eyeletSelected });
+    if (hasSheer) fabrics.push({ layer: 'تول خفيف', code: sheerCode, fullness: sheerFullness, pricePerMeter: sheerPrice, meters: sheerMetersCalc, tape: true, eyelet: false });
+    if (hasHeavy) fabrics.push({ layer: 'قماش ثقيل', code: heavyCode, fullness: heavyFullness, pricePerMeter: heavyPrice, meters: heavyMetersCalc, tape: true, eyelet: true });
+    if (hasBlackout) fabrics.push({ layer: 'بلاك آوت', code: blackoutCode, fullness: blackoutFullness, pricePerMeter: blackoutPrice, meters: blackoutMetersCalc, tape: true, eyelet: false });
 
     const newRoom: Room = {
       id: editingRoomId || `rm-${Date.now()}`,
@@ -285,10 +269,14 @@ export default function InspectionsPage() {
       heightCm,
       sides,
       installationType: installType,
+      trackPricePerMeter: trackPrice,
       ceilingType,
+      tapePricePerMeter: tapePrice,
+      tailoringFeePerSide: tailorFeePerSide,
+      installFee,
       fabrics,
-      meters,
-      avgPrice,
+      totalCost: finalCost,
+      totalSellPrice: finalSellPrice,
     };
 
     setRequests(prev => prev.map(r => {
@@ -302,65 +290,82 @@ export default function InspectionsPage() {
     setShowRoomModal(false);
   };
 
-  // Delete Room
-  const handleDeleteRoom = (roomId: string) => {
-    if (!confirm('هل تريد حذف هذه الغرفة من المقاسات؟')) return;
-    setRequests(prev => prev.map(r => r.id === selected.id ? {
-      ...r,
-      rooms: r.rooms.filter(rm => rm.id !== roomId)
-    } : r));
-  };
+  const handleSaveNewRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!custName || !custPhone) return;
 
-  const handleStageChange = (stage: InspectionStage) => {
-    setRequests(prev => prev.map(r => r.id === selected.id ? { ...r, stage } : r));
+    const newReq: InspectionRequest = {
+      id: `INS-${String(requests.length + 1).padStart(3, '0')}`,
+      customerName: custName,
+      phone: custPhone,
+      address: custAddress,
+      scheduledAt: scheduleTime,
+      technician: techName,
+      status: 'مُجدول',
+      stage: 'معاينة',
+      notes: reqNotes,
+      rooms: [],
+    };
+
+    setRequests([newReq, ...requests]);
+    setSelectedId(newReq.id);
+    setShowNewRequestModal(false);
+
+    // Save to Database API
+    fetch('/api/inspections', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        customerName: custName,
+        phone: custPhone,
+        address: custAddress,
+        scheduledAt: scheduleTime,
+        technician: techName,
+        notes: reqNotes,
+      }),
+    }).catch(() => {});
   };
 
   const handleShareWhatsApp = () => {
     if (!selected) return;
     const roomsText = selected.rooms.length > 0 
-      ? selected.rooms.map(r => `\n• *${r.name}* (${r.type}): ${r.widthCm}سم عرض × ${r.heightCm}سم ارتفاع (${r.installationType} - ${r.ceilingType}) — ${r.meters}متر`).join('')
-      : '\nلم تسجل مقاسات بعد';
+      ? selected.rooms.map(r => `\n• *${r.name}* (${r.type}): ${r.widthCm}سم عرض × ${r.heightCm}سم ارتفاع (${r.installationType}) — التكلفة: ${r.totalSellPrice.toLocaleString()} ج.م`).join('')
+      : '\nلم تسجل غرف بعد';
     
     const text = encodeURIComponent(
-      `*طلب معاينة ومقاسات ستائر - أحمد كشك*\nالعميل: ${selected.customerName}\nالتليفون: ${selected.phone}\nالعنوان: ${selected.address}\nالفني: ${selected.technician || 'لم يحدد'}\n\n*المقاسات والتفاصيل:*${roomsText}\n\n*الإجمالي التقديري: ${selected.rooms.reduce((sum, r) => sum + Math.round(r.meters * r.avgPrice), 0).toLocaleString()} ج.م*`
+      `*معاينة ومقاسات ستائر — أحمد كشك*\nالعميل: ${selected.customerName}\nالهاتف: ${selected.phone}\nالعنوان: ${selected.address}\nالفني: ${selected.technician}\n\n*تفاصيل الغرف والتسعير:*${roomsText}\n\n*الإجمالي: ${selected.rooms.reduce((s, r) => s + r.totalSellPrice, 0).toLocaleString()} ج.م*`
     );
     window.open(`https://wa.me/?text=${text}`, '_blank');
   };
 
   return (
-    <div className="min-h-screen bg-background text-on-surface">
+    <div className="min-h-screen bg-slate-50 text-slate-900">
       <Sidebar />
-      <Header title="المعاينات ورفع المقاسات" />
+      <Header title="المعاينات ورفع المقاسات الذكي" />
       <div className="pr-72 pt-16">
         <main className="px-8 py-8 flex flex-col gap-6">
-          {/* Top Bar */}
+          {/* Header Bar */}
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
-              <h1 className="font-display font-bold text-2xl text-primary">المعاينات ورفع المقاسات</h1>
-              <p className="text-on-surface-variant text-sm mt-1">تسجيل طلبات المعاينة الميدانية ومقاسات وتفاصيل كل غرفة.</p>
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-200 inline-block mb-1">
+                حساب الأمتار والتسعير الذكي (Fullness Factor)
+              </span>
+              <h1 className="font-display font-black text-2xl text-slate-900">المعاينات والمقاسات وجدول التسعير</h1>
+              <p className="text-slate-500 text-sm mt-0.5">معادلات كشكشة دقيقة لكل خامة + جدول تسعير تفاعلي يربط القماش والشريط والتركيب.</p>
             </div>
             <button
-              onClick={openCreateModal}
-              className="bg-primary text-on-primary px-5 py-2.5 rounded-lg hover:bg-inverse-surface transition-colors flex items-center gap-2 font-bold text-sm shadow"
+              onClick={() => {
+                setCustName(''); setCustPhone(''); setCustAddress(''); setScheduleTime(''); setReqNotes('');
+                setShowNewRequestModal(true);
+              }}
+              className="bg-brand-gold hover:bg-brand-gold-hover text-slate-950 px-5 py-2.5 rounded-xl font-bold text-sm shadow-gold flex items-center gap-2 transition-all"
             >
               <span className="material-symbols-outlined text-[18px]">add_box</span>
               طلب معاينة جديد
             </button>
           </div>
 
-          {/* Filter Bar */}
-          <div className="flex gap-2 flex-wrap">
-            {['الكل', 'مُجدول', 'قيد الانتظار', 'مكتمل', 'ملغي'].map(f => (
-              <button
-                key={f}
-                onClick={() => setFilterStatus(f)}
-                className={`px-4 py-1.5 rounded-full text-xs font-mono border transition-colors ${filterStatus === f ? 'bg-primary text-on-primary border-primary' : 'border-outline-variant text-on-surface-variant hover:border-primary'}`}
-              >
-                {f}
-              </button>
-            ))}
-          </div>
-
+          {/* Master Detail Split */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             {/* Left: Requests List */}
             <div className="lg:col-span-4 flex flex-col gap-3">
@@ -368,207 +373,154 @@ export default function InspectionsPage() {
                 <div
                   key={req.id}
                   onClick={() => setSelectedId(req.id)}
-                  className={`p-4 rounded-xl cursor-pointer border transition-all relative overflow-hidden ${req.id === selected.id ? 'bg-surface-container-lowest shadow-md border-primary' : 'bg-surface-container-lowest border-surface-container-high hover:border-outline-variant'}`}
+                  className={`p-5 rounded-2xl border bg-white cursor-pointer transition-all ${
+                    req.id === selected.id ? 'border-brand-gold ring-2 ring-brand-gold/30 shadow-md' : 'border-slate-200 hover:border-slate-300'
+                  }`}
                 >
-                  {req.id === selected.id && <div className="absolute top-0 right-0 w-1.5 h-full bg-primary" />}
                   <div className="flex justify-between items-start mb-2">
                     <div>
-                      <span className="text-xs font-mono text-on-surface-variant">{req.id}</span>
-                      <h3 className="font-bold text-base text-primary">{req.customerName}</h3>
-                      <p className="text-xs text-on-surface-variant mt-0.5" dir="ltr">{req.phone}</p>
+                      <span className="text-xs font-mono font-bold text-slate-400">{req.id}</span>
+                      <h3 className="font-bold text-base text-slate-900">{req.customerName}</h3>
+                      <p className="text-xs text-slate-500 font-mono" dir="ltr">{req.phone}</p>
                     </div>
-                    <span className={`text-xs px-2.5 py-0.5 rounded font-mono ${statusColors[req.status]}`}>{req.status}</span>
+                    <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-amber-100 text-amber-900 border border-amber-200">
+                      {req.status}
+                    </span>
                   </div>
                   {req.address && (
-                    <p className="text-xs text-on-surface-variant mb-2 flex items-center gap-1">
+                    <p className="text-xs text-slate-500 mb-2 flex items-center gap-1">
                       <span className="material-symbols-outlined text-[14px]">location_on</span>
-                      <span className="truncate">{req.address}</span>
+                      {req.address}
                     </p>
                   )}
-                  <div className="flex items-center justify-between pt-2 border-t border-surface-container-high text-xs">
-                    <span className={`font-mono font-bold ${stageColors[req.stage]}`}>
-                      📍 {req.stage}
-                    </span>
-                    <span className="font-mono text-on-surface-variant">
-                      {req.rooms.length} غرف مسجلة
-                    </span>
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
+                    <span className="font-bold text-brand-gold-dark">📍 {req.stage}</span>
+                    <span className="font-mono text-slate-500">{req.rooms.length} غرف مسجلة</span>
                   </div>
                 </div>
               ))}
             </div>
 
-            {/* Right: Selected Request Detail & Room Builder */}
-            <div className="lg:col-span-8 bg-surface-container-lowest rounded-xl border border-surface-container-highest shadow-sm">
+            {/* Right: Selected Request Detail */}
+            <div className="lg:col-span-8 bg-white rounded-2xl border border-slate-200 shadow-soft">
               {/* Header */}
-              <div className="flex flex-wrap items-center justify-between p-6 border-b border-surface-container-low gap-4">
+              <div className="flex flex-wrap items-center justify-between p-6 border-b border-slate-100 gap-4">
                 <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-mono text-on-surface-variant">{selected.id}</span>
-                    <span className={`text-xs px-2 py-0.5 rounded font-mono ${statusColors[selected.status]}`}>{selected.status}</span>
-                  </div>
-                  <h2 className="font-bold text-xl text-primary mt-1">{selected.customerName}</h2>
-                  <p className="text-xs text-on-surface-variant mt-0.5" dir="ltr">{selected.phone} {selected.address && `| ${selected.address}`}</p>
+                  <span className="text-xs font-mono font-bold text-brand-gold-dark">{selected.id}</span>
+                  <h2 className="font-bold text-2xl text-slate-900">{selected.customerName}</h2>
+                  <p className="text-xs text-slate-500 mt-0.5" dir="ltr">{selected.phone} {selected.address && `| ${selected.address}`}</p>
                 </div>
                 <div className="flex gap-2 flex-wrap">
-                  <button onClick={openEditModal} className="border border-outline-variant text-on-surface-variant px-3 py-2 rounded-lg flex items-center gap-1 text-xs hover:border-primary hover:text-primary transition-colors font-bold">
-                    <span className="material-symbols-outlined text-[16px]">edit</span> تعديل الطلب
-                  </button>
-                  <button onClick={handleShareWhatsApp} className="border border-outline-variant text-on-surface-variant px-3 py-2 rounded-lg flex items-center gap-1 text-xs hover:border-primary hover:text-primary transition-colors font-bold">
+                  <button onClick={handleShareWhatsApp} className="border border-slate-200 text-slate-700 px-3.5 py-2 rounded-xl text-xs font-bold hover:border-slate-400 flex items-center gap-1.5 shadow-xs">
                     <span className="material-symbols-outlined text-[16px]">share</span> واتساب
                   </button>
-                  <button onClick={() => window.print()} className="border border-outline-variant text-on-surface-variant px-3 py-2 rounded-lg flex items-center gap-1 text-xs hover:border-primary hover:text-primary transition-colors font-bold">
-                    <span className="material-symbols-outlined text-[16px]">picture_as_pdf</span> طباعة PDF
+                  <button onClick={() => window.print()} className="border border-slate-200 text-slate-700 px-3.5 py-2 rounded-xl text-xs font-bold hover:border-slate-400 flex items-center gap-1.5 shadow-xs">
+                    <span className="material-symbols-outlined text-[16px]">print</span> طباعة المقايسة
                   </button>
-                </div>
-              </div>
-
-              {/* Stage Progression Tracker */}
-              <div className="px-6 py-4 border-b border-surface-container-low">
-                <div className="text-xs font-mono text-on-surface-variant mb-2">مرحلة دورة العمل:</div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  {(['معاينة', 'اختيار قماش', 'ورشة', 'تركيب'] as InspectionStage[]).map((stage, i) => {
-                    const stages: InspectionStage[] = ['معاينة', 'اختيار قماش', 'ورشة', 'تركيب'];
-                    const currentIdx = stages.indexOf(selected.stage);
-                    const isDone = i <= currentIdx;
-                    const isCurrent = stage === selected.stage;
-                    return (
-                      <React.Fragment key={stage}>
-                        <button
-                          onClick={() => handleStageChange(stage)}
-                          className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-mono font-medium border transition-colors ${
-                            isCurrent ? 'bg-primary text-on-primary border-primary font-bold shadow-sm'
-                            : isDone ? 'bg-surface-container text-on-surface border-surface-container-high'
-                            : 'border-outline-variant text-on-surface-variant hover:border-primary'
-                          }`}
-                        >
-                          {isDone && <span className="material-symbols-outlined text-[14px]">check</span>}
-                          {stage}
-                        </button>
-                        {i < 3 && <span className="text-outline-variant text-xs">←</span>}
-                      </React.Fragment>
-                    );
-                  })}
                 </div>
               </div>
 
               {/* Tabs */}
-              <div className="flex items-center justify-between border-b border-surface-container-low px-6">
+              <div className="flex items-center justify-between border-b border-slate-100 px-6">
                 <div className="flex">
                   {[
                     { id: 'rooms', label: `الغرف والمقاسات (${selected.rooms.length})` },
-                    { id: 'info', label: 'بيانات الفني والموعد' }
+                    { id: 'pricing', label: 'مصفوفة وجدول التسعير الذكي' },
+                    { id: 'info', label: 'بيانات الموعد والفني' }
                   ].map(tab => (
                     <button
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id as any)}
-                      className={`px-5 py-3 text-sm font-bold border-b-2 transition-colors ${activeTab === tab.id ? 'border-primary text-primary' : 'border-transparent text-on-surface-variant hover:text-on-surface'}`}
+                      className={`px-5 py-3.5 text-sm font-bold border-b-2 transition-colors ${
+                        activeTab === tab.id ? 'border-brand-gold text-slate-950' : 'border-transparent text-slate-500 hover:text-slate-900'
+                      }`}
                     >
                       {tab.label}
                     </button>
                   ))}
                 </div>
 
-                {activeTab === 'rooms' && (
-                  <button
-                    onClick={() => openRoomModal()}
-                    className="bg-primary text-on-primary px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 hover:bg-inverse-surface transition-colors shadow-sm"
-                  >
-                    <span className="material-symbols-outlined text-[16px]">add</span>
-                    إضافة مقاسات غرفة
-                  </button>
-                )}
+                <button
+                  onClick={() => {
+                    setEditingRoomId(null);
+                    setRoomName(`غرفة ${selected.rooms.length + 1}`);
+                    setShowRoomModal(true);
+                  }}
+                  className="bg-brand-gold hover:bg-brand-gold-hover text-slate-950 px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 shadow-gold"
+                >
+                  <span className="material-symbols-outlined text-[16px]">add</span>
+                  رفع مقاسات غرفة
+                </button>
               </div>
 
-              {/* Tab 1: Rooms & Measurements */}
-              {activeTab === 'rooms' ? (
-                <div className="p-6 flex flex-col gap-6">
+              {/* Tab 1: Rooms Overview */}
+              {activeTab === 'rooms' && (
+                <div className="p-6 flex flex-col gap-4">
                   {selected.rooms.length === 0 ? (
-                    <div className="text-center py-12 bg-surface-container-low rounded-xl border border-dashed border-outline-variant">
-                      <span className="material-symbols-outlined text-[48px] text-on-surface-variant block mb-2">square_foot</span>
-                      <h3 className="font-bold text-primary text-base">لا توجد غرف مسجلة بعد</h3>
-                      <p className="text-xs text-on-surface-variant mt-1">اضغط على زر &quot;إضافة مقاسات غرفة&quot; لتسجيل العرض والارتفاع والتفاصيل.</p>
-                      <button
-                        onClick={() => openRoomModal()}
-                        className="mt-4 bg-primary text-on-primary px-4 py-2 rounded-lg text-xs font-bold inline-flex items-center gap-1"
-                      >
-                        <span className="material-symbols-outlined text-[16px]">add</span>
-                        إضافة غرفة الآن
-                      </button>
+                    <div className="text-center py-12 bg-slate-50 rounded-2xl border border-dashed border-slate-300">
+                      <span className="material-symbols-outlined text-[48px] text-slate-400 block mb-2">square_foot</span>
+                      <h3 className="font-bold text-slate-900">لم يتم رفع مقاسات بعد</h3>
+                      <p className="text-xs text-slate-500 mt-1">اضغط على زر رفع مقاسات غرفة لتطبيق معادلة الكشكشة والتسعير.</p>
                     </div>
                   ) : (
-                    selected.rooms.map((room) => (
-                      <div key={room.id} className="border border-surface-container-highest rounded-xl p-5 bg-surface-container-lowest relative group">
-                        <div className="flex justify-between items-start mb-4">
+                    selected.rooms.map(room => (
+                      <div key={room.id} className="p-5 rounded-2xl border border-slate-200 bg-slate-50/50">
+                        <div className="flex justify-between items-start mb-3">
                           <div>
                             <div className="flex items-center gap-2">
-                              <h3 className="font-bold text-lg text-primary">{room.name}</h3>
-                              <span className="text-xs bg-surface-container-high px-2 py-0.5 rounded font-mono">{room.type}</span>
+                              <h3 className="font-bold text-lg text-slate-900">{room.name}</h3>
+                              <span className="text-xs bg-white border border-slate-200 px-2 py-0.5 rounded font-bold text-slate-700">{room.type}</span>
                             </div>
-                            <p className="text-xs text-on-surface-variant mt-1">
-                              طريقة التركيب: <span className="font-bold text-primary">{room.installationType}</span> • نوع السقف: <span className="font-bold text-primary">{room.ceilingType}</span>
+                            <p className="text-xs text-slate-500 mt-0.5">
+                              {room.installationType} • {room.ceilingType} • {room.sides === 2 ? 'جنبين' : 'جنب واحد'}
                             </p>
                           </div>
-                          
-                          <div className="flex items-center gap-2">
-                            <div className="text-left ml-3">
-                              <div className="font-mono font-bold text-lg text-primary">{Math.round(room.meters * room.avgPrice).toLocaleString()} ج</div>
-                              <div className="text-xs text-on-surface-variant font-mono">{room.meters} متر × {room.avgPrice} ج/م</div>
-                            </div>
-                            <button
-                              onClick={() => openRoomModal(room)}
-                              title="تعديل الغرفة"
-                              className="p-1.5 text-on-surface-variant hover:text-primary hover:bg-surface-container rounded transition-colors"
-                            >
-                              <span className="material-symbols-outlined text-[18px]">edit</span>
-                            </button>
-                            <button
-                              onClick={() => handleDeleteRoom(room.id)}
-                              title="حذف الغرفة"
-                              className="p-1.5 text-on-surface-variant hover:text-error hover:bg-error-container rounded transition-colors"
-                            >
-                              <span className="material-symbols-outlined text-[18px]">delete</span>
-                            </button>
+                          <div className="text-left">
+                            <div className="font-mono font-black text-xl text-slate-900">{room.totalSellPrice.toLocaleString()} ج.م</div>
+                            <div className="text-[11px] text-emerald-700 font-bold font-mono">صافي الربح: +{(room.totalSellPrice - room.totalCost).toLocaleString()} ج</div>
                           </div>
                         </div>
 
                         {/* Dimensions Bar */}
-                        <div className="grid grid-cols-4 gap-3 bg-surface-container-low p-3.5 rounded-lg mb-4 text-center">
+                        <div className="grid grid-cols-4 gap-2.5 bg-white p-3 rounded-xl border border-slate-200 text-center text-xs mb-3">
                           <div>
-                            <div className="font-mono font-bold text-sm text-primary">{room.widthCm} سم</div>
-                            <div className="text-[11px] text-on-surface-variant mt-0.5">العرض</div>
+                            <div className="font-mono font-black text-slate-900">{room.widthCm} سم</div>
+                            <div className="text-[11px] text-slate-400">العرض</div>
                           </div>
                           <div>
-                            <div className="font-mono font-bold text-sm text-primary">{room.heightCm} سم</div>
-                            <div className="text-[11px] text-on-surface-variant mt-0.5">الارتفاع</div>
+                            <div className="font-mono font-black text-slate-900">{room.heightCm} سم</div>
+                            <div className="text-[11px] text-slate-400">الارتفاع</div>
                           </div>
                           <div>
-                            <div className="font-mono font-bold text-sm text-primary">{room.sides === 2 ? 'جنبين' : 'جنب واحد'}</div>
-                            <div className="text-[11px] text-on-surface-variant mt-0.5">عدد الجوانب</div>
+                            <div className="font-mono font-black text-slate-900">{room.sides}</div>
+                            <div className="text-[11px] text-slate-400">الجوانب</div>
                           </div>
                           <div>
-                            <div className="font-mono font-bold text-sm text-primary">{room.meters} م</div>
-                            <div className="text-[11px] text-on-surface-variant mt-0.5">الكمية المقدرة</div>
+                            <div className="font-mono font-black text-slate-900">{room.totalCost.toLocaleString()} ج</div>
+                            <div className="text-[11px] text-slate-400">إجمالي التكلفة</div>
                           </div>
                         </div>
 
                         {/* Fabrics table */}
-                        <div className="border border-surface-container-high rounded-lg overflow-hidden">
-                          <table className="w-full text-right text-xs">
-                            <thead className="bg-surface-container-low font-mono text-on-surface-variant">
+                        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden text-xs">
+                          <table className="w-full text-right">
+                            <thead className="bg-slate-50 font-mono text-slate-500 border-b border-slate-200">
                               <tr>
-                                <th className="p-2.5">الطبقة</th>
-                                <th className="p-2.5">الكود المختار</th>
-                                <th className="p-2.5 text-center">شريط كشكشة</th>
-                                <th className="p-2.5 text-center">حلقات كبس</th>
+                                <th className="p-2.5">الخامة</th>
+                                <th className="p-2.5">الكود</th>
+                                <th className="p-2.5 text-center">نسبة الكشكشة</th>
+                                <th className="p-2.5 text-center">الأمتار المطلوبة</th>
+                                <th className="p-2.5 text-left">سعر المتر</th>
                               </tr>
                             </thead>
                             <tbody>
                               {room.fabrics.map((f, i) => (
-                                <tr key={i} className="border-t border-surface-container-low">
-                                  <td className="p-2.5 font-bold text-primary">{f.layer}</td>
-                                  <td className="p-2.5 font-mono">{f.code || '—'}</td>
-                                  <td className="p-2.5 text-center">{f.tape ? '✓' : '—'}</td>
-                                  <td className="p-2.5 text-center">{f.eyelet ? '✓' : '—'}</td>
+                                <tr key={i} className="border-t border-slate-100">
+                                  <td className="p-2.5 font-bold text-slate-900">{f.layer}</td>
+                                  <td className="p-2.5 font-mono text-slate-500">{f.code || '—'}</td>
+                                  <td className="p-2.5 text-center font-mono font-bold text-brand-gold-dark">{f.fullness}x</td>
+                                  <td className="p-2.5 text-center font-mono font-black text-slate-900">{f.meters} م</td>
+                                  <td className="p-2.5 text-left font-mono font-bold text-slate-900">{f.pricePerMeter} ج</td>
                                 </tr>
                               ))}
                             </tbody>
@@ -578,40 +530,80 @@ export default function InspectionsPage() {
                     ))
                   )}
 
-                  {/* Total summary */}
                   {selected.rooms.length > 0 && (
-                    <div className="flex justify-between items-center bg-primary text-on-primary p-5 rounded-xl shadow-sm">
+                    <div className="bg-slate-950 text-white p-6 rounded-2xl flex justify-between items-center shadow-xl border border-slate-800">
                       <div>
-                        <div className="font-bold text-base">إجمالي التكلفة التقديرية للمقاسات</div>
-                        <div className="text-xs opacity-80 mt-0.5">{selected.rooms.length} غرف مسجلة بالكامل</div>
+                        <div className="font-bold text-lg">إجمالي قيمة المقايسة للعميل</div>
+                        <div className="text-xs text-slate-400 font-mono mt-0.5">شامل الأقمشة والتراكات والأشرطة ومصنعية الورشة والتركيب</div>
                       </div>
-                      <span className="font-display font-bold text-2xl">
-                        {selected.rooms.reduce((sum, r) => sum + Math.round(r.meters * r.avgPrice), 0).toLocaleString()} ج.م
-                      </span>
+                      <div className="font-display font-black text-3xl text-brand-gold">
+                        {selected.rooms.reduce((s, r) => s + r.totalSellPrice, 0).toLocaleString()} ج.م
+                      </div>
                     </div>
                   )}
                 </div>
-              ) : (
-                /* Tab 2: Info & Tech details */
-                <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {[
-                    { label: 'الفني المسؤول', value: selected.technician || 'لم يحدد بعد', icon: 'engineering' },
-                    { label: 'موعد المعاينة', value: selected.scheduledAt ? new Date(selected.scheduledAt).toLocaleString('ar-EG') : 'لم يحدد', icon: 'event' },
-                    { label: 'حالة الطلب', value: selected.status, icon: 'info' },
-                    { label: 'المرحلة الحالية', value: selected.stage, icon: 'flag' },
-                  ].map((item, i) => (
-                    <div key={i} className="flex items-center gap-3 p-4 bg-surface-container-low rounded-xl">
-                      <span className="material-symbols-outlined text-[22px] text-on-surface-variant">{item.icon}</span>
-                      <div>
-                        <div className="text-xs text-on-surface-variant font-mono">{item.label}</div>
-                        <div className="font-bold text-primary text-sm mt-0.5">{item.value}</div>
-                      </div>
-                    </div>
-                  ))}
+              )}
+
+              {/* Tab 2: Smart Pricing Matrix */}
+              {activeTab === 'pricing' && (
+                <div className="p-6 flex flex-col gap-4">
+                  <h3 className="font-bold text-base text-slate-900">جدول تفكيك التكلفة والأرباح لكل غرفة</h3>
+                  <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-soft">
+                    <table className="w-full text-right text-xs">
+                      <thead className="bg-slate-50 text-slate-600 font-mono border-b border-slate-200">
+                        <tr>
+                          <th className="p-3.5">الغرفة</th>
+                          <th className="p-3.5 text-center">أمتار القماش</th>
+                          <th className="p-3.5 text-left">تكلفة الأقمشة</th>
+                          <th className="p-3.5 text-left">التراك والمواسير</th>
+                          <th className="p-3.5 text-left">الورشة والأشرطة</th>
+                          <th className="p-3.5 text-left">إجمالي التكلفة</th>
+                          <th className="p-3.5 text-left">سعر البيع</th>
+                          <th className="p-3.5 text-left text-emerald-700">صافي الربح</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selected.rooms.map(r => {
+                          const totalFabricsMeters = r.fabrics.reduce((s, f) => s + f.meters, 0);
+                          const totalFabricsCost = r.fabrics.reduce((s, f) => s + (f.meters * f.pricePerMeter), 0);
+                          const trackCost = (r.widthCm / 100) * r.trackPricePerMeter;
+                          const tailoringCost = (r.sides * r.tailoringFeePerSide) + (totalFabricsMeters * r.tapePricePerMeter);
+                          const profit = r.totalSellPrice - r.totalCost;
+
+                          return (
+                            <tr key={r.id} className="border-t border-slate-100 hover:bg-slate-50/60">
+                              <td className="p-3.5 font-bold text-slate-900">{r.name}</td>
+                              <td className="p-3.5 text-center font-mono font-bold">{totalFabricsMeters.toFixed(2)} م</td>
+                              <td className="p-3.5 text-left font-mono font-bold text-slate-800">{Math.round(totalFabricsCost).toLocaleString()} ج</td>
+                              <td className="p-3.5 text-left font-mono text-slate-600">{Math.round(trackCost).toLocaleString()} ج</td>
+                              <td className="p-3.5 text-left font-mono text-slate-600">{Math.round(tailoringCost).toLocaleString()} ج</td>
+                              <td className="p-3.5 text-left font-mono font-bold text-slate-900">{r.totalCost.toLocaleString()} ج</td>
+                              <td className="p-3.5 text-left font-mono font-black text-brand-gold-dark">{r.totalSellPrice.toLocaleString()} ج</td>
+                              <td className="p-3.5 text-left font-mono font-black text-emerald-600">+{profit.toLocaleString()} ج</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Tab 3: Info */}
+              {activeTab === 'info' && (
+                <div className="p-6 grid grid-cols-2 gap-4">
+                  <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                    <span className="text-xs text-slate-500 font-bold block">الفني المسؤول:</span>
+                    <span className="font-bold text-slate-900 text-sm mt-1 block">{selected.technician}</span>
+                  </div>
+                  <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                    <span className="text-xs text-slate-500 font-bold block">موعد المعاينة الميدانية:</span>
+                    <span className="font-bold text-slate-900 text-sm font-mono mt-1 block">{selected.scheduledAt ? new Date(selected.scheduledAt).toLocaleString('ar-EG') : 'لم يحدد'}</span>
+                  </div>
                   {selected.notes && (
-                    <div className="col-span-2 p-4 bg-surface-container-low rounded-xl">
-                      <div className="text-xs text-on-surface-variant font-mono mb-1">ملاحظات العميل / الطلب:</div>
-                      <div className="text-sm text-primary">{selected.notes}</div>
+                    <div className="col-span-2 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                      <span className="text-xs text-slate-500 font-bold block mb-1">ملاحظات المعاينة:</span>
+                      <p className="text-sm text-slate-900">{selected.notes}</p>
                     </div>
                   )}
                 </div>
@@ -621,63 +613,36 @@ export default function InspectionsPage() {
         </main>
       </div>
 
-      {/* Modal 1: New Request */}
+      {/* Modal: New Request */}
       {showNewRequestModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-surface-container-lowest rounded-2xl shadow-2xl p-6 w-full max-w-lg">
-            <h2 className="font-display font-bold text-xl text-primary mb-4">إنشاء طلب معاينة جديد</h2>
+          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-lg">
+            <h2 className="font-display font-bold text-xl text-slate-900 mb-4">إنشاء طلب معاينة ومقاسات جديد</h2>
             <form onSubmit={handleSaveNewRequest} className="flex flex-col gap-3">
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-mono text-on-surface-variant">اسم العميل *</label>
-                  <input
-                    value={custName}
-                    onChange={e => setCustName(e.target.value)}
-                    className="border border-outline-variant rounded p-2 text-sm focus:outline-none focus:border-primary"
-                    placeholder="الاسم بالكامل"
-                    required
-                  />
+                  <label className="text-xs font-bold text-slate-700">اسم العميل *</label>
+                  <input value={custName} onChange={e => setCustName(e.target.value)} className="border border-slate-200 rounded-xl p-2.5 text-sm" placeholder="الاسم الكامل" required />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-mono text-on-surface-variant">رقم التليفون *</label>
-                  <input
-                    value={custPhone}
-                    onChange={e => setCustPhone(e.target.value)}
-                    className="border border-outline-variant rounded p-2 text-sm focus:outline-none focus:border-primary"
-                    placeholder="01xxxxxxxxx"
-                    dir="ltr"
-                    required
-                  />
+                  <label className="text-xs font-bold text-slate-700">رقم الهاتف *</label>
+                  <input value={custPhone} onChange={e => setCustPhone(e.target.value)} className="border border-slate-200 rounded-xl p-2.5 text-sm" placeholder="01xxxxxxxxx" dir="ltr" required />
                 </div>
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-mono text-on-surface-variant">العنوان بالتفصيل</label>
-                <input
-                  value={custAddress}
-                  onChange={e => setCustAddress(e.target.value)}
-                  className="border border-outline-variant rounded p-2 text-sm focus:outline-none focus:border-primary"
-                  placeholder="المنطقة، الشارع، رقم العمارة والشقة"
-                />
+                <label className="text-xs font-bold text-slate-700">العنوان بالتفصيل</label>
+                <input value={custAddress} onChange={e => setCustAddress(e.target.value)} className="border border-slate-200 rounded-xl p-2.5 text-sm" placeholder="المنطقة، الشارع، رقم الشقة" />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-mono text-on-surface-variant">موعد المعاينة</label>
-                  <input
-                    type="datetime-local"
-                    value={scheduleTime}
-                    onChange={e => setScheduleTime(e.target.value)}
-                    className="border border-outline-variant rounded p-2 text-sm focus:outline-none focus:border-primary"
-                  />
+                  <label className="text-xs font-bold text-slate-700">موعد المعاينة</label>
+                  <input type="datetime-local" value={scheduleTime} onChange={e => setScheduleTime(e.target.value)} className="border border-slate-200 rounded-xl p-2.5 text-sm" />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-mono text-on-surface-variant">الفني المسؤول</label>
-                  <select
-                    value={techName}
-                    onChange={e => setTechName(e.target.value)}
-                    className="border border-outline-variant rounded p-2 text-sm focus:outline-none focus:border-primary"
-                  >
+                  <label className="text-xs font-bold text-slate-700">الفني المسؤول</label>
+                  <select value={techName} onChange={e => setTechName(e.target.value)} className="border border-slate-200 rounded-xl p-2.5 text-sm">
                     <option>أحمد حسن</option>
                     <option>محمد علي</option>
                     <option>علي إبراهيم</option>
@@ -686,24 +651,15 @@ export default function InspectionsPage() {
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-mono text-on-surface-variant">ملاحظات المعاينة</label>
-                <textarea
-                  value={reqNotes}
-                  onChange={e => setReqNotes(e.target.value)}
-                  className="border border-outline-variant rounded p-2 text-sm focus:outline-none focus:border-primary h-20 resize-none"
-                  placeholder="عدد الغرف المتوقعة، تفضيلات العميل..."
-                />
+                <label className="text-xs font-bold text-slate-700">ملاحظات</label>
+                <textarea value={reqNotes} onChange={e => setReqNotes(e.target.value)} className="border border-slate-200 rounded-xl p-2.5 text-sm h-20 resize-none" />
               </div>
 
-              <div className="flex gap-2 mt-4">
-                <button type="submit" className="flex-1 bg-primary text-on-primary py-2.5 rounded font-bold text-sm">
-                  حفظ الطلب
+              <div className="flex gap-2 mt-3">
+                <button type="submit" className="flex-1 bg-brand-gold hover:bg-brand-gold-hover text-slate-950 py-2.5 rounded-xl font-bold text-sm shadow-gold">
+                  حفظ المعاينة
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setShowNewRequestModal(false)}
-                  className="flex-1 border border-outline-variant text-on-surface-variant py-2.5 rounded text-sm"
-                >
+                <button type="button" onClick={() => setShowNewRequestModal(false)} className="flex-1 border border-slate-200 text-slate-600 py-2.5 rounded-xl text-sm">
                   إلغاء
                 </button>
               </div>
@@ -712,133 +668,30 @@ export default function InspectionsPage() {
         </div>
       )}
 
-      {/* Modal 2: Edit Request */}
-      {showEditRequestModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-surface-container-lowest rounded-2xl shadow-2xl p-6 w-full max-w-lg">
-            <h2 className="font-display font-bold text-xl text-primary mb-4">تعديل بيانات المعاينة — {selected.id}</h2>
-            <form onSubmit={handleSaveEditRequest} className="flex flex-col gap-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-mono text-on-surface-variant">اسم العميل *</label>
-                  <input
-                    value={custName}
-                    onChange={e => setCustName(e.target.value)}
-                    className="border border-outline-variant rounded p-2 text-sm focus:outline-none focus:border-primary"
-                    required
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-mono text-on-surface-variant">رقم التليفون *</label>
-                  <input
-                    value={custPhone}
-                    onChange={e => setCustPhone(e.target.value)}
-                    className="border border-outline-variant rounded p-2 text-sm focus:outline-none focus:border-primary"
-                    dir="ltr"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-mono text-on-surface-variant">العنوان</label>
-                <input
-                  value={custAddress}
-                  onChange={e => setCustAddress(e.target.value)}
-                  className="border border-outline-variant rounded p-2 text-sm focus:outline-none focus:border-primary"
-                />
-              </div>
-
-              <div className="grid grid-cols-3 gap-3">
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-mono text-on-surface-variant">الموعد</label>
-                  <input
-                    type="datetime-local"
-                    value={scheduleTime}
-                    onChange={e => setScheduleTime(e.target.value)}
-                    className="border border-outline-variant rounded p-2 text-sm focus:outline-none focus:border-primary"
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-mono text-on-surface-variant">الفني</label>
-                  <select
-                    value={techName}
-                    onChange={e => setTechName(e.target.value)}
-                    className="border border-outline-variant rounded p-2 text-sm focus:outline-none focus:border-primary"
-                  >
-                    <option>أحمد حسن</option>
-                    <option>محمد علي</option>
-                    <option>علي إبراهيم</option>
-                  </select>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-mono text-on-surface-variant">حالة الطلب</label>
-                  <select
-                    value={reqStatus}
-                    onChange={e => setReqStatus(e.target.value as any)}
-                    className="border border-outline-variant rounded p-2 text-sm focus:outline-none focus:border-primary"
-                  >
-                    <option value="مُجدول">مُجدول</option>
-                    <option value="قيد الانتظار">قيد الانتظار</option>
-                    <option value="مكتمل">مكتمل</option>
-                    <option value="ملغي">ملغي</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-mono text-on-surface-variant">ملاحظات</label>
-                <textarea
-                  value={reqNotes}
-                  onChange={e => setReqNotes(e.target.value)}
-                  className="border border-outline-variant rounded p-2 text-sm focus:outline-none focus:border-primary h-20 resize-none"
-                />
-              </div>
-
-              <div className="flex gap-2 mt-4">
-                <button type="submit" className="flex-1 bg-primary text-on-primary py-2.5 rounded font-bold text-sm">
-                  حفظ التعديلات
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowEditRequestModal(false)}
-                  className="flex-1 border border-outline-variant text-on-surface-variant py-2.5 rounded text-sm"
-                >
-                  إلغاء
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Modal 3: Add / Edit Room & Take Measurements */}
+      {/* Modal: Smart Room Measurement & Fullness Factor */}
       {showRoomModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-surface-container-lowest rounded-2xl shadow-2xl p-6 w-full max-w-xl my-8">
-            <h2 className="font-display font-bold text-xl text-primary mb-4">
-              {editingRoomId ? 'تعديل مقاسات الغرفة' : 'رفع مقاسات غرفة جديدة'}
-            </h2>
+          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-2xl my-8">
+            <div className="flex justify-between items-center mb-4">
+              <div>
+                <span className="text-xs font-bold text-brand-gold-dark font-mono">حاسبة الأمتار والتسعير الدقيق</span>
+                <h2 className="font-display font-black text-xl text-slate-900">رفع مقاسات الغرفة وتحديد نسب الكشكشة</h2>
+              </div>
+              <button onClick={() => setShowRoomModal(false)} className="text-slate-400 hover:text-slate-600">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
             <form onSubmit={handleSaveRoom} className="flex flex-col gap-4">
-              {/* Room name & type */}
+              {/* Room name & Type */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-mono text-on-surface-variant">اسم الغرفة *</label>
-                  <input
-                    value={roomName}
-                    onChange={e => setRoomName(e.target.value)}
-                    className="border border-outline-variant rounded p-2 text-sm focus:outline-none focus:border-primary"
-                    placeholder="مثال: الصالة، غرفة النوم..."
-                    required
-                  />
+                  <label className="text-xs font-bold text-slate-700">اسم الغرفة *</label>
+                  <input value={roomName} onChange={e => setRoomName(e.target.value)} className="border border-slate-200 rounded-xl p-2 text-sm" placeholder="الصالة، غرفة نوم..." required />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-mono text-on-surface-variant">نوع المكان</label>
-                  <select
-                    value={roomType}
-                    onChange={e => setRoomType(e.target.value as any)}
-                    className="border border-outline-variant rounded p-2 text-sm focus:outline-none focus:border-primary"
-                  >
+                  <label className="text-xs font-bold text-slate-700">نوع المكان</label>
+                  <select value={roomType} onChange={e => setRoomType(e.target.value as any)} className="border border-slate-200 rounded-xl p-2 text-sm">
                     <option value="شباك">شباك</option>
                     <option value="بلكونة">بلكونة</option>
                   </select>
@@ -846,135 +699,183 @@ export default function InspectionsPage() {
               </div>
 
               {/* Dimensions */}
-              <div className="grid grid-cols-3 gap-3 bg-surface-container-low p-3.5 rounded-xl">
+              <div className="grid grid-cols-3 gap-3 bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-mono text-on-surface-variant">العرض (سم) *</label>
-                  <input
-                    type="number"
-                    value={widthCm}
-                    onChange={e => setWidthCm(Number(e.target.value))}
-                    className="border border-outline-variant rounded p-2 text-sm font-mono font-bold focus:outline-none focus:border-primary"
-                    required
-                  />
+                  <label className="text-xs font-bold text-slate-700">العرض (سم) *</label>
+                  <input type="number" value={widthCm} onChange={e => setWidthCm(Number(e.target.value))} className="border border-slate-300 rounded-xl p-2 text-sm font-mono font-black" required />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-mono text-on-surface-variant">الارتفاع (سم) *</label>
-                  <input
-                    type="number"
-                    value={heightCm}
-                    onChange={e => setHeightCm(Number(e.target.value))}
-                    className="border border-outline-variant rounded p-2 text-sm font-mono font-bold focus:outline-none focus:border-primary"
-                    required
-                  />
+                  <label className="text-xs font-bold text-slate-700">الارتفاع (سم) *</label>
+                  <input type="number" value={heightCm} onChange={e => setHeightCm(Number(e.target.value))} className="border border-slate-300 rounded-xl p-2 text-sm font-mono font-black" required />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-mono text-on-surface-variant">عدد الجوانب</label>
-                  <select
-                    value={sides}
-                    onChange={e => setSides(Number(e.target.value))}
-                    className="border border-outline-variant rounded p-2 text-sm focus:outline-none focus:border-primary"
-                  >
+                  <label className="text-xs font-bold text-slate-700">عدد الجوانب</label>
+                  <select value={sides} onChange={e => setSides(Number(e.target.value))} className="border border-slate-300 rounded-xl p-2 text-sm font-bold">
                     <option value={2}>جنبين (2)</option>
                     <option value={1}>جنب واحد (1)</option>
                   </select>
                 </div>
               </div>
 
-              {/* Installation & Ceiling */}
-              <div className="grid grid-cols-2 gap-3">
+              {/* Installation & Track Price */}
+              <div className="grid grid-cols-3 gap-3">
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-mono text-on-surface-variant">طريقة التركيب</label>
-                  <select
-                    value={installType}
-                    onChange={e => setInstallType(e.target.value)}
-                    className="border border-outline-variant rounded p-2 text-sm focus:outline-none focus:border-primary"
-                  >
-                    <option value="مجرى سقف">مجرى سقف (تراك ألومنيوم)</option>
+                  <label className="text-xs font-bold text-slate-700">نوع التركيب</label>
+                  <select value={installType} onChange={e => setInstallType(e.target.value)} className="border border-slate-200 rounded-xl p-2 text-xs">
+                    <option value="مجرى سقف (تراك ألومنيوم)">مجرى سقف (تراك ألومنيوم)</option>
                     <option value="مجرى حائط">مجرى حائط</option>
-                    <option value="مواسير">مواسير (استيل / خشب)</option>
+                    <option value="مواسير استيل مذهبة">مواسير استيل مذهبة</option>
+                    <option value="مواسير خشب">مواسير خشب</option>
                   </select>
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-mono text-on-surface-variant">نوع السقف</label>
-                  <select
-                    value={ceilingType}
-                    onChange={e => setCeilingType(e.target.value)}
-                    className="border border-outline-variant rounded p-2 text-sm focus:outline-none focus:border-primary"
-                  >
-                    <option value="جيبسون بورد">جيبسون بورد / بيت نور</option>
-                    <option value="عادي">سقف عادي (خرسانة)</option>
-                    <option value="خشب">سقف معلق خشب</option>
+                  <label className="text-xs font-bold text-slate-700">سعر متر التراك/المواسير</label>
+                  <input type="number" value={trackPrice} onChange={e => setTrackPrice(Number(e.target.value))} className="border border-slate-200 rounded-xl p-2 text-sm font-mono" />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-bold text-slate-700">نوع السقف</label>
+                  <select value={ceilingType} onChange={e => setCeilingType(e.target.value)} className="border border-slate-200 rounded-xl p-2 text-xs">
+                    <option value="جيبسون بورد / بيت نور">جيبسون بورد / بيت نور</option>
+                    <option value="سقف عادي">سقف عادي (خرسانة)</option>
+                    <option value="سقف خشب">سقف خشب معلق</option>
                   </select>
                 </div>
               </div>
 
-              {/* Fabric layers selection */}
-              <div className="space-y-2 border border-surface-container-high p-3.5 rounded-xl">
-                <div className="text-xs font-bold text-primary">طبقات الأقمشة المطلوبة:</div>
-                
-                <div className="flex items-center justify-between text-xs">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" checked={sheerSelected} onChange={e => setSheerSelected(e.target.checked)} className="rounded" />
-                    <span>قماش خفيف (تول)</span>
-                  </label>
-                  {sheerSelected && (
-                    <input value={sheerCode} onChange={e => setSheerCode(e.target.value)} placeholder="كود القماش" className="border border-outline-variant rounded px-2 py-1 text-xs w-28 font-mono" />
+              {/* Fabric Layers with Custom Fullness Factors */}
+              <div className="border border-slate-200 rounded-2xl p-4 space-y-3 bg-amber-50/30">
+                <div className="text-xs font-black text-slate-900">طبقات الأقمشة ومعادلات الكشكشة التلقائية:</div>
+
+                {/* Layer 1: Sheer */}
+                <div className="bg-white p-3 rounded-xl border border-slate-200 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="flex items-center gap-2 cursor-pointer font-bold text-xs">
+                      <input type="checkbox" checked={hasSheer} onChange={e => setHasSheer(e.target.checked)} className="rounded" />
+                      <span>قماش خفيف (تول / شيفون)</span>
+                    </label>
+                    {hasSheer && (
+                      <span className="text-xs font-mono font-black text-amber-700 bg-amber-100 px-2 py-0.5 rounded">
+                        المطلوب: {sheerMetersCalc} متر
+                      </span>
+                    )}
+                  </div>
+                  {hasSheer && (
+                    <div className="grid grid-cols-3 gap-2 text-xs">
+                      <input value={sheerCode} onChange={e => setSheerCode(e.target.value)} placeholder="كود القماش" className="border border-slate-200 rounded-lg p-1.5 font-mono" />
+                      <div className="flex items-center gap-1">
+                        <span className="text-slate-500">كشكشة:</span>
+                        <select value={sheerFullness} onChange={e => setSheerFullness(Number(e.target.value))} className="border border-slate-200 rounded-lg p-1 font-mono font-bold">
+                          <option value={2.5}>2.5x (قياسي)</option>
+                          <option value={3.0}>3.0x (كثيف)</option>
+                          <option value={2.0}>2.0x (خفيف)</option>
+                        </select>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="text-slate-500">سعر/م:</span>
+                        <input type="number" value={sheerPrice} onChange={e => setSheerPrice(Number(e.target.value))} className="border border-slate-200 rounded-lg p-1.5 w-20 font-mono" />
+                      </div>
+                    </div>
                   )}
                 </div>
 
-                <div className="flex items-center justify-between text-xs">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" checked={heavySelected} onChange={e => setHeavySelected(e.target.checked)} className="rounded" />
-                    <span>قماش ثقيل (قطيفة / كتان)</span>
-                  </label>
-                  {heavySelected && (
-                    <input value={heavyCode} onChange={e => setHeavyCode(e.target.value)} placeholder="كود القماش" className="border border-outline-variant rounded px-2 py-1 text-xs w-28 font-mono" />
+                {/* Layer 2: Heavy */}
+                <div className="bg-white p-3 rounded-xl border border-slate-200 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="flex items-center gap-2 cursor-pointer font-bold text-xs">
+                      <input type="checkbox" checked={hasHeavy} onChange={e => setHasHeavy(e.target.checked)} className="rounded" />
+                      <span>قماش ثقيل (قطيفة / كتان)</span>
+                    </label>
+                    {hasHeavy && (
+                      <span className="text-xs font-mono font-black text-amber-700 bg-amber-100 px-2 py-0.5 rounded">
+                        المطلوب: {heavyMetersCalc} متر
+                      </span>
+                    )}
+                  </div>
+                  {hasHeavy && (
+                    <div className="grid grid-cols-3 gap-2 text-xs">
+                      <input value={heavyCode} onChange={e => setHeavyCode(e.target.value)} placeholder="كود القماش" className="border border-slate-200 rounded-lg p-1.5 font-mono" />
+                      <div className="flex items-center gap-1">
+                        <span className="text-slate-500">كشكشة:</span>
+                        <select value={heavyFullness} onChange={e => setHeavyFullness(Number(e.target.value))} className="border border-slate-200 rounded-lg p-1 font-mono font-bold">
+                          <option value={1.8}>1.8x (قياسي)</option>
+                          <option value={2.0}>2.0x (كثيف)</option>
+                          <option value={1.5}>1.5x (متوسط)</option>
+                        </select>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="text-slate-500">سعر/م:</span>
+                        <input type="number" value={heavyPrice} onChange={e => setHeavyPrice(Number(e.target.value))} className="border border-slate-200 rounded-lg p-1.5 w-20 font-mono" />
+                      </div>
+                    </div>
                   )}
                 </div>
 
-                <div className="flex items-center justify-between text-xs">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" checked={blackoutSelected} onChange={e => setBlackoutSelected(e.target.checked)} className="rounded" />
-                    <span>بلاك آوت عازل</span>
-                  </label>
-                  {blackoutSelected && (
-                    <input value={blackoutCode} onChange={e => setBlackoutCode(e.target.value)} placeholder="كود القماش" className="border border-outline-variant rounded px-2 py-1 text-xs w-28 font-mono" />
+                {/* Layer 3: Blackout */}
+                <div className="bg-white p-3 rounded-xl border border-slate-200 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="flex items-center gap-2 cursor-pointer font-bold text-xs">
+                      <input type="checkbox" checked={hasBlackout} onChange={e => setHasBlackout(e.target.checked)} className="rounded" />
+                      <span>بلاك آوت عازل ضوء</span>
+                    </label>
+                    {hasBlackout && (
+                      <span className="text-xs font-mono font-black text-amber-700 bg-amber-100 px-2 py-0.5 rounded">
+                        المطلوب: {blackoutMetersCalc} متر
+                      </span>
+                    )}
+                  </div>
+                  {hasBlackout && (
+                    <div className="grid grid-cols-3 gap-2 text-xs">
+                      <input value={blackoutCode} onChange={e => setBlackoutCode(e.target.value)} placeholder="كود البلاك آوت" className="border border-slate-200 rounded-lg p-1.5 font-mono" />
+                      <div className="flex items-center gap-1">
+                        <span className="text-slate-500">كشكشة:</span>
+                        <select value={blackoutFullness} onChange={e => setBlackoutFullness(Number(e.target.value))} className="border border-slate-200 rounded-lg p-1 font-mono font-bold">
+                          <option value={1.3}>1.3x (فلات/خفيف)</option>
+                          <option value={1.5}>1.5x</option>
+                          <option value={1.0}>1.0x (بدون كشكشة)</option>
+                        </select>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="text-slate-500">سعر/م:</span>
+                        <input type="number" value={blackoutPrice} onChange={e => setBlackoutPrice(Number(e.target.value))} className="border border-slate-200 rounded-lg p-1.5 w-20 font-mono" />
+                      </div>
+                    </div>
                   )}
                 </div>
               </div>
 
-              {/* Accessories & Tapes */}
-              <div className="grid grid-cols-2 gap-3 text-xs">
-                <label className="flex items-center gap-2 bg-surface-container-low p-2.5 rounded-lg cursor-pointer">
-                  <input type="checkbox" checked={tapeSelected} onChange={e => setTapeSelected(e.target.checked)} className="rounded" />
-                  <span>شريط كشكشة (3 فتلة)</span>
-                </label>
-                <label className="flex items-center gap-2 bg-surface-container-low p-2.5 rounded-lg cursor-pointer">
-                  <input type="checkbox" checked={eyeletSelected} onChange={e => setEyeletSelected(e.target.checked)} className="rounded" />
-                  <span>حلقات كبس</span>
-                </label>
+              {/* Tailoring & Install Fees */}
+              <div className="grid grid-cols-3 gap-3 text-xs bg-slate-50 p-3 rounded-xl border border-slate-200">
+                <div>
+                  <label className="text-slate-600 block mb-1">شريط كشكشة (ج/م):</label>
+                  <input type="number" value={tapePrice} onChange={e => setTapePrice(Number(e.target.value))} className="border border-slate-300 rounded-lg p-1.5 w-full font-mono font-bold" />
+                </div>
+                <div>
+                  <label className="text-slate-600 block mb-1">مصنعية الورشة لكل جنب:</label>
+                  <input type="number" value={tailorFeePerSide} onChange={e => setTailorFeePerSide(Number(e.target.value))} className="border border-slate-300 rounded-lg p-1.5 w-full font-mono font-bold" />
+                </div>
+                <div>
+                  <label className="text-slate-600 block mb-1">تكلفة التركيب:</label>
+                  <input type="number" value={installFee} onChange={e => setInstallFee(Number(e.target.value))} className="border border-slate-300 rounded-lg p-1.5 w-full font-mono font-bold" />
+                </div>
               </div>
 
-              {/* Price estimate */}
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-mono text-on-surface-variant">متوسط سعر المتر التقديري (ج.م)</label>
-                <input
-                  type="number"
-                  value={avgPrice}
-                  onChange={e => setAvgPrice(Number(e.target.value))}
-                  className="border border-outline-variant rounded p-2 text-sm font-mono font-bold focus:outline-none focus:border-primary"
-                />
+              {/* Dynamic Live Cost Preview */}
+              <div className="bg-slate-900 text-white p-4 rounded-2xl flex justify-between items-center text-xs">
+                <div>
+                  <span className="text-slate-400 block">إجمالي التكلفة المحسوبة:</span>
+                  <span className="font-mono font-bold text-sm text-slate-200">{calculateRoomTotals().finalCost.toLocaleString()} ج.م</span>
+                </div>
+                <div className="text-left">
+                  <span className="text-brand-gold font-bold block">سعر البيع المقترح (+35%):</span>
+                  <span className="font-mono font-black text-xl text-brand-gold">{calculateRoomTotals().finalSellPrice.toLocaleString()} ج.م</span>
+                </div>
               </div>
 
               <div className="flex gap-2 mt-2">
-                <button type="submit" className="flex-1 bg-primary text-on-primary py-2.5 rounded font-bold text-sm">
-                  {editingRoomId ? 'حفظ تعديلات الغرفة' : 'إضافة الغرفة للمقاسات'}
+                <button type="submit" className="flex-1 bg-brand-gold hover:bg-brand-gold-hover text-slate-950 py-3 rounded-xl font-bold text-sm shadow-gold">
+                  حفظ مقاسات الغرفة والحسابات
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setShowRoomModal(false)}
-                  className="flex-1 border border-outline-variant text-on-surface-variant py-2.5 rounded text-sm"
-                >
+                <button type="button" onClick={() => setShowRoomModal(false)} className="flex-1 border border-slate-200 text-slate-600 py-3 rounded-xl text-sm">
                   إلغاء
                 </button>
               </div>

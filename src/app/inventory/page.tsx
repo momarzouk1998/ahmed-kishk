@@ -10,7 +10,8 @@ interface InventoryItem {
   name: string;
   category: string;
   unit: 'متر' | 'قطعة' | 'طقم';
-  quantity: number;
+  totalQuantity: number;
+  reservedQuantity: number;
   costPrice: number;
   sellPrice: number;
   branch: string;
@@ -19,15 +20,15 @@ interface InventoryItem {
 }
 
 const initialItems: InventoryItem[] = [
-  { id: 'INV-001', code: 'SAT-01', name: 'ستان سواريه ناعم', category: 'سواريه', unit: 'متر', quantity: 120, costPrice: 320, sellPrice: 450, branch: 'الفرع الرئيسي — القاهرة', minAlert: 30, supplier: 'شركة النيل' },
-  { id: 'INV-002', code: 'SLK-01', name: 'حرير طبيعي ممتاز', category: 'سواريه', unit: 'متر', quantity: 45, costPrice: 650, sellPrice: 900, branch: 'الفرع الرئيسي — القاهرة', minAlert: 15, supplier: 'شركة النيل' },
-  { id: 'INV-003', code: 'CRP-01', name: 'كريب مزدوج أسباني', category: 'سواريه', unit: 'متر', quantity: 200, costPrice: 200, sellPrice: 300, branch: 'فرع ثانٍ — القاهرة', minAlert: 40, supplier: 'شركة النيل' },
-  { id: 'INV-004', code: 'CHF-01', name: 'شيفون ناعم مطرز', category: 'سواريه', unit: 'متر', quantity: 180, costPrice: 150, sellPrice: 250, branch: 'فرع ثالث — القاهرة', minAlert: 25, supplier: 'مستورد الشرق' },
-  { id: 'INV-005', code: 'VLV-01', name: 'قطيفة ستائر ثقيلة', category: 'ستائر', unit: 'متر', quantity: 95, costPrice: 260, sellPrice: 380, branch: 'الفرع الرئيسي — القاهرة', minAlert: 20, supplier: 'مصنع الدلتا' },
-  { id: 'INV-006', code: 'BLK-01', name: 'بلاك آوت عازل ضوء 100%', category: 'ستائر', unit: 'متر', quantity: 160, costPrice: 180, sellPrice: 280, branch: 'الفرع الرئيسي — القاهرة', minAlert: 50, supplier: 'مصنع الدلتا' },
-  { id: 'INV-007', code: 'TRK-01', name: 'تراك سقف ألومنيوم (مجاري)', category: 'تراكات ومواسير', unit: 'متر', quantity: 300, costPrice: 45, sellPrice: 85, branch: 'الفرع الرئيسي — القاهرة', minAlert: 50, supplier: 'مصنع الدلتا' },
-  { id: 'INV-008', code: 'ROD-01', name: 'مواسير استيل مذهبة', category: 'تراكات ومواسير', unit: 'متر', quantity: 80, costPrice: 90, sellPrice: 160, branch: 'الفرع الرئيسي — القاهرة', minAlert: 20, supplier: 'مصنع الدلتا' },
-  { id: 'INV-009', code: 'TAP-01', name: 'شريط كشكشة 3 فتلة', category: 'أشرطة وإكسسوارات', unit: 'متر', quantity: 500, costPrice: 8, sellPrice: 18, branch: 'الفرع الرئيسي — القاهرة', minAlert: 100, supplier: 'مستورد الشرق' },
+  { id: 'INV-001', code: 'SAT-01', name: 'ستان سواريه ناعم', category: 'سواريه', unit: 'متر', totalQuantity: 120, reservedQuantity: 20, costPrice: 320, sellPrice: 450, branch: 'الفرع الرئيسي — القاهرة', minAlert: 30, supplier: 'شركة النيل' },
+  { id: 'INV-002', code: 'SLK-01', name: 'حرير طبيعي ممتاز', category: 'سواريه', unit: 'متر', totalQuantity: 45, reservedQuantity: 10, costPrice: 650, sellPrice: 900, branch: 'الفرع الرئيسي — القاهرة', minAlert: 15, supplier: 'شركة النيل' },
+  { id: 'INV-003', code: 'CRP-01', name: 'كريب مزدوج أسباني', category: 'سواريه', unit: 'متر', totalQuantity: 200, reservedQuantity: 0, costPrice: 200, sellPrice: 300, branch: 'فرع ثانٍ — القاهرة', minAlert: 40, supplier: 'شركة النيل' },
+  { id: 'INV-004', code: 'CHF-01', name: 'شيفون ناعم مطرز', category: 'سواريه', unit: 'متر', totalQuantity: 180, reservedQuantity: 35, costPrice: 150, sellPrice: 250, branch: 'فرع ثالث — القاهرة', minAlert: 25, supplier: 'مستورد الشرق' },
+  { id: 'INV-005', code: 'VLV-01', name: 'قطيفة ستائر تركي ثقيلة', category: 'ستائر', unit: 'متر', totalQuantity: 95, reservedQuantity: 28, costPrice: 260, sellPrice: 380, branch: 'الفرع الرئيسي — القاهرة', minAlert: 20, supplier: 'مصنع الدلتا' },
+  { id: 'INV-006', code: 'BLK-01', name: 'بلاك آوت عازل ضوء 100%', category: 'ستائر', unit: 'متر', totalQuantity: 160, reservedQuantity: 45, costPrice: 180, sellPrice: 280, branch: 'الفرع الرئيسي — القاهرة', minAlert: 50, supplier: 'مصنع الدلتا' },
+  { id: 'INV-007', code: 'TRK-01', name: 'تراك سقف ألومنيوم (مجاري)', category: 'تراكات ومواسير', unit: 'متر', totalQuantity: 300, reservedQuantity: 50, costPrice: 45, sellPrice: 85, branch: 'الفرع الرئيسي — القاهرة', minAlert: 50, supplier: 'مصنع الدلتا' },
+  { id: 'INV-008', code: 'ROD-01', name: 'مواسير استيل مذهبة', category: 'تراكات ومواسير', unit: 'متر', totalQuantity: 80, reservedQuantity: 12, costPrice: 90, sellPrice: 160, branch: 'الفرع الرئيسي — القاهرة', minAlert: 20, supplier: 'مصنع الدلتا' },
+  { id: 'INV-009', code: 'TAP-01', name: 'شريط كشكشة 3 فتلة', category: 'أشرطة وإكسسوارات', unit: 'متر', totalQuantity: 500, reservedQuantity: 90, costPrice: 8, sellPrice: 18, branch: 'الفرع الرئيسي — القاهرة', minAlert: 100, supplier: 'مستورد الشرق' },
 ];
 
 export default function InventoryPage() {
@@ -44,7 +45,8 @@ export default function InventoryPage() {
   const [category, setCategory] = useState('سواريه');
   const [newCatInput, setNewCatInput] = useState('');
   const [unit, setUnit] = useState<'متر' | 'قطعة' | 'طقم'>('متر');
-  const [quantity, setQuantity] = useState<number>(100);
+  const [totalQuantity, setTotalQuantity] = useState<number>(100);
+  const [reservedQuantity, setReservedQuantity] = useState<number>(0);
   const [costPrice, setCostPrice] = useState<number>(100);
   const [sellPrice, setSellPrice] = useState<number>(150);
   const [branch, setBranch] = useState('الفرع الرئيسي — القاهرة');
@@ -72,7 +74,8 @@ export default function InventoryPage() {
       name,
       category: catToUse,
       unit,
-      quantity,
+      totalQuantity,
+      reservedQuantity,
       costPrice,
       sellPrice,
       branch,
@@ -87,25 +90,29 @@ export default function InventoryPage() {
     setNewCatInput('');
   };
 
-  const totalInventoryCost = items.reduce((sum, i) => sum + i.quantity * i.costPrice, 0);
-  const totalInventorySellValue = items.reduce((sum, i) => sum + i.quantity * i.sellPrice, 0);
+  const totalCostValue = items.reduce((sum, i) => sum + i.totalQuantity * i.costPrice, 0);
+  const totalReservedMeters = items.reduce((sum, i) => sum + i.reservedQuantity, 0);
+  const totalAvailableMeters = items.reduce((sum, i) => sum + (i.totalQuantity - i.reservedQuantity), 0);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-slate-50 text-slate-900">
       <Sidebar />
-      <Header title="المخزون والأصناف بالمتر" />
+      <Header title="المخزون وحجز الأقمشة" />
       <div className="pr-72 pt-16">
         <main className="px-8 py-8 flex flex-col gap-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <h1 className="font-display font-bold text-2xl text-primary">إدارة المخزون والأصناف بالمتر</h1>
-              <p className="text-on-surface-variant text-sm mt-1">
-                تتبع كميات الأقمشة بالمتر، التراكات، المواسير، الأشرطة، وهامش الربح لكل فرع.
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-200 inline-block mb-1">
+                إدارة المخزون الفعلي والمحجوز
+              </span>
+              <h1 className="font-display font-black text-2xl text-slate-900">مخزون الأقمشة والخامات بالمتر</h1>
+              <p className="text-slate-500 text-sm mt-0.5">
+                تتبع الكميات الكلية، الكميات المحجوزة لأوامر الورشة، والمتاح الفعلي للبيع لكل فرع.
               </p>
             </div>
             <button
               onClick={() => setShowAddModal(true)}
-              className="bg-primary text-on-primary px-5 py-2.5 rounded-lg hover:bg-inverse-surface transition-colors flex items-center gap-2 font-bold text-sm shadow"
+              className="bg-brand-gold hover:bg-brand-gold-hover text-slate-950 px-5 py-2.5 rounded-xl transition-all flex items-center gap-2 font-bold text-sm shadow-gold"
             >
               <span className="material-symbols-outlined text-[18px]">add_box</span>
               إضافة صنف جديد للمخزن
@@ -114,40 +121,39 @@ export default function InventoryPage() {
 
           {/* Stats Bar */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="bg-surface-container-lowest p-5 rounded-xl border border-surface-container-highest">
-              <div className="text-xs text-on-surface-variant font-mono">إجمالي الأصناف</div>
-              <div className="font-display font-bold text-2xl text-primary mt-1">{items.length}</div>
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-soft">
+              <div className="text-xs text-slate-500 font-bold">إجمالي الأصناف</div>
+              <div className="font-display font-black text-2xl text-slate-900 mt-1">{items.length} صنف</div>
             </div>
-            <div className="bg-surface-container-lowest p-5 rounded-xl border border-surface-container-highest">
-              <div className="text-xs text-on-surface-variant font-mono">قيمة التكلفة في المخزن</div>
-              <div className="font-display font-bold text-2xl text-primary mt-1">
-                {totalInventoryCost.toLocaleString()} ج.م
+            <div className="bg-white p-5 rounded-2xl border border-amber-200 bg-amber-50/40 shadow-soft">
+              <div className="text-xs text-amber-800 font-bold">المحجوز للورشة (Reserved)</div>
+              <div className="font-display font-black text-2xl text-amber-900 mt-1 font-mono">
+                {totalReservedMeters.toLocaleString()} متر
               </div>
             </div>
-            <div className="bg-surface-container-lowest p-5 rounded-xl border border-surface-container-highest">
-              <div className="text-xs text-on-surface-variant font-mono">القيمة البيعية المتوقعة</div>
-              <div className="font-display font-bold text-2xl text-secondary mt-1">
-                {totalInventorySellValue.toLocaleString()} ج.م
+            <div className="bg-white p-5 rounded-2xl border border-emerald-200 bg-emerald-50/40 shadow-soft">
+              <div className="text-xs text-emerald-800 font-bold">المتاح الحر للبيع (Available)</div>
+              <div className="font-display font-black text-2xl text-emerald-900 mt-1 font-mono">
+                {totalAvailableMeters.toLocaleString()} متر
               </div>
             </div>
-            <div className="bg-surface-container-lowest p-5 rounded-xl border border-surface-container-highest">
-              <div className="text-xs text-on-surface-variant font-mono">أصناف منخفضة (تنبيه)</div>
-              <div className="font-display font-bold text-2xl text-error mt-1">
-                {items.filter((i) => i.quantity <= i.minAlert).length}
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-soft">
+              <div className="text-xs text-slate-500 font-bold">قيمة المخزون الإجمالية</div>
+              <div className="font-display font-black text-2xl text-slate-900 mt-1 font-mono">
+                {totalCostValue.toLocaleString()} ج.م
               </div>
             </div>
           </div>
 
           {/* Filters & Search */}
           <div className="flex flex-wrap items-center justify-between gap-4">
-            {/* Category Tabs */}
             <div className="flex gap-2 flex-wrap">
               {categories.map((cat) => (
                 <button
                   key={cat}
                   onClick={() => setActiveCategory(cat)}
-                  className={`px-4 py-1.5 rounded-full text-xs font-mono border transition-colors ${
-                    activeCategory === cat ? 'bg-primary text-on-primary border-primary' : 'border-outline-variant text-on-surface-variant hover:border-primary'
+                  className={`px-4 py-1.5 rounded-full text-xs font-bold border transition-colors ${
+                    activeCategory === cat ? 'bg-slate-900 text-white border-slate-900 shadow-xs' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-400'
                   }`}
                 >
                   {cat}
@@ -155,12 +161,11 @@ export default function InventoryPage() {
               ))}
             </div>
 
-            {/* Branch Filter & Search */}
             <div className="flex items-center gap-3">
               <select
                 value={selectedBranch}
                 onChange={(e) => setSelectedBranch(e.target.value)}
-                className="border border-outline-variant rounded-lg p-2 text-xs font-mono bg-surface-container-lowest"
+                className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700"
               >
                 <option value="الكل">كل الفروع</option>
                 <option value="الفرع الرئيسي — القاهرة">الفرع الرئيسي — القاهرة</option>
@@ -168,66 +173,68 @@ export default function InventoryPage() {
                 <option value="فرع ثالث — القاهرة">فرع ثالث — القاهرة</option>
               </select>
 
-              <div className="relative">
-                <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">
-                  search
-                </span>
-                <input
-                  type="text"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="بحث باسم الصنف أو الكود..."
-                  className="border border-outline-variant rounded-lg py-2 pr-9 pl-3 text-xs focus:outline-none focus:border-primary bg-surface-container-lowest"
-                />
-              </div>
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="بحث بالاسم أو الكود..."
+                className="bg-white border border-slate-200 rounded-xl py-2 px-3 text-xs focus:outline-none focus:border-brand-gold"
+              />
             </div>
           </div>
 
           {/* Inventory Table */}
-          <div className="bg-surface-container-lowest rounded-xl border border-surface-container-highest overflow-hidden">
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-soft">
             <table className="w-full text-right">
-              <thead className="bg-surface-container-low text-xs font-mono text-on-surface-variant border-b border-surface-container-high">
+              <thead className="bg-slate-50 text-xs font-mono text-slate-500 border-b border-slate-200">
                 <tr>
                   <th className="p-3.5">الكود</th>
                   <th className="p-3.5">الصنف / الخامة</th>
-                  <th className="p-3.5">التصنيف</th>
-                  <th className="p-3.5 text-center">الكمية بالمخزن</th>
-                  <th className="p-3.5 text-left">سعر التكلفة</th>
+                  <th className="p-3.5 text-center">الرصيد الكلي</th>
+                  <th className="p-3.5 text-center text-amber-700">المحجوز للورشة</th>
+                  <th className="p-3.5 text-center text-emerald-700">المتاح للبيع</th>
+                  <th className="p-3.5 text-left">التكلفة</th>
                   <th className="p-3.5 text-left">سعر البيع</th>
-                  <th className="p-3.5 text-left">هامش الربح / م</th>
+                  <th className="p-3.5 text-left">الربح المتوقع / م</th>
                   <th className="p-3.5">الفرع</th>
                   <th className="p-3.5 text-center">الحالة</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((item) => {
+                  const available = item.totalQuantity - item.reservedQuantity;
                   const profitPerUnit = item.sellPrice - item.costPrice;
-                  const isLow = item.quantity <= item.minAlert;
+                  const isLow = available <= item.minAlert;
 
                   return (
-                    <tr key={item.id} className="border-b border-surface-container-low hover:bg-surface-container-low transition-colors">
-                      <td className="p-3.5 font-mono text-xs text-on-surface-variant">{item.code}</td>
+                    <tr key={item.id} className="border-b border-slate-100 hover:bg-slate-50/80 transition-colors">
+                      <td className="p-3.5 font-mono text-xs font-bold text-slate-400">{item.code}</td>
                       <td className="p-3.5">
-                        <div className="font-bold text-sm text-primary">{item.name}</div>
-                        <div className="text-xs text-on-surface-variant">{item.supplier}</div>
+                        <div className="font-bold text-sm text-slate-900">{item.name}</div>
+                        <div className="text-xs text-slate-400">{item.supplier} • {item.category}</div>
                       </td>
-                      <td className="p-3.5 text-xs text-on-surface-variant">{item.category}</td>
-                      <td className="p-3.5 text-center font-mono font-bold text-sm">
-                        {item.quantity} {item.unit}
+                      <td className="p-3.5 text-center font-mono font-bold text-slate-900">
+                        {item.totalQuantity} {item.unit}
                       </td>
-                      <td className="p-3.5 text-left font-mono text-xs text-on-surface-variant">{item.costPrice} ج</td>
-                      <td className="p-3.5 text-left font-mono font-bold text-primary text-sm">{item.sellPrice} ج</td>
-                      <td className="p-3.5 text-left font-mono font-bold text-secondary text-xs">
+                      <td className="p-3.5 text-center font-mono font-bold text-amber-700 bg-amber-50/50">
+                        {item.reservedQuantity} {item.unit}
+                      </td>
+                      <td className="p-3.5 text-center font-mono font-bold text-emerald-700 bg-emerald-50/50">
+                        {available} {item.unit}
+                      </td>
+                      <td className="p-3.5 text-left font-mono text-xs text-slate-500">{item.costPrice} ج</td>
+                      <td className="p-3.5 text-left font-mono font-bold text-slate-900 text-sm">{item.sellPrice} ج</td>
+                      <td className="p-3.5 text-left font-mono font-bold text-amber-600 text-xs">
                         +{profitPerUnit} ج ({Math.round((profitPerUnit / item.costPrice) * 100)}%)
                       </td>
-                      <td className="p-3.5 text-xs text-on-surface-variant">{item.branch}</td>
+                      <td className="p-3.5 text-xs text-slate-600 font-medium">{item.branch}</td>
                       <td className="p-3.5 text-center">
                         {isLow ? (
-                          <span className="text-xs px-2.5 py-0.5 rounded-full font-mono bg-error-container text-on-error-container">
+                          <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-rose-100 text-rose-800">
                             مخزون منخفض
                           </span>
                         ) : (
-                          <span className="text-xs px-2.5 py-0.5 rounded-full font-mono bg-primary-container text-on-primary-container">
+                          <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-800">
                             متوفر
                           </span>
                         )}
@@ -243,86 +250,31 @@ export default function InventoryPage() {
 
       {/* Add Item Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="bg-surface-container-lowest rounded-2xl shadow-2xl p-6 w-full max-w-lg">
-            <h2 className="font-display font-bold text-xl text-primary mb-4">إضافة صنف جديد للمخزن</h2>
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-lg">
+            <h2 className="font-display font-bold text-xl text-slate-900 mb-4">إضافة صنف جديد للمخزن</h2>
             <form onSubmit={handleAddItem} className="flex flex-col gap-3">
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-mono text-on-surface-variant">كود الصنف *</label>
-                  <input
-                    value={code}
-                    onChange={(e) => setCode(e.target.value)}
-                    className="border border-outline-variant rounded p-2 text-sm focus:outline-none focus:border-primary"
-                    placeholder="مثال: SAT-02"
-                    required
-                  />
+                  <label className="text-xs font-bold text-slate-700">كود الصنف *</label>
+                  <input value={code} onChange={e => setCode(e.target.value)} className="border border-slate-200 rounded-xl p-2 text-sm" placeholder="مثال: SAT-02" required />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-mono text-on-surface-variant">اسم الصنف *</label>
-                  <input
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="border border-outline-variant rounded p-2 text-sm focus:outline-none focus:border-primary"
-                    placeholder="مثال: ستان إيطالي"
-                    required
-                  />
+                  <label className="text-xs font-bold text-slate-700">اسم الصنف *</label>
+                  <input value={name} onChange={e => setName(e.target.value)} className="border border-slate-200 rounded-xl p-2 text-sm" placeholder="مثال: ستان إيطالي" required />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-mono text-on-surface-variant">التصنيف الحالي</label>
-                  <select
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                    className="border border-outline-variant rounded p-2 text-sm focus:outline-none focus:border-primary"
-                  >
-                    {categories.filter((c) => c !== 'الكل').map((c) => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
+                  <label className="text-xs font-bold text-slate-700">التصنيف</label>
+                  <select value={category} onChange={e => setCategory(e.target.value)} className="border border-slate-200 rounded-xl p-2 text-sm">
+                    {categories.filter(c => c !== 'الكل').map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-mono text-on-surface-variant">أو إضافة تصنيف جديد</label>
-                  <input
-                    value={newCatInput}
-                    onChange={(e) => setNewCatInput(e.target.value)}
-                    className="border border-outline-variant rounded p-2 text-sm focus:outline-none focus:border-primary"
-                    placeholder="إضافة تصنيف جديد..."
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-3">
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-mono text-on-surface-variant">وحدة القياس</label>
-                  <select
-                    value={unit}
-                    onChange={(e) => setUnit(e.target.value as any)}
-                    className="border border-outline-variant rounded p-2 text-sm focus:outline-none focus:border-primary"
-                  >
-                    <option value="متر">متر</option>
-                    <option value="قطعة">قطعة</option>
-                    <option value="طقم">طقم</option>
-                  </select>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-mono text-on-surface-variant">الكمية الأولية</label>
-                  <input
-                    type="number"
-                    value={quantity}
-                    onChange={(e) => setQuantity(Number(e.target.value))}
-                    className="border border-outline-variant rounded p-2 text-sm focus:outline-none focus:border-primary font-mono"
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-mono text-on-surface-variant">الفرع</label>
-                  <select
-                    value={branch}
-                    onChange={(e) => setBranch(e.target.value)}
-                    className="border border-outline-variant rounded p-2 text-sm focus:outline-none focus:border-primary"
-                  >
+                  <label className="text-xs font-bold text-slate-700">الفرع</label>
+                  <select value={branch} onChange={e => setBranch(e.target.value)} className="border border-slate-200 rounded-xl p-2 text-sm">
                     <option value="الفرع الرئيسي — القاهرة">الفرع الرئيسي — القاهرة</option>
                     <option value="فرع ثانٍ — القاهرة">فرع ثانٍ — القاهرة</option>
                     <option value="فرع ثالث — القاهرة">فرع ثالث — القاهرة</option>
@@ -330,45 +282,31 @@ export default function InventoryPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-mono text-on-surface-variant">سعر التكلفة للمتر / القطعة</label>
-                  <input
-                    type="number"
-                    value={costPrice}
-                    onChange={(e) => setCostPrice(Number(e.target.value))}
-                    className="border border-outline-variant rounded p-2 text-sm focus:outline-none focus:border-primary font-mono"
-                  />
+                  <label className="text-xs font-bold text-slate-700">الكمية الكلية</label>
+                  <input type="number" value={totalQuantity} onChange={e => setTotalQuantity(Number(e.target.value))} className="border border-slate-200 rounded-xl p-2 text-sm font-mono" />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-mono text-on-surface-variant">سعر البيع للمتر / القطعة</label>
-                  <input
-                    type="number"
-                    value={sellPrice}
-                    onChange={(e) => setSellPrice(Number(e.target.value))}
-                    className="border border-outline-variant rounded p-2 text-sm focus:outline-none focus:border-primary font-mono"
-                  />
+                  <label className="text-xs font-bold text-slate-700">سعر التكلفة (ج)</label>
+                  <input type="number" value={costPrice} onChange={e => setCostPrice(Number(e.target.value))} className="border border-slate-200 rounded-xl p-2 text-sm font-mono" />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-bold text-slate-700">سعر البيع (ج)</label>
+                  <input type="number" value={sellPrice} onChange={e => setSellPrice(Number(e.target.value))} className="border border-slate-200 rounded-xl p-2 text-sm font-mono" />
                 </div>
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-mono text-on-surface-variant">المورد</label>
-                <input
-                  value={supplier}
-                  onChange={(e) => setSupplier(e.target.value)}
-                  className="border border-outline-variant rounded p-2 text-sm focus:outline-none focus:border-primary"
-                />
+                <label className="text-xs font-bold text-slate-700">المورد</label>
+                <input value={supplier} onChange={e => setSupplier(e.target.value)} className="border border-slate-200 rounded-xl p-2 text-sm" />
               </div>
 
               <div className="flex gap-2 mt-4">
-                <button type="submit" className="flex-1 bg-primary text-on-primary py-2.5 rounded font-bold text-sm">
+                <button type="submit" className="flex-1 bg-brand-gold hover:bg-brand-gold-hover text-slate-950 py-2.5 rounded-xl font-bold text-sm shadow-gold">
                   حفظ الصنف
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="flex-1 border border-outline-variant text-on-surface-variant py-2.5 rounded text-sm"
-                >
+                <button type="button" onClick={() => setShowAddModal(false)} className="flex-1 border border-slate-200 text-slate-600 py-2.5 rounded-xl text-sm">
                   إلغاء
                 </button>
               </div>

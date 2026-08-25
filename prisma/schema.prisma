@@ -121,18 +121,19 @@ model FabricDetail {
 }
 
 model InventoryItem {
-  id            String   @id @default(cuid())
-  name          String
-  category      String
-  code          String   @unique
-  quantityMeters Float   @default(0)
-  costPerMeter  Float    @default(0)
-  pricePerMeter Float    @default(0)
-  branch        String   @default("الفرع الرئيسي")
-  supplierId    String?
-  supplier      Supplier? @relation(fields: [supplierId], references: [id])
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id             String   @id @default(cuid())
+  name           String
+  category       String
+  code           String   @unique
+  quantityMeters Float    @default(0)
+  reservedMeters Float    @default(0)
+  costPerMeter   Float    @default(0)
+  pricePerMeter  Float    @default(0)
+  branch         String   @default("الفرع الرئيسي")
+  supplierId     String?
+  supplier       Supplier? @relation(fields: [supplierId], references: [id])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
 
 model Supplier {
@@ -177,10 +178,13 @@ model Order {
   customerId  String
   customer    Customer @relation(fields: [customerId], references: [id])
   totalAmount Float
+  paidAmount  Float    @default(0)
   stage       String   @default("اختيار قماش")
   branch      String   @default("الفرع الرئيسي")
   technician  String?
   installAt   DateTime?
+  actualInstallAt DateTime?
+  delayReason String?
   notes       String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

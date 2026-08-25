@@ -29,7 +29,8 @@ export default function Sidebar() {
   const navItems = [
     { label: 'لوحة التحكم', icon: 'dashboard', href: '/' },
     { label: 'المعاينات والمقاسات', icon: 'square_foot', href: '/inspections' },
-    { label: 'الطلبات والورشة', icon: 'pending_actions', href: '/orders' },
+    { label: 'الطلبات والـ Pipeline', icon: 'pending_actions', href: '/orders' },
+    { label: 'الورشة والتفصيل', icon: 'precision_manufacturing', href: '/workshop' },
     { label: 'بيع الأقمشة بالمتر (POS)', icon: 'storefront', href: '/fabric-sales' },
     { label: 'سجل العملاء والديون', icon: 'group', href: '/customers' },
     { label: 'الموردون والحسابات', icon: 'local_shipping', href: '/suppliers' },
