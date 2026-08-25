@@ -5,14 +5,20 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import Logo from '@/components/Logo';
 import { useSidebar } from '@/components/SidebarContext';
-import { ALL_SYSTEM_PAGES } from '@/lib/permissions';
+import { ALL_SYSTEM_PAGES, PagePermission } from '@/lib/permissions';
 
 interface CurrentUser {
-  id?: string;
   name: string;
   phone: string;
   role: string;
   branch: string;
+}
+
+interface NavSection {
+  id: string;
+  title: string;
+  icon: string;
+  pages: PagePermission[];
 }
 
 export default function Sidebar() {
@@ -22,13 +28,19 @@ export default function Sidebar() {
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [allowedPageIds, setAllowedPageIds] = useState<string[] | null>(null);
 
+  // Accordion state - which section is expanded
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    pipeline: true,
+    sales: false,
+    admin: false,
+  });
+
   useEffect(() => {
     fetch('/api/auth/profile')
       .then((r) => r.json())
       .then((d) => {
         if (d.user) {
           setUser(d.user);
-          // Check if custom permissions are saved in localStorage for this user
           try {
             const savedPerms = localStorage.getItem(`user_perms_${d.user.phone}`);
             if (savedPerms) {
@@ -40,11 +52,44 @@ export default function Sidebar() {
       .catch(() => {});
   }, []);
 
-  // Close drawer when route changes
+  // Auto-expand the section containing the current path
+  useEffect(() => {
+    if (pathname.startsWith('/pipeline') || pathname === '/orders' || pathname === '/inspections' || pathname === '/workshop') {
+      setExpandedSections(prev => ({ ...prev, pipeline: true }));
+    } else if (pathname === '/fabric-sales' || pathname === '/customers' || pathname === '/suppliers') {
+      setExpandedSections(prev => ({ ...prev, sales: true }));
+    } else if (pathname === '/inventory' || pathname === '/reports' || pathname === '/branches' || pathname === '/settings') {
+      setExpandedSections(prev => ({ ...prev, admin: true }));
+    }
+  }, [pathname]);
+
+  // Close drawer on route change on mobile
   useEffect(() => {
     close();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
+
+  const toggleSection = (sectionKey: string) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [sectionKey]: !prev[sectionKey],
+    }));
+  };
+
+  const handleLogout = async () => {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    router.push('/login');
+  };
+
+  // Filter allowed pages
+  const isAllowed = (pageId: string) => {
+    if (!allowedPageIds) return true;
+    return allowedPageIds.includes(pageId);
+  };
+
+  const pipelinePages = ALL_SYSTEM_PAGES.filter(p => p.category === 'مراحل الستائر' && isAllowed(p.id));
+  const salesPages = ALL_SYSTEM_PAGES.filter(p => p.category === 'المبيعات والحسابات' && isAllowed(p.id) && p.id !== 'p_dashboard');
+  const adminPages = ALL_SYSTEM_PAGES.filter(p => p.category === 'الإدارة والمخزون' && isAllowed(p.id));
 
   const roleLabels: Record<string, string> = {
     ADMIN: 'مدير النظام',
@@ -53,100 +98,221 @@ export default function Sidebar() {
     WORKSHOP: 'مسؤول ورشة',
   };
 
-  const handleLogout = async () => {
-    await fetch('/api/auth/logout', { method: 'POST' });
-    router.push('/login');
-  };
-
-  // Filter system pages according to user's permissions
-  const visiblePages = ALL_SYSTEM_PAGES.filter(p => {
-    if (!allowedPageIds) return true; // Show all by default (e.g. Admin)
-    return allowedPageIds.includes(p.id);
-  });
-
-  const pipelinePages = visiblePages.filter(p => p.category === 'مراحل الستائر');
-  const salesPages = visiblePages.filter(p => p.category === 'المبيعات والحسابات');
-  const adminPages = visiblePages.filter(p => p.category === 'الإدارة والمخزون');
-
-  const renderNavGroup = (title: string, items: typeof ALL_SYSTEM_PAGES) => {
-    if (items.length === 0) return null;
-    return (
-      <div className="space-y-1">
-        <div className="px-3.5 pt-3 pb-1 text-[11px] font-bold text-slate-400 font-mono tracking-wider uppercase">
-          {title}
-        </div>
-        {items.map((item) => {
-          const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
-          return (
-            <Link
-              key={item.id}
-              href={item.href}
-              className={`flex items-center px-3.5 py-2.5 rounded-xl transition-all duration-200 ${
-                isActive
-                  ? 'bg-brand-gold text-slate-950 font-bold shadow-gold lg:translate-x-[-2px]'
-                  : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
-              }`}
-            >
-              <span className={`material-symbols-outlined ml-3 text-[20px] ${isActive ? 'text-slate-950' : 'text-slate-400'}`}>
-                {item.icon}
-              </span>
-              <span className="text-xs sm:text-sm font-medium">{item.name}</span>
-            </Link>
-          );
-        })}
-      </div>
-    );
-  };
-
   const sidebarContent = (
     <>
-      {/* Logo Header */}
-      <div className="p-5 flex items-center gap-3.5 border-b border-slate-800 shrink-0">
-        <div className="w-12 h-12 bg-white p-1 rounded-2xl flex items-center justify-center border-2 border-brand-gold shadow-gold text-primary shrink-0">
-          <Logo size="md" />
-        </div>
-        <div className="flex flex-col">
-          <span className="font-display font-bold text-lg text-white leading-tight flex items-center gap-1.5">
-            أحمد كشك
-            <span className="w-2 h-2 rounded-full bg-brand-gold inline-block animate-pulse"></span>
-          </span>
-          <span className="text-xs text-brand-gold font-medium">للأقمشة والستائر الفاخرة</span>
+      {/* Brand Header */}
+      <div className="p-4 flex items-center justify-between border-b border-slate-800 shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-white p-1 rounded-xl flex items-center justify-center border border-brand-gold shadow-gold text-primary shrink-0">
+            <Logo size="md" />
+          </div>
+          <div>
+            <span className="font-display font-black text-base text-white flex items-center gap-1.5 leading-tight">
+              أحمد كشك
+              <span className="w-2 h-2 rounded-full bg-brand-gold inline-block animate-pulse"></span>
+            </span>
+            <span className="text-[11px] text-brand-gold font-bold">للأقمشة والستائر الفاخرة</span>
+          </div>
         </div>
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 px-3 py-3 space-y-3 overflow-y-auto">
-        {renderNavGroup('مراحل دورة الستائر والورشة', pipelinePages)}
-        {renderNavGroup('المبيعات ونقاط البيع', salesPages)}
-        {renderNavGroup('الإدارة والمخزون', adminPages)}
+      {/* Navigation Groups - Clean Collapsible UI */}
+      <nav className="flex-1 px-3 py-3 space-y-2 overflow-y-auto custom-scrollbar">
+        {/* Dashboard Direct Link */}
+        {isAllowed('p_dashboard') && (
+          <Link
+            href="/"
+            className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all ${
+              pathname === '/'
+                ? 'bg-brand-gold text-slate-950 font-black shadow-gold'
+                : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <span className={`material-symbols-outlined text-[20px] ${pathname === '/' ? 'text-slate-950' : 'text-slate-400'}`}>
+                dashboard
+              </span>
+              <span className="text-xs sm:text-sm font-bold">لوحة التحكم الرئيسية</span>
+            </div>
+          </Link>
+        )}
+
+        {/* 1. Collapsible Pipeline Group (مراحل الستائر الستة) */}
+        {pipelinePages.length > 0 && (
+          <div className="rounded-xl border border-slate-800/60 bg-slate-900/40 overflow-hidden">
+            <button
+              onClick={() => toggleSection('pipeline')}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 transition-colors text-right ${
+                expandedSections.pipeline ? 'bg-slate-800/60 text-brand-gold' : 'text-slate-300 hover:text-white'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <span className="material-symbols-outlined text-[20px] text-brand-gold">
+                  linear_scale
+                </span>
+                <span className="text-xs sm:text-sm font-bold">مراحل دورة الستائر (Pipeline)</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-brand-gold/20 text-brand-gold font-mono font-bold">
+                  {pipelinePages.length}
+                </span>
+                <span className={`material-symbols-outlined text-[16px] text-slate-400 transition-transform duration-200 ${
+                  expandedSections.pipeline ? 'rotate-180' : ''
+                }`}>
+                  expand_more
+                </span>
+              </div>
+            </button>
+
+            {expandedSections.pipeline && (
+              <div className="px-2 py-1.5 space-y-1 bg-slate-950/40 border-t border-slate-800/60">
+                {pipelinePages.map((page, idx) => {
+                  const isActive = pathname === page.href || pathname.startsWith(page.href + '/');
+                  return (
+                    <Link
+                      key={page.id}
+                      href={page.href}
+                      className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs transition-all ${
+                        isActive
+                          ? 'bg-brand-gold text-slate-950 font-black shadow-gold'
+                          : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className={`material-symbols-outlined text-[16px] ${isActive ? 'text-slate-950' : 'text-slate-500'}`}>
+                          {page.icon}
+                        </span>
+                        <span>{page.name}</span>
+                      </div>
+                      <span className={`text-[10px] font-mono ${isActive ? 'text-slate-900 font-bold' : 'text-slate-500'}`}>
+                        0{idx + 1}
+                      </span>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 2. Collapsible Sales & POS Group (المبيعات ونقاط البيع) */}
+        {salesPages.length > 0 && (
+          <div className="rounded-xl border border-slate-800/60 bg-slate-900/40 overflow-hidden">
+            <button
+              onClick={() => toggleSection('sales')}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 transition-colors text-right ${
+                expandedSections.sales ? 'bg-slate-800/60 text-brand-gold' : 'text-slate-300 hover:text-white'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <span className="material-symbols-outlined text-[20px] text-emerald-400">
+                  point_of_sale
+                </span>
+                <span className="text-xs sm:text-sm font-bold">المبيعات ونقاط البيع</span>
+              </div>
+              <span className={`material-symbols-outlined text-[16px] text-slate-400 transition-transform duration-200 ${
+                expandedSections.sales ? 'rotate-180' : ''
+              }`}>
+                expand_more
+              </span>
+            </button>
+
+            {expandedSections.sales && (
+              <div className="px-2 py-1.5 space-y-1 bg-slate-950/40 border-t border-slate-800/60">
+                {salesPages.map((page) => {
+                  const isActive = pathname === page.href || pathname.startsWith(page.href + '/');
+                  return (
+                    <Link
+                      key={page.id}
+                      href={page.href}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-all ${
+                        isActive
+                          ? 'bg-brand-gold text-slate-950 font-black shadow-gold'
+                          : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                      }`}
+                    >
+                      <span className={`material-symbols-outlined text-[16px] ${isActive ? 'text-slate-950' : 'text-slate-500'}`}>
+                        {page.icon}
+                      </span>
+                      <span>{page.name}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 3. Collapsible Management & Inventory Group (المخزون والإدارة) */}
+        {adminPages.length > 0 && (
+          <div className="rounded-xl border border-slate-800/60 bg-slate-900/40 overflow-hidden">
+            <button
+              onClick={() => toggleSection('admin')}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 transition-colors text-right ${
+                expandedSections.admin ? 'bg-slate-800/60 text-brand-gold' : 'text-slate-300 hover:text-white'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <span className="material-symbols-outlined text-[20px] text-blue-400">
+                  admin_panel_settings
+                </span>
+                <span className="text-xs sm:text-sm font-bold">الإدارة والمخزون</span>
+              </div>
+              <span className={`material-symbols-outlined text-[16px] text-slate-400 transition-transform duration-200 ${
+                expandedSections.admin ? 'rotate-180' : ''
+              }`}>
+                expand_more
+              </span>
+            </button>
+
+            {expandedSections.admin && (
+              <div className="px-2 py-1.5 space-y-1 bg-slate-950/40 border-t border-slate-800/60">
+                {adminPages.map((page) => {
+                  const isActive = pathname === page.href || pathname.startsWith(page.href + '/');
+                  return (
+                    <Link
+                      key={page.id}
+                      href={page.href}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-all ${
+                        isActive
+                          ? 'bg-brand-gold text-slate-950 font-black shadow-gold'
+                          : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                      }`}
+                    >
+                      <span className={`material-symbols-outlined text-[16px] ${isActive ? 'text-slate-950' : 'text-slate-500'}`}>
+                        {page.icon}
+                      </span>
+                      <span>{page.name}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
       </nav>
 
-      {/* User Footer Card */}
-      <div className="p-3.5 border-t border-slate-800 bg-slate-950/50 space-y-2 shrink-0">
+      {/* User Footer */}
+      <div className="p-3 border-t border-slate-800 bg-slate-950/70 space-y-2 shrink-0">
         <Link
           href="/profile"
-          className={`flex items-center gap-3 p-2.5 rounded-xl cursor-pointer transition-colors border ${
-            pathname === '/profile'
-              ? 'bg-slate-800 border-brand-gold text-white'
-              : 'bg-slate-900/80 border-slate-800 hover:border-slate-700 text-slate-300'
-          }`}
+          className="flex items-center gap-2.5 p-2 rounded-xl bg-slate-900 border border-slate-800 hover:border-brand-gold/60 text-slate-300 transition-colors"
         >
-          <div className="w-9 h-9 rounded-full bg-brand-gold text-slate-950 flex items-center justify-center font-bold text-sm shadow">
-            {user?.name?.charAt(0) || 'م'}
+          <div className="w-8 h-8 rounded-lg bg-brand-gold text-slate-950 flex items-center justify-center font-black text-xs shadow">
+            {user?.name?.charAt(0) || 'أ'}
           </div>
           <div className="flex flex-col overflow-hidden flex-1">
-            <span className="text-sm font-bold truncate text-white">{user?.name || 'مدير النظام'}</span>
-            <span className="text-xs text-brand-gold font-medium truncate">
-              {user ? roleLabels[user.role] || user.role : 'مدير عام'}
+            <span className="text-xs font-bold truncate text-white">{user?.name || 'أحمد كشك'}</span>
+            <span className="text-[10px] text-brand-gold font-bold truncate">
+              {user ? roleLabels[user.role] || user.role : 'مدير المتجر'} • {user?.branch || 'الفرع الرئيسي'}
             </span>
           </div>
-          <span className="material-symbols-outlined text-[16px] text-slate-400 hidden lg:inline">arrow_back_ios</span>
         </Link>
         <button
           onClick={handleLogout}
-          className="w-full flex items-center justify-center gap-1.5 text-xs text-rose-400 hover:bg-rose-950/40 hover:text-rose-300 py-2 rounded-lg transition-colors font-medium"
+          className="w-full flex items-center justify-center gap-1 text-[11px] text-rose-400 hover:bg-rose-950/40 hover:text-rose-300 py-1.5 rounded-lg transition-colors font-bold"
         >
-          <span className="material-symbols-outlined text-[16px]">logout</span>
+          <span className="material-symbols-outlined text-[15px]">logout</span>
           تسجيل الخروج
         </button>
       </div>
@@ -155,39 +321,31 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* Desktop sidebar (>= lg) - always visible */}
-      <aside className="hidden lg:flex fixed right-0 top-0 h-full w-72 bg-[#0f172a] text-slate-100 border-l border-slate-800/80 z-50 flex-col shadow-2xl">
+      {/* Desktop sidebar */}
+      <aside className="hidden lg:flex fixed right-0 top-0 h-full w-64 bg-[#0f172a] text-slate-100 border-l border-slate-800/80 z-50 flex-col shadow-2xl">
         {sidebarContent}
       </aside>
 
-      {/* Mobile drawer (< lg) */}
-      <div
-        className={`lg:hidden fixed inset-0 z-[60] ${isOpen ? '' : 'pointer-events-none'}`}
-        aria-hidden={!isOpen}
-      >
-        {/* Backdrop */}
+      {/* Mobile drawer */}
+      <div className={`lg:hidden fixed inset-0 z-[60] ${isOpen ? '' : 'pointer-events-none'}`} aria-hidden={!isOpen}>
         <div
           onClick={close}
           className={`absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${
             isOpen ? 'opacity-100' : 'opacity-0'
           }`}
         />
-
-        {/* Drawer panel */}
         <aside
           className={`absolute top-0 right-0 h-full w-72 max-w-[85vw] bg-[#0f172a] text-slate-100 border-l border-slate-800/80 flex flex-col shadow-2xl transition-transform duration-300 ease-out ${
             isOpen ? 'translate-x-0' : 'translate-x-full'
           }`}
         >
-          {/* Close button */}
           <button
             onClick={close}
-            className="absolute top-4 left-4 w-9 h-9 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-white flex items-center justify-center transition-colors z-10"
-            aria-label="إغلاق القائمة"
+            className="absolute top-3 left-3 w-8 h-8 rounded-lg bg-slate-800 text-white flex items-center justify-center transition-colors z-10"
+            aria-label="إغلاق"
           >
-            <span className="material-symbols-outlined text-[20px]">close</span>
+            <span className="material-symbols-outlined text-[18px]">close</span>
           </button>
-
           {sidebarContent}
         </aside>
       </div>
