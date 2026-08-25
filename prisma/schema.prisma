@@ -1,0 +1,138 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  TECHNICIAN
+  BRANCH_STAFF
+  WORKSHOP
+}
+
+enum InspectionStatus {
+  SCHEDULED
+  PENDING
+  COMPLETED
+  CANCELLED
+}
+
+enum RoomType {
+  WINDOW
+  BALCONY
+}
+
+enum InstallationType {
+  CEILING_TRACK
+  WALL_TRACK
+  RODS
+}
+
+enum CeilingType {
+  STANDARD
+  HOLLOW_GYPSUM
+  LIGHT_BOX
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role     @default(BRANCH_STAFF)
+  phone     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  InspectionRequest InspectionRequest[]
+}
+
+model Customer {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String   @unique
+  address   String?
+  city      String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  InspectionRequest InspectionRequest[]
+  Order             Order[]
+}
+
+model InspectionRequest {
+  id          String           @id @default(cuid())
+  customerId  String
+  customer    Customer         @relation(fields: [customerId], references: [id])
+  status      InspectionStatus @default(PENDING)
+  address     String
+  scheduledAt DateTime?
+  assignedToId String?
+  assignedTo  User?            @relation(fields: [assignedToId], references: [id])
+  totalCost   Float            @default(0)
+  notes       String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  rooms RoomMeasurement[]
+}
+
+model RoomMeasurement {
+  id                  String            @id @default(cuid())
+  inspectionRequestId String
+  inspectionRequest   InspectionRequest @relation(fields: [inspectionRequestId], references: [id], onDelete: Cascade)
+  roomName            String
+  roomType            RoomType          @default(WINDOW)
+  widthCm             Float
+  heightCm            Float
+  sides               Int               @default(2) // 1 or 2
+  extraHeightCm       Float?            @default(0)
+  installationType    InstallationType  @default(CEILING_TRACK)
+  ceilingType         CeilingType       @default(STANDARD)
+  fabricMeters        Float?            @default(0)
+  avgPricePerMeter    Float?            @default(0)
+  estimatedCost       Float?            @default(0)
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  fabrics FabricDetail[]
+}
+
+model FabricDetail {
+  id                String          @id @default(cuid())
+  roomMeasurementId String
+  roomMeasurement   RoomMeasurement @relation(fields: [roomMeasurementId], references: [id], onDelete: Cascade)
+  layerName         String          // e.g. خفيف (تول), ثقيل, بلاك آوت
+  fabricCode        String?
+  hasPleatedTape    Boolean         @default(false)
+  hasEyeletRings    Boolean         @default(false)
+  notes             String?
+}
+
+model InventoryItem {
+  id          String   @id @default(cuid())
+  name        String
+  category    String   // سواريه، ستائر، إكسسوارات
+  code        String   @unique
+  quantityMeters Float  @default(0)
+  pricePerMeter Float  @default(0)
+  branch      String   @default("الفرع الرئيسي")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Order {
+  id          String   @id @default(cuid())
+  customerId  String
+  customer    Customer @relation(fields: [customerId], references: [id])
+  totalAmount Float
+  status      String   @default("NEW")
+  branch      String   @default("الفرع الرئيسي")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
