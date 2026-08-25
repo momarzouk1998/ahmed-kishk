@@ -35,16 +35,17 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  // Inject user info in headers for server components
+  // HTTP headers only accept ASCII (byte values 0–255).
+  // Encode Arabic / Unicode values with encodeURIComponent before setting them.
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set('x-user-id', payload.userId || '');
-  requestHeaders.set('x-user-name', payload.name || '');
-  requestHeaders.set('x-user-role', payload.role || '');
-  requestHeaders.set('x-user-branch', payload.branch || '');
+  requestHeaders.set('x-user-name', encodeURIComponent(payload.name || ''));
+  requestHeaders.set('x-user-role', encodeURIComponent(payload.role || ''));
+  requestHeaders.set('x-user-branch', encodeURIComponent(payload.branch || ''));
 
   return NextResponse.next({ request: { headers: requestHeaders } });
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|logo.png|public).*)'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|logo.png).*)'],
 };
