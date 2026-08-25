@@ -41,10 +41,11 @@ enum CeilingType {
 model User {
   id        String   @id @default(cuid())
   name      String
-  email     String   @unique
+  phone     String   @unique
   password  String
   role      Role     @default(BRANCH_STAFF)
-  phone     String?
+  branch    String   @default("الفرع الرئيسي")
+  avatar    String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -66,18 +67,21 @@ model Customer {
 }
 
 model InspectionRequest {
-  id          String           @id @default(cuid())
-  customerId  String
-  customer    Customer         @relation(fields: [customerId], references: [id])
-  status      InspectionStatus @default(PENDING)
-  address     String
-  scheduledAt DateTime?
+  id           String           @id @default(cuid())
+  customerId   String
+  customer     Customer         @relation(fields: [customerId], references: [id])
+  status       InspectionStatus @default(PENDING)
+  stage        String           @default("معاينة")
+  address      String
+  scheduledAt  DateTime?
+  installAt    DateTime?
   assignedToId String?
-  assignedTo  User?            @relation(fields: [assignedToId], references: [id])
-  totalCost   Float            @default(0)
-  notes       String?
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  assignedTo   User?            @relation(fields: [assignedToId], references: [id])
+  totalCost    Float            @default(0)
+  branch       String           @default("الفرع الرئيسي")
+  notes        String?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
 
   rooms RoomMeasurement[]
 }
@@ -90,7 +94,7 @@ model RoomMeasurement {
   roomType            RoomType          @default(WINDOW)
   widthCm             Float
   heightCm            Float
-  sides               Int               @default(2) // 1 or 2
+  sides               Int               @default(2)
   extraHeightCm       Float?            @default(0)
   installationType    InstallationType  @default(CEILING_TRACK)
   ceilingType         CeilingType       @default(STANDARD)
@@ -107,7 +111,7 @@ model FabricDetail {
   id                String          @id @default(cuid())
   roomMeasurementId String
   roomMeasurement   RoomMeasurement @relation(fields: [roomMeasurementId], references: [id], onDelete: Cascade)
-  layerName         String          // e.g. خفيف (تول), ثقيل, بلاك آوت
+  layerName         String
   fabricCode        String?
   hasPleatedTape    Boolean         @default(false)
   hasEyeletRings    Boolean         @default(false)
@@ -115,15 +119,55 @@ model FabricDetail {
 }
 
 model InventoryItem {
-  id          String   @id @default(cuid())
-  name        String
-  category    String   // سواريه، ستائر، إكسسوارات
-  code        String   @unique
-  quantityMeters Float  @default(0)
-  pricePerMeter Float  @default(0)
-  branch      String   @default("الفرع الرئيسي")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String   @id @default(cuid())
+  name          String
+  category      String
+  code          String   @unique
+  quantityMeters Float   @default(0)
+  costPerMeter  Float    @default(0)
+  pricePerMeter Float    @default(0)
+  branch        String   @default("الفرع الرئيسي")
+  supplierId    String?
+  supplier      Supplier? @relation(fields: [supplierId], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Supplier {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String?
+  address   String?
+  balance   Float    @default(0)
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  inventory InventoryItem[]
+}
+
+model FabricSale {
+  id         String   @id @default(cuid())
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id])
+  branch     String   @default("الفرع الرئيسي")
+  totalAmount Float   @default(0)
+  notes      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  items FabricSaleItem[]
+}
+
+model FabricSaleItem {
+  id            String     @id @default(cuid())
+  saleId        String
+  sale          FabricSale @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  inventoryItemId String
+  fabricName    String
+  meters        Float
+  pricePerMeter Float
+  totalPrice    Float
 }
 
 model Order {
@@ -131,8 +175,11 @@ model Order {
   customerId  String
   customer    Customer @relation(fields: [customerId], references: [id])
   totalAmount Float
-  status      String   @default("NEW")
+  stage       String   @default("اختيار قماش")
   branch      String   @default("الفرع الرئيسي")
+  technician  String?
+  installAt   DateTime?
+  notes       String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
