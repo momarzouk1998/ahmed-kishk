@@ -64,6 +64,7 @@ model Customer {
 
   InspectionRequest InspectionRequest[]
   Order             Order[]
+  FabricSale        FabricSale[]
 }
 
 model InspectionRequest {
