@@ -212,7 +212,7 @@ export default function InspectionsPage() {
           setSelectedId(formatted[0].id);
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   const selected = requests.find(r => r.id === selectedId) || requests[0];
@@ -322,15 +322,15 @@ export default function InspectionsPage() {
         technician: techName,
         notes: reqNotes,
       }),
-    }).catch(() => {});
+    }).catch(() => { });
   };
 
   const handleShareWhatsApp = () => {
     if (!selected) return;
-    const roomsText = selected.rooms.length > 0 
+    const roomsText = selected.rooms.length > 0
       ? selected.rooms.map(r => `\n• *${r.name}* (${r.type}): ${r.widthCm}سم عرض × ${r.heightCm}سم ارتفاع (${r.installationType}) — التكلفة: ${r.totalSellPrice.toLocaleString()} ج.م`).join('')
       : '\nلم تسجل غرف بعد';
-    
+
     const text = encodeURIComponent(
       `*معاينة ومقاسات ستائر — أحمد كشك*\nالعميل: ${selected.customerName}\nالهاتف: ${selected.phone}\nالعنوان: ${selected.address}\nالفني: ${selected.technician}\n\n*تفاصيل الغرف والتسعير:*${roomsText}\n\n*الإجمالي: ${selected.rooms.reduce((s, r) => s + r.totalSellPrice, 0).toLocaleString()} ج.م*`
     );
@@ -340,269 +340,267 @@ export default function InspectionsPage() {
   return (
     <PageShell title="المعاينات ورفع المقاسات">
       <div className="flex flex-col gap-6">
-          {/* Header Bar */}
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <div>
-              <h1 className="font-display font-bold text-xl sm:text-2xl text-primary">المعاينات ورفع المقاسات</h1>
-              <p className="text-on-surface-variant text-xs sm:text-sm mt-1">تسجيل طلبات المعاينة الميدانية ومقاسات وتفاصيل كل غرفة.</p>
-            </div>
-            <button
-              onClick={() => {
-                setCustName(''); setCustPhone(''); setCustAddress(''); setScheduleTime(''); setReqNotes('');
-                setShowNewRequestModal(true);
-              }}
-              className="bg-primary text-on-primary px-4 sm:px-5 py-2.5 rounded-lg hover:bg-inverse-surface transition-colors flex items-center gap-2 font-bold text-xs sm:text-sm shadow w-full sm:w-auto justify-center"
-            >
-              <span className="material-symbols-outlined text-[18px]">add_box</span>
-              طلب معاينة جديد
-            </button>
+        {/* Header Bar */}
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <div>
+            <h1 className="font-display font-bold text-xl sm:text-2xl text-primary">المعاينات ورفع المقاسات</h1>
+            <p className="text-on-surface-variant text-xs sm:text-sm mt-1">تسجيل طلبات المعاينة الميدانية ومقاسات وتفاصيل كل غرفة.</p>
           </div>
+          <button
+            onClick={() => {
+              setCustName(''); setCustPhone(''); setCustAddress(''); setScheduleTime(''); setReqNotes('');
+              setShowNewRequestModal(true);
+            }}
+            className="bg-primary text-on-primary px-4 sm:px-5 py-2.5 rounded-lg hover:bg-inverse-surface transition-colors flex items-center gap-2 font-bold text-xs sm:text-sm shadow w-full sm:w-auto justify-center"
+          >
+            <span className="material-symbols-outlined text-[18px]">add_box</span>
+            طلب معاينة جديد
+          </button>
+        </div>
 
-          {/* Master Detail Split */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            {/* Left: Requests List */}
-            <div className="lg:col-span-4 flex flex-col gap-3">
-              {filtered.map(req => (
-                <div
-                  key={req.id}
-                  onClick={() => setSelectedId(req.id)}
-                  className={`p-5 rounded-2xl border bg-white cursor-pointer transition-all ${
-                    req.id === selected.id ? 'border-brand-gold ring-2 ring-brand-gold/30 shadow-md' : 'border-slate-200 hover:border-slate-300'
+        {/* Master Detail Split */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* Left: Requests List */}
+          <div className="lg:col-span-4 flex flex-col gap-3">
+            {filtered.map(req => (
+              <div
+                key={req.id}
+                onClick={() => setSelectedId(req.id)}
+                className={`p-5 rounded-2xl border bg-white cursor-pointer transition-all ${req.id === selected.id ? 'border-brand-gold ring-2 ring-brand-gold/30 shadow-md' : 'border-slate-200 hover:border-slate-300'
                   }`}
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <span className="text-xs font-mono font-bold text-slate-400">{req.id}</span>
-                      <h3 className="font-bold text-base text-slate-900">{req.customerName}</h3>
-                      <p className="text-xs text-slate-500 font-mono" dir="ltr">{req.phone}</p>
-                    </div>
-                    <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-amber-100 text-amber-900 border border-amber-200">
-                      {req.status}
-                    </span>
+              >
+                <div className="flex justify-between items-start mb-2">
+                  <div>
+                    <span className="text-xs font-mono font-bold text-slate-400">{req.id}</span>
+                    <h3 className="font-bold text-base text-slate-900">{req.customerName}</h3>
+                    <p className="text-xs text-slate-500 font-mono" dir="ltr">{req.phone}</p>
                   </div>
-                  {req.address && (
-                    <p className="text-xs text-slate-500 mb-2 flex items-center gap-1">
-                      <span className="material-symbols-outlined text-[14px]">location_on</span>
-                      {req.address}
-                    </p>
-                  )}
-                  <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
-                    <span className="font-bold text-brand-gold-dark">📍 {req.stage}</span>
-                    <span className="font-mono text-slate-500">{req.rooms.length} غرف مسجلة</span>
-                  </div>
+                  <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-amber-100 text-amber-900 border border-amber-200">
+                    {req.status}
+                  </span>
                 </div>
-              ))}
-            </div>
-
-            {/* Right: Selected Request Detail */}
-            <div className="lg:col-span-8 bg-white rounded-2xl border border-slate-200 shadow-soft">
-              {/* Header */}
-              <div className="flex flex-wrap items-center justify-between p-4 sm:p-6 border-b border-slate-100 gap-4">
-                <div className="min-w-0">
-                  <span className="text-xs font-mono font-bold text-brand-gold-dark">{selected.id}</span>
-                  <h2 className="font-bold text-xl sm:text-2xl text-slate-900 truncate">{selected.customerName}</h2>
-                  <p className="text-xs text-slate-500 mt-0.5 truncate" dir="ltr">{selected.phone} {selected.address && `| ${selected.address}`}</p>
-                </div>
-                <div className="flex gap-2 flex-wrap w-full sm:w-auto">
-                  <button onClick={handleShareWhatsApp} className="flex-1 sm:flex-none justify-center border border-slate-200 text-slate-700 px-3.5 py-2 rounded-xl text-xs font-bold hover:border-slate-400 flex items-center gap-1.5 shadow-xs">
-                    <span className="material-symbols-outlined text-[16px]">share</span> واتساب
-                  </button>
-                  <button onClick={() => window.print()} className="flex-1 sm:flex-none justify-center border border-slate-200 text-slate-700 px-3.5 py-2 rounded-xl text-xs font-bold hover:border-slate-400 flex items-center gap-1.5 shadow-xs">
-                    <span className="material-symbols-outlined text-[16px]">print</span> طباعة المقايسة
-                  </button>
+                {req.address && (
+                  <p className="text-xs text-slate-500 mb-2 flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[14px]">location_on</span>
+                    {req.address}
+                  </p>
+                )}
+                <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
+                  <span className="font-bold text-brand-gold-dark">📍 {req.stage}</span>
+                  <span className="font-mono text-slate-500">{req.rooms.length} غرف مسجلة</span>
                 </div>
               </div>
+            ))}
+          </div>
 
-              {/* Tabs */}
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 px-4 sm:px-6 gap-3 sm:gap-0">
-                <div className="flex overflow-x-auto -mb-px scrollbar-none">
-                  {[
-                    { id: 'rooms', label: `الغرف والمقاسات (${selected.rooms.length})` },
-                    { id: 'pricing', label: 'مصفوفة وجدول التسعير الذكي' },
-                    { id: 'info', label: 'بيانات الموعد والفني' }
-                  ].map(tab => (
-                    <button
-                      key={tab.id}
-                      onClick={() => setActiveTab(tab.id as any)}
-                      className={`px-5 py-3.5 text-sm font-bold border-b-2 transition-colors ${
-                        activeTab === tab.id ? 'border-brand-gold text-slate-950' : 'border-transparent text-slate-500 hover:text-slate-900'
-                      }`}
-                    >
-                      {tab.label}
-                    </button>
-                  ))}
-                </div>
-
-                <button
-                  onClick={() => {
-                    setEditingRoomId(null);
-                    setRoomName(`غرفة ${selected.rooms.length + 1}`);
-                    setShowRoomModal(true);
-                  }}
-                  className="bg-brand-gold hover:bg-brand-gold-hover text-slate-950 px-3.5 py-2 sm:py-1.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1 shadow-gold sm:mb-2"
-                >
-                  <span className="material-symbols-outlined text-[16px]">add</span>
-                  رفع مقاسات غرفة
+          {/* Right: Selected Request Detail */}
+          <div className="lg:col-span-8 bg-white rounded-2xl border border-slate-200 shadow-soft">
+            {/* Header */}
+            <div className="flex flex-wrap items-center justify-between p-4 sm:p-6 border-b border-slate-100 gap-4">
+              <div className="min-w-0">
+                <span className="text-xs font-mono font-bold text-brand-gold-dark">{selected.id}</span>
+                <h2 className="font-bold text-xl sm:text-2xl text-slate-900 truncate">{selected.customerName}</h2>
+                <p className="text-xs text-slate-500 mt-0.5 truncate" dir="ltr">{selected.phone} {selected.address && `| ${selected.address}`}</p>
+              </div>
+              <div className="flex gap-2 flex-wrap w-full sm:w-auto">
+                <button onClick={handleShareWhatsApp} className="flex-1 sm:flex-none justify-center border border-slate-200 text-slate-700 px-3.5 py-2 rounded-xl text-xs font-bold hover:border-slate-400 flex items-center gap-1.5 shadow-xs">
+                  <span className="material-symbols-outlined text-[16px]">share</span> واتساب
+                </button>
+                <button onClick={() => window.print()} className="flex-1 sm:flex-none justify-center border border-slate-200 text-slate-700 px-3.5 py-2 rounded-xl text-xs font-bold hover:border-slate-400 flex items-center gap-1.5 shadow-xs">
+                  <span className="material-symbols-outlined text-[16px]">print</span> طباعة المقايسة
                 </button>
               </div>
-
-              {/* Tab 1: Rooms Overview */}
-              {activeTab === 'rooms' && (
-                <div className="p-4 sm:p-6 flex flex-col gap-4">
-                  {selected.rooms.length === 0 ? (
-                    <div className="text-center py-12 bg-slate-50 rounded-2xl border border-dashed border-slate-300">
-                      <span className="material-symbols-outlined text-[48px] text-slate-400 block mb-2">square_foot</span>
-                      <h3 className="font-bold text-slate-900">لم يتم رفع مقاسات بعد</h3>
-                      <p className="text-xs text-slate-500 mt-1">اضغط على زر رفع مقاسات غرفة لتطبيق معادلة الكشكشة والتسعير.</p>
-                    </div>
-                  ) : (
-                    selected.rooms.map(room => (
-                      <div key={room.id} className="p-5 rounded-2xl border border-slate-200 bg-slate-50/50">
-                        <div className="flex justify-between items-start mb-3">
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <h3 className="font-bold text-lg text-slate-900">{room.name}</h3>
-                              <span className="text-xs bg-white border border-slate-200 px-2 py-0.5 rounded font-bold text-slate-700">{room.type}</span>
-                            </div>
-                            <p className="text-xs text-slate-500 mt-0.5">
-                              {room.installationType} • {room.ceilingType} • {room.sides === 2 ? 'جنبين' : 'جنب واحد'}
-                            </p>
-                          </div>
-                          <div className="text-left">
-                            <div className="font-mono font-black text-xl text-slate-900">{room.totalSellPrice.toLocaleString()} ج.م</div>
-                            <div className="text-[11px] text-emerald-700 font-bold font-mono">صافي الربح: +{(room.totalSellPrice - room.totalCost).toLocaleString()} ج</div>
-                          </div>
-                        </div>
-
-                        {/* Dimensions Bar */}
-                        <div className="grid grid-cols-4 gap-2.5 bg-white p-3 rounded-xl border border-slate-200 text-center text-xs mb-3">
-                          <div>
-                            <div className="font-mono font-black text-slate-900">{room.widthCm} سم</div>
-                            <div className="text-[11px] text-slate-400">العرض</div>
-                          </div>
-                          <div>
-                            <div className="font-mono font-black text-slate-900">{room.heightCm} سم</div>
-                            <div className="text-[11px] text-slate-400">الارتفاع</div>
-                          </div>
-                          <div>
-                            <div className="font-mono font-black text-slate-900">{room.sides}</div>
-                            <div className="text-[11px] text-slate-400">الجوانب</div>
-                          </div>
-                          <div>
-                            <div className="font-mono font-black text-slate-900">{room.totalCost.toLocaleString()} ج</div>
-                            <div className="text-[11px] text-slate-400">إجمالي التكلفة</div>
-                          </div>
-                        </div>
-
-                        {/* Fabrics table */}
-                        <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto text-xs">
-                          <table className="w-full text-right min-w-[480px]">
-                            <thead className="bg-slate-50 font-mono text-slate-500 border-b border-slate-200">
-                              <tr>
-                                <th className="p-2.5">الخامة</th>
-                                <th className="p-2.5">الكود</th>
-                                <th className="p-2.5 text-center">نسبة الكشكشة</th>
-                                <th className="p-2.5 text-center">الأمتار المطلوبة</th>
-                                <th className="p-2.5 text-left">سعر المتر</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {room.fabrics.map((f, i) => (
-                                <tr key={i} className="border-t border-slate-100">
-                                  <td className="p-2.5 font-bold text-slate-900">{f.layer}</td>
-                                  <td className="p-2.5 font-mono text-slate-500">{f.code || '—'}</td>
-                                  <td className="p-2.5 text-center font-mono font-bold text-brand-gold-dark">{f.fullness}x</td>
-                                  <td className="p-2.5 text-center font-mono font-black text-slate-900">{f.meters} م</td>
-                                  <td className="p-2.5 text-left font-mono font-bold text-slate-900">{f.pricePerMeter} ج</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    ))
-                  )}
-
-                  {selected.rooms.length > 0 && (
-                    <div className="bg-slate-950 text-white p-6 rounded-2xl flex justify-between items-center shadow-xl border border-slate-800">
-                      <div>
-                        <div className="font-bold text-lg">إجمالي قيمة المقايسة للعميل</div>
-                        <div className="text-xs text-slate-400 font-mono mt-0.5">شامل الأقمشة والتراكات والأشرطة ومصنعية الورشة والتركيب</div>
-                      </div>
-                      <div className="font-display font-black text-3xl text-brand-gold">
-                        {selected.rooms.reduce((s, r) => s + r.totalSellPrice, 0).toLocaleString()} ج.م
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Tab 2: Smart Pricing Matrix */}
-              {activeTab === 'pricing' && (
-                <div className="p-4 sm:p-6 flex flex-col gap-4">
-                  <h3 className="font-bold text-sm sm:text-base text-slate-900">جدول تفكيك التكلفة والأرباح لكل غرفة</h3>
-                  <div className="border border-slate-200 rounded-2xl overflow-x-auto bg-white shadow-soft">
-                    <table className="w-full text-right text-xs min-w-[700px]">
-                      <thead className="bg-slate-50 text-slate-600 font-mono border-b border-slate-200">
-                        <tr>
-                          <th className="p-3.5">الغرفة</th>
-                          <th className="p-3.5 text-center">أمتار القماش</th>
-                          <th className="p-3.5 text-left">تكلفة الأقمشة</th>
-                          <th className="p-3.5 text-left">التراك والمواسير</th>
-                          <th className="p-3.5 text-left">الورشة والأشرطة</th>
-                          <th className="p-3.5 text-left">إجمالي التكلفة</th>
-                          <th className="p-3.5 text-left">سعر البيع</th>
-                          <th className="p-3.5 text-left text-emerald-700">صافي الربح</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {selected.rooms.map(r => {
-                          const totalFabricsMeters = r.fabrics.reduce((s, f) => s + f.meters, 0);
-                          const totalFabricsCost = r.fabrics.reduce((s, f) => s + (f.meters * f.pricePerMeter), 0);
-                          const trackCost = (r.widthCm / 100) * r.trackPricePerMeter;
-                          const tailoringCost = (r.sides * r.tailoringFeePerSide) + (totalFabricsMeters * r.tapePricePerMeter);
-                          const profit = r.totalSellPrice - r.totalCost;
-
-                          return (
-                            <tr key={r.id} className="border-t border-slate-100 hover:bg-slate-50/60">
-                              <td className="p-3.5 font-bold text-slate-900">{r.name}</td>
-                              <td className="p-3.5 text-center font-mono font-bold">{totalFabricsMeters.toFixed(2)} م</td>
-                              <td className="p-3.5 text-left font-mono font-bold text-slate-800">{Math.round(totalFabricsCost).toLocaleString()} ج</td>
-                              <td className="p-3.5 text-left font-mono text-slate-600">{Math.round(trackCost).toLocaleString()} ج</td>
-                              <td className="p-3.5 text-left font-mono text-slate-600">{Math.round(tailoringCost).toLocaleString()} ج</td>
-                              <td className="p-3.5 text-left font-mono font-bold text-slate-900">{r.totalCost.toLocaleString()} ج</td>
-                              <td className="p-3.5 text-left font-mono font-black text-brand-gold-dark">{r.totalSellPrice.toLocaleString()} ج</td>
-                              <td className="p-3.5 text-left font-mono font-black text-emerald-600">+{profit.toLocaleString()} ج</td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-
-              {/* Tab 3: Info */}
-              {activeTab === 'info' && (
-                <div className="p-4 sm:p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
-                    <span className="text-xs text-slate-500 font-bold block">الفني المسؤول:</span>
-                    <span className="font-bold text-slate-900 text-sm mt-1 block">{selected.technician}</span>
-                  </div>
-                  <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
-                    <span className="text-xs text-slate-500 font-bold block">موعد المعاينة الميدانية:</span>
-                    <span className="font-bold text-slate-900 text-sm font-mono mt-1 block">{selected.scheduledAt ? new Date(selected.scheduledAt).toLocaleString('ar-EG') : 'لم يحدد'}</span>
-                  </div>
-                  {selected.notes && (
-                    <div className="sm:col-span-2 p-4 bg-slate-50 rounded-xl border border-slate-200">
-                      <span className="text-xs text-slate-500 font-bold block mb-1">ملاحظات المعاينة:</span>
-                      <p className="text-sm text-slate-900">{selected.notes}</p>
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
+
+            {/* Tabs */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 px-4 sm:px-6 gap-3 sm:gap-0">
+              <div className="flex overflow-x-auto -mb-px scrollbar-none">
+                {[
+                  { id: 'rooms', label: `الغرف والمقاسات (${selected.rooms.length})` },
+                  { id: 'pricing', label: 'مصفوفة وجدول التسعير الذكي' },
+                  { id: 'info', label: 'بيانات الموعد والفني' }
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id as any)}
+                    className={`px-5 py-3.5 text-sm font-bold border-b-2 transition-colors ${activeTab === tab.id ? 'border-brand-gold text-slate-950' : 'border-transparent text-slate-500 hover:text-slate-900'
+                      }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                onClick={() => {
+                  setEditingRoomId(null);
+                  setRoomName(`غرفة ${selected.rooms.length + 1}`);
+                  setShowRoomModal(true);
+                }}
+                className="bg-brand-gold hover:bg-brand-gold-hover text-slate-950 px-3.5 py-2 sm:py-1.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1 shadow-gold sm:mb-2"
+              >
+                <span className="material-symbols-outlined text-[16px]">add</span>
+                رفع مقاسات غرفة
+              </button>
+            </div>
+
+            {/* Tab 1: Rooms Overview */}
+            {activeTab === 'rooms' && (
+              <div className="p-4 sm:p-6 flex flex-col gap-4">
+                {selected.rooms.length === 0 ? (
+                  <div className="text-center py-12 bg-slate-50 rounded-2xl border border-dashed border-slate-300">
+                    <span className="material-symbols-outlined text-[48px] text-slate-400 block mb-2">square_foot</span>
+                    <h3 className="font-bold text-slate-900">لم يتم رفع مقاسات بعد</h3>
+                    <p className="text-xs text-slate-500 mt-1">اضغط على زر رفع مقاسات غرفة لتطبيق معادلة الكشكشة والتسعير.</p>
+                  </div>
+                ) : (
+                  selected.rooms.map(room => (
+                    <div key={room.id} className="p-5 rounded-2xl border border-slate-200 bg-slate-50/50">
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-bold text-lg text-slate-900">{room.name}</h3>
+                            <span className="text-xs bg-white border border-slate-200 px-2 py-0.5 rounded font-bold text-slate-700">{room.type}</span>
+                          </div>
+                          <p className="text-xs text-slate-500 mt-0.5">
+                            {room.installationType} • {room.ceilingType} • {room.sides === 2 ? 'جنبين' : 'جنب واحد'}
+                          </p>
+                        </div>
+                        <div className="text-left">
+                          <div className="font-mono font-black text-xl text-slate-900">{room.totalSellPrice.toLocaleString()} ج.م</div>
+                          <div className="text-[11px] text-emerald-700 font-bold font-mono">صافي الربح: +{(room.totalSellPrice - room.totalCost).toLocaleString()} ج</div>
+                        </div>
+                      </div>
+
+                      {/* Dimensions Bar */}
+                      <div className="grid grid-cols-4 gap-2.5 bg-white p-3 rounded-xl border border-slate-200 text-center text-xs mb-3">
+                        <div>
+                          <div className="font-mono font-black text-slate-900">{room.widthCm} سم</div>
+                          <div className="text-[11px] text-slate-400">العرض</div>
+                        </div>
+                        <div>
+                          <div className="font-mono font-black text-slate-900">{room.heightCm} سم</div>
+                          <div className="text-[11px] text-slate-400">الارتفاع</div>
+                        </div>
+                        <div>
+                          <div className="font-mono font-black text-slate-900">{room.sides}</div>
+                          <div className="text-[11px] text-slate-400">الجوانب</div>
+                        </div>
+                        <div>
+                          <div className="font-mono font-black text-slate-900">{room.totalCost.toLocaleString()} ج</div>
+                          <div className="text-[11px] text-slate-400">إجمالي التكلفة</div>
+                        </div>
+                      </div>
+
+                      {/* Fabrics table */}
+                      <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto text-xs">
+                        <table className="w-full text-right min-w-[480px]">
+                          <thead className="bg-slate-50 font-mono text-slate-500 border-b border-slate-200">
+                            <tr>
+                              <th className="p-2.5">الخامة</th>
+                              <th className="p-2.5">الكود</th>
+                              <th className="p-2.5 text-center">نسبة الكشكشة</th>
+                              <th className="p-2.5 text-center">الأمتار المطلوبة</th>
+                              <th className="p-2.5 text-left">سعر المتر</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {room.fabrics.map((f, i) => (
+                              <tr key={i} className="border-t border-slate-100">
+                                <td className="p-2.5 font-bold text-slate-900">{f.layer}</td>
+                                <td className="p-2.5 font-mono text-slate-500">{f.code || '—'}</td>
+                                <td className="p-2.5 text-center font-mono font-bold text-brand-gold-dark">{f.fullness}x</td>
+                                <td className="p-2.5 text-center font-mono font-black text-slate-900">{f.meters} م</td>
+                                <td className="p-2.5 text-left font-mono font-bold text-slate-900">{f.pricePerMeter} ج</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  ))
+                )}
+
+                {selected.rooms.length > 0 && (
+                  <div className="bg-slate-950 text-white p-6 rounded-2xl flex justify-between items-center shadow-xl border border-slate-800">
+                    <div>
+                      <div className="font-bold text-lg">إجمالي قيمة المقايسة للعميل</div>
+                      <div className="text-xs text-slate-400 font-mono mt-0.5">شامل الأقمشة والتراكات والأشرطة ومصنعية الورشة والتركيب</div>
+                    </div>
+                    <div className="font-display font-black text-3xl text-brand-gold">
+                      {selected.rooms.reduce((s, r) => s + r.totalSellPrice, 0).toLocaleString()} ج.م
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Tab 2: Smart Pricing Matrix */}
+            {activeTab === 'pricing' && (
+              <div className="p-4 sm:p-6 flex flex-col gap-4">
+                <h3 className="font-bold text-sm sm:text-base text-slate-900">جدول تفكيك التكلفة والأرباح لكل غرفة</h3>
+                <div className="border border-slate-200 rounded-2xl overflow-x-auto bg-white shadow-soft">
+                  <table className="w-full text-right text-xs min-w-[700px]">
+                    <thead className="bg-slate-50 text-slate-600 font-mono border-b border-slate-200">
+                      <tr>
+                        <th className="p-3.5">الغرفة</th>
+                        <th className="p-3.5 text-center">أمتار القماش</th>
+                        <th className="p-3.5 text-left">تكلفة الأقمشة</th>
+                        <th className="p-3.5 text-left">التراك والمواسير</th>
+                        <th className="p-3.5 text-left">الورشة والأشرطة</th>
+                        <th className="p-3.5 text-left">إجمالي التكلفة</th>
+                        <th className="p-3.5 text-left">سعر البيع</th>
+                        <th className="p-3.5 text-left text-emerald-700">صافي الربح</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selected.rooms.map(r => {
+                        const totalFabricsMeters = r.fabrics.reduce((s, f) => s + f.meters, 0);
+                        const totalFabricsCost = r.fabrics.reduce((s, f) => s + (f.meters * f.pricePerMeter), 0);
+                        const trackCost = (r.widthCm / 100) * r.trackPricePerMeter;
+                        const tailoringCost = (r.sides * r.tailoringFeePerSide) + (totalFabricsMeters * r.tapePricePerMeter);
+                        const profit = r.totalSellPrice - r.totalCost;
+
+                        return (
+                          <tr key={r.id} className="border-t border-slate-100 hover:bg-slate-50/60">
+                            <td className="p-3.5 font-bold text-slate-900">{r.name}</td>
+                            <td className="p-3.5 text-center font-mono font-bold">{totalFabricsMeters.toFixed(2)} م</td>
+                            <td className="p-3.5 text-left font-mono font-bold text-slate-800">{Math.round(totalFabricsCost).toLocaleString()} ج</td>
+                            <td className="p-3.5 text-left font-mono text-slate-600">{Math.round(trackCost).toLocaleString()} ج</td>
+                            <td className="p-3.5 text-left font-mono text-slate-600">{Math.round(tailoringCost).toLocaleString()} ج</td>
+                            <td className="p-3.5 text-left font-mono font-bold text-slate-900">{r.totalCost.toLocaleString()} ج</td>
+                            <td className="p-3.5 text-left font-mono font-black text-brand-gold-dark">{r.totalSellPrice.toLocaleString()} ج</td>
+                            <td className="p-3.5 text-left font-mono font-black text-emerald-600">+{profit.toLocaleString()} ج</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Tab 3: Info */}
+            {activeTab === 'info' && (
+              <div className="p-4 sm:p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                  <span className="text-xs text-slate-500 font-bold block">الفني المسؤول:</span>
+                  <span className="font-bold text-slate-900 text-sm mt-1 block">{selected.technician}</span>
+                </div>
+                <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                  <span className="text-xs text-slate-500 font-bold block">موعد المعاينة الميدانية:</span>
+                  <span className="font-bold text-slate-900 text-sm font-mono mt-1 block">{selected.scheduledAt ? new Date(selected.scheduledAt).toLocaleString('ar-EG') : 'لم يحدد'}</span>
+                </div>
+                {selected.notes && (
+                  <div className="sm:col-span-2 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                    <span className="text-xs text-slate-500 font-bold block mb-1">ملاحظات المعاينة:</span>
+                    <p className="text-sm text-slate-900">{selected.notes}</p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
+        </div>
       </div>
 
       {/* Modal: New Request */}

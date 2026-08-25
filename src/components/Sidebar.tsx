@@ -5,8 +5,10 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import Logo from '@/components/Logo';
 import { useSidebar } from '@/components/SidebarContext';
+import { ALL_SYSTEM_PAGES } from '@/lib/permissions';
 
 interface CurrentUser {
+  id?: string;
   name: string;
   phone: string;
   role: string;
@@ -18,12 +20,22 @@ export default function Sidebar() {
   const router = useRouter();
   const { isOpen, close } = useSidebar();
   const [user, setUser] = useState<CurrentUser | null>(null);
+  const [allowedPageIds, setAllowedPageIds] = useState<string[] | null>(null);
 
   useEffect(() => {
     fetch('/api/auth/profile')
       .then((r) => r.json())
       .then((d) => {
-        if (d.user) setUser(d.user);
+        if (d.user) {
+          setUser(d.user);
+          // Check if custom permissions are saved in localStorage for this user
+          try {
+            const savedPerms = localStorage.getItem(`user_perms_${d.user.phone}`);
+            if (savedPerms) {
+              setAllowedPageIds(JSON.parse(savedPerms));
+            }
+          } catch {}
+        }
       })
       .catch(() => {});
   }, []);
@@ -33,20 +45,6 @@ export default function Sidebar() {
     close();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
-
-  const navItems = [
-    { label: 'لوحة التحكم', icon: 'dashboard', href: '/' },
-    { label: 'المعاينات والمقاسات', icon: 'square_foot', href: '/inspections' },
-    { label: 'الطلبات والـ Pipeline', icon: 'pending_actions', href: '/orders' },
-    { label: 'الورشة والتفصيل', icon: 'precision_manufacturing', href: '/workshop' },
-    { label: 'بيع الأقمشة بالمتر (POS)', icon: 'storefront', href: '/fabric-sales' },
-    { label: 'سجل العملاء والديون', icon: 'group', href: '/customers' },
-    { label: 'الموردون والحسابات', icon: 'local_shipping', href: '/suppliers' },
-    { label: 'المخزون والأصناف', icon: 'texture', href: '/inventory' },
-    { label: 'التقارير والإحصائيات', icon: 'bar_chart', href: '/reports' },
-    { label: 'الفروع والمستخدمين', icon: 'corporate_fare', href: '/branches' },
-    { label: 'إعدادات الهوية والتطبيق', icon: 'settings', href: '/settings' },
-  ];
 
   const roleLabels: Record<string, string> = {
     ADMIN: 'مدير النظام',
@@ -60,10 +58,50 @@ export default function Sidebar() {
     router.push('/login');
   };
 
+  // Filter system pages according to user's permissions
+  const visiblePages = ALL_SYSTEM_PAGES.filter(p => {
+    if (!allowedPageIds) return true; // Show all by default (e.g. Admin)
+    return allowedPageIds.includes(p.id);
+  });
+
+  const pipelinePages = visiblePages.filter(p => p.category === 'مراحل الستائر');
+  const salesPages = visiblePages.filter(p => p.category === 'المبيعات والحسابات');
+  const adminPages = visiblePages.filter(p => p.category === 'الإدارة والمخزون');
+
+  const renderNavGroup = (title: string, items: typeof ALL_SYSTEM_PAGES) => {
+    if (items.length === 0) return null;
+    return (
+      <div className="space-y-1">
+        <div className="px-3.5 pt-3 pb-1 text-[11px] font-bold text-slate-400 font-mono tracking-wider uppercase">
+          {title}
+        </div>
+        {items.map((item) => {
+          const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
+          return (
+            <Link
+              key={item.id}
+              href={item.href}
+              className={`flex items-center px-3.5 py-2.5 rounded-xl transition-all duration-200 ${
+                isActive
+                  ? 'bg-brand-gold text-slate-950 font-bold shadow-gold lg:translate-x-[-2px]'
+                  : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
+              }`}
+            >
+              <span className={`material-symbols-outlined ml-3 text-[20px] ${isActive ? 'text-slate-950' : 'text-slate-400'}`}>
+                {item.icon}
+              </span>
+              <span className="text-xs sm:text-sm font-medium">{item.name}</span>
+            </Link>
+          );
+        })}
+      </div>
+    );
+  };
+
   const sidebarContent = (
     <>
       {/* Logo Header */}
-      <div className="p-5 flex items-center gap-3.5 border-b border-slate-800">
+      <div className="p-5 flex items-center gap-3.5 border-b border-slate-800 shrink-0">
         <div className="w-12 h-12 bg-white p-1 rounded-2xl flex items-center justify-center border-2 border-brand-gold shadow-gold text-primary shrink-0">
           <Logo size="md" />
         </div>
@@ -77,30 +115,14 @@ export default function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-4 space-y-1.5 overflow-y-auto">
-        {navItems.map((item) => {
-          const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex items-center px-3.5 py-2.5 rounded-xl transition-all duration-200 ${
-                isActive
-                  ? 'bg-brand-gold text-slate-950 font-bold shadow-gold lg:translate-x-[-2px]'
-                  : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
-              }`}
-            >
-              <span className={`material-symbols-outlined ml-3 text-[20px] ${isActive ? 'text-slate-950' : 'text-slate-400'}`}>
-                {item.icon}
-              </span>
-              <span className="text-sm">{item.label}</span>
-            </Link>
-          );
-        })}
+      <nav className="flex-1 px-3 py-3 space-y-3 overflow-y-auto">
+        {renderNavGroup('مراحل دورة الستائر والورشة', pipelinePages)}
+        {renderNavGroup('المبيعات ونقاط البيع', salesPages)}
+        {renderNavGroup('الإدارة والمخزون', adminPages)}
       </nav>
 
       {/* User Footer Card */}
-      <div className="p-3.5 border-t border-slate-800 bg-slate-950/50 space-y-2">
+      <div className="p-3.5 border-t border-slate-800 bg-slate-950/50 space-y-2 shrink-0">
         <Link
           href="/profile"
           className={`flex items-center gap-3 p-2.5 rounded-xl cursor-pointer transition-colors border ${
@@ -151,7 +173,7 @@ export default function Sidebar() {
           }`}
         />
 
-        {/* Drawer panel - slides from right (RTL start) */}
+        {/* Drawer panel */}
         <aside
           className={`absolute top-0 right-0 h-full w-72 max-w-[85vw] bg-[#0f172a] text-slate-100 border-l border-slate-800/80 flex flex-col shadow-2xl transition-transform duration-300 ease-out ${
             isOpen ? 'translate-x-0' : 'translate-x-full'
