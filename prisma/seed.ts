@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Seeding database...');
+  console.log('🌱 Seeding database with official branches...');
 
   const hashedPassword = await bcrypt.hash('123456', 10);
 
@@ -15,101 +15,101 @@ async function main() {
       name: 'openappo',
       password: hashedPassword,
       role: 'ADMIN',
-      branch: 'الفرع الرئيسي — القاهرة',
+      branch: 'الفرع الرئيسي',
     },
     create: {
       name: 'openappo',
       phone: '01558282760',
       password: hashedPassword,
       role: 'ADMIN',
-      branch: 'الفرع الرئيسي — القاهرة',
+      branch: 'الفرع الرئيسي',
     },
   });
   console.log('✅ Super Admin (openappo) created:', superAdmin.phone);
 
-  // 2. Store Owner / Manager (أحمد كشك)
+  // 2. Store Owner / Manager (أحمد كشك) - 1 مستخدم الفرع الرئيسي
   const storeOwner = await prisma.user.upsert({
     where: { phone: '01063821000' },
     update: {
       name: 'أحمد كشك',
       password: hashedPassword,
       role: 'ADMIN',
-      branch: 'الفرع الرئيسي — القاهرة',
+      branch: 'الفرع الرئيسي',
     },
     create: {
       name: 'أحمد كشك',
       phone: '01063821000',
       password: hashedPassword,
       role: 'ADMIN',
-      branch: 'الفرع الرئيسي — القاهرة',
+      branch: 'الفرع الرئيسي',
     },
   });
   console.log('✅ Store Owner (أحمد كشك) created:', storeOwner.phone);
 
-  // 3. Technician users
+  // 3. فرع عرابي (18 ش عدلي - ستائر وتنجيد) - 2 مستخدمين
   await prisma.user.upsert({
     where: { phone: '01011111111' },
-    update: {},
+    update: { branch: 'فرع عرابي' },
     create: {
-      name: 'أحمد حسن',
+      name: 'موظف فرع عرابي 1',
       phone: '01011111111',
       password: hashedPassword,
-      role: 'TECHNICIAN',
-      branch: 'مركز المعاينات والتركيبات',
+      role: 'BRANCH_STAFF',
+      branch: 'فرع عرابي',
     },
   });
 
   await prisma.user.upsert({
     where: { phone: '01022222222' },
-    update: {},
+    update: { branch: 'فرع عرابي' },
     create: {
-      name: 'محمد علي',
+      name: 'موظف فرع عرابي 2',
       phone: '01022222222',
       password: hashedPassword,
-      role: 'TECHNICIAN',
-      branch: 'مركز المعاينات والتركيبات',
+      role: 'BRANCH_STAFF',
+      branch: 'فرع عرابي',
     },
   });
 
-  // 4. Branch staff
+  // 4. فرع عمر أفندي (أقمشة فقط) - 2 مستخدمين
   await prisma.user.upsert({
     where: { phone: '01033333333' },
-    update: {},
+    update: { branch: 'فرع عمر أفندي' },
     create: {
-      name: 'موظف الفرع الثاني',
+      name: 'موظف فرع عمر أفندي 1',
       phone: '01033333333',
       password: hashedPassword,
       role: 'BRANCH_STAFF',
-      branch: 'فرع الأقمشة الثاني — بنها',
+      branch: 'فرع عمر أفندي',
     },
   });
 
   await prisma.user.upsert({
     where: { phone: '01044444444' },
-    update: {},
+    update: { branch: 'فرع عمر أفندي' },
     create: {
-      name: 'موظف الفرع الثالث',
+      name: 'موظف فرع عمر أفندي 2',
       phone: '01044444444',
       password: hashedPassword,
       role: 'BRANCH_STAFF',
-      branch: 'فرع السوارية الثالث — بنها',
+      branch: 'فرع عمر أفندي',
     },
   });
 
-  // 5. Workshop supervisor
+  // 5. فرع الثلاثيني (أقمشة فقط) - 1 مستخدم
   await prisma.user.upsert({
     where: { phone: '01055555555' },
-    update: {},
+    update: { branch: 'فرع الثلاثيني' },
     create: {
-      name: 'مشرف الورشة المركزية',
+      name: 'موظف فرع الثلاثيني',
       phone: '01055555555',
       password: hashedPassword,
-      role: 'WORKSHOP',
-      branch: 'الورشة المركزية للتفصيل',
+      role: 'BRANCH_STAFF',
+      branch: 'فرع الثلاثيني',
     },
   });
 
-  console.log('✅ Users seeded');
+  console.log('✅ Users seeded for the 4 official branches');
 
   // Suppliers & Inventory
   const supplier1 = await prisma.supplier.upsert({
@@ -139,14 +139,14 @@ async function main() {
   });
 
   const inventoryItems = [
-    { code: 'SAT-01', name: 'ستان سواريه', category: 'سواريه', quantityMeters: 120, costPerMeter: 320, pricePerMeter: 450, supplierId: supplier1.id },
-    { code: 'SLK-01', name: 'حرير طبيعي', category: 'سواريه', quantityMeters: 45, costPerMeter: 650, pricePerMeter: 900, supplierId: supplier1.id },
-    { code: 'CRP-01', name: 'كريب مزدوج', category: 'سواريه', quantityMeters: 200, costPerMeter: 200, pricePerMeter: 300, supplierId: supplier1.id },
-    { code: 'CHF-01', name: 'شيفون ناعم', category: 'سواريه', quantityMeters: 180, costPerMeter: 150, pricePerMeter: 250, supplierId: supplier1.id },
-    { code: 'VLV-01', name: 'قطيفة ستائر', category: 'ستائر', quantityMeters: 95, costPerMeter: 260, pricePerMeter: 380, supplierId: supplier2.id },
-    { code: 'LNN-01', name: 'كتان بلجيكي', category: 'ستائر', quantityMeters: 110, costPerMeter: 220, pricePerMeter: 320, supplierId: supplier2.id },
-    { code: 'TUL-01', name: 'تول ناعم', category: 'ستائر', quantityMeters: 350, costPerMeter: 70, pricePerMeter: 120, supplierId: supplier2.id },
-    { code: 'BLK-01', name: 'بلاك آوت', category: 'ستائر', quantityMeters: 160, costPerMeter: 180, pricePerMeter: 280, supplierId: supplier2.id },
+    { code: 'SAT-01', name: 'ستان سواريه', category: 'سواريه', quantityMeters: 120, costPerMeter: 320, pricePerMeter: 450, branch: 'الفرع الرئيسي', supplierId: supplier1.id },
+    { code: 'SLK-01', name: 'حرير طبيعي', category: 'سواريه', quantityMeters: 45, costPerMeter: 650, pricePerMeter: 900, branch: 'فرع عرابي', supplierId: supplier1.id },
+    { code: 'CRP-01', name: 'كريب مزدوج', category: 'سواريه', quantityMeters: 200, costPerMeter: 200, pricePerMeter: 300, branch: 'فرع عمر أفندي', supplierId: supplier1.id },
+    { code: 'CHF-01', name: 'شيفون ناعم', category: 'سواريه', quantityMeters: 180, costPerMeter: 150, pricePerMeter: 250, branch: 'فرع الثلاثيني', supplierId: supplier1.id },
+    { code: 'VLV-01', name: 'قطيفة ستائر', category: 'ستائر', quantityMeters: 95, costPerMeter: 260, pricePerMeter: 380, branch: 'الفرع الرئيسي', supplierId: supplier2.id },
+    { code: 'LNN-01', name: 'كتان بلجيكي', category: 'ستائر', quantityMeters: 110, costPerMeter: 220, pricePerMeter: 320, branch: 'فرع عرابي', supplierId: supplier2.id },
+    { code: 'TUL-01', name: 'تول ناعم', category: 'ستائر', quantityMeters: 350, costPerMeter: 70, pricePerMeter: 120, branch: 'الفرع الرئيسي', supplierId: supplier2.id },
+    { code: 'BLK-01', name: 'بلاك آوت', category: 'ستائر', quantityMeters: 160, costPerMeter: 180, pricePerMeter: 280, branch: 'فرع عرابي', supplierId: supplier2.id },
   ];
 
   for (const item of inventoryItems) {
@@ -157,10 +157,7 @@ async function main() {
     });
   }
 
-  console.log('✅ Inventory seeded');
-  console.log('🎉 Seeding complete!');
-  console.log('📱 Super Admin (General Manager): 01558282760 (openappo) / 123456');
-  console.log('📱 Store Manager (Ahmed Kishk): 01063821000 (أحمد كشك) / 123456');
+  console.log('✅ Inventory seeded for all 4 branches');
 }
 
 main()
