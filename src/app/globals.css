@@ -60,9 +60,9 @@
   display: none;
 }
 
-/* 🖨️ Universal Clean Print Styling across all pages */
+/* 🖨️ Professional A4 Printable Template Stylesheet */
 @media print {
-  /* Hide all UI elements that shouldn't appear on paper */
+  /* 1. Hide UI, menus, headers, sidebars, buttons, warnings, backdrop shadows */
   aside,
   header,
   nav,
@@ -73,16 +73,21 @@
   .shadow-soft,
   .shadow-gold,
   .shadow-xl,
-  .shadow-2xl {
+  .shadow-2xl,
+  a.no-print,
+  span.material-symbols-outlined {
     display: none !important;
   }
 
+  /* 2. Reset Body margins & colors for printing */
   body {
     background: #ffffff !important;
     color: #000000 !important;
-    font-size: 12pt;
+    font-family: 'Cairo', sans-serif !important;
+    font-size: 13pt !important;
     margin: 0 !important;
     padding: 0 !important;
+    line-height: 1.4 !important;
   }
 
   main {
@@ -92,31 +97,46 @@
     width: 100% !important;
   }
 
-  /* Show dedicated print-only elements */
+  /* 3. Hide printed URL links next to anchors (CRITICAL - removes kishk.openappo.com url from bottom) */
+  a[href]::after {
+    content: none !important;
+  }
+
+  /* 4. Disable browser default headers and footers (date, title, URL at bottom) */
+  @page {
+    size: A4 portrait;
+    margin: 0.8cm 1cm !important; /* Maximizes printable space on A4 */
+  }
+
+  /* 5. Force printable elements to show */
   .print-only {
     display: block !important;
   }
 
-  /* Force table borders and clean A4 look */
+  /* 6. Expand table to full A4 page width, bold headers, clean borders */
   table {
     border-collapse: collapse !important;
     width: 100% !important;
+    margin-top: 15px !important;
   }
 
   th, td {
-    border: 1px solid #cbd5e1 !important;
-    padding: 6px 8px !important;
+    border: 1px solid #1e293b !important;
+    padding: 10px 12px !important;
+    font-size: 11pt !important;
+    color: #000000 !important;
+    vertical-align: middle !important;
   }
 
-  /* Prevent page break inside cards/tables */
+  th {
+    background-color: #f1f5f9 !important;
+    font-weight: 800 !important;
+  }
+
+  /* 7. Prevent page breaks inside rows/cards */
   .page-break-inside-avoid, tr, .print-card {
     break-inside: avoid !important;
     page-break-inside: avoid !important;
-  }
-
-  @page {
-    size: A4 portrait;
-    margin: 1.2cm 1.5cm;
   }
 }
 

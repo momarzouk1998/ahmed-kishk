@@ -467,12 +467,12 @@ export default function InspectionDetailPage() {
           {/* Signatures for Print */}
           <div className="grid grid-cols-2 gap-8 mt-12 pt-6 border-t border-slate-300 text-xs">
             <div className="text-center">
-              <span className="block font-bold mb-8">توقيع الفني المسؤول:</span>
-              <span className="border-t border-slate-400 pt-1 inline-block w-48 font-mono">{data.technician}</span>
+              <span className="block font-bold mb-6">توقيع الفني المسؤول:</span>
+              <span className="block font-mono">________________________</span>
             </div>
             <div className="text-center">
-              <span className="block font-bold mb-8">توقيع العميل بالموافقة على المقاسات:</span>
-              <span className="border-t border-slate-400 pt-1 inline-block w-48 font-mono">{data.customerName}</span>
+              <span className="block font-bold mb-6">توقيع العميل بالموافقة على المقاسات:</span>
+              <span className="block font-mono">________________________</span>
             </div>
           </div>
         </div>
