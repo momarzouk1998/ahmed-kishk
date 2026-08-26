@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import Logo from '@/components/Logo';
 import { useSidebar } from '@/components/SidebarContext';
 import { ALL_SYSTEM_PAGES, PagePermission } from '@/lib/permissions';
+import IosInstallModal from '@/components/IosInstallModal';
 
 interface CurrentUser {
   name: string;
@@ -20,6 +21,12 @@ export default function Sidebar() {
   const { isOpen, close } = useSidebar();
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [allowedPageIds, setAllowedPageIds] = useState<string[] | null>(null);
+
+  // PWA & iOS install state
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isStandalone, setIsStandalone] = useState<boolean>(false);
+  const [isIos, setIsIos] = useState<boolean>(false);
+  const [showIosModal, setShowIosModal] = useState<boolean>(false);
 
   // Accordion state
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
@@ -44,6 +51,59 @@ export default function Sidebar() {
       })
       .catch(() => {});
   }, []);
+
+  // Check PWA standalone status & detect iOS device
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const checkStandalone = () => {
+      const isStandaloneMode =
+        window.matchMedia('(display-mode: standalone)').matches ||
+        (window.navigator as any).standalone === true ||
+        document.referrer.includes('android-app://');
+      setIsStandalone(isStandaloneMode);
+    };
+    checkStandalone();
+
+    const ua = window.navigator.userAgent;
+    const isIosDevice = /iPhone|iPad|iPod/i.test(ua) && !(window as any).MSStream;
+    setIsIos(isIosDevice);
+
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+
+    const handleAppInstalled = () => {
+      setIsStandalone(true);
+      setDeferredPrompt(null);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (isIos) {
+      setShowIosModal(true);
+      return;
+    }
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const choiceResult = await deferredPrompt.userChoice;
+      if (choiceResult?.outcome === 'accepted') {
+        console.log('PWA installation accepted');
+      }
+      setDeferredPrompt(null);
+    } else {
+      setShowIosModal(true);
+    }
+  };
 
   // Auto-expand section according to current route
   useEffect(() => {
@@ -293,13 +353,36 @@ export default function Sidebar() {
             </span>
           </div>
         </Link>
-        <button
-          onClick={handleLogout}
-          className="w-full flex items-center justify-center gap-1 text-[11px] text-rose-400 hover:bg-rose-950/40 hover:text-rose-300 py-1.5 rounded-lg transition-colors font-bold"
-        >
-          <span className="material-symbols-outlined text-[15px]">logout</span>
-          تسجيل الخروج
-        </button>
+        <div className="grid grid-cols-2 gap-2 pt-0.5">
+          {!isStandalone ? (
+            <button
+              onClick={handleInstallClick}
+              className="flex items-center justify-center gap-1 text-[11px] bg-brand-gold/15 hover:bg-brand-gold text-brand-gold hover:text-slate-950 border border-brand-gold/30 py-1.5 px-2 rounded-lg transition-all font-bold shadow-xs truncate"
+              title="تثبيت التطبيق على الجهاز (PWA)"
+            >
+              <span className="material-symbols-outlined text-[15px] shrink-0">
+                {isIos ? 'phone_iphone' : 'download_for_offline'}
+              </span>
+              <span className="truncate">تثبيت التطبيق</span>
+            </button>
+          ) : (
+            <div
+              className="flex items-center justify-center gap-1 text-[11px] bg-emerald-950/40 text-emerald-400 border border-emerald-500/30 py-1.5 px-2 rounded-lg font-bold truncate cursor-default"
+              title="التطبيق مثبت حالياً"
+            >
+              <span className="material-symbols-outlined text-[15px] shrink-0">check_circle</span>
+              <span className="truncate">مُثبَّت</span>
+            </div>
+          )}
+
+          <button
+            onClick={handleLogout}
+            className="flex items-center justify-center gap-1 text-[11px] text-rose-400 hover:bg-rose-950/40 hover:text-rose-300 border border-rose-500/20 py-1.5 px-2 rounded-lg transition-colors font-bold truncate"
+          >
+            <span className="material-symbols-outlined text-[15px] shrink-0">logout</span>
+            <span className="truncate">تسجيل الخروج</span>
+          </button>
+        </div>
       </div>
     </>
   );
@@ -332,6 +415,8 @@ export default function Sidebar() {
           {sidebarContent}
         </aside>
       </div>
+
+      <IosInstallModal isOpen={showIosModal} onClose={() => setShowIosModal(false)} />
     </>
   );
 }
