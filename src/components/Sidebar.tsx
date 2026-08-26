@@ -14,13 +14,6 @@ interface CurrentUser {
   branch: string;
 }
 
-interface NavSection {
-  id: string;
-  title: string;
-  icon: string;
-  pages: PagePermission[];
-}
-
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
@@ -28,7 +21,7 @@ export default function Sidebar() {
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [allowedPageIds, setAllowedPageIds] = useState<string[] | null>(null);
 
-  // Accordion state - which section is expanded
+  // Accordion state
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     pipeline: true,
     sales: false,
@@ -52,7 +45,7 @@ export default function Sidebar() {
       .catch(() => {});
   }, []);
 
-  // Auto-expand the section containing the current path
+  // Auto-expand section according to current route
   useEffect(() => {
     if (pathname.startsWith('/pipeline') || pathname === '/orders' || pathname === '/inspections' || pathname === '/workshop') {
       setExpandedSections(prev => ({ ...prev, pipeline: true }));
@@ -63,17 +56,13 @@ export default function Sidebar() {
     }
   }, [pathname]);
 
-  // Close drawer on route change on mobile
   useEffect(() => {
     close();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
-  const toggleSection = (sectionKey: string) => {
-    setExpandedSections(prev => ({
-      ...prev,
-      [sectionKey]: !prev[sectionKey],
-    }));
+  const toggleSection = (key: string) => {
+    setExpandedSections(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
   const handleLogout = async () => {
@@ -81,7 +70,6 @@ export default function Sidebar() {
     router.push('/login');
   };
 
-  // Filter allowed pages
   const isAllowed = (pageId: string) => {
     if (!allowedPageIds) return true;
     return allowedPageIds.includes(pageId);
@@ -111,49 +99,47 @@ export default function Sidebar() {
               أحمد كشك
               <span className="w-2 h-2 rounded-full bg-brand-gold inline-block animate-pulse"></span>
             </span>
-            <span className="text-[11px] text-brand-gold font-bold">للأقمشة والستائر الفاخرة</span>
+            <span className="text-[11px] text-brand-gold font-bold">للأقمشة والستائر</span>
           </div>
         </div>
       </div>
 
-      {/* Navigation Groups - Clean Collapsible UI */}
+      {/* Navigation */}
       <nav className="flex-1 px-3 py-3 space-y-2 overflow-y-auto custom-scrollbar">
-        {/* Dashboard Direct Link */}
+        {/* Main Dashboard */}
         {isAllowed('p_dashboard') && (
           <Link
             href="/"
-            className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all ${
+            className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl transition-all ${
               pathname === '/'
                 ? 'bg-brand-gold text-slate-950 font-black shadow-gold'
                 : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
             }`}
           >
-            <div className="flex items-center gap-2.5">
-              <span className={`material-symbols-outlined text-[20px] ${pathname === '/' ? 'text-slate-950' : 'text-slate-400'}`}>
-                dashboard
-              </span>
-              <span className="text-xs sm:text-sm font-bold">لوحة التحكم الرئيسية</span>
-            </div>
+            <span className={`material-symbols-outlined text-[19px] ${pathname === '/' ? 'text-slate-950' : 'text-slate-400'}`}>
+              dashboard
+            </span>
+            <span className="text-xs sm:text-sm font-bold">الرئيسية</span>
           </Link>
         )}
 
-        {/* 1. Collapsible Pipeline Group (مراحل الستائر الستة) */}
+        {/* 1. Pipeline Stages (مراحل الستائر) */}
         {pipelinePages.length > 0 && (
           <div className="rounded-xl border border-slate-800/60 bg-slate-900/40 overflow-hidden">
             <button
               onClick={() => toggleSection('pipeline')}
               className={`w-full flex items-center justify-between px-3.5 py-2.5 transition-colors text-right ${
-                expandedSections.pipeline ? 'bg-slate-800/60 text-brand-gold' : 'text-slate-300 hover:text-white'
+                expandedSections.pipeline ? 'bg-slate-800/60 text-brand-gold font-bold' : 'text-slate-300 hover:text-white'
               }`}
             >
               <div className="flex items-center gap-2.5">
-                <span className="material-symbols-outlined text-[20px] text-brand-gold">
+                <span className="material-symbols-outlined text-[19px] text-brand-gold">
                   linear_scale
                 </span>
-                <span className="text-xs sm:text-sm font-bold">مراحل دورة الستائر (Pipeline)</span>
+                <span className="text-xs sm:text-sm font-bold">مراحل الستائر</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-brand-gold/20 text-brand-gold font-mono font-bold">
+                <span className="text-[10px] px-1.5 py-0.2 rounded bg-brand-gold/20 text-brand-gold font-mono font-bold">
                   {pipelinePages.length}
                 </span>
                 <span className={`material-symbols-outlined text-[16px] text-slate-400 transition-transform duration-200 ${
@@ -178,13 +164,13 @@ export default function Sidebar() {
                           : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
                       }`}
                     >
-                      <div className="flex items-center gap-2">
-                        <span className={`material-symbols-outlined text-[16px] ${isActive ? 'text-slate-950' : 'text-slate-500'}`}>
+                      <div className="flex items-center gap-2 truncate">
+                        <span className={`material-symbols-outlined text-[16px] shrink-0 ${isActive ? 'text-slate-950' : 'text-slate-500'}`}>
                           {page.icon}
                         </span>
-                        <span>{page.name}</span>
+                        <span className="truncate">{page.name}</span>
                       </div>
-                      <span className={`text-[10px] font-mono ${isActive ? 'text-slate-900 font-bold' : 'text-slate-500'}`}>
+                      <span className={`text-[10px] font-mono shrink-0 mr-1 ${isActive ? 'text-slate-900 font-black' : 'text-slate-600'}`}>
                         0{idx + 1}
                       </span>
                     </Link>
@@ -195,20 +181,20 @@ export default function Sidebar() {
           </div>
         )}
 
-        {/* 2. Collapsible Sales & POS Group (المبيعات ونقاط البيع) */}
+        {/* 2. Sales & POS (المبيعات) */}
         {salesPages.length > 0 && (
           <div className="rounded-xl border border-slate-800/60 bg-slate-900/40 overflow-hidden">
             <button
               onClick={() => toggleSection('sales')}
               className={`w-full flex items-center justify-between px-3.5 py-2.5 transition-colors text-right ${
-                expandedSections.sales ? 'bg-slate-800/60 text-brand-gold' : 'text-slate-300 hover:text-white'
+                expandedSections.sales ? 'bg-slate-800/60 text-brand-gold font-bold' : 'text-slate-300 hover:text-white'
               }`}
             >
               <div className="flex items-center gap-2.5">
-                <span className="material-symbols-outlined text-[20px] text-emerald-400">
+                <span className="material-symbols-outlined text-[19px] text-emerald-400">
                   point_of_sale
                 </span>
-                <span className="text-xs sm:text-sm font-bold">المبيعات ونقاط البيع</span>
+                <span className="text-xs sm:text-sm font-bold">المبيعات</span>
               </div>
               <span className={`material-symbols-outlined text-[16px] text-slate-400 transition-transform duration-200 ${
                 expandedSections.sales ? 'rotate-180' : ''
@@ -234,7 +220,7 @@ export default function Sidebar() {
                       <span className={`material-symbols-outlined text-[16px] ${isActive ? 'text-slate-950' : 'text-slate-500'}`}>
                         {page.icon}
                       </span>
-                      <span>{page.name}</span>
+                      <span className="truncate">{page.name}</span>
                     </Link>
                   );
                 })}
@@ -243,17 +229,17 @@ export default function Sidebar() {
           </div>
         )}
 
-        {/* 3. Collapsible Management & Inventory Group (المخزون والإدارة) */}
+        {/* 3. Administration & Inventory (الإدارة) */}
         {adminPages.length > 0 && (
           <div className="rounded-xl border border-slate-800/60 bg-slate-900/40 overflow-hidden">
             <button
               onClick={() => toggleSection('admin')}
               className={`w-full flex items-center justify-between px-3.5 py-2.5 transition-colors text-right ${
-                expandedSections.admin ? 'bg-slate-800/60 text-brand-gold' : 'text-slate-300 hover:text-white'
+                expandedSections.admin ? 'bg-slate-800/60 text-brand-gold font-bold' : 'text-slate-300 hover:text-white'
               }`}
             >
               <div className="flex items-center gap-2.5">
-                <span className="material-symbols-outlined text-[20px] text-blue-400">
+                <span className="material-symbols-outlined text-[19px] text-blue-400">
                   admin_panel_settings
                 </span>
                 <span className="text-xs sm:text-sm font-bold">الإدارة والمخزون</span>
@@ -282,7 +268,7 @@ export default function Sidebar() {
                       <span className={`material-symbols-outlined text-[16px] ${isActive ? 'text-slate-950' : 'text-slate-500'}`}>
                         {page.icon}
                       </span>
-                      <span>{page.name}</span>
+                      <span className="truncate">{page.name}</span>
                     </Link>
                   );
                 })}
@@ -304,7 +290,7 @@ export default function Sidebar() {
           <div className="flex flex-col overflow-hidden flex-1">
             <span className="text-xs font-bold truncate text-white">{user?.name || 'أحمد كشك'}</span>
             <span className="text-[10px] text-brand-gold font-bold truncate">
-              {user ? roleLabels[user.role] || user.role : 'مدير المتجر'} • {user?.branch || 'الفرع الرئيسي'}
+              {user ? roleLabels[user.role] || user.role : 'مدير'} • {user?.branch || 'الفرع الرئيسي'}
             </span>
           </div>
         </Link>
@@ -321,12 +307,10 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* Desktop sidebar */}
       <aside className="hidden lg:flex fixed right-0 top-0 h-full w-64 bg-[#0f172a] text-slate-100 border-l border-slate-800/80 z-50 flex-col shadow-2xl">
         {sidebarContent}
       </aside>
 
-      {/* Mobile drawer */}
       <div className={`lg:hidden fixed inset-0 z-[60] ${isOpen ? '' : 'pointer-events-none'}`} aria-hidden={!isOpen}>
         <div
           onClick={close}
