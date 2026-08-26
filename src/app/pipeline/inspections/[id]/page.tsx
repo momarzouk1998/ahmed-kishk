@@ -5,13 +5,6 @@ import PageShell from '@/components/PageShell';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 
-interface FabricLayer {
-  layer: string;
-  code: string;
-  tape: boolean;
-  eyelet: boolean;
-}
-
 interface Room {
   id: string;
   name: string;
@@ -21,7 +14,6 @@ interface Room {
   sides: number;
   installationType: string;
   ceilingType: string;
-  fabrics: FabricLayer[];
   notes?: string;
 }
 
@@ -44,7 +36,7 @@ const mockDetail: Record<string, InspectionData> = {
     id: 'INS-001',
     customerName: 'محمود عبد الرحمن',
     phone: '01012345678',
-    address: 'التجمع الخامس، فيلا 42 شارع التسعين',
+    address: 'التجمع الخامس، فيلا 42',
     branch: 'الفرع الرئيسي',
     scheduledAt: '2026-08-26 16:00',
     technician: 'أحمد حسن',
@@ -61,10 +53,6 @@ const mockDetail: Record<string, InspectionData> = {
         sides: 2,
         installationType: 'مجرى سقف (تراك ألومنيوم)',
         ceilingType: 'جيبسون بورد / بيت نور',
-        fabrics: [
-          { layer: 'قماش خفيف (تول)', code: 'T-402', tape: true, eyelet: false },
-          { layer: 'قماش ثقيل (قطيفة تركي)', code: 'V-990', tape: true, eyelet: true },
-        ],
         notes: 'يوجد بيت نور بعمق 15سم — ثني الذيل 12سم',
       },
       {
@@ -76,10 +64,6 @@ const mockDetail: Record<string, InspectionData> = {
         sides: 2,
         installationType: 'مواسير استيل مذهبة',
         ceilingType: 'سقف عادي خرسانة',
-        fabrics: [
-          { layer: 'بلاك آوت عازل ضوء', code: 'BL-220', tape: false, eyelet: true },
-          { layer: 'شيفون ناعم', code: 'SH-10', tape: true, eyelet: false },
-        ],
         notes: 'تثبيت الماسورة أعلى حلق الشباك بـ 15سم',
       }
     ],
@@ -88,13 +72,13 @@ const mockDetail: Record<string, InspectionData> = {
     id: 'INS-002',
     customerName: 'سارة أحمد',
     phone: '01298765432',
-    address: 'الشيخ زايد، كمبوند بيفرلي هيلز',
+    address: 'الشيخ زايد، بيفرلي هيلز',
     branch: 'فرع عرابي',
     scheduledAt: '2026-08-27 12:00',
     technician: 'محمد علي',
     status: 'مُجدول',
     isLocked: false,
-    notes: 'شقة عروسة — مطلوب معاينة ورفع مقاسات 4 غرف',
+    notes: 'شقة عروسة — 4 غرف',
     rooms: [],
   }
 };
@@ -124,7 +108,7 @@ export default function InspectionDetailPage() {
   const [showRoomModal, setShowRoomModal] = useState(false);
   const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
 
-  // Room Form State (100% Zero Prices)
+  // Pure Geometric Measurements State (100% Zero Prices, No Fabrics)
   const [roomName, setRoomName] = useState('الصالة');
   const [roomType, setRoomType] = useState<'شباك' | 'بلكونة'>('شباك');
   const [widthCm, setWidthCm] = useState<number>(250);
@@ -133,18 +117,6 @@ export default function InspectionDetailPage() {
   const [installType, setInstallType] = useState('مجرى سقف (تراك ألومنيوم)');
   const [ceilingType, setCeilingType] = useState('جيبسون بورد / بيت نور');
   const [roomNotes, setRoomNotes] = useState('');
-
-  // Fabrics & Codes
-  const [hasSheer, setHasSheer] = useState(true);
-  const [sheerCode, setSheerCode] = useState('T-101');
-  const [hasHeavy, setHasHeavy] = useState(true);
-  const [heavyCode, setHeavyCode] = useState('V-202');
-  const [hasBlackout, setHasBlackout] = useState(false);
-  const [blackoutCode, setBlackoutCode] = useState('BL-01');
-
-  // Finishing
-  const [tapeSelected, setTapeSelected] = useState(true);
-  const [eyeletSelected, setEyeletSelected] = useState(false);
 
   const openRoomModal = (room?: Room) => {
     if (room) {
@@ -157,11 +129,6 @@ export default function InspectionDetailPage() {
       setInstallType(room.installationType);
       setCeilingType(room.ceilingType);
       setRoomNotes(room.notes || '');
-      setHasSheer(room.fabrics.some(f => f.layer.includes('خفيف')));
-      setHasHeavy(room.fabrics.some(f => f.layer.includes('ثقيل')));
-      setHasBlackout(room.fabrics.some(f => f.layer.includes('بلاك')));
-      setTapeSelected(room.fabrics.some(f => f.tape));
-      setEyeletSelected(room.fabrics.some(f => f.eyelet));
     } else {
       setEditingRoomId(null);
       setRoomName(`غرفة ${data.rooms.length + 1}`);
@@ -172,14 +139,6 @@ export default function InspectionDetailPage() {
       setInstallType('مجرى سقف (تراك ألومنيوم)');
       setCeilingType('جيبسون بورد / بيت نور');
       setRoomNotes('');
-      setHasSheer(true);
-      setSheerCode('T-101');
-      setHasHeavy(true);
-      setHeavyCode('V-202');
-      setHasBlackout(false);
-      setBlackoutCode('BL-01');
-      setTapeSelected(true);
-      setEyeletSelected(false);
     }
     setShowRoomModal(true);
   };
@@ -191,11 +150,6 @@ export default function InspectionDetailPage() {
       return;
     }
 
-    const fabrics: FabricLayer[] = [];
-    if (hasSheer) fabrics.push({ layer: 'قماش خفيف (تول/شيفون)', code: sheerCode, tape: tapeSelected, eyelet: eyeletSelected });
-    if (hasHeavy) fabrics.push({ layer: 'قماش ثقيل (قطيفة/كتان)', code: heavyCode, tape: tapeSelected, eyelet: eyeletSelected });
-    if (hasBlackout) fabrics.push({ layer: 'بلاك آوت عازل ضوء', code: blackoutCode, tape: tapeSelected, eyelet: eyeletSelected });
-
     const newRoom: Room = {
       id: editingRoomId || `rm-${Date.now()}`,
       name: roomName,
@@ -205,7 +159,6 @@ export default function InspectionDetailPage() {
       sides,
       installationType: installType,
       ceilingType,
-      fabrics,
       notes: roomNotes,
     };
 
@@ -241,7 +194,7 @@ export default function InspectionDetailPage() {
       return;
     }
     setData(prev => ({ ...prev, status: 'قيد التسعير' }));
-    alert('تم إرسال المقاسات بنجاح إلى مرحلة (2. التسعير والعقد والعربون) لدى الإدارة والمبيعات.');
+    alert('تم إرسال المقاسات بنجاح إلى مرحلة (التسعير والعقد) لدى المبيعات.');
     router.push('/pipeline/pricing');
   };
 
@@ -294,7 +247,7 @@ export default function InspectionDetailPage() {
               <h1 className="font-display font-black text-xl sm:text-2xl text-slate-900 mt-2">{data.customerName}</h1>
             </div>
 
-            {/* Quick Contact & Action Buttons */}
+            {/* Quick Contact Buttons */}
             <div className="flex flex-wrap gap-2">
               <a
                 href={`tel:${data.phone}`}
@@ -333,12 +286,6 @@ export default function InspectionDetailPage() {
               <strong className="text-slate-800 font-mono">{data.scheduledAt}</strong>
             </div>
           </div>
-
-          {data.notes && (
-            <div className="mt-3.5 bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs text-slate-700">
-              <strong>ملاحظات العميل:</strong> {data.notes}
-            </div>
-          )}
         </div>
 
         {/* Lock Notice */}
@@ -346,38 +293,33 @@ export default function InspectionDetailPage() {
           <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4 text-rose-900 text-xs flex items-center gap-2.5">
             <span className="material-symbols-outlined text-[24px] text-rose-600 shrink-0">lock</span>
             <div>
-              <strong>تنبيه الأمان الفني:</strong> هذا الطلب تم اعتماده وبدء القص في الورشة المركزية، لذلك تم قفل إمكانية تعديل المقاسات لتفادي تلف الأقمشة.
+              <strong>تنبيه:</strong> هذا الطلب تم اعتماده وبدء القص في الورشة، لذلك تم قفل تعديل المقاسات لتفادي تلف الأقمشة.
             </div>
           </div>
         )}
 
-        {/* Rooms Section Header & Action */}
+        {/* Rooms Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <h2 className="font-display font-black text-xl text-slate-900">
-              مقاسات الغرف المسجلة ({data.rooms.length} غرف)
-            </h2>
-            <p className="text-slate-500 text-xs mt-0.5">
-              الأبعاد الدقيقة، أنواع التراكات، وأكواد الأقمشة المختارة (نسخة الفني).
-            </p>
-          </div>
+          <h2 className="font-display font-black text-xl text-slate-900">
+            مقاسات الغرف المسجلة ({data.rooms.length} غرف)
+          </h2>
 
           <button
             disabled={data.isLocked}
             onClick={() => openRoomModal()}
-            className="w-full sm:w-auto bg-brand-gold hover:bg-brand-gold-hover disabled:opacity-40 text-slate-950 px-5 py-3 rounded-xl font-black text-xs sm:text-sm shadow-gold flex items-center justify-center gap-2 transition-all cursor-pointer"
+            className="w-full sm:w-auto bg-brand-gold hover:bg-brand-gold-hover disabled:opacity-40 text-slate-950 px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm shadow-gold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
           >
-            <span className="material-symbols-outlined text-[18px]">add_box</span>
-            + إضافة مقاسات غرفة جديدة
+            <span className="material-symbols-outlined text-[18px]">add</span>
+            <span>إضافة غرفة جديدة</span>
           </button>
         </div>
 
-        {/* Rooms Grid / Cards */}
+        {/* Rooms Grid */}
         {data.rooms.length === 0 ? (
           <div className="bg-white rounded-2xl border border-dashed border-slate-300 p-12 text-center">
             <span className="material-symbols-outlined text-[48px] text-slate-300 block mb-2">square_foot</span>
             <h3 className="font-bold text-slate-800 text-base">لم يتم رفع مقاسات أي غرفة بعد</h3>
-            <p className="text-xs text-slate-500 mt-1 mb-4">اضغط على زر &quot;إضافة مقاسات غرفة جديدة&quot; لبدء تسجيل الأبعاد.</p>
+            <p className="text-xs text-slate-500 mt-1 mb-4">اضغط على زر &quot;إضافة غرفة جديدة&quot; لتسجيل الأبعاد.</p>
             <button
               onClick={() => openRoomModal()}
               className="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold text-xs shadow"
@@ -386,24 +328,19 @@ export default function InspectionDetailPage() {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {data.rooms.map((room, idx) => (
               <div key={room.id} className="bg-white rounded-2xl border border-slate-200 p-5 shadow-soft flex flex-col justify-between">
                 <div>
                   <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="w-6 h-6 rounded-full bg-brand-gold text-slate-950 flex items-center justify-center font-black text-xs">
-                          {idx + 1}
-                        </span>
-                        <h3 className="font-bold text-lg text-slate-900">{room.name}</h3>
-                        <span className="text-[11px] bg-slate-100 border border-slate-200 px-2 py-0.5 rounded font-bold text-slate-700">
-                          {room.type}
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-500 mt-1">
-                        طريقة التركيب: <strong className="text-slate-800">{room.installationType}</strong>
-                      </p>
+                    <div className="flex items-center gap-2">
+                      <span className="w-6 h-6 rounded-full bg-brand-gold text-slate-950 flex items-center justify-center font-black text-xs">
+                        {idx + 1}
+                      </span>
+                      <h3 className="font-bold text-lg text-slate-900">{room.name}</h3>
+                      <span className="text-[11px] bg-slate-100 border border-slate-200 px-2 py-0.5 rounded font-bold text-slate-700">
+                        {room.type}
+                      </span>
                     </div>
 
                     {!data.isLocked && (
@@ -426,8 +363,8 @@ export default function InspectionDetailPage() {
                     )}
                   </div>
 
-                  {/* Dimensions Box - Big bold readable numbers for technicians */}
-                  <div className="grid grid-cols-3 gap-2 bg-slate-50 p-3.5 rounded-xl border border-slate-200 text-center mb-3">
+                  {/* Big Dimensions Box */}
+                  <div className="grid grid-cols-3 gap-2 bg-slate-50 p-3 rounded-xl border border-slate-200 text-center mb-3">
                     <div>
                       <div className="font-mono font-black text-xl text-slate-900">{room.widthCm} <span className="text-xs font-normal">سم</span></div>
                       <div className="text-[10px] text-slate-400 font-bold">العرض</div>
@@ -437,42 +374,18 @@ export default function InspectionDetailPage() {
                       <div className="text-[10px] text-slate-400 font-bold">الارتفاع</div>
                     </div>
                     <div>
-                      <div className="font-mono font-black text-base text-slate-900 mt-0.5">{room.sides === 2 ? 'جنبين (2)' : 'جنب (1)'}</div>
+                      <div className="font-mono font-black text-base text-slate-900 mt-0.5">{room.sides === 2 ? 'جنبين' : 'جنب واحد'}</div>
                       <div className="text-[10px] text-slate-400 font-bold">الجوانب</div>
                     </div>
                   </div>
 
-                  {/* Ceiling & Installation */}
-                  <div className="text-xs text-slate-600 bg-amber-50/60 border border-amber-200/80 p-2.5 rounded-xl mb-3">
-                    <strong>مكان ونوع السقف:</strong> {room.ceilingType}
-                  </div>
-
-                  {/* Fabrics table */}
-                  <div className="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden text-xs mb-3">
-                    <table className="w-full text-right">
-                      <thead className="bg-slate-100 font-mono text-[11px] text-slate-500 border-b border-slate-200">
-                        <tr>
-                          <th className="p-2">الطبقة</th>
-                          <th className="p-2">كود القماش</th>
-                          <th className="p-2 text-center">شريط</th>
-                          <th className="p-2 text-center">كبس</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {room.fabrics.map((f, i) => (
-                          <tr key={i} className="border-t border-slate-100">
-                            <td className="p-2 font-bold text-slate-900">{f.layer}</td>
-                            <td className="p-2 font-mono font-bold text-brand-gold-dark">{f.code || 'لم يحدد'}</td>
-                            <td className="p-2 text-center">{f.tape ? '✓' : '—'}</td>
-                            <td className="p-2 text-center">{f.eyelet ? '✓' : '—'}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  <div className="text-xs space-y-1.5 bg-slate-50 p-3 rounded-xl border border-slate-200 font-medium text-slate-700">
+                    <div><strong>طريقة التركيب:</strong> {room.installationType}</div>
+                    <div><strong>مكان ونوع السقف:</strong> {room.ceilingType}</div>
                   </div>
 
                   {room.notes && (
-                    <div className="text-xs text-slate-700 bg-slate-100 p-2.5 rounded-lg border border-slate-200">
+                    <div className="text-xs text-amber-950 bg-amber-50 p-2.5 rounded-lg border border-amber-200 mt-2">
                       <strong>ملاحظات فنية:</strong> {room.notes}
                     </div>
                   )}
@@ -482,44 +395,40 @@ export default function InspectionDetailPage() {
           </div>
         )}
 
-        {/* Submit to Sales & Pricing Button */}
+        {/* Submit to Sales Button */}
         {data.rooms.length > 0 && (
           <div className="bg-slate-900 text-white p-5 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 mt-2">
             <div>
-              <h3 className="font-bold text-base">جاهز لاعتماد المقاسات والتسعير؟</h3>
+              <h3 className="font-bold text-base">اعتماد المقاسات وإرسالها للمبيعات</h3>
               <p className="text-xs text-slate-400 mt-0.5">
-                سيتم إرسال المقاسات مباشرة لمسؤول المبيعات لحساب التكاليف وطباعة العقد للعميل.
+                سيتم تحويل المقاسات مباشرة لمسؤول المبيعات لحساب التكاليف والعقد.
               </p>
             </div>
             <button
               onClick={handleSendToPricing}
               className="w-full sm:w-auto bg-brand-gold hover:bg-brand-gold-hover text-slate-950 px-6 py-3 rounded-xl font-black text-sm shadow-gold flex items-center justify-center gap-2 cursor-pointer transition-all"
             >
-              <span>إرسال للمبيعات والتسعير والعربون</span>
+              <span>إرسال للتسعير والعقد</span>
               <span className="material-symbols-outlined text-[18px]">arrow_back</span>
             </button>
           </div>
         )}
       </div>
 
-      {/* Modal: Room Form (Technician Zero Prices) */}
+      {/* Modal: Room Form (Pure Measurements Only) */}
       {showRoomModal && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl p-5 sm:p-6 w-full max-w-xl my-6 max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl p-5 sm:p-6 w-full max-w-lg my-6 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center pb-3 border-b border-slate-100 mb-4">
-              <div>
-                <span className="text-[11px] font-bold text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-full">استمارة الفني</span>
-                <h2 className="font-display font-black text-lg sm:text-xl text-slate-900 mt-1">
-                  {editingRoomId ? 'تعديل مقاسات الغرفة' : 'رفع مقاسات غرفة جديدة'}
-                </h2>
-              </div>
+              <h2 className="font-display font-black text-lg text-slate-900">
+                {editingRoomId ? 'تعديل مقاسات الغرفة' : 'رفع مقاسات غرفة جديدة'}
+              </h2>
               <button onClick={() => setShowRoomModal(false)} className="text-slate-400 hover:text-slate-600">
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
 
             <form onSubmit={handleSaveRoom} className="flex flex-col gap-3.5">
-              {/* Room name & Type */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-bold text-slate-700">اسم الغرفة / المكان *</label>
@@ -535,7 +444,7 @@ export default function InspectionDetailPage() {
               </div>
 
               {/* Dimensions */}
-              <div className="grid grid-cols-3 gap-2 sm:gap-3 bg-slate-50 p-3 rounded-2xl border border-slate-200">
+              <div className="grid grid-cols-3 gap-2 bg-slate-50 p-3 rounded-2xl border border-slate-200">
                 <div className="flex flex-col gap-1">
                   <label className="text-[11px] font-bold text-slate-700">العرض (سم) *</label>
                   <input type="number" value={widthCm} onChange={e => setWidthCm(Number(e.target.value))} className="border border-slate-300 rounded-xl p-2 text-sm font-mono font-black text-center" required />
@@ -572,53 +481,6 @@ export default function InspectionDetailPage() {
                     <option value="سقف معلق خشب">سقف معلق خشب</option>
                   </select>
                 </div>
-              </div>
-
-              {/* Fabrics & Codes (Zero Prices) */}
-              <div className="border border-slate-200 rounded-2xl p-3.5 space-y-2.5 bg-slate-50/50">
-                <div className="text-xs font-black text-slate-900">طبقات الأقمشة والأكواد:</div>
-
-                <div className="bg-white p-2.5 rounded-xl border border-slate-200 flex items-center justify-between">
-                  <label className="flex items-center gap-2 cursor-pointer font-bold text-xs">
-                    <input type="checkbox" checked={hasSheer} onChange={e => setHasSheer(e.target.checked)} className="rounded" />
-                    <span>تول / شيفون خفيف</span>
-                  </label>
-                  {hasSheer && (
-                    <input value={sheerCode} onChange={e => setSheerCode(e.target.value)} placeholder="كود القماش (مثلاً T-101)" className="border border-slate-200 rounded-lg p-1.5 text-xs font-mono w-40" />
-                  )}
-                </div>
-
-                <div className="bg-white p-2.5 rounded-xl border border-slate-200 flex items-center justify-between">
-                  <label className="flex items-center gap-2 cursor-pointer font-bold text-xs">
-                    <input type="checkbox" checked={hasHeavy} onChange={e => setHasHeavy(e.target.checked)} className="rounded" />
-                    <span>قطيفة / كتان ثقيل</span>
-                  </label>
-                  {hasHeavy && (
-                    <input value={heavyCode} onChange={e => setHeavyCode(e.target.value)} placeholder="كود القماش (مثلاً V-202)" className="border border-slate-200 rounded-lg p-1.5 text-xs font-mono w-40" />
-                  )}
-                </div>
-
-                <div className="bg-white p-2.5 rounded-xl border border-slate-200 flex items-center justify-between">
-                  <label className="flex items-center gap-2 cursor-pointer font-bold text-xs">
-                    <input type="checkbox" checked={hasBlackout} onChange={e => setHasBlackout(e.target.checked)} className="rounded" />
-                    <span>بلاك آوت عازل ضوء</span>
-                  </label>
-                  {hasBlackout && (
-                    <input value={blackoutCode} onChange={e => setBlackoutCode(e.target.value)} placeholder="كود القماش (مثلاً BL-01)" className="border border-slate-200 rounded-lg p-1.5 text-xs font-mono w-40" />
-                  )}
-                </div>
-              </div>
-
-              {/* Finishing */}
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <label className="flex items-center gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200 cursor-pointer font-bold">
-                  <input type="checkbox" checked={tapeSelected} onChange={e => setTapeSelected(e.target.checked)} className="rounded" />
-                  <span>شريط كشكشة (3 فتلة)</span>
-                </label>
-                <label className="flex items-center gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200 cursor-pointer font-bold">
-                  <input type="checkbox" checked={eyeletSelected} onChange={e => setEyeletSelected(e.target.checked)} className="rounded" />
-                  <span>حلقات كبس</span>
-                </label>
               </div>
 
               {/* Notes */}

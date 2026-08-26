@@ -105,8 +105,6 @@ export default function PipelineInspectionsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 8;
 
-  // Tab 1: Open / In Progress (مُجدول / تم رفع المقاسات ولم ترسل بعد)
-  // Tab 2: Sent to Pricing / In Workshop / Completed (مرسلة للتسعير / في الورشة / مكتملة)
   const isSent = (status: InspectionSummary['status']) => status === 'قيد التسعير' || status === 'في الورشة' || status === 'مكتمل';
 
   const tabFiltered = inspections.filter(item => {
@@ -159,14 +157,11 @@ export default function PipelineInspectionsPage() {
       <div className="flex flex-col gap-5">
         {/* Concise Header */}
         <div className="flex items-center justify-between gap-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-100 text-amber-950 border border-amber-200">
-                المرحلة 1
-              </span>
-              <h1 className="font-display font-black text-xl sm:text-2xl text-slate-900">رفع المقاسات</h1>
-            </div>
-            <p className="text-slate-500 text-xs mt-0.5">شاشة الفني الميداني (بدون أسعار)</p>
+          <div className="flex items-center gap-2">
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-100 text-amber-950 border border-amber-200">
+              المرحلة 1
+            </span>
+            <h1 className="font-display font-black text-xl sm:text-2xl text-slate-900">رفع المقاسات</h1>
           </div>
 
           <button
@@ -174,14 +169,14 @@ export default function PipelineInspectionsPage() {
               setName(''); setPhone(''); setAddress(''); setSchedule('');
               setShowNewModal(true);
             }}
-            className="bg-brand-gold hover:bg-brand-gold-hover text-slate-950 px-4 py-2.5 rounded-xl font-black text-xs sm:text-sm shadow-gold flex items-center gap-1.5 transition-all cursor-pointer shrink-0"
+            className="bg-brand-gold hover:bg-brand-gold-hover text-slate-950 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm shadow-gold flex items-center gap-1.5 transition-all cursor-pointer shrink-0"
           >
             <span className="material-symbols-outlined text-[18px]">add</span>
-            + طلب جديد
+            <span>طلب جديد</span>
           </button>
         </div>
 
-        {/* 2-Tabs Navigation (المعاينات المفتوحة / سجل المعاينات المرسلة) */}
+        {/* 2-Tabs Navigation */}
         <div className="flex border-b border-slate-200 gap-2">
           <button
             onClick={() => { setActiveTab('OPEN'); setCurrentPage(1); }}
