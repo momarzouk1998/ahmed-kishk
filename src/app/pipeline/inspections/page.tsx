@@ -1,97 +1,22 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
 import { useRouter } from 'next/navigation';
+import { getStoredInspections, saveOrUpdateInspection, InspectionData } from '@/lib/inspectionsStore';
 
-export interface InspectionSummary {
-  id: string;
-  customerName: string;
-  phone: string;
-  address: string;
-  branch: string;
-  scheduledAt: string;
-  technician: string;
-  status: 'مُجدول' | 'تم رفع المقاسات' | 'قيد التسعير' | 'في الورشة' | 'مكتمل';
-  roomsCount: number;
-  isLocked: boolean;
-  createdAt: string;
-}
-
-const mockInspections: InspectionSummary[] = [
-  {
-    id: 'INS-001',
-    customerName: 'محمود عبد الرحمن',
-    phone: '01012345678',
-    address: 'التجمع الخامس، فيلا 42',
-    branch: 'الفرع الرئيسي',
-    scheduledAt: '2026-08-26 16:00',
-    technician: 'أحمد حسن',
-    status: 'تم رفع المقاسات',
-    roomsCount: 2,
-    isLocked: false,
-    createdAt: '2026-08-25',
-  },
-  {
-    id: 'INS-002',
-    customerName: 'سارة أحمد',
-    phone: '01298765432',
-    address: 'الشيخ زايد، كمبوند بيفرلي هيلز',
-    branch: 'فرع عرابي',
-    scheduledAt: '2026-08-27 12:00',
-    technician: 'محمد علي',
-    status: 'مُجدول',
-    roomsCount: 0,
-    isLocked: false,
-    createdAt: '2026-08-25',
-  },
-  {
-    id: 'INS-003',
-    customerName: 'شركة المعمار للمقاولات',
-    phone: '01155556666',
-    address: 'المهندسين، شارع البطل',
-    branch: 'الفرع الرئيسي',
-    scheduledAt: '2026-08-24 11:00',
-    technician: 'محمد علي',
-    status: 'في الورشة',
-    roomsCount: 4,
-    isLocked: true,
-    createdAt: '2026-08-24',
-  },
-  {
-    id: 'INS-004',
-    customerName: 'أسرة محمود سعيد',
-    phone: '01099887766',
-    address: 'مصر الجديدة، ميدان الحجاز',
-    branch: 'فرع عرابي',
-    scheduledAt: '2026-08-23 18:00',
-    technician: 'أحمد حسن',
-    status: 'مكتمل',
-    roomsCount: 3,
-    isLocked: true,
-    createdAt: '2026-08-23',
-  },
-  {
-    id: 'INS-005',
-    customerName: 'د. طارق خيري',
-    phone: '01077665544',
-    address: 'المعادي، دجلة',
-    branch: 'الفرع الرئيسي',
-    scheduledAt: '2026-08-28 15:00',
-    technician: 'أحمد حسن',
-    status: 'مُجدول',
-    roomsCount: 0,
-    isLocked: false,
-    createdAt: '2026-08-25',
-  },
-];
+export type InspectionSummary = InspectionData;
 
 export default function PipelineInspectionsPage() {
   const router = useRouter();
-  const [inspections, setInspections] = useState<InspectionSummary[]>(mockInspections);
+  const [inspections, setInspections] = useState<InspectionData[]>([]);
   const [activeTab, setActiveTab] = useState<'OPEN' | 'SENT'>('OPEN');
   const [searchQuery, setSearchQuery] = useState('');
   const [showNewModal, setShowNewModal] = useState(false);
+
+  useEffect(() => {
+    setInspections(getStoredInspections());
+  }, []);
 
   // New Request Form state
   const [name, setName] = useState('');
@@ -105,7 +30,7 @@ export default function PipelineInspectionsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 8;
 
-  const isSent = (status: InspectionSummary['status']) => status === 'قيد التسعير' || status === 'في الورشة' || status === 'مكتمل';
+  const isSent = (status: InspectionData['status']) => status === 'قيد التسعير' || status === 'في الورشة' || status === 'مكتمل';
 
   const tabFiltered = inspections.filter(item => {
     if (activeTab === 'OPEN') {
@@ -133,21 +58,24 @@ export default function PipelineInspectionsPage() {
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !phone) return;
-    const newId = `INS-${String(inspections.length + 1).padStart(3, '0')}`;
-    const newItem: InspectionSummary = {
+    const currentList = getStoredInspections();
+    const newId = `INS-${String(currentList.length + 1).padStart(3, '0')}`;
+    const newItem: InspectionData = {
       id: newId,
-      customerName: name,
-      phone,
-      address,
+      customerName: name.trim(),
+      phone: phone.trim(),
+      address: address.trim(),
       branch,
       scheduledAt: schedule || 'غير محدد',
       technician: tech,
       status: 'مُجدول',
-      roomsCount: 0,
       isLocked: false,
+      notes: '',
+      rooms: [],
       createdAt: new Date().toISOString().split('T')[0],
     };
-    setInspections([newItem, ...inspections]);
+    saveOrUpdateInspection(newItem);
+    setInspections([newItem, ...currentList]);
     setShowNewModal(false);
     router.push(`/pipeline/inspections/${newId}`);
   };
@@ -269,7 +197,7 @@ export default function PipelineInspectionsPage() {
                       <td className="p-3.5 font-mono text-slate-600">{item.scheduledAt}</td>
                       <td className="p-3.5 text-center">
                         <span className="font-mono font-bold bg-slate-100 px-2 py-0.5 rounded text-slate-800">
-                          {item.roomsCount}
+                          {item.rooms?.length || 0}
                         </span>
                       </td>
                       <td className="p-3.5 text-center">
@@ -317,7 +245,7 @@ export default function PipelineInspectionsPage() {
                   <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
                     <span className="text-slate-500">الفني: <strong>{item.technician}</strong></span>
                     <span className="font-bold text-brand-gold-dark bg-amber-50 px-2 py-0.5 rounded">
-                      {item.roomsCount} غرف ←
+                      {item.rooms?.length || 0} غرف ←
                     </span>
                   </div>
                 </div>

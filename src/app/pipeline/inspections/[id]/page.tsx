@@ -5,157 +5,13 @@ import PageShell from '@/components/PageShell';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import Logo from '@/components/Logo';
-
-interface Room {
-  id: string;
-  name: string;
-  type: 'شباك' | 'بلكونة';
-  widthCm: number;
-  heightCm: number;
-  sides: number;
-  installationType: string;
-  ceilingType: string;
-  notes?: string;
-}
-
-interface InspectionData {
-  id: string;
-  customerName: string;
-  phone: string;
-  address: string;
-  branch: string;
-  scheduledAt: string;
-  technician: string;
-  status: 'مُجدول' | 'تم رفع المقاسات' | 'قيد التسعير' | 'في الورشة' | 'مكتمل';
-  isLocked: boolean;
-  notes: string;
-  rooms: Room[];
-}
-
-const mockDatabase: Record<string, InspectionData> = {
-  'INS-001': {
-    id: 'INS-001',
-    customerName: 'محمود عبد الرحمن',
-    phone: '01012345678',
-    address: 'التجمع الخامس، فيلا 42',
-    branch: 'الفرع الرئيسي',
-    scheduledAt: '2026-08-26 16:00',
-    technician: 'أحمد حسن',
-    status: 'تم رفع المقاسات',
-    isLocked: false,
-    notes: 'شقة 3 غرف + صالة بلكونة كبيرة',
-    rooms: [
-      {
-        id: 'r1',
-        name: 'الصالة الرئيسية (بلكونة)',
-        type: 'بلكونة',
-        widthCm: 350,
-        heightCm: 280,
-        sides: 2,
-        installationType: 'مجرى سقف (تراك ألومنيوم)',
-        ceilingType: 'جيبسون بورد / بيت نور',
-        notes: 'يوجد بيت نور بعمق 15سم — ثني الذيل 12سم',
-      },
-      {
-        id: 'r2',
-        name: 'غرفة النوم الرئيسية',
-        type: 'شباك',
-        widthCm: 200,
-        heightCm: 260,
-        sides: 2,
-        installationType: 'مواسير استيل مذهبة',
-        ceilingType: 'سقف عادي خرسانة',
-        notes: 'تثبيت الماسورة أعلى حلق الشباك بـ 15سم',
-      }
-    ],
-  },
-  'INS-002': {
-    id: 'INS-002',
-    customerName: 'سارة أحمد',
-    phone: '01298765432',
-    address: 'الشيخ زايد، كمبوند بيفرلي هيلز',
-    branch: 'فرع عرابي',
-    scheduledAt: '2026-08-27 12:00',
-    technician: 'محمد علي',
-    status: 'مُجدول',
-    isLocked: false,
-    notes: 'شقة عروسة — 4 غرف',
-    rooms: [],
-  },
-  'INS-003': {
-    id: 'INS-003',
-    customerName: 'شركة المعمار للمقاولات',
-    phone: '01155556666',
-    address: 'المهندسين، شارع البطل أحمد عبد العزيز',
-    branch: 'الفرع الرئيسي',
-    scheduledAt: '2026-08-24 11:00',
-    technician: 'محمد علي',
-    status: 'في الورشة',
-    isLocked: true,
-    notes: 'مكاتب إدارية وقاعات اجتماعات',
-    rooms: [
-      {
-        id: 'r3',
-        name: 'قاعة الاجتماعات الرئيسية',
-        type: 'شباك',
-        widthCm: 500,
-        heightCm: 300,
-        sides: 2,
-        installationType: 'مجرى سقف (تراك ألومنيوم)',
-        ceilingType: 'جيبسون بورد / بيت نور',
-        notes: 'ستائر عازلة للضوء والصوت',
-      },
-      {
-        id: 'r4',
-        name: 'مكتب رئيس مجلس الإدارة',
-        type: 'شباك',
-        widthCm: 280,
-        heightCm: 290,
-        sides: 2,
-        installationType: 'مواسير استيل مذهبة',
-        ceilingType: 'جيبسون بورد / بيت نور',
-        notes: '',
-      }
-    ],
-  },
-  'INS-004': {
-    id: 'INS-004',
-    customerName: 'أسرة محمود سعيد',
-    phone: '01099887766',
-    address: 'مصر الجديدة، ميدان الحجاز',
-    branch: 'فرع عرابي',
-    scheduledAt: '2026-08-23 18:00',
-    technician: 'أحمد حسن',
-    status: 'مكتمل',
-    isLocked: true,
-    notes: '',
-    rooms: [
-      {
-        id: 'r5',
-        name: 'غرفة المعيشة',
-        type: 'شباك',
-        widthCm: 300,
-        heightCm: 270,
-        sides: 2,
-        installationType: 'مجرى سقف (تراك ألومنيوم)',
-        ceilingType: 'سقف عادي خرسانة',
-      }
-    ],
-  },
-  'INS-005': {
-    id: 'INS-005',
-    customerName: 'د. طارق خيري',
-    phone: '01077665544',
-    address: 'المعادي، دجلة شارع 200',
-    branch: 'الفرع الرئيسي',
-    scheduledAt: '2026-08-28 15:00',
-    technician: 'أحمد حسن',
-    status: 'مُجدول',
-    isLocked: false,
-    notes: 'فيلا خاصة',
-    rooms: [],
-  }
-};
+import {
+  getInspectionById,
+  saveOrUpdateInspection,
+  syncInspectionToPricing,
+  InspectionData,
+  Room
+} from '@/lib/inspectionsStore';
 
 const installOptions = [
   'مجرى سقف (تراك ألومنيوم)',
@@ -176,21 +32,40 @@ export default function InspectionDetailPage() {
   const rawId = (params?.id as string) || 'INS-001';
   const inspectionId = decodeURIComponent(rawId);
 
-  const [data, setData] = useState<InspectionData>(() => {
-    return mockDatabase[inspectionId] || {
-      id: inspectionId,
-      customerName: 'عميل مسجل',
-      phone: '01000000000',
-      address: 'القاهرة',
-      branch: 'الفرع الرئيسي',
-      scheduledAt: '2026-08-26 12:00',
-      technician: 'أحمد حسن',
-      status: 'مُجدول',
-      isLocked: false,
-      notes: '',
-      rooms: [],
-    };
+  const [data, setData] = useState<InspectionData>({
+    id: inspectionId,
+    customerName: 'جاري التحميل...',
+    phone: '',
+    address: '',
+    branch: 'الفرع الرئيسي',
+    scheduledAt: 'غير محدد',
+    technician: 'أحمد حسن',
+    status: 'مُجدول',
+    isLocked: false,
+    notes: '',
+    rooms: [],
   });
+
+  useEffect(() => {
+    const item = getInspectionById(inspectionId);
+    if (item) {
+      setData(item);
+    } else {
+      setData({
+        id: inspectionId,
+        customerName: 'طلب معاينة جديد',
+        phone: '',
+        address: '',
+        branch: 'الفرع الرئيسي',
+        scheduledAt: 'غير محدد',
+        technician: 'أحمد حسن',
+        status: 'مُجدول',
+        isLocked: false,
+        notes: '',
+        rooms: [],
+      });
+    }
+  }, [inspectionId]);
 
   // Modal State
   const [showRoomModal, setShowRoomModal] = useState(false);
@@ -251,30 +126,33 @@ export default function InspectionDetailPage() {
       notes: roomNotes,
     };
 
+    let updatedRooms: Room[];
     if (editingRoomId) {
-      setData(prev => ({
-        ...prev,
-        status: 'تم رفع المقاسات',
-        rooms: prev.rooms.map(rm => rm.id === editingRoomId ? newRoom : rm)
-      }));
+      updatedRooms = data.rooms.map(rm => rm.id === editingRoomId ? newRoom : rm);
     } else {
-      setData(prev => ({
-        ...prev,
-        status: 'تم رفع المقاسات',
-        rooms: [...prev.rooms, newRoom]
-      }));
+      updatedRooms = [...data.rooms, newRoom];
     }
 
+    const updatedData: InspectionData = {
+      ...data,
+      status: 'تم رفع المقاسات',
+      rooms: updatedRooms,
+    };
+
+    setData(updatedData);
+    saveOrUpdateInspection(updatedData);
     setShowRoomModal(false);
   };
 
   const handleDeleteRoom = (roomId: string) => {
     if (isReadOnly) return;
     if (!confirm('هل تريد حذف هذه الغرفة من المقاسات؟')) return;
-    setData(prev => ({
-      ...prev,
-      rooms: prev.rooms.filter(rm => rm.id !== roomId)
-    }));
+    const updatedData: InspectionData = {
+      ...data,
+      rooms: data.rooms.filter(rm => rm.id !== roomId)
+    };
+    setData(updatedData);
+    saveOrUpdateInspection(updatedData);
   };
 
   const handleSendToPricing = () => {
@@ -282,7 +160,10 @@ export default function InspectionDetailPage() {
       alert('يرجى رفع مقاسات غرفة واحدة على الأقل');
       return;
     }
-    setData(prev => ({ ...prev, status: 'قيد التسعير' }));
+    const updatedData: InspectionData = { ...data, status: 'قيد التسعير' };
+    setData(updatedData);
+    saveOrUpdateInspection(updatedData);
+    syncInspectionToPricing(updatedData);
     alert('تم إرسال المقاسات بنجاح إلى مرحلة (التسعير والعقد) لدى المبيعات.');
     router.push('/pipeline/pricing');
   };

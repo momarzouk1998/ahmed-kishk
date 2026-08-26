@@ -1,8 +1,12 @@
-'use client';
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
 import ContractPrintModal, { PrintContractData } from '@/components/ContractPrintModal';
+import {
+  getStoredQuotations,
+  saveAllQuotations,
+  QuotationOrder,
+  RoomPricing
+} from '@/lib/inspectionsStore';
 
 interface InventoryFabric {
   id: string;
@@ -22,161 +26,20 @@ const mockFabricsInventory: InventoryFabric[] = [
   { id: 'f6', code: 'LN-401', name: 'كتان إسباني مدرج ألوان هادئة', category: 'كتان / درابيري', pricePerMeter: 310, stockMeters: 95 },
 ];
 
-export interface RoomPricing {
-  id: string;
-  name: string;
-  type: string;
-  widthCm: number;
-  heightCm: number;
-  sides: number;
-  installationType: string;
-  ceilingType: string;
-  // Selected Fabric items
-  sheerFabricCode?: string;
-  sheerFabricName?: string;
-  sheerMeters: number;
-  sheerPrice: number;
-  heavyFabricCode?: string;
-  heavyFabricName?: string;
-  heavyMeters: number;
-  heavyPrice: number;
-  blackoutFabricCode?: string;
-  blackoutFabricName?: string;
-  blackoutMeters: number;
-  blackoutPrice: number;
-  trackMeters: number;
-  trackPrice: number;
-  tapeMeters: number;
-  tapePrice: number;
-  tailorPricePerSide: number;
-  installFee: number;
-  totalSellPrice: number;
-}
-
-export interface QuotationOrder {
-  id: string;
-  inspectionId: string;
-  customerName: string;
-  phone: string;
-  address: string;
-  status: 'بانتظار التسعير' | 'تم إرسال المقايسة' | 'معتمد ومسدد العربون' | 'تم التحويل للورشة';
-  totalAmount: number;
-  depositPaid: number;
-  remainingAmount: number;
-  date: string;
-  estimatorName: string;
-  rooms: RoomPricing[];
-}
-
-const initialQuotations: QuotationOrder[] = [
-  {
-    id: 'QOT-101',
-    inspectionId: 'INS-001',
-    customerName: 'محمود عبد الرحمن',
-    phone: '01012345678',
-    address: 'التجمع الخامس، فيلا 42',
-    status: 'معتمد ومسدد العربون',
-    totalAmount: 12600,
-    depositPaid: 7000,
-    remainingAmount: 5600,
-    date: '2026-08-25',
-    estimatorName: 'أحمد كشك',
-    rooms: [
-      {
-        id: 'r1',
-        name: 'الصالة الرئيسية (بلكونة)',
-        type: 'بلكونة',
-        widthCm: 350,
-        heightCm: 280,
-        sides: 2,
-        installationType: 'مجرى سقف (تراك ألومنيوم)',
-        ceilingType: 'جيبسون بورد / بيت نور',
-        sheerFabricCode: 'SH-101',
-        sheerFabricName: 'شيفون حرير فاخر (أبيض سادة)',
-        sheerMeters: 8.75,
-        sheerPrice: 160,
-        heavyFabricCode: 'HV-201',
-        heavyFabricName: 'قطيفة جاجوار تركيات (درجات البيج)',
-        heavyMeters: 7.0,
-        heavyPrice: 380,
-        blackoutMeters: 0,
-        blackoutPrice: 0,
-        trackMeters: 3.5,
-        trackPrice: 120,
-        tapeMeters: 8.75,
-        tapePrice: 40,
-        tailorPricePerSide: 150,
-        installFee: 200,
-        totalSellPrice: 12600,
-      }
-    ]
-  },
-  {
-    id: 'QOT-102',
-    inspectionId: 'INS-002',
-    customerName: 'سارة أحمد',
-    phone: '01298765432',
-    address: 'الشيخ زايد، بيفرلي هيلز',
-    status: 'بانتظار التسعير',
-    totalAmount: 0,
-    depositPaid: 0,
-    remainingAmount: 0,
-    date: '2026-08-25',
-    estimatorName: 'أحمد كشك',
-    rooms: [
-      {
-        id: 'r2',
-        name: 'غرفة النوم الرئيسية',
-        type: 'شباك',
-        widthCm: 250,
-        heightCm: 270,
-        sides: 2,
-        installationType: 'مواسير استيل مذهبة',
-        ceilingType: 'سقف عادي خرسانة',
-        sheerFabricCode: 'SH-102',
-        sheerFabricName: 'تول مطرز كريستال تركيات',
-        sheerMeters: 6.25,
-        sheerPrice: 220,
-        heavyFabricCode: 'HV-202',
-        heavyFabricName: 'قطيفة شانيل كابوتونيه فاخر',
-        heavyMeters: 5.0,
-        heavyPrice: 450,
-        blackoutFabricCode: 'BK-301',
-        blackoutFabricName: 'بلاك آوت عازل حراري ومائي (ثلاثي)',
-        blackoutMeters: 3.75,
-        blackoutPrice: 250,
-        trackMeters: 2.5,
-        trackPrice: 120,
-        tapeMeters: 6.25,
-        tapePrice: 40,
-        tailorPricePerSide: 150,
-        installFee: 150,
-        totalSellPrice: 0,
-      }
-    ]
-  },
-  {
-    id: 'QOT-103',
-    inspectionId: 'INS-003',
-    customerName: 'شركة المعمار',
-    phone: '01155556666',
-    address: 'المهندسين، شارع البطل',
-    status: 'تم التحويل للورشة',
-    totalAmount: 28400,
-    depositPaid: 18400,
-    remainingAmount: 10000,
-    date: '2026-08-24',
-    estimatorName: 'أحمد كشك',
-    rooms: []
-  }
-];
-
 export default function PipelinePricingPage() {
-  const [quotations, setQuotations] = useState<QuotationOrder[]>(initialQuotations);
+  const [quotations, setQuotations] = useState<QuotationOrder[]>([]);
   const [inventory] = useState<InventoryFabric[]>(mockFabricsInventory);
   const [activeTab, setActiveTab] = useState<'OPEN' | 'SENT'>('OPEN');
   const [selectedId, setSelectedId] = useState<string>('QOT-101');
   const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    const list = getStoredQuotations();
+    setQuotations(list);
+    if (list.length > 0) {
+      setSelectedId(list[0].id);
+    }
+  }, []);
 
   // Print Contract Modal state
   const [showPrintModal, setShowPrintModal] = useState(false);
@@ -250,7 +113,7 @@ export default function PipelinePricingPage() {
     const heavyFab = inventory.find(f => f.code === heavyCode);
     const blackoutFab = inventory.find(f => f.code === blackoutCode);
 
-    setQuotations(prev => prev.map(q => {
+    const updatedList = quotations.map(q => {
       if (q.id !== selected.id) return q;
 
       const updatedRooms = q.rooms.map(rm => {
@@ -293,23 +156,27 @@ export default function PipelinePricingPage() {
         estimatorName: estimator,
         status: q.status === 'بانتظار التسعير' ? 'تم إرسال المقايسة' : q.status,
       };
-    }));
+    });
 
+    setQuotations(updatedList);
+    saveAllQuotations(updatedList);
     setEditingRoomId(null);
     alert('تم حفظ اختيار الأقمشة وتحديث تسعير الغرفة بنجاح.');
   };
 
   const handleDepositChange = (amount: number) => {
-    setQuotations(prev => prev.map(q => {
+    const updatedList = quotations.map(q => {
       if (q.id !== selected.id) return q;
       const deposit = Math.min(amount, q.totalAmount);
       return {
         ...q,
         depositPaid: deposit,
         remainingAmount: q.totalAmount - deposit,
-        status: deposit > 0 ? 'معتمد ومسدد العربون' : q.status,
+        status: deposit > 0 ? ('معتمد ومسدد العربون' as const) : q.status,
       };
-    }));
+    });
+    setQuotations(updatedList);
+    saveAllQuotations(updatedList);
   };
 
   const handleSendToWorkshop = () => {
@@ -317,7 +184,9 @@ export default function PipelinePricingPage() {
       alert('الرجاء اختيار الأقمشة وتسعير غرف العميل أولاً قبل تحويل العقد للورشة');
       return;
     }
-    setQuotations(prev => prev.map(q => q.id === selected.id ? { ...q, status: 'تم التحويل للورشة' } : q));
+    const updatedList = quotations.map(q => q.id === selected.id ? { ...q, status: 'تم التحويل للورشة' as const } : q);
+    setQuotations(updatedList);
+    saveAllQuotations(updatedList);
     alert('تم اعتماد العقد بنجاح وتحويل أمر الشراء والتشغيل إلى الورشة (المرحلة 3: القص والتفصيل).');
   };
 
