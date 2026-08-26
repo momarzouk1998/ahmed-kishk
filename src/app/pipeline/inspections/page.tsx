@@ -9,10 +9,11 @@ export type InspectionSummary = InspectionData;
 
 export default function PipelineInspectionsPage() {
   const router = useRouter();
-  const [inspections, setInspections] = useState<InspectionData[]>([]);
+  const [inspections, setInspections] = useState<InspectionData[]>(() => getStoredInspections());
   const [activeTab, setActiveTab] = useState<'OPEN' | 'SENT'>('OPEN');
   const [searchQuery, setSearchQuery] = useState('');
   const [showNewModal, setShowNewModal] = useState(false);
+  const [successToast, setSuccessToast] = useState<string | null>(null);
 
   useEffect(() => {
     setInspections(getStoredInspections());
@@ -55,9 +56,12 @@ export default function PipelineInspectionsPage() {
   const openCount = inspections.filter(i => !isSent(i.status)).length;
   const sentCount = inspections.filter(i => isSent(i.status)).length;
 
-  const handleCreate = (e: React.FormEvent) => {
+  const handleCreate = (e: React.FormEvent, openDirectly: boolean = false) => {
     e.preventDefault();
-    if (!name || !phone) return;
+    if (!name.trim() || !phone.trim()) {
+      alert('يرجى كتابة اسم العميل ورقم الهاتف');
+      return;
+    }
     const currentList = getStoredInspections();
     const newId = `INS-${String(currentList.length + 1).padStart(3, '0')}`;
     const newItem: InspectionData = {
@@ -77,7 +81,13 @@ export default function PipelineInspectionsPage() {
     saveOrUpdateInspection(newItem);
     setInspections([newItem, ...currentList]);
     setShowNewModal(false);
-    router.push(`/pipeline/inspections/${newId}`);
+
+    if (openDirectly) {
+      router.push(`/pipeline/inspections/${newId}`);
+    } else {
+      setSuccessToast(`تم تسجيل طلب المعاينة بنجاح للعميل (${newItem.customerName}) بكود ${newItem.id} ✓`);
+      setTimeout(() => setSuccessToast(null), 4000);
+    }
   };
 
   return (
@@ -140,6 +150,14 @@ export default function PipelineInspectionsPage() {
             </span>
           </button>
         </div>
+
+        {/* Success Toast */}
+        {successToast && (
+          <div className="bg-emerald-600 text-white px-4 py-3 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 shadow-lg animate-in fade-in slide-in-from-top-2">
+            <span className="material-symbols-outlined text-[20px]">check_circle</span>
+            <span>{successToast}</span>
+          </div>
+        )}
 
         {/* Search Input */}
         <div className="relative">
@@ -317,11 +335,28 @@ export default function PipelineInspectionsPage() {
                 </div>
               </div>
 
-              <div className="flex gap-2 mt-3 pt-2 border-t border-slate-100">
-                <button type="submit" className="flex-1 bg-brand-gold hover:bg-brand-gold-hover text-slate-950 py-2.5 rounded-xl font-bold text-sm shadow-gold">
+              <div className="flex flex-col sm:flex-row gap-2 mt-4 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={(e) => handleCreate(e, false)}
+                  className="flex-1 bg-brand-gold hover:bg-amber-400 text-slate-950 py-2.5 rounded-xl font-black text-xs sm:text-sm shadow-gold flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[17px]">save</span>
+                  حفظ في القائمة ✓
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => handleCreate(e, true)}
+                  className="flex-1 bg-slate-900 hover:bg-slate-800 text-white py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[17px]">straighten</span>
                   حفظ وفتح المقاسات ←
                 </button>
-                <button type="button" onClick={() => setShowNewModal(false)} className="flex-1 border border-slate-200 text-slate-600 py-2.5 rounded-xl text-sm">
+                <button
+                  type="button"
+                  onClick={() => setShowNewModal(false)}
+                  className="border border-slate-200 hover:bg-slate-50 text-slate-600 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold cursor-pointer transition-colors"
+                >
                   إلغاء
                 </button>
               </div>

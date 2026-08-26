@@ -32,38 +32,30 @@ export default function InspectionDetailPage() {
   const rawId = (params?.id as string) || 'INS-001';
   const inspectionId = decodeURIComponent(rawId);
 
-  const [data, setData] = useState<InspectionData>({
-    id: inspectionId,
-    customerName: 'جاري التحميل...',
-    phone: '',
-    address: '',
-    branch: 'الفرع الرئيسي',
-    scheduledAt: 'غير محدد',
-    technician: 'أحمد حسن',
-    status: 'مُجدول',
-    isLocked: false,
-    notes: '',
-    rooms: [],
+  const [data, setData] = useState<InspectionData>(() => {
+    if (typeof window !== 'undefined') {
+      const item = getInspectionById(inspectionId);
+      if (item) return item;
+    }
+    return {
+      id: inspectionId,
+      customerName: 'طلب معاينة',
+      phone: '',
+      address: '',
+      branch: 'الفرع الرئيسي',
+      scheduledAt: 'غير محدد',
+      technician: 'أحمد حسن',
+      status: 'مُجدول',
+      isLocked: false,
+      notes: '',
+      rooms: [],
+    };
   });
 
   useEffect(() => {
     const item = getInspectionById(inspectionId);
     if (item) {
       setData(item);
-    } else {
-      setData({
-        id: inspectionId,
-        customerName: 'طلب معاينة جديد',
-        phone: '',
-        address: '',
-        branch: 'الفرع الرئيسي',
-        scheduledAt: 'غير محدد',
-        technician: 'أحمد حسن',
-        status: 'مُجدول',
-        isLocked: false,
-        notes: '',
-        rooms: [],
-      });
     }
   }, [inspectionId]);
 
