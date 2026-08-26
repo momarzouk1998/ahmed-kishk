@@ -5,7 +5,6 @@ import PageShell from '@/components/PageShell';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import Logo from '@/components/Logo';
-import { sendWhatsAppMessage } from '@/lib/whatsapp';
 
 interface Room {
   id: string;
@@ -374,16 +373,14 @@ export default function InspectionDetailPage() {
                 <span className="material-symbols-outlined text-[16px]">call</span>
                 <span dir="ltr">{data.phone}</span>
               </a>
-              <button
-                onClick={() => {
-                  const text = `مرحباً أ/ ${data.customerName} 👋\nنود إفادتكم بموعد معاينة ورفع مقاسات الستائر الخاصة بكم:\nكود المعاينة: ${data.id}\nالموعد: ${data.scheduledAt}\nالفني المسؤول: ${data.technician}\n\nأحمد كشك — للأقمشة والستائر الفاخرة`;
-                  sendWhatsAppMessage(data.phone, text);
-                }}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer"
+              <a
+                href={`https://wa.me/2${data.phone}`}
+                target="_blank"
+                rel="noreferrer"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1 shadow-xs"
               >
-                <span className="material-symbols-outlined text-[16px]">chat</span>
                 واتساب
-              </button>
+              </a>
             </div>
           </div>
 

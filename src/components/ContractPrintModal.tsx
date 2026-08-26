@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { sendWhatsAppMessage } from '@/lib/whatsapp';
 
 export interface PrintRoomItem {
   id: string;
@@ -54,24 +53,6 @@ export default function ContractPrintModal({ isOpen, onClose, data }: ContractPr
     window.print();
   };
 
-  const handleWhatsAppSend = () => {
-    const text = `مرحباً أ/ ${data.customerName} 👋
-مرفق تفاصيل مقايسة وعقد الستائر الخاص بكم من مؤسسة *أحمد كشك للأقمشة والستائر الفاخرة* 🏷️
-
-📄 *عقد رقم:* ${data.id}
-📏 *كود المعاينة:* ${data.inspectionId}
-📆 *التاريخ:* ${data.date}
-
-💰 *إجمالي العقد:* ${data.totalAmount.toLocaleString()} جنيه
-إج *العربون المدفوع:* ${data.depositPaid.toLocaleString()} جنيه
-📌 *المتبقي للتحصيل عند التركيب:* ${data.remainingAmount.toLocaleString()} جنيه
-
-يسعدنا تواصلكم وخدمتكم دائماً ✨
-أحمد كشك — للأقمشة والستائر الفاخرة`;
-
-    sendWhatsAppMessage(data.phone, text);
-  };
-
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm print:p-0 print:bg-white print:static">
       <div className="bg-white text-slate-900 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6 sm:p-8 shadow-2xl relative border border-slate-200 print:max-h-none print:shadow-none print:border-none print:p-4">
@@ -82,14 +63,7 @@ export default function ContractPrintModal({ isOpen, onClose, data }: ContractPr
             <span className="material-symbols-outlined text-brand-gold text-2xl">description</span>
             <h2 className="font-display font-black text-lg text-slate-900">معاينة مقايسة وعقد العميل</h2>
           </div>
-          <div className="flex items-center gap-2 sm:gap-3">
-            <button
-              onClick={handleWhatsAppSend}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold shadow-xs flex items-center gap-1.5 cursor-pointer transition-colors"
-            >
-              <span className="material-symbols-outlined text-[16px]">chat</span>
-              إرسال العقد عبر واتساب
-            </button>
+          <div className="flex items-center gap-3">
             <button
               onClick={handlePrint}
               className="bg-brand-gold hover:bg-amber-400 text-slate-950 px-4 py-2 rounded-xl text-xs font-black shadow-gold flex items-center gap-1.5 cursor-pointer transition-colors"
