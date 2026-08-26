@@ -95,9 +95,8 @@ export default function Sidebar() {
             <Logo size="md" />
           </div>
           <div>
-            <span className="font-display font-black text-base text-white flex items-center gap-1.5 leading-tight">
+            <span className="font-display font-black text-base text-white flex items-center leading-tight">
               أحمد كشك
-              <span className="w-2 h-2 rounded-full bg-brand-gold inline-block animate-pulse"></span>
             </span>
             <span className="text-[11px] text-brand-gold font-bold">للأقمشة والستائر</span>
           </div>

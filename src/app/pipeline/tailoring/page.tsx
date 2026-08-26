@@ -40,6 +40,18 @@ const initialTasks: TailoringTask[] = [
     tailorName: 'أحمد شحاتة',
     status: 'تم التفصيل وجاهز',
     notes: 'استخدام فازلين تقوية تحت الحلقات',
+  },
+  {
+    id: 'TLR-103',
+    orderId: 'ORD-002',
+    customerName: 'شركة المعمار',
+    roomName: 'قاعة الاجتماعات',
+    fabricName: 'بلاك آوت عازل (16متر)',
+    tapeStyle: 'شريط كشكشة 3 فتلة',
+    ringStyle: 'بدون حلقات',
+    tailorName: 'عم مصطفى',
+    status: 'تم التفصيل وجاهز',
+    notes: 'تم الكي والتغليف في أكياس حماية',
   }
 ];
 
@@ -102,8 +114,8 @@ export default function PipelineTailoringPage() {
                 : 'border-transparent text-slate-400 hover:text-slate-700'
             }`}
           >
-            <span className="material-symbols-outlined text-[18px]">check_circle</span>
-            <span>سجل الستائر الجاهزة</span>
+            <span className="material-symbols-outlined text-[18px]">table_view</span>
+            <span>سجل الستائر الجاهزة (جدول)</span>
             <span className={`text-[11px] px-2 py-0.2 rounded-full font-mono font-bold ${
               activeTab === 'SENT' ? 'bg-amber-100 text-amber-950' : 'bg-slate-100 text-slate-500'
             }`}>
@@ -133,7 +145,48 @@ export default function PipelineTailoringPage() {
               {activeTab === 'OPEN' ? 'لا توجد قطع قيد التفصيل' : 'السجل فارغ'}
             </h3>
           </div>
+        ) : activeTab === 'SENT' ? (
+          /* TAB 2: Table for History */
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-soft">
+            <div className="overflow-x-auto">
+              <table className="w-full text-right text-xs min-w-[700px]">
+                <thead className="bg-slate-50 text-slate-500 font-mono border-b border-slate-200">
+                  <tr>
+                    <th className="p-3.5">كود التفصيل</th>
+                    <th className="p-3.5">كود الطلب</th>
+                    <th className="p-3.5">العميل</th>
+                    <th className="p-3.5">الغرفة</th>
+                    <th className="p-3.5">الخامة</th>
+                    <th className="p-3.5">نوع الشريط</th>
+                    <th className="p-3.5">الحلقات</th>
+                    <th className="p-3.5">الترزي</th>
+                    <th className="p-3.5 text-center">الحالة</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map(task => (
+                    <tr key={task.id} className="border-t border-slate-100 hover:bg-slate-50/60 transition-colors">
+                      <td className="p-3.5 font-mono font-bold text-brand-gold-dark">{task.id}</td>
+                      <td className="p-3.5 font-mono text-slate-500">{task.orderId}</td>
+                      <td className="p-3.5 font-bold text-slate-900">{task.customerName}</td>
+                      <td className="p-3.5 text-slate-700">{task.roomName}</td>
+                      <td className="p-3.5 text-slate-800">{task.fabricName}</td>
+                      <td className="p-3.5 text-slate-600">{task.tapeStyle}</td>
+                      <td className="p-3.5 text-slate-600">{task.ringStyle}</td>
+                      <td className="p-3.5 font-bold text-slate-800">{task.tailorName}</td>
+                      <td className="p-3.5 text-center">
+                        <span className="text-[11px] px-2.5 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-900 border border-emerald-200">
+                          {task.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         ) : (
+          /* TAB 1: Active Cards */
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {filtered.map(task => (
               <div key={task.id} className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-soft">
@@ -144,8 +197,7 @@ export default function PipelineTailoringPage() {
                     <p className="text-xs text-slate-600 font-bold">{task.roomName}</p>
                   </div>
                   <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${
-                    task.status === 'تم التفصيل وجاهز' ? 'bg-emerald-100 text-emerald-900 border-emerald-200'
-                    : 'bg-amber-100 text-amber-900 border-amber-200'
+                    task.status === 'قيد خياطة الشريط' ? 'bg-amber-100 text-amber-900 border-amber-200' : 'bg-blue-100 text-blue-900 border-blue-200'
                   }`}>
                     {task.status}
                   </span>
@@ -165,7 +217,7 @@ export default function PipelineTailoringPage() {
                   <button onClick={() => updateTask(task.id, 'تركيب الحلقات والكي')} className={`p-2 rounded-xl border ${task.status === 'تركيب الحلقات والكي' ? 'bg-blue-100 border-blue-300 text-blue-950 font-black' : 'bg-slate-50 border-slate-200'}`}>
                     الحلقات والكي
                   </button>
-                  <button onClick={() => updateTask(task.id, 'تم التفصيل وجاهز')} className={`p-2 rounded-xl border ${task.status === 'تم التفصيل وجاهز' ? 'bg-emerald-500 text-white font-black' : 'bg-brand-gold hover:bg-brand-gold-hover text-slate-950 shadow-gold'}`}>
+                  <button onClick={() => updateTask(task.id, 'تم التفصيل وجاهز')} className="p-2 rounded-xl border bg-brand-gold hover:bg-brand-gold-hover text-slate-950 shadow-gold">
                     جاهز للتسليم ✓
                   </button>
                 </div>

@@ -95,12 +95,25 @@ const initialQuotations: QuotationOrder[] = [
     inspectionId: 'INS-003',
     customerName: 'شركة المعمار',
     phone: '01155556666',
-    address: 'المهندسين',
+    address: 'المهندسين، شارع البطل',
     status: 'تم التحويل للورشة',
     totalAmount: 28400,
     depositPaid: 18400,
     remainingAmount: 10000,
     date: '2026-08-24',
+    rooms: []
+  },
+  {
+    id: 'QOT-104',
+    inspectionId: 'INS-004',
+    customerName: 'أسرة محمود سعيد',
+    phone: '01099887766',
+    address: 'مصر الجديدة',
+    status: 'تم التحويل للورشة',
+    totalAmount: 7800,
+    depositPaid: 7800,
+    remainingAmount: 0,
+    date: '2026-08-23',
     rooms: []
   }
 ];
@@ -135,7 +148,7 @@ export default function PipelinePricingPage() {
 
   const handleSendToWorkshop = () => {
     setQuotations(prev => prev.map(q => q.id === selected.id ? { ...q, status: 'تم التحويل للورشة' } : q));
-    alert('تم اعتماد العقد وتحويل أمر التشغيل إلى (القص والتجهيز) وقفل المقاسات بنجاح.');
+    alert('تم اعتماد العقد وتحويل أمر التشغيل إلى الورشة وقفل المقاسات بنجاح.');
   };
 
   const openCount = quotations.filter(q => !isSent(q.status)).length;
@@ -185,8 +198,8 @@ export default function PipelinePricingPage() {
                 : 'border-transparent text-slate-400 hover:text-slate-700'
             }`}
           >
-            <span className="material-symbols-outlined text-[18px]">check_circle</span>
-            <span>سجل المحول للورشة</span>
+            <span className="material-symbols-outlined text-[18px]">table_view</span>
+            <span>سجل العقود المحولة للورشة (جدول)</span>
             <span className={`text-[11px] px-2 py-0.2 rounded-full font-mono font-bold ${
               activeTab === 'SENT' ? 'bg-amber-100 text-amber-950' : 'bg-slate-100 text-slate-500'
             }`}>
@@ -216,9 +229,49 @@ export default function PipelinePricingPage() {
               {activeTab === 'OPEN' ? 'لا توجد طلبات بانتظار التسعير حالياً' : 'سجل العقود المحولة فارغ'}
             </h3>
           </div>
+        ) : activeTab === 'SENT' ? (
+          /* TAB 2: Clean Data Table for History */
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-soft">
+            <div className="overflow-x-auto">
+              <table className="w-full text-right text-xs min-w-[700px]">
+                <thead className="bg-slate-50 text-slate-500 font-mono border-b border-slate-200">
+                  <tr>
+                    <th className="p-3.5">كود العقد</th>
+                    <th className="p-3.5">كود المعاينة</th>
+                    <th className="p-3.5">العميل</th>
+                    <th className="p-3.5">الهاتف</th>
+                    <th className="p-3.5">العنوان</th>
+                    <th className="p-3.5 text-left font-mono">الإجمالي</th>
+                    <th className="p-3.5 text-left font-mono">المدفوع (عربون)</th>
+                    <th className="p-3.5 text-left font-mono">المتبقي</th>
+                    <th className="p-3.5 text-center">الحالة</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map(q => (
+                    <tr key={q.id} className="border-t border-slate-100 hover:bg-slate-50/60 transition-colors">
+                      <td className="p-3.5 font-mono font-bold text-brand-gold-dark">{q.id}</td>
+                      <td className="p-3.5 font-mono text-slate-500">{q.inspectionId}</td>
+                      <td className="p-3.5 font-bold text-slate-900">{q.customerName}</td>
+                      <td className="p-3.5 font-mono text-slate-600" dir="ltr">{q.phone}</td>
+                      <td className="p-3.5 text-slate-600">{q.address}</td>
+                      <td className="p-3.5 text-left font-mono font-black text-slate-900">{q.totalAmount.toLocaleString()} ج</td>
+                      <td className="p-3.5 text-left font-mono font-bold text-emerald-800">{q.depositPaid.toLocaleString()} ج</td>
+                      <td className="p-3.5 text-left font-mono font-bold text-rose-700">{q.remainingAmount.toLocaleString()} ج</td>
+                      <td className="p-3.5 text-center">
+                        <span className="text-[11px] px-2.5 py-0.5 rounded-full font-bold bg-purple-100 text-purple-900 border border-purple-200">
+                          {q.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         ) : (
+          /* TAB 1: Active Pricing Working Split View */
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-            {/* List */}
             <div className="lg:col-span-4 flex flex-col gap-2.5">
               {filtered.map(q => (
                 <div
@@ -234,9 +287,7 @@ export default function PipelinePricingPage() {
                       <h3 className="font-bold text-sm text-slate-900">{q.customerName}</h3>
                     </div>
                     <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${
-                      q.status === 'معتمد ومسدد العربون' ? 'bg-emerald-100 text-emerald-900 border-emerald-200'
-                      : q.status === 'تم التحويل للورشة' ? 'bg-purple-100 text-purple-900 border-purple-200'
-                      : 'bg-amber-100 text-amber-900 border-amber-200'
+                      q.status === 'معتمد ومسدد العربون' ? 'bg-emerald-100 text-emerald-900 border-emerald-200' : 'bg-amber-100 text-amber-900 border-amber-200'
                     }`}>
                       {q.status}
                     </span>
@@ -250,7 +301,6 @@ export default function PipelinePricingPage() {
               ))}
             </div>
 
-            {/* Selected Detail */}
             {selected && (
               <div className="lg:col-span-8 bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-soft space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
@@ -260,18 +310,15 @@ export default function PipelinePricingPage() {
                     <p className="text-xs text-slate-500" dir="ltr">{selected.phone} | {selected.address}</p>
                   </div>
 
-                  {activeTab === 'OPEN' && (
-                    <button
-                      onClick={handleSendToWorkshop}
-                      className="bg-brand-gold hover:bg-brand-gold-hover text-slate-950 px-4 py-2.5 rounded-xl font-bold text-xs shadow-gold flex items-center justify-center gap-1.5"
-                    >
-                      <span className="material-symbols-outlined text-[16px]">precision_manufacturing</span>
-                      تحويل للورشة (بدء القص) ←
-                    </button>
-                  )}
+                  <button
+                    onClick={handleSendToWorkshop}
+                    className="bg-brand-gold hover:bg-brand-gold-hover text-slate-950 px-4 py-2.5 rounded-xl font-bold text-xs shadow-gold flex items-center justify-center gap-1.5"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">precision_manufacturing</span>
+                    تحويل للورشة (بدء القص) ←
+                  </button>
                 </div>
 
-                {/* Summary */}
                 <div className="grid grid-cols-3 gap-2 sm:gap-3 text-center">
                   <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
                     <span className="text-[11px] text-slate-500 font-bold block">إجمالي العقد</span>
@@ -287,24 +334,21 @@ export default function PipelinePricingPage() {
                   </div>
                 </div>
 
-                {/* Deposit field */}
-                {activeTab === 'OPEN' && (
-                  <div className="p-3.5 bg-slate-900 text-white rounded-xl flex items-center justify-between gap-3 text-xs">
-                    <div className="flex items-center gap-2">
-                      <span className="material-symbols-outlined text-brand-gold text-[20px]">payments</span>
-                      <span>سداد دفعة العربون (حجز المخزون آلياً):</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <input
-                        type="number"
-                        value={selected.depositPaid}
-                        onChange={(e) => handleDepositChange(Number(e.target.value))}
-                        className="w-28 bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1 text-white font-mono font-black text-center"
-                      />
-                      <span className="font-bold text-brand-gold">ج.م</span>
-                    </div>
+                <div className="p-3.5 bg-slate-900 text-white rounded-xl flex items-center justify-between gap-3 text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-brand-gold text-[20px]">payments</span>
+                    <span>سداد دفعة العربون (حجز المخزون آلياً):</span>
                   </div>
-                )}
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="number"
+                      value={selected.depositPaid}
+                      onChange={(e) => handleDepositChange(Number(e.target.value))}
+                      className="w-28 bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1 text-white font-mono font-black text-center"
+                    />
+                    <span className="font-bold text-brand-gold">ج.م</span>
+                  </div>
+                </div>
               </div>
             )}
           </div>

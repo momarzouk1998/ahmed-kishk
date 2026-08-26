@@ -60,10 +60,66 @@
   display: none;
 }
 
-/* Smooth drawer animation */
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
+/* 🖨️ Universal Clean Print Styling across all pages */
+@media print {
+  /* Hide all UI elements that shouldn't appear on paper */
+  aside,
+  header,
+  nav,
+  button,
+  .no-print,
+  [role="button"],
+  .fixed,
+  .shadow-soft,
+  .shadow-gold,
+  .shadow-xl,
+  .shadow-2xl {
+    display: none !important;
   }
+
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-size: 12pt;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  main {
+    margin: 0 !important;
+    padding: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  /* Show dedicated print-only elements */
+  .print-only {
+    display: block !important;
+  }
+
+  /* Force table borders and clean A4 look */
+  table {
+    border-collapse: collapse !important;
+    width: 100% !important;
+  }
+
+  th, td {
+    border: 1px solid #cbd5e1 !important;
+    padding: 6px 8px !important;
+  }
+
+  /* Prevent page break inside cards/tables */
+  .page-break-inside-avoid, tr, .print-card {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  @page {
+    size: A4 portrait;
+    margin: 1.2cm 1.5cm;
+  }
+}
+
+.print-only {
+  display: none;
 }

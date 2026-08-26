@@ -25,13 +25,13 @@ const initialItems: CuttingItem[] = [
     customerName: 'محمود عبد الرحمن',
     phone: '01012345678',
     roomName: 'الصالة الرئيسية (بلكونة)',
-    dimensions: 'عرض 350سم × ارتفاع 280سم (جنبين)',
+    dimensions: 'عرض 350سم × ارتفاع 280سم',
     fabricName: 'تول خفيف مطرز',
     fabricCode: 'T-402',
     requiredMeters: 8.75,
     status: 'تم القص وجاهز للخياطة',
     cutterName: 'عم مصطفى',
-    notes: 'قص قطعتين متساويتين كل قطعة 4.40 متر تقريباً',
+    notes: 'قص قطعتين متساويتين',
   },
   {
     id: 'CUT-102',
@@ -39,13 +39,13 @@ const initialItems: CuttingItem[] = [
     customerName: 'محمود عبد الرحمن',
     phone: '01012345678',
     roomName: 'الصالة الرئيسية (بلكونة)',
-    dimensions: 'عرض 350سم × ارتفاع 280سم (جنبين)',
+    dimensions: 'عرض 350سم × ارتفاع 280سم',
     fabricName: 'قطيفة تركي ثقيل',
     fabricCode: 'V-990',
     requiredMeters: 6.30,
     status: 'بانتظار القص',
     cutterName: 'عم مصطفى',
-    notes: 'مراعاة اتجاه وبَر القطيفة للأسفل في الجنبين',
+    notes: 'مراعاة اتجاه وبَر القطيفة',
   },
   {
     id: 'CUT-103',
@@ -53,13 +53,13 @@ const initialItems: CuttingItem[] = [
     customerName: 'شركة المعمار',
     phone: '01155556666',
     roomName: 'قاعة الاجتماعات',
-    dimensions: 'عرض 500سم × ارتفاع 300سم (3 شبابيك)',
-    fabricName: 'بلاك آوت عازل ضوء 100%',
+    dimensions: 'عرض 500سم × ارتفاع 300سم',
+    fabricName: 'بلاك آوت عازل ضوء',
     fabricCode: 'BL-900',
     requiredMeters: 16.00,
-    status: 'تم استلام القماش',
+    status: 'تم القص وجاهز للخياطة',
     cutterName: 'أحمد شحاتة',
-    notes: 'قص 3 شبابيك متساوية',
+    notes: '3 شبابيك متساوية',
   }
 ];
 
@@ -122,8 +122,8 @@ export default function PipelineCuttingPage() {
                 : 'border-transparent text-slate-400 hover:text-slate-700'
             }`}
           >
-            <span className="material-symbols-outlined text-[18px]">check_circle</span>
-            <span>سجل المحول للخياطة</span>
+            <span className="material-symbols-outlined text-[18px]">table_view</span>
+            <span>سجل المقصوص والمحول للخياطة (جدول)</span>
             <span className={`text-[11px] px-2 py-0.2 rounded-full font-mono font-bold ${
               activeTab === 'SENT' ? 'bg-amber-100 text-amber-950' : 'bg-slate-100 text-slate-500'
             }`}>
@@ -153,7 +153,46 @@ export default function PipelineCuttingPage() {
               {activeTab === 'OPEN' ? 'لا توجد أوامر قص جارية' : 'السجل فارغ'}
             </h3>
           </div>
+        ) : activeTab === 'SENT' ? (
+          /* TAB 2: Table for History */
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-soft">
+            <div className="overflow-x-auto">
+              <table className="w-full text-right text-xs min-w-[700px]">
+                <thead className="bg-slate-50 text-slate-500 font-mono border-b border-slate-200">
+                  <tr>
+                    <th className="p-3.5">كود القص</th>
+                    <th className="p-3.5">كود الطلب</th>
+                    <th className="p-3.5">العميل</th>
+                    <th className="p-3.5">الغرفة</th>
+                    <th className="p-3.5">القماش والكود</th>
+                    <th className="p-3.5 text-center font-mono">الأمتار المقصوصة</th>
+                    <th className="p-3.5">المسؤول</th>
+                    <th className="p-3.5 text-center">الحالة</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map(item => (
+                    <tr key={item.id} className="border-t border-slate-100 hover:bg-slate-50/60 transition-colors">
+                      <td className="p-3.5 font-mono font-bold text-brand-gold-dark">{item.id}</td>
+                      <td className="p-3.5 font-mono text-slate-500">{item.orderId}</td>
+                      <td className="p-3.5 font-bold text-slate-900">{item.customerName}</td>
+                      <td className="p-3.5 text-slate-700">{item.roomName}</td>
+                      <td className="p-3.5 font-bold text-slate-800">{item.fabricName} ({item.fabricCode})</td>
+                      <td className="p-3.5 text-center font-mono font-black text-amber-800">{item.requiredMeters} م</td>
+                      <td className="p-3.5 text-slate-700">{item.cutterName}</td>
+                      <td className="p-3.5 text-center">
+                        <span className="text-[11px] px-2.5 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-900 border border-emerald-200">
+                          {item.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         ) : (
+          /* TAB 1: Active Cards View */
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filtered.map(item => (
               <div key={item.id} className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-soft flex flex-col justify-between">
@@ -165,9 +204,7 @@ export default function PipelineCuttingPage() {
                       <p className="text-xs text-slate-600 font-bold">{item.roomName}</p>
                     </div>
                     <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${
-                      item.status === 'تم القص وجاهز للخياطة' ? 'bg-emerald-100 text-emerald-900 border-emerald-200'
-                      : item.status === 'تم استلام القماش' ? 'bg-blue-100 text-blue-900 border-blue-200'
-                      : 'bg-amber-100 text-amber-900 border-amber-200'
+                      item.status === 'تم استلام القماش' ? 'bg-blue-100 text-blue-900 border-blue-200' : 'bg-amber-100 text-amber-900 border-amber-200'
                     }`}>
                       {item.status}
                     </span>
@@ -207,11 +244,6 @@ export default function PipelineCuttingPage() {
                     >
                       تأكيد القص والتحويل للخياطة ←
                     </button>
-                  )}
-                  {item.status === 'تم القص وجاهز للخياطة' && (
-                    <div className="w-full text-center py-1.5 text-xs font-bold text-emerald-800 bg-emerald-50 rounded-xl border border-emerald-200">
-                      ✓ تم التحويل للخياطة
-                    </div>
                   )}
                 </div>
               </div>
