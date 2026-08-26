@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
 import ContractPrintModal, { PrintContractData } from '@/components/ContractPrintModal';
