@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
@@ -12,6 +12,7 @@ import {
   QuotationOrder,
   RoomPricing,
 } from '@/lib/inspectionsStore';
+import { canUserEditPrices } from '@/lib/permissions';
 
 const STAGE_LIST: QuotationOrder['status'][] = [
   'بانتظار التسعير',
@@ -277,8 +278,10 @@ export default function OrderDetailPage() {
                 <input
                   type="number"
                   value={depositPaid}
+                  disabled={!canUserEditPrices('p_orders')}
                   onChange={e => setDepositPaid(Number(e.target.value))}
-                  className="w-32 text-center font-mono font-black text-lg bg-white border border-emerald-300 rounded-xl px-2 py-1 text-emerald-950 focus:outline-none"
+                  className="w-32 text-center font-mono font-black text-lg bg-white border border-emerald-300 rounded-xl px-2 py-1 text-emerald-950 focus:outline-none disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed"
+                  title={!canUserEditPrices('p_orders') ? 'تعديل الأسعار والماليات مغلق للصلاحيات' : ''}
                 />
                 <span className="font-bold text-emerald-900">جنيه</span>
               </div>

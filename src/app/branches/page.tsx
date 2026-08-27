@@ -101,23 +101,37 @@ export default function BranchesAndPermissionsPage() {
   };
 
   const togglePagePerm = (pageId: string) => {
+    setActivePerms(prev => {
+      if (prev.includes(pageId)) {
+        // Remove page and its sub-permissions
+        return prev.filter(id => id !== pageId && id !== `${pageId}_edit_price`);
+      } else {
+        // Add page and enable price editing by default
+        const subPriceKey = `${pageId}_edit_price`;
+        return [...prev, pageId, subPriceKey];
+      }
+    });
+  };
+
+  const toggleSubPerm = (subKey: string) => {
     setActivePerms(prev =>
-      prev.includes(pageId) ? prev.filter(id => id !== pageId) : [...prev, pageId]
+      prev.includes(subKey) ? prev.filter(id => id !== subKey) : [...prev, subKey]
     );
   };
 
   const applyPreset = (presetType: 'ALL' | 'INSPECTOR' | 'WORKSHOP' | 'INSTALLER' | 'FABRIC_ONLY') => {
     if (presetType === 'ALL') {
-      setActivePerms(ALL_SYSTEM_PAGES.map(p => p.id));
+      const allPages = ALL_SYSTEM_PAGES.map(p => p.id);
+      const allPrices = ALL_SYSTEM_PAGES.filter(p => p.hasPriceControl).map(p => `${p.id}_edit_price`);
+      setActivePerms([...allPages, ...allPrices]);
     } else if (presetType === 'INSPECTOR') {
-      setActivePerms(['p_inspections', 'p_dashboard']);
+      setActivePerms(['p_inspections', 'p_inspections_edit_price', 'p_dashboard']);
     } else if (presetType === 'WORKSHOP') {
       setActivePerms(['p_cutting', 'p_tailoring', 'p_accessories']);
     } else if (presetType === 'INSTALLER') {
       setActivePerms(['p_installation', 'p_accessories']);
     } else if (presetType === 'FABRIC_ONLY') {
-      // For Omar Effendi and Thalatheny branches (fabrics only)
-      setActivePerms(['p_fabric_sales', 'p_customers', 'p_inventory', 'p_dashboard']);
+      setActivePerms(['p_fabric_sales', 'p_fabric_sales_edit_price', 'p_customers', 'p_inventory', 'p_inventory_edit_price', 'p_dashboard']);
     }
   };
 
@@ -137,7 +151,7 @@ export default function BranchesAndPermissionsPage() {
     } catch {}
 
     setShowPermsModal(false);
-    alert(`تم حفظ صلاحيات الموظف (${selectedEmp.name}) وتحديد فرعه (${activeBranch}) وعزل البيانات بنجاح!`);
+    alert(`تم حفظ صلاحيات الموظف (${selectedEmp.name}) وإعدادات تعديل الأسعار بنجاح!`);
   };
 
   return (
@@ -351,33 +365,62 @@ export default function BranchesAndPermissionsPage() {
                     <div className="space-y-2">
                       {pagesInCat.map(page => {
                         const isAllowed = activePerms.includes(page.id);
+                        const priceEditAllowed = activePerms.includes(`${page.id}_edit_price`);
+
                         return (
                           <div
                             key={page.id}
-                            onClick={() => togglePagePerm(page.id)}
-                            className={`p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
+                            className={`p-3 rounded-xl border flex flex-col gap-2 cursor-pointer transition-all ${
                               isAllowed
-                                ? 'bg-white border-brand-gold ring-1 ring-brand-gold/30 shadow-xs'
+                                ? 'bg-white border-amber-300 ring-1 ring-amber-300/30 shadow-xs'
                                 : 'bg-slate-100/70 border-slate-200 opacity-60 hover:opacity-80'
                             }`}
                           >
-                            <div className="flex items-center gap-3">
-                              <span className={`material-symbols-outlined text-[20px] ${isAllowed ? 'text-slate-950' : 'text-slate-400'}`}>
-                                {page.icon}
-                              </span>
-                              <div>
-                                <div className={`font-bold text-xs ${isAllowed ? 'text-slate-900' : 'text-slate-600'}`}>{page.name}</div>
-                                <div className="text-[10px] text-slate-400 font-mono">{page.href}</div>
+                            <div className="flex items-center justify-between" onClick={() => togglePagePerm(page.id)}>
+                              <div className="flex items-center gap-3">
+                                <span className={`material-symbols-outlined text-[20px] ${isAllowed ? 'text-slate-950' : 'text-slate-400'}`}>
+                                  {page.icon}
+                                </span>
+                                <div>
+                                  <div className={`font-bold text-xs ${isAllowed ? 'text-slate-900' : 'text-slate-600'}`}>{page.name}</div>
+                                  <div className="text-[10px] text-slate-400 font-mono">{page.href}</div>
+                                </div>
                               </div>
+
+                              <span className={`text-xs px-3 py-1 rounded-full font-bold transition-all ${
+                                isAllowed
+                                  ? 'bg-emerald-500 text-white shadow-xs'
+                                  : 'bg-slate-300 text-slate-700'
+                              }`}>
+                                {isAllowed ? 'ظهور 🟢' : 'إخفاء ⚪'}
+                              </span>
                             </div>
 
-                            <span className={`text-xs px-3 py-1 rounded-full font-bold transition-all ${
-                              isAllowed
-                                ? 'bg-emerald-500 text-white shadow-xs'
-                                : 'bg-slate-300 text-slate-700'
-                            }`}>
-                              {isAllowed ? 'ظهور 🟢' : 'إخفاء ⚪'}
-                            </span>
+                            {/* Price Editing Sub-Permission Checkbox */}
+                            {page.hasPriceControl && isAllowed && (
+                              <div
+                                onClick={e => e.stopPropagation()}
+                                className="mt-1 pt-2 border-t border-slate-100 flex items-center justify-between bg-amber-50/50 p-2 rounded-lg border border-amber-200/60"
+                              >
+                                <label className="flex items-center gap-2 text-xs font-bold text-slate-900 cursor-pointer select-none">
+                                  <input
+                                    type="checkbox"
+                                    checked={priceEditAllowed}
+                                    onChange={() => toggleSubPerm(`${page.id}_edit_price`)}
+                                    className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
+                                  />
+                                  <span>💵 تفعيل إمكانية تعديل الأسعار</span>
+                                </label>
+
+                                <span className={`text-[10px] px-2.5 py-0.5 rounded-md font-bold ${
+                                  priceEditAllowed
+                                    ? 'bg-emerald-100 text-emerald-950 border border-emerald-300'
+                                    : 'bg-slate-200 text-slate-600'
+                                }`}>
+                                  {priceEditAllowed ? 'مسموح بتغيير السعر ✓' : 'الأسعار مغلقة (قراءة فقط) 🔒'}
+                                </span>
+                              </div>
+                            )}
                           </div>
                         );
                       })}

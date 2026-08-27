@@ -17,6 +17,7 @@ import {
   ACCESSORY_PRICES,
   PipeAccessories
 } from '@/lib/inspectionsStore';
+import { canUserEditPrices } from '@/lib/permissions';
 
 interface InventoryFabric {
   id: string;
@@ -60,6 +61,7 @@ export default function PricingDetailPage() {
   }, []);
 
   const quotation = quotations.find(q => q.id === orderId) || quotations[0];
+  const canEditPrices = canUserEditPrices('p_pricing');
 
   const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
   const [deliveryDate, setDeliveryDate] = useState<string>('');
@@ -676,13 +678,15 @@ export default function PricingDetailPage() {
                           </option>
                         ))}
                       </select>
-                      <div className="flex items-center border border-slate-300 rounded-xl bg-white px-3 py-2">
+                      <div className={`flex items-center border rounded-xl px-3 py-2 ${!canEditPrices ? 'bg-slate-100 border-slate-200' : 'bg-white border-slate-300'}`}>
                         <span className="text-slate-500 font-bold pl-1">سعر المتر:</span>
                         <input
                           type="number"
                           value={heavyP}
+                          disabled={!canEditPrices}
                           onChange={e => setHeavyP(Number(e.target.value))}
-                          className="w-full font-mono font-bold text-center text-xs"
+                          className="w-full font-mono font-bold text-center text-xs disabled:text-slate-500 disabled:cursor-not-allowed"
+                          title={!canEditPrices ? 'تعديل السعر مغلق للصلاحيات' : ''}
                         />
                         <span className="text-slate-500 font-bold">ج</span>
                       </div>
@@ -770,13 +774,15 @@ export default function PricingDetailPage() {
                           </option>
                         ))}
                       </select>
-                      <div className="flex items-center border border-slate-300 rounded-xl bg-white px-3 py-2">
+                      <div className={`flex items-center border rounded-xl px-3 py-2 ${!canEditPrices ? 'bg-slate-100 border-slate-200' : 'bg-white border-slate-300'}`}>
                         <span className="text-slate-500 font-bold pl-1">سعر المتر:</span>
                         <input
                           type="number"
                           value={sheerP}
+                          disabled={!canEditPrices}
                           onChange={e => setSheerP(Number(e.target.value))}
-                          className="w-full font-mono font-bold text-center text-xs"
+                          className="w-full font-mono font-bold text-center text-xs disabled:text-slate-500 disabled:cursor-not-allowed"
+                          title={!canEditPrices ? 'تعديل السعر مغلق للصلاحيات' : ''}
                         />
                         <span className="text-slate-500 font-bold">ج</span>
                       </div>
@@ -864,11 +870,12 @@ export default function PricingDetailPage() {
                         ))}
                       </select>
 
-                      <div className="flex items-center border border-slate-300 rounded-xl bg-white px-3 py-2">
+                      <div className={`flex items-center border rounded-xl px-3 py-2 ${!canEditPrices ? 'bg-slate-100 border-slate-200' : 'bg-white border-slate-300'}`}>
                         <span className="text-slate-500 font-bold pl-1">سعر المتر:</span>
                         <input
                           type="number"
                           value={blackoutP}
+                          disabled={!canEditPrices}
                           onChange={e => setBlackoutP(Number(e.target.value))}
                           className="w-full font-mono font-bold text-center text-xs"
                         />

@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import PageShell from '@/components/PageShell';
+import { canUserEditPrices } from '@/lib/permissions';
 
 interface InventoryItem {
   id: string;
@@ -283,11 +284,25 @@ export default function InventoryPage() {
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-bold text-slate-700">سعر التكلفة (ج)</label>
-                  <input type="number" value={costPrice} onChange={e => setCostPrice(Number(e.target.value))} className="border border-slate-200 rounded-xl p-2 text-sm font-mono" />
+                  <input
+                    type="number"
+                    value={costPrice}
+                    disabled={!canUserEditPrices('p_inventory')}
+                    onChange={e => setCostPrice(Number(e.target.value))}
+                    className="border border-slate-200 rounded-xl p-2 text-sm font-mono disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed"
+                    title={!canUserEditPrices('p_inventory') ? 'تعديل الأسعار مغلق للصلاحيات' : ''}
+                  />
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-bold text-slate-700">سعر البيع (ج)</label>
-                  <input type="number" value={sellPrice} onChange={e => setSellPrice(Number(e.target.value))} className="border border-slate-200 rounded-xl p-2 text-sm font-mono" />
+                  <input
+                    type="number"
+                    value={sellPrice}
+                    disabled={!canUserEditPrices('p_inventory')}
+                    onChange={e => setSellPrice(Number(e.target.value))}
+                    className="border border-slate-200 rounded-xl p-2 text-sm font-mono disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed"
+                    title={!canUserEditPrices('p_inventory') ? 'تعديل الأسعار مغلق للصلاحيات' : ''}
+                  />
                 </div>
               </div>
 
