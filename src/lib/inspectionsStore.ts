@@ -1,4 +1,4 @@
-﻿export interface Room {
+export interface Room {
   id: string;
   name: string;
   type: 'شباك' | 'بلكونة';
@@ -98,7 +98,7 @@ export interface QuotationOrder {
   phone: string;
   address: string;
   branch?: string;
-  status: 'بانتظار التسعير' | 'تم إرسال المقايسة' | 'معتمد ومسدد العربون' | 'تم التحويل للورشة';
+  status: 'بانتظار التسعير' | 'تم إرسال المقايسة' | 'معتمد ومسدد العربون' | 'تم التحويل للورشة' | 'مكتمل ومسلم';
   totalAmount: number;
   depositPaid: number;
   remainingAmount: number;
@@ -533,3 +533,68 @@ export function syncInspectionToPricing(inspection: InspectionData): QuotationOr
   saveAllQuotations(quotations);
   return targetQuotation;
 }
+
+export function deleteQuotationOrder(orderId: string): void {
+  const quotations = getStoredQuotations();
+  const filtered = quotations.filter(q => q.id.toUpperCase() !== orderId.toUpperCase());
+  saveAllQuotations(filtered);
+}
+
+export function updateQuotationStageAndStatus(orderId: string, newStatus: QuotationOrder['status']): void {
+  const quotations = getStoredQuotations();
+  const target = quotations.find(q => q.id.toUpperCase() === orderId.toUpperCase());
+  if (target) {
+    target.status = newStatus;
+    saveAllQuotations(quotations);
+
+    // Sync inspection
+    const insp = getInspectionById(target.inspectionId);
+    if (insp) {
+      if (newStatus === 'تم التحويل للورشة') {
+        insp.status = 'في الورشة';
+      } else if (newStatus === 'مكتمل ومسلم') {
+        insp.status = 'مكتمل';
+      } else if (newStatus === 'بانتظار التسعير') {
+        insp.status = 'قيد التسعير';
+      }
+      saveOrUpdateInspection(insp);
+    }
+  }
+}
+
+export function updateQuotationFullDetails(orderId: string, updatedData: Partial<QuotationOrder>): QuotationOrder | null {
+  const quotations = getStoredQuotations();
+  const idx = quotations.findIndex(q => q.id.toUpperCase() === orderId.toUpperCase());
+  if (idx === -1) return null;
+
+  const current = quotations[idx];
+  const merged: QuotationOrder = {
+    ...current,
+    ...updatedData,
+    rooms: updatedData.rooms || current.rooms,
+  };
+
+  if (updatedData.rooms) {
+    const sum = updatedData.rooms.reduce((s, r) => s + r.totalSellPrice, 0);
+    merged.totalAmount = sum;
+    merged.remainingAmount = Math.max(0, sum - (updatedData.depositPaid ?? current.depositPaid));
+  } else if (updatedData.depositPaid !== undefined) {
+    merged.remainingAmount = Math.max(0, merged.totalAmount - updatedData.depositPaid);
+  }
+
+  quotations[idx] = merged;
+  saveAllQuotations(quotations);
+
+  // Sync inspection details
+  const insp = getInspectionById(merged.inspectionId);
+  if (insp) {
+    insp.customerName = merged.customerName;
+    insp.phone = merged.phone;
+    insp.address = merged.address;
+    if (merged.branch) insp.branch = merged.branch;
+    saveOrUpdateInspection(insp);
+  }
+
+  return merged;
+}
+

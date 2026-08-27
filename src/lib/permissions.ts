@@ -9,6 +9,7 @@ export interface PagePermission {
 
 export const ALL_SYSTEM_PAGES: PagePermission[] = [
   // مراحل الستائر (Pipeline) - أسماء مختصرة ونظيفة
+  { id: 'p_orders', name: 'سجل أوامر الستائر', shortName: 'الأوامر', category: 'مراحل الستائر', href: '/orders', icon: 'receipt_long' },
   { id: 'p_inspections', name: 'رفع المقاسات', shortName: 'المقاسات', category: 'مراحل الستائر', href: '/pipeline/inspections', icon: 'square_foot' },
   { id: 'p_pricing', name: 'التسعير والعقد', shortName: 'التسعير', category: 'مراحل الستائر', href: '/pipeline/pricing', icon: 'request_quote' },
   { id: 'p_cutting', name: 'القص والتجهيز', shortName: 'القص', category: 'مراحل الستائر', href: '/pipeline/cutting', icon: 'content_cut' },
