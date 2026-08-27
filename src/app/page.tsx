@@ -136,19 +136,19 @@ export default function DashboardPage() {
           </div>
 
           {/* Card 2: Curtain Contracts */}
-          <div className="bg-gradient-to-br from-amber-500 to-amber-600 rounded-3xl p-5 text-slate-950 shadow-lg border border-amber-400 relative overflow-hidden">
+          <div className="bg-gradient-to-br from-amber-500 to-amber-600 rounded-3xl p-5 text-white shadow-lg border border-amber-400 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
             <div className="flex items-center justify-between mb-3.5">
-              <span className="text-xs font-black text-amber-950">عقود تفصيل الستائر</span>
-              <div className="w-9 h-9 bg-slate-950/10 rounded-xl flex items-center justify-center">
-                <span className="material-symbols-outlined text-[20px] text-slate-950">precision_manufacturing</span>
+              <span className="text-xs font-bold text-amber-100">عقود تفصيل الستائر</span>
+              <div className="w-9 h-9 bg-white/15 rounded-xl flex items-center justify-center">
+                <span className="material-symbols-outlined text-[20px] text-white">precision_manufacturing</span>
               </div>
             </div>
             <div>
-              <div className="font-display font-black text-2xl tracking-tight">
+              <div className="font-display font-black text-2xl tracking-tight text-white">
                 {currentData.contracts}
               </div>
-              <div className="text-[10px] text-slate-900 font-bold mt-1.5">{currentData.contractsCount}</div>
+              <div className="text-[10px] text-amber-100 font-bold mt-1.5">{currentData.contractsCount}</div>
             </div>
           </div>
 

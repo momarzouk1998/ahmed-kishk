@@ -459,530 +459,506 @@ export default function PipelinePricingPage() {
 
             {/* Active Quotation Form Panel */}
             {selected && (
-              <div className="lg:col-span-8 bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-soft space-y-5">
-                {/* Header info */}
+              <div className="lg:col-span-8 bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-xs space-y-6">
+                {/* Header info & Estimator */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
                   <div>
-                    <span className="text-xs font-mono font-bold text-brand-gold-dark">{selected.id} • معاينة رقم {selected.inspectionId}</span>
-                    <h2 className="font-bold text-xl text-slate-900">{selected.customerName}</h2>
-                    <p className="text-xs text-slate-500 mt-0.5">{selected.phone} | {selected.address}</p>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-mono font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md">
+                        {selected.id} • معاينة {selected.inspectionId}
+                      </span>
+                      <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-bold border ${
+                        selected.status === 'معتمد ومسدد العربون' ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                        : selected.status === 'تم إرسال المقايسة' ? 'bg-blue-50 text-blue-800 border-blue-200'
+                        : 'bg-amber-50 text-amber-800 border-amber-200'
+                      }`}>
+                        {selected.status}
+                      </span>
+                    </div>
+                    <h2 className="font-black text-xl text-slate-900 mt-1">{selected.customerName}</h2>
+                    <p className="text-xs text-slate-500 mt-0.5 font-mono">{selected.phone} • {selected.address}</p>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <label className="text-[11px] font-bold text-slate-500 whitespace-nowrap">مسؤول المبيعات:</label>
+                  <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 p-2 rounded-xl text-xs">
+                    <span className="text-slate-500 font-bold">مسؤول المبيعات:</span>
                     <input
                       value={estimator}
                       onChange={e => setEstimator(e.target.value)}
-                      className="border border-slate-200 rounded-lg px-2 py-1 text-xs w-32 bg-slate-50 font-bold"
+                      className="border border-slate-300 rounded-lg px-2.5 py-1 text-xs w-28 bg-white font-bold text-slate-900"
                       placeholder="أحمد كشك"
                     />
                   </div>
                 </div>
 
-                {/* Financial Summary Cards */}
-                <div className="grid grid-cols-3 gap-3 text-center">
-                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                {/* Financial Summary Cards & Simple Deposit Input */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="p-3.5 bg-slate-50/70 rounded-xl border border-slate-200 text-center">
                     <span className="text-[11px] text-slate-500 font-bold block">إجمالي المقايسة</span>
-                    <span className="font-mono font-black text-lg text-slate-900 mt-0.5 block">{selected.totalAmount.toLocaleString()} ج</span>
+                    <span className="font-mono font-black text-xl text-slate-900 mt-0.5 block">{selected.totalAmount.toLocaleString()} ج</span>
                   </div>
-                  <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200">
-                    <span className="text-[11px] text-emerald-800 font-bold block">العربون المدفوع</span>
-                    <span className="font-mono font-black text-lg text-emerald-900 mt-0.5 block">{selected.depositPaid.toLocaleString()} ج</span>
+
+                  <div className="p-3.5 bg-emerald-50/60 rounded-xl border border-emerald-200 text-center">
+                    <span className="text-[11px] text-emerald-800 font-bold block">العربون المسدد</span>
+                    <div className="flex items-center justify-center gap-1 mt-1">
+                      <input
+                        type="number"
+                        value={selected.depositPaid || ''}
+                        onChange={(e) => handleDepositChange(Number(e.target.value))}
+                        className="w-24 bg-white border border-emerald-300 rounded-lg px-2 py-0.5 text-emerald-950 font-mono font-black text-center text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                        placeholder="0"
+                      />
+                      <span className="text-xs font-bold text-emerald-900">ج</span>
+                    </div>
                   </div>
-                  <div className="p-3 bg-rose-50 rounded-xl border border-rose-200">
+
+                  <div className="p-3.5 bg-rose-50/60 rounded-xl border border-rose-200 text-center">
                     <span className="text-[11px] text-rose-800 font-bold block">المتبقي للتحصيل</span>
-                    <span className="font-mono font-black text-lg text-rose-900 mt-0.5 block">{selected.remainingAmount.toLocaleString()} ج</span>
+                    <span className="font-mono font-black text-xl text-rose-900 mt-0.5 block">{selected.remainingAmount.toLocaleString()} ج</span>
                   </div>
                 </div>
 
-                {/* Deposit payment & Stock reservation */}
-                <div className="p-4 bg-slate-900 text-white rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 text-xs shadow-lg">
-                  <div>
-                    <h3 className="font-bold text-sm text-brand-gold flex items-center gap-1.5">
-                      <span className="material-symbols-outlined text-[18px]">payments</span>
-                      سداد العربون وحجز أقمشة المخزن تلقائياً
-                    </h3>
-                    <p className="text-[11px] text-slate-400 mt-0.5">أدخل قيمة العربون لاعتماد العقد وحجز أمتار القماش من مخزون المؤسسة.</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      value={selected.depositPaid || ''}
-                      onChange={(e) => handleDepositChange(Number(e.target.value))}
-                      className="w-32 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono font-black text-center text-sm"
-                      placeholder="مبلغ العربون"
-                    />
-                    <span className="font-bold text-brand-gold">جنيه</span>
-                  </div>
-                </div>
-
-                {/* Rooms Pricing & Fabric Selection List */}
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <h3 className="font-display font-black text-base text-slate-900 flex items-center gap-1.5">
-                      <span className="material-symbols-outlined text-brand-gold text-[20px]">texture</span>
-                      اختيار الأقمشة وتكلفة غرف العميل
+                {/* 🎯 Rooms Pricing & Fabric Selection: Clean Minimalist Table */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-black text-sm text-slate-900 flex items-center gap-1.5">
+                      <span className="material-symbols-outlined text-amber-600 text-[18px]">table_view</span>
+                      جدول غرف المقايسة والأقمشة والتسعير ({selected.rooms.length} غرفة):
                     </h3>
                   </div>
 
                   {selected.rooms.length === 0 ? (
-                    <p className="text-xs text-slate-400 text-center py-4 bg-slate-50 border rounded-xl">لا توجد غرف مسجلة بهذه المعاينة.</p>
+                    <div className="text-xs text-slate-400 text-center py-6 bg-slate-50 border border-slate-200 rounded-xl">
+                      لا توجد غرف مسجلة بهذه المعاينة.
+                    </div>
                   ) : (
-                    selected.rooms.map((room) => {
-                      const isEditing = editingRoomId === room.id;
-                      const widthM = room.widthCm / 100;
-                      const heightM = room.heightCm / 100;
+                    <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-right text-xs min-w-[700px]">
+                          <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
+                            <tr>
+                              <th className="p-3">الغرفة والمقاس</th>
+                              <th className="p-3">١. قماش الجوانب (الثقيل)</th>
+                              <th className="p-3">٢. قماش الخلفية (الشيفون)</th>
+                              <th className="p-3">٣. البلاك آوت</th>
+                              <th className="p-3 text-left font-mono">إجمالي الغرفة</th>
+                              <th className="p-3 text-center">الإجراء</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100">
+                            {selected.rooms.map((room) => {
+                              const isEditing = editingRoomId === room.id;
+                              const widthM = room.widthCm / 100;
+                              const heightM = room.heightCm / 100;
 
-                      return (
-                        <div key={room.id} className="border border-slate-200 rounded-2xl p-4 bg-slate-50/50 space-y-3">
-                          {/* 🎯 Room Header: Dimensions stacked clearly & specs beside them */}
-                          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-200 pb-3">
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <span className="w-2.5 h-2.5 rounded-full bg-brand-gold inline-block"></span>
-                                <h4 className="font-black text-sm sm:text-base text-slate-900">{room.name}</h4>
-                              </div>
-
-                              {/* Stacked Dimensions under each other */}
-                              <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 mt-1.5 text-xs text-slate-700 bg-white px-3 py-1.5 rounded-xl border border-slate-200/80 font-mono">
-                                <div>
-                                  <span className="text-slate-400 font-sans text-[11px]">العرض: </span>
-                                  <strong className="text-slate-950 font-black">{room.widthCm} سم</strong>
-                                  <span className="text-slate-400 text-[10px] mr-1">({widthM.toFixed(2)}م)</span>
-                                </div>
-                                <div>
-                                  <span className="text-slate-400 font-sans text-[11px]">الارتفاع: </span>
-                                  <strong className="text-slate-950 font-black">{room.heightCm} سم</strong>
-                                  <span className="text-slate-400 text-[10px] mr-1">({heightM.toFixed(2)}م)</span>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Badges beside dimensions */}
-                            <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-bold">
-                              <span className="bg-slate-900 text-white px-2.5 py-1 rounded-lg">
-                                {room.sides === 2 ? 'جنبين' : 'جنب واحد'}
-                              </span>
-                              <span className="bg-amber-100 text-amber-950 border border-amber-200 px-2.5 py-1 rounded-lg">
-                                {room.installationType || 'تراك سقف'}
-                              </span>
-                              <span className="bg-slate-200 text-slate-800 px-2.5 py-1 rounded-lg">
-                                {room.ceilingType || 'بيت نور / جبس بورد'}
-                              </span>
-                              <div className="mr-auto sm:mr-2 text-right">
-                                <span className="text-[10px] text-slate-400 block font-sans">إجمالي الغرفة</span>
-                                <strong className="text-sm font-black text-brand-gold-dark font-mono">{room.totalSellPrice.toLocaleString()} ج</strong>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Editing Form: Fabric Selection & Pricing Engine */}
-                          {isEditing ? (
-                            <div className="bg-white p-4 sm:p-5 rounded-2xl border-2 border-brand-gold space-y-5 shadow-sm">
-                              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                                <h5 className="text-xs sm:text-sm font-black text-slate-900 flex items-center gap-1.5">
-                                  <span className="material-symbols-outlined text-brand-gold text-[18px]">tune</span>
-                                  تحديد أقمشة وتكلفة ({room.name}) — عرض الحائط: {widthM.toFixed(2)} متر
-                                </h5>
-                                <span className="text-[11px] text-slate-500 font-bold bg-slate-100 px-2 py-0.5 rounded-lg">
-                                  تحكم كامل في الأشرطة ومعاملات الضرب
-                                </span>
-                              </div>
-
-                              {/* 🎯 1. Heavy Layer: قماش الجوانب أولاً */}
-                              <div className="p-4 bg-indigo-50/40 rounded-2xl border border-indigo-200 space-y-3">
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
-                                  <div className="flex items-center gap-2">
-                                    <span className="w-5 h-5 rounded-full bg-indigo-900 text-white text-xs font-black flex items-center justify-center">1</span>
-                                    <label className="font-black text-xs sm:text-sm text-indigo-950">قماش الجوانب (القطيفة / الثقيل / الستارة الرئيسية):</label>
-                                  </div>
-                                  <div className="flex items-center gap-2 bg-indigo-100/80 px-2.5 py-1 rounded-xl font-mono text-xs font-black text-indigo-950">
-                                    <span>الكمية: {heavyMeters} متر</span>
-                                    <span>•</span>
-                                    <span>الإجمالي: {(heavyMeters * heavyP).toLocaleString()} ج</span>
-                                  </div>
-                                </div>
-
-                                {/* Tape Selector & Multiplier Controls */}
-                                <div className="space-y-2 bg-white p-3 rounded-xl border border-indigo-100">
-                                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-                                    <span className="text-xs font-bold text-slate-700">نوع شريط الجوانب:</span>
-                                    <div className="flex flex-wrap gap-1.5">
-                                      {TAPE_OPTIONS.map(tape => (
-                                        <button
-                                          key={tape.name}
-                                          type="button"
-                                          onClick={() => handleHeavyTapeSelect(tape.name)}
-                                          className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
-                                            heavyTapeType === tape.name
-                                              ? 'bg-indigo-900 text-white border-indigo-900 shadow-xs ring-1 ring-indigo-900'
-                                              : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
-                                          }`}
-                                        >
-                                          {tape.name} <span className="text-[10px] opacity-80">(×{tape.defaultMultiplier})</span>
-                                        </button>
-                                      ))}
-                                    </div>
-                                  </div>
-
-                                  {/* Multiplier & Calculated/Custom Meters */}
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-100 text-xs">
-                                    <div className="flex items-center gap-2">
-                                      <label className="font-bold text-slate-600 whitespace-nowrap">معامل الضرب (×):</label>
-                                      <input
-                                        type="number"
-                                        step="0.1"
-                                        value={heavyMultiplier}
-                                        onChange={e => handleHeavyMultiplierChange(Number(e.target.value))}
-                                        className="w-20 border border-slate-300 rounded-lg p-1.5 text-center font-mono font-black text-slate-900 bg-slate-50 focus:bg-white"
-                                      />
-                                      <span className="text-[11px] text-slate-400">({widthM.toFixed(2)}م × {heavyMultiplier})</span>
-                                    </div>
-
-                                    <div className="flex items-center gap-2">
-                                      <label className="font-bold text-slate-600 whitespace-nowrap">الأمتار المطلوبة (متر):</label>
-                                      <input
-                                        type="number"
-                                        step="0.05"
-                                        value={heavyMeters}
-                                        onChange={e => setHeavyMeters(Number(e.target.value))}
-                                        className="w-24 border border-indigo-400 rounded-lg p-1.5 text-center font-mono font-black text-indigo-950 bg-indigo-50/50"
-                                      />
-                                      <span className="text-[11px] text-slate-400 font-bold">متر</span>
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* Fabric Selection & Unit Price */}
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
-                                  <select
-                                    value={heavyCode}
-                                    onChange={e => handleFabricSelect('heavy', e.target.value)}
-                                    className="sm:col-span-2 border border-slate-300 rounded-xl p-2.5 bg-white font-bold text-slate-900 shadow-xs"
-                                  >
-                                    <option value="">-- اختر قماش الجوانب من المخزون --</option>
-                                    {inventory.filter(f => f.category === 'قطيفة / ثقيل' || f.category === 'كتان / درابيري').map(f => (
-                                      <option key={f.code} value={f.code}>
-                                        [{f.code}] {f.name} — ({f.pricePerMeter}ج/م | رصيد {f.stockMeters}م)
-                                      </option>
-                                    ))}
-                                  </select>
-                                  <div className="flex items-center border border-slate-300 rounded-xl bg-white px-3 py-2">
-                                    <span className="text-slate-500 font-bold pl-1">سعر المتر:</span>
-                                    <input
-                                      type="number"
-                                      value={heavyP}
-                                      onChange={e => setHeavyP(Number(e.target.value))}
-                                      className="w-full font-mono font-black text-center text-slate-900"
-                                    />
-                                    <span className="text-slate-500 font-bold">ج</span>
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* 🎯 2. Sheer Layer: قماش الخلفية ثانياً */}
-                              <div className="p-4 bg-amber-50/50 rounded-2xl border border-amber-200 space-y-3">
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
-                                  <div className="flex items-center gap-2">
-                                    <span className="w-5 h-5 rounded-full bg-amber-900 text-white text-xs font-black flex items-center justify-center">2</span>
-                                    <label className="font-black text-xs sm:text-sm text-amber-950">قماش الخلفية (الشيفون / التول / الخفيف):</label>
-                                  </div>
-                                  <div className="flex items-center gap-2 bg-amber-100/80 px-2.5 py-1 rounded-xl font-mono text-xs font-black text-amber-950">
-                                    <span>الكمية: {sheerMeters} متر</span>
-                                    <span>•</span>
-                                    <span>الإجمالي: {(sheerMeters * sheerP).toLocaleString()} ج</span>
-                                  </div>
-                                </div>
-
-                                {/* Tape Selector & Multiplier Controls */}
-                                <div className="space-y-2 bg-white p-3 rounded-xl border border-amber-100">
-                                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-                                    <span className="text-xs font-bold text-slate-700">نوع شريط الخلفية:</span>
-                                    <div className="flex flex-wrap gap-1.5">
-                                      {TAPE_OPTIONS.map(tape => (
-                                        <button
-                                          key={tape.name}
-                                          type="button"
-                                          onClick={() => handleSheerTapeSelect(tape.name)}
-                                          className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
-                                            sheerTapeType === tape.name
-                                              ? 'bg-amber-900 text-white border-amber-900 shadow-xs ring-1 ring-amber-900'
-                                              : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
-                                          }`}
-                                        >
-                                          {tape.name} <span className="text-[10px] opacity-80">(×{tape.defaultMultiplier})</span>
-                                        </button>
-                                      ))}
-                                    </div>
-                                  </div>
-
-                                  {/* Multiplier & Calculated/Custom Meters */}
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-100 text-xs">
-                                    <div className="flex items-center gap-2">
-                                      <label className="font-bold text-slate-600 whitespace-nowrap">معامل الضرب (×):</label>
-                                      <input
-                                        type="number"
-                                        step="0.1"
-                                        value={sheerMultiplier}
-                                        onChange={e => handleSheerMultiplierChange(Number(e.target.value))}
-                                        className="w-20 border border-slate-300 rounded-lg p-1.5 text-center font-mono font-black text-slate-900 bg-slate-50 focus:bg-white"
-                                      />
-                                      <span className="text-[11px] text-slate-400">({widthM.toFixed(2)}م × {sheerMultiplier})</span>
-                                    </div>
-
-                                    <div className="flex items-center gap-2">
-                                      <label className="font-bold text-slate-600 whitespace-nowrap">الأمتار المطلوبة (متر):</label>
-                                      <input
-                                        type="number"
-                                        step="0.05"
-                                        value={sheerMeters}
-                                        onChange={e => setSheerMeters(Number(e.target.value))}
-                                        className="w-24 border border-amber-400 rounded-lg p-1.5 text-center font-mono font-black text-amber-950 bg-amber-50/50"
-                                      />
-                                      <span className="text-[11px] text-slate-400 font-bold">متر</span>
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* Fabric Selection & Unit Price */}
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
-                                  <select
-                                    value={sheerCode}
-                                    onChange={e => handleFabricSelect('sheer', e.target.value)}
-                                    className="sm:col-span-2 border border-slate-300 rounded-xl p-2.5 bg-white font-bold text-slate-900 shadow-xs"
-                                  >
-                                    <option value="">-- اختر قماش الخلفية من المخزون --</option>
-                                    {inventory.filter(f => f.category === 'شيفون / تول').map(f => (
-                                      <option key={f.code} value={f.code}>
-                                        [{f.code}] {f.name} — ({f.pricePerMeter}ج/م | رصيد {f.stockMeters}م)
-                                      </option>
-                                    ))}
-                                  </select>
-                                  <div className="flex items-center border border-slate-300 rounded-xl bg-white px-3 py-2">
-                                    <span className="text-slate-500 font-bold pl-1">سعر المتر:</span>
-                                    <input
-                                      type="number"
-                                      value={sheerP}
-                                      onChange={e => setSheerP(Number(e.target.value))}
-                                      className="w-full font-mono font-black text-center text-slate-900"
-                                    />
-                                    <span className="text-slate-500 font-bold">ج</span>
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* 🎯 3. Blackout Layer: طبقة البلاك آوت (معامل ×1.20 الافتراضي) */}
-                              <div className="p-4 bg-slate-100 rounded-2xl border border-slate-300 space-y-3">
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
-                                  <div className="flex items-center gap-2">
-                                    <span className="w-5 h-5 rounded-full bg-slate-800 text-white text-xs font-black flex items-center justify-center">3</span>
-                                    <label className="font-black text-xs sm:text-sm text-slate-900 flex items-center gap-2 cursor-pointer">
-                                      <input
-                                        type="checkbox"
-                                        checked={hasBlackout}
-                                        onChange={e => {
-                                          const val = e.target.checked;
-                                          setHasBlackout(val);
-                                          if (val && !blackoutCode) setBlackoutCode('BK-301');
-                                        }}
-                                        className="w-4 h-4 rounded text-brand-gold accent-amber-600 cursor-pointer"
-                                      />
-                                      طبقة بلاك آوت عازل حراري ومائي (اختياري)
-                                    </label>
-                                  </div>
-                                  {hasBlackout && (
-                                    <div className="flex items-center gap-2 bg-slate-200 px-2.5 py-1 rounded-xl font-mono text-xs font-black text-slate-900">
-                                      <span>الكمية: {blackoutMeters} متر</span>
-                                      <span>•</span>
-                                      <span>الإجمالي: {(blackoutMeters * blackoutP).toLocaleString()} ج</span>
-                                    </div>
-                                  )}
-                                </div>
-
-                                {hasBlackout && (
-                                  <div className="space-y-3 pt-2 border-t border-slate-200">
-                                    {/* Multiplier Controls for Blackout */}
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-white p-3 rounded-xl border border-slate-200 text-xs">
-                                      <div className="flex items-center gap-2">
-                                        <label className="font-bold text-slate-600 whitespace-nowrap">معامل الضرب (×):</label>
-                                        <input
-                                          type="number"
-                                          step="0.05"
-                                          value={blackoutMultiplier}
-                                          onChange={e => handleBlackoutMultiplierChange(Number(e.target.value))}
-                                          className="w-20 border border-slate-300 rounded-lg p-1.5 text-center font-mono font-black text-slate-900 bg-slate-50 focus:bg-white"
-                                        />
-                                        <span className="text-[11px] text-slate-400">({widthM.toFixed(2)}م × {blackoutMultiplier})</span>
-                                      </div>
-
-                                      <div className="flex items-center gap-2">
-                                        <label className="font-bold text-slate-600 whitespace-nowrap">الأمتار المطلوبة (متر):</label>
-                                        <input
-                                          type="number"
-                                          step="0.05"
-                                          value={blackoutMeters}
-                                          onChange={e => setBlackoutMeters(Number(e.target.value))}
-                                          className="w-24 border border-slate-400 rounded-lg p-1.5 text-center font-mono font-black text-slate-950 bg-slate-50"
-                                        />
-                                        <span className="text-[11px] text-slate-400 font-bold">متر</span>
-                                      </div>
-                                    </div>
-
-                                    {/* Fabric Selection */}
-                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
-                                      <select
-                                        value={blackoutCode}
-                                        onChange={e => handleFabricSelect('blackout', e.target.value)}
-                                        className="sm:col-span-2 border border-slate-300 rounded-xl p-2.5 bg-white font-bold text-slate-900 shadow-xs"
-                                      >
-                                        <option value="">-- اختر خامة البلاك آوت من المخزون --</option>
-                                        {inventory.filter(f => f.category === 'بلاك آوت عازل').map(f => (
-                                          <option key={f.code} value={f.code}>
-                                            [{f.code}] {f.name} — ({f.pricePerMeter}ج/م | رصيد {f.stockMeters}م)
-                                          </option>
-                                        ))}
-                                      </select>
-                                      <div className="flex items-center border border-slate-300 rounded-xl bg-white px-3 py-2">
-                                        <span className="text-slate-500 font-bold pl-1">سعر المتر:</span>
-                                        <input
-                                          type="number"
-                                          value={blackoutP}
-                                          onChange={e => setBlackoutP(Number(e.target.value))}
-                                          className="w-full font-mono font-black text-center text-slate-900"
-                                        />
-                                        <span className="text-slate-500 font-bold">ج</span>
-                                      </div>
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-
-                              {/* Accessories & Fees */}
-                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs pt-3 border-t border-slate-200">
-                                <div className="flex flex-col gap-1">
-                                  <label className="font-bold text-slate-700">المجرى/الماسورة (متر):</label>
-                                  <input type="number" value={trackP} onChange={e => setTrackP(Number(e.target.value))} className="border rounded-xl p-2 text-center font-mono font-bold" />
-                                </div>
-                                <div className="flex flex-col gap-1">
-                                  <label className="font-bold text-slate-700">شريط الكشكشة (متر):</label>
-                                  <input type="number" value={tapeP} onChange={e => setTapeP(Number(e.target.value))} className="border rounded-xl p-2 text-center font-mono font-bold" />
-                                </div>
-                                <div className="flex flex-col gap-1">
-                                  <label className="font-bold text-slate-700">الترزي (لكل جنب):</label>
-                                  <input type="number" value={tailorP} onChange={e => setTailorP(Number(e.target.value))} className="border rounded-xl p-2 text-center font-mono font-bold" />
-                                </div>
-                                <div className="flex flex-col gap-1">
-                                  <label className="font-bold text-slate-700">رسوم التركيب:</label>
-                                  <input type="number" value={installF} onChange={e => setInstallF(Number(e.target.value))} className="border rounded-xl p-2 text-center font-mono font-bold" />
-                                </div>
-                              </div>
-
-                              {/* Actions */}
-                              <div className="flex flex-col sm:flex-row justify-end gap-2 pt-3 border-t border-slate-100">
-                                <button
-                                  type="button"
-                                  onClick={() => setEditingRoomId(null)}
-                                  className="border border-slate-200 text-slate-600 px-5 py-2.5 rounded-xl text-xs font-bold hover:bg-slate-50 cursor-pointer"
+                              return (
+                                <tr
+                                  key={room.id}
+                                  className={`transition-colors ${
+                                    isEditing ? 'bg-amber-50/50' : 'hover:bg-slate-50/60'
+                                  }`}
                                 >
-                                  إلغاء
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => saveRoomPricing(room.id)}
-                                  className="bg-brand-gold hover:bg-amber-400 text-slate-950 px-6 py-2.5 rounded-xl text-xs font-black shadow-gold cursor-pointer transition-colors"
-                                >
-                                  حفظ واعتماد تسعير الغرفة ✓
-                                </button>
-                              </div>
-                            </div>
-                          ) : (
-                            /* Summary Display */
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs bg-white p-4 rounded-xl border border-slate-200">
-                              <div className="space-y-2 text-slate-800">
-                                {/* 1. Heavy summary */}
-                                <div>
-                                  <div className="flex items-center gap-1.5 text-indigo-950 font-bold">
-                                    <span className="w-4 h-4 rounded-full bg-indigo-900 text-white text-[10px] flex items-center justify-center font-bold">1</span>
-                                    <span>قماش الجوانب (الثقيل):</span>
-                                    <strong className="text-slate-900">{room.heavyFabricName || 'لم يحدد'}</strong>
-                                  </div>
-                                  <span className="font-mono text-slate-500 font-bold block pr-5">
-                                    شريط {room.heavyTapeType || '٣ فتلة'} (×{room.heavyMultiplier ?? 2.0}) • {room.heavyMeters} متر × {room.heavyPrice} ج = {(room.heavyMeters * room.heavyPrice).toLocaleString()} ج
-                                  </span>
-                                </div>
-
-                                {/* 2. Sheer summary */}
-                                <div className="pt-2 border-t border-slate-100">
-                                  <div className="flex items-center gap-1.5 text-amber-950 font-bold">
-                                    <span className="w-4 h-4 rounded-full bg-amber-800 text-white text-[10px] flex items-center justify-center font-bold">2</span>
-                                    <span>قماش الخلفية (الشيفون):</span>
-                                    <strong className="text-slate-900">{room.sheerFabricName || 'لم يحدد'}</strong>
-                                  </div>
-                                  <span className="font-mono text-slate-500 font-bold block pr-5">
-                                    شريط {room.sheerTapeType || 'ويفي'} (×{room.sheerMultiplier ?? 2.5}) • {room.sheerMeters} متر × {room.sheerPrice} ج = {(room.sheerMeters * room.sheerPrice).toLocaleString()} ج
-                                  </span>
-                                </div>
-                              </div>
-
-                              <div className="space-y-2 text-slate-800 sm:border-r sm:border-slate-200 sm:pr-3">
-                                {/* 3. Blackout summary */}
-                                {room.blackoutMeters > 0 && room.blackoutFabricName ? (
-                                  <div>
-                                    <div className="flex items-center gap-1.5 text-slate-950 font-bold">
-                                      <span className="w-4 h-4 rounded-full bg-slate-800 text-white text-[10px] flex items-center justify-center font-bold">3</span>
-                                      <span>طبقة البلاك آوت:</span>
-                                      <strong className="text-slate-900">{room.blackoutFabricName}</strong>
+                                  {/* Room name & dimensions */}
+                                  <td className="p-3 align-top">
+                                    <div className="font-black text-slate-900 text-xs">{room.name}</div>
+                                    <div className="text-[11px] text-slate-500 font-mono mt-0.5">
+                                      {room.widthCm}×{room.heightCm} سم ({widthM.toFixed(2)}م)
                                     </div>
-                                    <span className="font-mono text-slate-500 font-bold block pr-5">
-                                      (×{room.blackoutMultiplier ?? 1.20}) • {room.blackoutMeters} متر × {room.blackoutPrice} ج = {(room.blackoutMeters * room.blackoutPrice).toLocaleString()} ج
+                                    <div className="flex flex-wrap gap-1 mt-1">
+                                      <span className="text-[10px] bg-slate-100 text-slate-700 px-1.5 py-0.2 rounded font-bold">
+                                        {room.sides === 2 ? 'جنبين' : 'جنب'}
+                                      </span>
+                                      <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.2 rounded">
+                                        {room.installationType || 'تراك سقف'}
+                                      </span>
+                                    </div>
+                                  </td>
+
+                                  {/* Heavy layer (1) */}
+                                  <td className="p-3 align-top">
+                                    <div className="font-bold text-slate-900">
+                                      {room.heavyFabricName || 'لم يحدد'}
+                                    </div>
+                                    <div className="text-[11px] text-slate-500 font-mono mt-0.5">
+                                      شريط {room.heavyTapeType || '٣ فتلة'} (×{room.heavyMultiplier ?? 2.0})
+                                    </div>
+                                    <div className="text-[11px] font-mono font-bold text-indigo-950 mt-0.5">
+                                      {room.heavyMeters}م × {room.heavyPrice}ج = {(room.heavyMeters * room.heavyPrice).toLocaleString()} ج
+                                    </div>
+                                  </td>
+
+                                  {/* Sheer layer (2) */}
+                                  <td className="p-3 align-top">
+                                    <div className="font-bold text-slate-900">
+                                      {room.sheerFabricName || 'لم يحدد'}
+                                    </div>
+                                    <div className="text-[11px] text-slate-500 font-mono mt-0.5">
+                                      شريط {room.sheerTapeType || 'ويفي'} (×{room.sheerMultiplier ?? 2.5})
+                                    </div>
+                                    <div className="text-[11px] font-mono font-bold text-amber-900 mt-0.5">
+                                      {room.sheerMeters}م × {room.sheerPrice}ج = {(room.sheerMeters * room.sheerPrice).toLocaleString()} ج
+                                    </div>
+                                  </td>
+
+                                  {/* Blackout layer (3) */}
+                                  <td className="p-3 align-top">
+                                    {room.blackoutMeters > 0 && room.blackoutFabricName ? (
+                                      <>
+                                        <div className="font-bold text-slate-800">{room.blackoutFabricName}</div>
+                                        <div className="text-[11px] font-mono text-slate-600 mt-0.5">
+                                          (×{room.blackoutMultiplier ?? 1.20}) • {room.blackoutMeters}م
+                                        </div>
+                                        <div className="text-[11px] font-mono font-bold text-slate-900 mt-0.5">
+                                          {(room.blackoutMeters * room.blackoutPrice).toLocaleString()} ج
+                                        </div>
+                                      </>
+                                    ) : (
+                                      <span className="text-slate-400 text-[11px]">-</span>
+                                    )}
+                                  </td>
+
+                                  {/* Total */}
+                                  <td className="p-3 text-left font-mono align-top">
+                                    <span className="font-black text-sm text-slate-900 block">
+                                      {room.totalSellPrice.toLocaleString()} ج
                                     </span>
-                                  </div>
-                                ) : (
-                                  <div className="text-slate-400 text-[11px]">بدون طبقة بلاك آوت عازل</div>
-                                )}
+                                    <span className="text-[10px] text-slate-400 block mt-0.5">شامل التجهيز والترزي</span>
+                                  </td>
 
-                                <div className="text-[11px] text-slate-600 pt-1 border-t border-slate-100">
-                                  <strong>التجهيزات والترزي:</strong> مجرى ({room.trackPrice}ج) + شريط ({room.tapePrice}ج) + ترزي ({room.tailorPricePerSide}ج) + تركيب ({room.installFee}ج)
-                                </div>
-                              </div>
-
-                              <div className="col-span-1 sm:col-span-2 pt-2.5 border-t border-slate-100 flex justify-between items-center">
-                                <span className="text-slate-400 text-[11px]">اضغط للتعديل وتغيير الأقمشة أو الأشرطة والمعاملات:</span>
-                                <button
-                                  type="button"
-                                  onClick={() => startPricingRoom(room)}
-                                  className="bg-slate-900 hover:bg-slate-800 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
-                                >
-                                  <span className="material-symbols-outlined text-[14px]">tune</span>
-                                  تعديل الأقمشة والأشرطة والتكلفة
-                                </button>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })
+                                  {/* Action */}
+                                  <td className="p-3 text-center align-middle">
+                                    <button
+                                      type="button"
+                                      onClick={() => isEditing ? setEditingRoomId(null) : startPricingRoom(room)}
+                                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
+                                        isEditing
+                                          ? 'bg-amber-100 text-amber-950 border-amber-300'
+                                          : 'bg-white hover:bg-slate-100 text-slate-800 border-slate-300 shadow-2xs'
+                                      }`}
+                                    >
+                                      {isEditing ? 'إغلاق ✕' : 'تسعير / تعديل'}
+                                    </button>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
                   )}
                 </div>
 
+                {/* 🎯 Minimalist Clean Editor Panel (When a room is selected for editing) */}
+                {editingRoom && (
+                  <div className="bg-slate-50/70 p-5 rounded-2xl border border-amber-300 space-y-4 shadow-xs">
+                    <div className="flex items-center justify-between border-b border-slate-200 pb-2.5">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-amber-600"></span>
+                        <h4 className="font-black text-sm text-slate-900">
+                          تحديد أقمشة ({editingRoom.name}) — عرض الحائط: {editingWidthM.toFixed(2)} م
+                        </h4>
+                      </div>
+                      <span className="text-[11px] text-slate-500 font-mono">
+                        المقاس: {editingRoom.widthCm}×{editingRoom.heightCm} سم
+                      </span>
+                    </div>
+
+                    <div className="space-y-3">
+                      {/* Layer 1: Heavy Fabric */}
+                      <div className="bg-white p-3.5 rounded-xl border border-slate-200 space-y-2.5">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs">
+                          <label className="font-black text-slate-900 flex items-center gap-1.5">
+                            <span className="w-4 h-4 rounded-full bg-slate-900 text-white text-[10px] flex items-center justify-center font-bold">1</span>
+                            قماش الجوانب (القطيفة / الثقيل):
+                          </label>
+                          <span className="font-mono text-slate-700 font-bold text-[11px]">
+                            الكمية: {heavyMeters} متر • الإجمالي: {(heavyMeters * heavyP).toLocaleString()} ج
+                          </span>
+                        </div>
+
+                        {/* Tape options & Multiplier */}
+                        <div className="flex flex-wrap items-center gap-2 text-xs pt-1">
+                          <span className="text-slate-500 font-bold text-[11px]">نوع الشريط:</span>
+                          <div className="flex flex-wrap gap-1">
+                            {TAPE_OPTIONS.map(tape => (
+                              <button
+                                key={tape.name}
+                                type="button"
+                                onClick={() => handleHeavyTapeSelect(tape.name)}
+                                className={`px-2 py-0.5 rounded text-[11px] font-bold border transition-colors cursor-pointer ${
+                                  heavyTapeType === tape.name
+                                    ? 'bg-slate-900 text-white border-slate-900'
+                                    : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                                }`}
+                              >
+                                {tape.name} (×{tape.defaultMultiplier})
+                              </button>
+                            ))}
+                          </div>
+
+                          <div className="flex items-center gap-1 mr-auto">
+                            <span className="text-slate-500 text-[11px]">معامل:</span>
+                            <input
+                              type="number"
+                              step="0.1"
+                              value={heavyMultiplier}
+                              onChange={e => handleHeavyMultiplierChange(Number(e.target.value))}
+                              className="w-14 border border-slate-300 rounded px-1 py-0.5 text-center font-mono font-bold text-xs"
+                            />
+                            <span className="text-slate-500 text-[11px] mr-2">أمتار:</span>
+                            <input
+                              type="number"
+                              step="0.05"
+                              value={heavyMeters}
+                              onChange={e => setHeavyMeters(Number(e.target.value))}
+                              className="w-16 border border-slate-300 rounded px-1 py-0.5 text-center font-mono font-bold text-xs bg-amber-50/40"
+                            />
+                            <span className="text-slate-400 text-[10px]">م</span>
+                          </div>
+                        </div>
+
+                        {/* Select fabric & price */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs pt-1">
+                          <select
+                            value={heavyCode}
+                            onChange={e => handleFabricSelect('heavy', e.target.value)}
+                            className="sm:col-span-2 border border-slate-300 rounded-lg p-2 bg-white font-bold text-slate-900"
+                          >
+                            <option value="">-- اختر قماش الجوانب من المخزون --</option>
+                            {inventory.filter(f => f.category === 'قطيفة / ثقيل' || f.category === 'كتان / درابيري').map(f => (
+                              <option key={f.code} value={f.code}>
+                                [{f.code}] {f.name} — ({f.pricePerMeter}ج/م)
+                              </option>
+                            ))}
+                          </select>
+                          <div className="flex items-center border border-slate-300 rounded-lg bg-white px-2 py-1">
+                            <span className="text-slate-500 pl-1 text-[11px]">السعر:</span>
+                            <input
+                              type="number"
+                              value={heavyP}
+                              onChange={e => setHeavyP(Number(e.target.value))}
+                              className="w-full font-mono font-bold text-center text-xs"
+                            />
+                            <span className="text-slate-500 text-[11px]">ج/م</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Layer 2: Sheer Fabric */}
+                      <div className="bg-white p-3.5 rounded-xl border border-slate-200 space-y-2.5">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs">
+                          <label className="font-black text-slate-900 flex items-center gap-1.5">
+                            <span className="w-4 h-4 rounded-full bg-slate-900 text-white text-[10px] flex items-center justify-center font-bold">2</span>
+                            قماش الخلفية (الشيفون / التول):
+                          </label>
+                          <span className="font-mono text-slate-700 font-bold text-[11px]">
+                            الكمية: {sheerMeters} متر • الإجمالي: {(sheerMeters * sheerP).toLocaleString()} ج
+                          </span>
+                        </div>
+
+                        {/* Tape options & Multiplier */}
+                        <div className="flex flex-wrap items-center gap-2 text-xs pt-1">
+                          <span className="text-slate-500 font-bold text-[11px]">نوع الشريط:</span>
+                          <div className="flex flex-wrap gap-1">
+                            {TAPE_OPTIONS.map(tape => (
+                              <button
+                                key={tape.name}
+                                type="button"
+                                onClick={() => handleSheerTapeSelect(tape.name)}
+                                className={`px-2 py-0.5 rounded text-[11px] font-bold border transition-colors cursor-pointer ${
+                                  sheerTapeType === tape.name
+                                    ? 'bg-slate-900 text-white border-slate-900'
+                                    : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                                }`}
+                              >
+                                {tape.name} (×{tape.defaultMultiplier})
+                              </button>
+                            ))}
+                          </div>
+
+                          <div className="flex items-center gap-1 mr-auto">
+                            <span className="text-slate-500 text-[11px]">معامل:</span>
+                            <input
+                              type="number"
+                              step="0.1"
+                              value={sheerMultiplier}
+                              onChange={e => handleSheerMultiplierChange(Number(e.target.value))}
+                              className="w-14 border border-slate-300 rounded px-1 py-0.5 text-center font-mono font-bold text-xs"
+                            />
+                            <span className="text-slate-500 text-[11px] mr-2">أمتار:</span>
+                            <input
+                              type="number"
+                              step="0.05"
+                              value={sheerMeters}
+                              onChange={e => setSheerMeters(Number(e.target.value))}
+                              className="w-16 border border-slate-300 rounded px-1 py-0.5 text-center font-mono font-bold text-xs bg-amber-50/40"
+                            />
+                            <span className="text-slate-400 text-[10px]">م</span>
+                          </div>
+                        </div>
+
+                        {/* Select fabric & price */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs pt-1">
+                          <select
+                            value={sheerCode}
+                            onChange={e => handleFabricSelect('sheer', e.target.value)}
+                            className="sm:col-span-2 border border-slate-300 rounded-lg p-2 bg-white font-bold text-slate-900"
+                          >
+                            <option value="">-- اختر قماش الخلفية من المخزون --</option>
+                            {inventory.filter(f => f.category === 'شيفون / تول').map(f => (
+                              <option key={f.code} value={f.code}>
+                                [{f.code}] {f.name} — ({f.pricePerMeter}ج/م)
+                              </option>
+                            ))}
+                          </select>
+                          <div className="flex items-center border border-slate-300 rounded-lg bg-white px-2 py-1">
+                            <span className="text-slate-500 pl-1 text-[11px]">السعر:</span>
+                            <input
+                              type="number"
+                              value={sheerP}
+                              onChange={e => setSheerP(Number(e.target.value))}
+                              className="w-full font-mono font-bold text-center text-xs"
+                            />
+                            <span className="text-slate-500 text-[11px]">ج/م</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Layer 3: Blackout Layer */}
+                      <div className="bg-white p-3.5 rounded-xl border border-slate-200 space-y-2.5">
+                        <div className="flex items-center justify-between text-xs">
+                          <label className="font-black text-slate-900 flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={hasBlackout}
+                              onChange={e => {
+                                const val = e.target.checked;
+                                setHasBlackout(val);
+                                if (val && !blackoutCode) setBlackoutCode('BK-301');
+                              }}
+                              className="w-4 h-4 rounded text-slate-900 accent-slate-900 cursor-pointer"
+                            />
+                            <span className="w-4 h-4 rounded-full bg-slate-900 text-white text-[10px] flex items-center justify-center font-bold">3</span>
+                            طبقة بلاك آوت عازل حراري ومائي (اختياري)
+                          </label>
+                          {hasBlackout && (
+                            <span className="font-mono text-slate-700 font-bold text-[11px]">
+                              {blackoutMeters} متر • الإجمالي: {(blackoutMeters * blackoutP).toLocaleString()} ج
+                            </span>
+                          )}
+                        </div>
+
+                        {hasBlackout && (
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs pt-1 border-t border-slate-100">
+                            <div className="flex items-center gap-1">
+                              <span className="text-slate-500 text-[11px]">معامل:</span>
+                              <input
+                                type="number"
+                                step="0.05"
+                                value={blackoutMultiplier}
+                                onChange={e => handleBlackoutMultiplierChange(Number(e.target.value))}
+                                className="w-14 border border-slate-300 rounded px-1 py-0.5 text-center font-mono font-bold text-xs"
+                              />
+                              <span className="text-slate-500 text-[11px] mr-2">أمتار:</span>
+                              <input
+                                type="number"
+                                step="0.05"
+                                value={blackoutMeters}
+                                onChange={e => setBlackoutMeters(Number(e.target.value))}
+                                className="w-16 border border-slate-300 rounded px-1 py-0.5 text-center font-mono font-bold text-xs bg-slate-50"
+                              />
+                            </div>
+
+                            <select
+                              value={blackoutCode}
+                              onChange={e => handleFabricSelect('blackout', e.target.value)}
+                              className="border border-slate-300 rounded-lg p-1.5 bg-white font-bold text-slate-900"
+                            >
+                              <option value="">-- اختر خامة البلاك آوت --</option>
+                              {inventory.filter(f => f.category === 'بلاك آوت عازل').map(f => (
+                                <option key={f.code} value={f.code}>
+                                  [{f.code}] {f.name}
+                                </option>
+                              ))}
+                            </select>
+
+                            <div className="flex items-center border border-slate-300 rounded-lg bg-white px-2 py-1">
+                              <span className="text-slate-500 pl-1 text-[11px]">سعر المتر:</span>
+                              <input
+                                type="number"
+                                value={blackoutP}
+                                onChange={e => setBlackoutP(Number(e.target.value))}
+                                className="w-full font-mono font-bold text-center text-xs"
+                              />
+                              <span className="text-slate-500 text-[11px]">ج</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Accessories & Fees */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs pt-1">
+                        <div className="flex items-center gap-1 bg-white p-2 rounded-lg border border-slate-200">
+                          <span className="text-slate-500 text-[11px] whitespace-nowrap">مجرى (م):</span>
+                          <input type="number" value={trackP} onChange={e => setTrackP(Number(e.target.value))} className="w-full text-center font-mono font-bold" />
+                          <span className="text-slate-400 text-[10px]">ج</span>
+                        </div>
+                        <div className="flex items-center gap-1 bg-white p-2 rounded-lg border border-slate-200">
+                          <span className="text-slate-500 text-[11px] whitespace-nowrap">شريط (م):</span>
+                          <input type="number" value={tapeP} onChange={e => setTapeP(Number(e.target.value))} className="w-full text-center font-mono font-bold" />
+                          <span className="text-slate-400 text-[10px]">ج</span>
+                        </div>
+                        <div className="flex items-center gap-1 bg-white p-2 rounded-lg border border-slate-200">
+                          <span className="text-slate-500 text-[11px] whitespace-nowrap">ترزي (جنب):</span>
+                          <input type="number" value={tailorP} onChange={e => setTailorP(Number(e.target.value))} className="w-full text-center font-mono font-bold" />
+                          <span className="text-slate-400 text-[10px]">ج</span>
+                        </div>
+                        <div className="flex items-center gap-1 bg-white p-2 rounded-lg border border-slate-200">
+                          <span className="text-slate-500 text-[11px] whitespace-nowrap">تركيب:</span>
+                          <input type="number" value={installF} onChange={e => setInstallF(Number(e.target.value))} className="w-full text-center font-mono font-bold" />
+                          <span className="text-slate-400 text-[10px]">ج</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex justify-end gap-2 pt-2 border-t border-slate-200">
+                      <button
+                        type="button"
+                        onClick={() => setEditingRoomId(null)}
+                        className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-200/60 border border-slate-300 cursor-pointer"
+                      >
+                        إلغاء
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => saveRoomPricing(editingRoom.id)}
+                        className="bg-slate-900 hover:bg-slate-800 text-white px-5 py-2 rounded-xl text-xs font-bold cursor-pointer transition-colors shadow-xs"
+                      >
+                        حفظ تسعير الغرفة ✓
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {/* Final Submission to Phase 3 (Workshop) */}
-                <div className="pt-4 border-t border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-3">
+                <div className="pt-3 border-t border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-3">
                   <button
                     onClick={() => setShowPrintModal(true)}
                     disabled={selected.totalAmount === 0}
-                    className="w-full sm:w-auto border border-slate-300 hover:bg-slate-50 text-slate-800 px-5 py-3 rounded-2xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer"
+                    className="w-full sm:w-auto border border-slate-300 hover:bg-slate-50 text-slate-800 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer transition-colors"
                   >
                     <span className="material-symbols-outlined text-[18px]">print</span>
-                    معاينة المقايسة وطباعة العقد
+                    معاينة المقايسة وطباعة العقد (PDF)
                   </button>
 
                   <button
                     onClick={handleSendToWorkshop}
                     disabled={selected.totalAmount === 0}
-                    className="w-full sm:w-auto bg-slate-900 hover:bg-slate-800 disabled:opacity-40 text-white px-6 py-3 rounded-2xl font-black text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer shadow-lg"
+                    className="w-full sm:w-auto bg-slate-900 hover:bg-slate-800 disabled:opacity-40 text-white px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer shadow-xs transition-colors"
                   >
                     <span className="material-symbols-outlined text-[18px]">content_cut</span>
-                    اعتماد العقد وتحويل لورشة القص والتفصيل (المرحلة 3) ←
+                    اعتماد العقد وتحويل لورشة التفصيل (المرحلة 3) ←
                   </button>
                 </div>
               </div>
