@@ -335,17 +335,6 @@ export default function InspectionDetailPage() {
             </tbody>
           </table>
 
-          {/* Signatures for Print */}
-          <div className="grid grid-cols-2 gap-8 mt-12 pt-6 border-t border-slate-300 text-xs">
-            <div className="text-center">
-              <span className="block font-bold mb-6">توقيع الفني المسؤول:</span>
-              <span className="block font-mono">________________________</span>
-            </div>
-            <div className="text-center">
-              <span className="block font-bold mb-6">توقيع العميل بالموافقة على المقاسات:</span>
-              <span className="block font-mono">________________________</span>
-            </div>
-          </div>
         </div>
 
         {/* Screen Display Cards for Rooms */}

@@ -38,6 +38,7 @@ export interface PrintContractData {
   phone: string;
   address: string;
   date: string;
+  deliveryDate?: string;
   estimatorName: string;
   totalAmount: number;
   depositPaid: number;
@@ -124,7 +125,7 @@ export default function ContractPrintModal({ isOpen, onClose, data }: ContractPr
           </div>
 
           {/* Customer Info Box */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs">
             <div>
               <span className="text-slate-400 font-bold block">اسم العميل:</span>
               <strong className="text-slate-900 text-sm">{data.customerName}</strong>
@@ -136,6 +137,10 @@ export default function ContractPrintModal({ isOpen, onClose, data }: ContractPr
             <div className="col-span-2 sm:col-span-2">
               <span className="text-slate-400 font-bold block">عنوان التركيب:</span>
               <strong className="text-slate-900">{data.address}</strong>
+            </div>
+            <div>
+              <span className="text-amber-800 font-bold block">موعد التركيب:</span>
+              <strong className="text-slate-900 font-mono text-sm block mt-0.5">{data.deliveryDate || 'غير محدد'}</strong>
             </div>
           </div>
 

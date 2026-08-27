@@ -449,7 +449,7 @@ export default function PricingDetailPage() {
           <h2 className="font-black text-sm text-slate-900 border-r-4 border-amber-500 pr-2.5">
             معلومات العميل والمعاينة الميدانية:
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 text-xs bg-slate-50/70 p-4 rounded-xl border border-slate-100">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 text-xs bg-slate-50/70 p-4 rounded-xl border border-slate-100">
             <div>
               <span className="text-slate-400 font-bold block">اسم العميل:</span>
               <strong className="text-slate-900 text-sm">{quotation.customerName}</strong>
@@ -465,6 +465,23 @@ export default function PricingDetailPage() {
             <div>
               <span className="text-slate-400 font-bold block">مسؤول المبيعات والتسعير:</span>
               <strong className="text-slate-900 text-sm block mt-1">{estimator || 'أحمد كشك'}</strong>
+            </div>
+            <div>
+              <span className="text-amber-800 font-bold block">📅 موعد / تاريخ التركيب:</span>
+              <input
+                type="date"
+                value={deliveryDate || ''}
+                onChange={(e) => {
+                  const d = e.target.value;
+                  setDeliveryDate(d);
+                  if (quotation) {
+                    const updatedList = quotations.map(q => q.id === quotation.id ? { ...q, deliveryDate: d } : q);
+                    setQuotations(updatedList);
+                    saveAllQuotations(updatedList);
+                  }
+                }}
+                className="w-full bg-white border border-amber-300 rounded-lg px-2.5 py-1 text-slate-900 font-mono font-bold text-xs mt-1 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
+              />
             </div>
           </div>
         </div>
