@@ -277,8 +277,8 @@ export default function PricingDetailPage() {
         let trackPrice = 0;
 
         if (installationCategory === 'تراك') {
-          trackMeters = editingWidthM * Math.max(1, activeLayersCount);
-          trackPrice = ACCESSORY_PRICES.trackPerMeter;
+          trackMeters = editingWidthM * activeLayersCount;
+          trackPrice = trackPricePerMeter || ACCESSORY_PRICES.trackPerMeter;
           installationTotal = trackMeters * trackPrice;
         } else {
           // Forge pipe calculation
@@ -1017,7 +1017,7 @@ export default function PricingDetailPage() {
                         <span className="text-slate-600 font-bold text-xs">ج/م</span>
                       </div>
                       <div className="font-mono font-bold text-xs bg-amber-100 text-amber-950 px-3 py-1.5 rounded-lg border border-amber-300">
-                        {editingWidthM.toFixed(2)}م × {Math.max(1, (heavyEnabled ? 1 : 0) + (sheerEnabled ? 1 : 0) + (blackoutEnabled ? 1 : 0))} تراك × {trackPricePerMeter}ج = {(editingWidthM * Math.max(1, (heavyEnabled ? 1 : 0) + (sheerEnabled ? 1 : 0) + (blackoutEnabled ? 1 : 0)) * trackPricePerMeter).toLocaleString()} ج
+                        {editingWidthM.toFixed(2)}م × {(heavyEnabled ? 1 : 0) + (sheerEnabled ? 1 : 0) + (blackoutEnabled ? 1 : 0)} تراك × {trackPricePerMeter}ج = {(editingWidthM * ((heavyEnabled ? 1 : 0) + (sheerEnabled ? 1 : 0) + (blackoutEnabled ? 1 : 0)) * trackPricePerMeter).toLocaleString()} ج
                       </div>
                     </div>
                   </div>

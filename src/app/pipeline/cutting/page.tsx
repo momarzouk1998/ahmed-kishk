@@ -83,15 +83,15 @@ export default function PipelineCuttingPage() {
   const sentCount = items.filter(i => isSent(i.status)).length;
 
   return (
-    <PageShell title="المرحلة 3: القص والتجهيز">
+    <PageShell title="قص القماش">
       <div className="flex flex-col gap-5">
         {/* Concise Header */}
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-100 text-amber-950 border border-amber-200">
-              المرحلة 3
+              مرحلة القص
             </span>
-            <h1 className="font-display font-black text-xl sm:text-2xl text-slate-900">القص والتجهيز</h1>
+            <h1 className="font-display font-black text-xl sm:text-2xl text-slate-900">قص القماش</h1>
           </div>
         </div>
 
@@ -123,7 +123,7 @@ export default function PipelineCuttingPage() {
             }`}
           >
             <span className="material-symbols-outlined text-[18px]">table_view</span>
-            <span>سجل المقصوص والمحول للخياطة (جدول)</span>
+            <span>سجل المقصوص والمحول للورشة (جدول)</span>
             <span className={`text-[11px] px-2 py-0.2 rounded-full font-mono font-bold ${
               activeTab === 'SENT' ? 'bg-amber-100 text-amber-950' : 'bg-slate-100 text-slate-500'
             }`}>
@@ -164,9 +164,10 @@ export default function PipelineCuttingPage() {
                     <th className="p-3.5">كود الطلب</th>
                     <th className="p-3.5">العميل</th>
                     <th className="p-3.5">الغرفة</th>
-                    <th className="p-3.5">القماش والكود</th>
+                    <th className="p-3.5">القماش</th>
                     <th className="p-3.5 text-center font-mono">الأمتار المقصوصة</th>
                     <th className="p-3.5">المسؤول</th>
+                    <th className="p-3.5 text-center">تحديث واتساب</th>
                     <th className="p-3.5 text-center">الحالة</th>
                   </tr>
                 </thead>
@@ -177,12 +178,22 @@ export default function PipelineCuttingPage() {
                       <td className="p-3.5 font-mono text-slate-500">{item.orderId}</td>
                       <td className="p-3.5 font-bold text-slate-900">{item.customerName}</td>
                       <td className="p-3.5 text-slate-700">{item.roomName}</td>
-                      <td className="p-3.5 font-bold text-slate-800">{item.fabricName} ({item.fabricCode})</td>
+                      <td className="p-3.5 font-bold text-slate-800">{item.fabricName}</td>
                       <td className="p-3.5 text-center font-mono font-black text-amber-800">{item.requiredMeters} م</td>
                       <td className="p-3.5 text-slate-700">{item.cutterName}</td>
                       <td className="p-3.5 text-center">
+                        <a
+                          href={`https://wa.me/2${item.phone}?text=${encodeURIComponent(`مرحباً ${item.customerName}، نود إعلامك بأنه تم قص القماش الخاص بأوردر الستائر في مؤسسة أحمد كشك وجاري تحويله للورشة والتفصيل. شكراً لثقتكم بنا!`)}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 px-2.5 py-1 rounded-lg text-xs font-bold border border-emerald-200"
+                        >
+                          💬 واتساب
+                        </a>
+                      </td>
+                      <td className="p-3.5 text-center">
                         <span className="text-[11px] px-2.5 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-900 border border-emerald-200">
-                          {item.status}
+                          تم القص والتحويل للورشة
                         </span>
                       </td>
                     </tr>
@@ -213,7 +224,7 @@ export default function PipelineCuttingPage() {
                   <div className="p-3 bg-slate-50 rounded-xl my-2.5 text-xs space-y-1.5 font-medium">
                     <div className="flex justify-between">
                       <span className="text-slate-500">القماش:</span>
-                      <strong className="text-slate-900">{item.fabricName} ({item.fabricCode})</strong>
+                      <strong className="text-slate-900">{item.fabricName}</strong>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-slate-500">المطلوب قصه:</span>
@@ -228,11 +239,20 @@ export default function PipelineCuttingPage() {
                   )}
                 </div>
 
-                <div className="pt-2.5 border-t border-slate-100 flex gap-2">
+                <div className="pt-2.5 border-t border-slate-100 space-y-2">
+                  <a
+                    href={`https://wa.me/2${item.phone}?text=${encodeURIComponent(`مرحباً ${item.customerName}، نود إعلامك بأن أوردر الستائر الخاص بك في مرحلة قص القماش حالياً بمؤسسة أحمد كشك. شكراً لثقتكم بنا!`)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 py-1.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
+                  >
+                    💬 إرسال تحديث للعميل (واتساب)
+                  </a>
+
                   {item.status === 'بانتظار القص' && (
                     <button
                       onClick={() => updateItemStatus(item.id, 'تم استلام القماش')}
-                      className="w-full bg-slate-100 hover:bg-slate-200 text-slate-900 py-2 rounded-xl text-xs font-bold"
+                      className="w-full bg-slate-100 hover:bg-slate-200 text-slate-900 py-2 rounded-xl text-xs font-bold cursor-pointer"
                     >
                       استلام الثوب
                     </button>
@@ -240,9 +260,9 @@ export default function PipelineCuttingPage() {
                   {item.status === 'تم استلام القماش' && (
                     <button
                       onClick={() => updateItemStatus(item.id, 'تم القص وجاهز للخياطة')}
-                      className="w-full bg-brand-gold hover:bg-brand-gold-hover text-slate-950 py-2 rounded-xl text-xs font-bold shadow-gold"
+                      className="w-full bg-brand-gold hover:bg-brand-gold-hover text-slate-950 py-2 rounded-xl text-xs font-black shadow-gold cursor-pointer"
                     >
-                      تأكيد القص والتحويل للخياطة ←
+                      تأكيد القص والتحويل للورشة ←
                     </button>
                   )}
                 </div>
