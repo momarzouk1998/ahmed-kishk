@@ -488,7 +488,7 @@ export default function PipelineInspectionsPage() {
 
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-bold text-amber-900 bg-amber-50 px-2 py-1 rounded-md border border-amber-200 inline-block">
-                  📅 تاريخ ووقت المعاينة الميدانية المخطط *
+                  📅 تاريخ ووقت المعاينة *
                 </label>
                 <input
                   type="datetime-local"

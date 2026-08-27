@@ -5,6 +5,7 @@ import PageShell from '@/components/PageShell';
 import Link from 'next/link';
 import {
   getStoredQuotations,
+  getStoredInspections,
   deleteQuotationOrder,
   QuotationOrder,
   updateQuotationStageAndStatus
@@ -28,8 +29,51 @@ export default function OrdersPage() {
   const [selectedBranch, setSelectedBranch] = useState('الكل');
 
   const loadData = () => {
-    const list = getStoredQuotations();
-    setOrders(list);
+    const quotations = getStoredQuotations();
+    const inspections = getStoredInspections();
+
+    // Map raw inspections that don't have quotations yet
+    const inspectionPlaceholders: QuotationOrder[] = inspections
+      .filter(insp => !quotations.some(q => q.inspectionId === insp.id || q.id === insp.id))
+      .map(insp => ({
+        id: insp.id,
+        inspectionId: insp.id,
+        customerName: insp.customerName,
+        phone: insp.phone,
+        address: insp.address,
+        branch: insp.branch,
+        status: insp.status === 'تم رفع المقاسات' ? 'تم ارسال المعاينات' : 'المعاينات',
+        totalAmount: 0,
+        depositPaid: 0,
+        remainingAmount: 0,
+        date: insp.scheduledAt ? insp.scheduledAt.split('T')[0] : new Date().toISOString().split('T')[0],
+        estimatorName: insp.technician || 'أحمد كشك',
+        rooms: (insp.rooms || []).map(r => ({
+          id: r.id,
+          name: r.name,
+          type: r.type,
+          widthCm: r.widthCm,
+          heightCm: r.heightCm,
+          sides: r.sides,
+          installationType: r.installationType,
+          ceilingType: r.ceilingType,
+          heavyMeters: 0,
+          heavyPrice: 0,
+          sheerMeters: 0,
+          sheerPrice: 0,
+          blackoutMeters: 0,
+          blackoutPrice: 0,
+          trackMeters: 0,
+          trackPrice: 0,
+          tapeMeters: 0,
+          tapePrice: 0,
+          tailorPricePerSide: 0,
+          installFee: 0,
+          totalSellPrice: 0,
+        })),
+      }));
+
+    setOrders([...quotations, ...inspectionPlaceholders]);
   };
 
   useEffect(() => {

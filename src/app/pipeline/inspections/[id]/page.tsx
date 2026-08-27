@@ -76,8 +76,8 @@ export default function InspectionDetailPage() {
   const isReadOnly = data.isLocked || data.status === 'قيد التسعير' || data.status === 'في الورشة' || data.status === 'مكتمل';
 
   const openRoomModal = (room?: Room) => {
-    if (isReadOnly) return;
     if (room) {
+      if (isReadOnly) return; // Editing existing room is disabled when locked
       setEditingRoomId(room.id);
       setRoomName(room.name);
       setRoomType(room.type);
@@ -88,6 +88,7 @@ export default function InspectionDetailPage() {
       setCeilingType(room.ceilingType || 'بيت نور / جبس بورد');
       setRoomNotes(room.notes || '');
     } else {
+      // Adding NEW room is allowed even if completed or locked
       setEditingRoomId(null);
       setRoomName(`غرفة ${data.rooms.length + 1}`);
       setRoomType('شباك');
@@ -103,7 +104,7 @@ export default function InspectionDetailPage() {
 
   const handleSaveRoom = (e: React.FormEvent) => {
     e.preventDefault();
-    if (isReadOnly) return;
+    if (editingRoomId && isReadOnly) return;
 
     const newRoom: Room = {
       id: editingRoomId || `rm-${Date.now()}`,
@@ -126,7 +127,7 @@ export default function InspectionDetailPage() {
 
     const updatedData: InspectionData = {
       ...data,
-      status: 'تم رفع المقاسات',
+      status: data.status === 'مكتمل' ? 'مكتمل' : 'تم رفع المقاسات',
       rooms: updatedRooms,
     };
 
@@ -292,15 +293,13 @@ export default function InspectionDetailPage() {
             مقاسات الغرف المسجلة ({data.rooms.length} غرف)
           </h2>
 
-          {!isReadOnly && (
-            <button
-              onClick={() => openRoomModal()}
-              className="bg-brand-gold hover:bg-brand-gold-hover text-slate-950 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm shadow-gold flex items-center gap-1.5 transition-all cursor-pointer"
-            >
-              <span className="material-symbols-outlined text-[18px]">add</span>
-              <span>إضافة غرفة جديدة</span>
-            </button>
-          )}
+          <button
+            onClick={() => openRoomModal()}
+            className="bg-brand-gold hover:bg-brand-gold-hover text-slate-950 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm shadow-gold flex items-center gap-1.5 transition-all cursor-pointer"
+          >
+            <span className="material-symbols-outlined text-[18px]">add</span>
+            <span>+ إضافة ستارة / مقاس جديد</span>
+          </button>
         </div>
 
         {/* 🖨️ Clean Print Table (A4 Format) */}

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
 import { ALL_SYSTEM_PAGES } from '@/lib/permissions';
 import { BRANCHES_LIST, BranchConfig } from '@/lib/branches';
@@ -92,11 +92,35 @@ export default function BranchesAndPermissionsPage() {
   const [restrictToBranch, setRestrictToBranch] = useState(true);
   const [activePerms, setActivePerms] = useState<string[]>([]);
 
+  useEffect(() => {
+    setEmployees(prev => prev.map(emp => {
+      try {
+        const storedPerms = localStorage.getItem(`user_perms_${emp.phone}`);
+        const storedBranch = localStorage.getItem(`user_branch_${emp.phone}`);
+        const storedRestrict = localStorage.getItem(`user_restrict_${emp.phone}`);
+        return {
+          ...emp,
+          branch: storedBranch || emp.branch,
+          restrictToBranch: storedRestrict !== null ? storedRestrict === 'true' : emp.restrictToBranch,
+          allowedPageIds: storedPerms ? JSON.parse(storedPerms) : emp.allowedPageIds,
+        };
+      } catch {
+        return emp;
+      }
+    }));
+  }, []);
+
   const openPermsModal = (emp: Employee) => {
     setSelectedEmp(emp);
     setActiveBranch(emp.branch);
     setRestrictToBranch(emp.restrictToBranch);
-    setActivePerms(emp.allowedPageIds);
+    try {
+      const storedPerms = localStorage.getItem(`user_perms_${emp.phone}`);
+      const permsList = storedPerms ? JSON.parse(storedPerms) : emp.allowedPageIds;
+      setActivePerms(permsList);
+    } catch {
+      setActivePerms(emp.allowedPageIds);
+    }
     setShowPermsModal(true);
   };
 
