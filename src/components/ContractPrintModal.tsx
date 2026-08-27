@@ -59,8 +59,32 @@ export default function ContractPrintModal({ isOpen, onClose, data }: ContractPr
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm print:p-0 print:bg-white print:static">
-      <div className="bg-white text-slate-900 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6 sm:p-8 shadow-2xl relative border border-slate-200 print:max-h-none print:shadow-none print:border-none print:p-4">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs print:p-0 print:bg-white print:static">
+      <style flex-inline>{`
+        @media print {
+          body * {
+            visibility: hidden !important;
+          }
+          #printable-contract-modal, #printable-contract-modal * {
+            visibility: visible !important;
+          }
+          #printable-contract-modal {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            max-height: none !important;
+            box-shadow: none !important;
+            border: none !important;
+            padding: 0 !important;
+            background: white !important;
+          }
+          .print\\:hidden {
+            display: none !important;
+          }
+        }
+      `}</style>
+      <div id="printable-contract-modal" className="bg-white text-slate-900 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6 sm:p-8 shadow-2xl relative border border-slate-200 print:max-h-none print:shadow-none print:border-none print:p-4">
         
         {/* Top Control Bar (Hidden when printing) */}
         <div className="flex items-center justify-between pb-4 border-b border-slate-200 mb-6 print:hidden">
@@ -92,14 +116,10 @@ export default function ContractPrintModal({ isOpen, onClose, data }: ContractPr
             <div>
               <h1 className="font-display font-black text-2xl text-slate-950">أحمد كشك</h1>
               <p className="text-xs font-bold text-amber-700">مؤسسة أحمد كشك للأقمشة والستائر الفاخرة</p>
-              <p className="text-[11px] text-slate-500 mt-1">الفرع الرئيسي | هاتف: 01000000000 | القاهرة، مصر</p>
+              <p className="text-[11px] text-slate-500 mt-1">الفرع الرئيسي | القاهرة، مصر</p>
             </div>
             <div className="text-left font-mono">
-              <div className="inline-block bg-slate-950 text-white px-3 py-1 rounded-lg text-xs font-black mb-1">
-                عقد رقم: {data.id}
-              </div>
-              <p className="text-xs text-slate-600">كود المعاينة: {data.inspectionId}</p>
-              <p className="text-xs text-slate-600">التاريخ: {data.date}</p>
+              <p className="text-xs text-slate-700 font-bold">تاريخ التعاقد: {data.date}</p>
             </div>
           </div>
 
@@ -230,28 +250,6 @@ export default function ContractPrintModal({ isOpen, onClose, data }: ContractPr
                 <span className="text-rose-400 font-bold">المتبقي للتحصيل عند التركيب:</span>
                 <strong className="text-lg text-rose-400 font-black">{data.remainingAmount.toLocaleString()} جنيه</strong>
               </div>
-            </div>
-          </div>
-
-          {/* Terms & Conditions */}
-          <div className="border-t border-slate-200 pt-4 text-[10px] text-slate-500 space-y-1 leading-relaxed">
-            <p className="font-bold text-slate-700 text-xs">الشروط والأحكام العامة للتعاقد:</p>
-            <ol className="list-decimal list-inside space-y-0.5">
-              <li>مدة تنفيذ وتفصيل الستائر من 7 إلى 10 أيام عمل من تاريخ سداد العربون وتأكيد أنواع الأقمشة.</li>
-              <li>يتم تسديد باقي قيمة العقد المتبقية فور الانتهاء من عملية التركيب والمعاينة النهائية للعميل.</li>
-              <li>الأقمشة التي يتم قصها بناءً على مقاسات العقد الخاصة تعتبر محجوزة ومخصصة ولا يلغى أمر تفصيلها بعد البدء في الورشة.</li>
-            </ol>
-          </div>
-
-          {/* Signatures */}
-          <div className="grid grid-cols-2 gap-8 pt-6 text-xs text-slate-800">
-            <div className="border-t border-dashed border-slate-400 pt-2 text-center">
-              <p className="font-bold">توقيع واستلام العميل</p>
-              <p className="text-[10px] text-slate-400 mt-6">الاسم والصفة والتاريخ</p>
-            </div>
-            <div className="border-t border-dashed border-slate-400 pt-2 text-center">
-              <p className="font-bold">اعتماد مسؤول مؤسسة أحمد كشك</p>
-              <p className="text-[10px] text-slate-400 mt-6">التوقيع والخاتم الرسمي</p>
             </div>
           </div>
 

@@ -717,7 +717,7 @@ export default function PricingDetailPage() {
                         <option value="">-- اختر قماش الجوانب من المخزون --</option>
                         {inventory.filter(f => f.category === 'قطيفة / ثقيل' || f.category === 'كتان / درابيري').map(f => (
                           <option key={f.code} value={f.code}>
-                            [{f.code}] {f.name} — ({f.pricePerMeter}ج/م)
+                            {f.name}
                           </option>
                         ))}
                       </select>
@@ -895,12 +895,8 @@ export default function PricingDetailPage() {
                           className="w-16 border border-slate-300 rounded-lg px-2 py-1 text-center font-mono font-bold text-xs"
                         />
                         <span className="text-slate-500 text-xs">ج/م</span>
-                      </div>
-                    </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-slate-500 text-xs">معامل:</span>
+                        <span className="text-slate-500 text-xs mr-2">معامل:</span>
                         <input
                           type="number"
                           step="0.05"
@@ -920,17 +916,20 @@ export default function PricingDetailPage() {
                           onChange={e => setBlackoutMeters(Number(e.target.value))}
                           className="w-20 border border-slate-300 rounded-lg px-2 py-1 text-center font-mono font-bold text-xs bg-slate-100"
                         />
+                        <span className="text-slate-500 text-xs">متر</span>
                       </div>
+                    </div>
 
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs pt-1">
                       <select
                         value={blackoutCode}
                         onChange={e => handleFabricSelect('blackout', e.target.value)}
-                        className="border border-slate-300 rounded-xl p-2 bg-white font-bold text-slate-900"
+                        className="sm:col-span-2 border border-slate-300 rounded-xl p-2.5 bg-white font-bold text-slate-900"
                       >
-                        <option value="">-- اختر خامة البلاك آوت --</option>
+                        <option value="">-- اختر خامة البلاك آوت من المخزون --</option>
                         {inventory.filter(f => f.category === 'بلاك آوت عازل').map(f => (
                           <option key={f.code} value={f.code}>
-                            [{f.code}] {f.name}
+                            {f.name}
                           </option>
                         ))}
                       </select>
@@ -942,7 +941,7 @@ export default function PricingDetailPage() {
                           value={blackoutP}
                           disabled={!canEditPrices}
                           onChange={e => setBlackoutP(Number(e.target.value))}
-                          className="w-full font-mono font-bold text-center text-xs"
+                          className="w-full font-mono font-bold text-center text-xs disabled:text-slate-500 disabled:cursor-not-allowed"
                         />
                         <span className="text-slate-500 font-bold">ج</span>
                       </div>
@@ -1245,15 +1244,15 @@ export default function PricingDetailPage() {
         )}
 
         {/* Section 5: Order Financial Summary & Detailed Breakdown */}
-        <div className="bg-gradient-to-br from-slate-900 via-slate-850 to-slate-950 text-white p-5 sm:p-6 rounded-2xl border border-slate-800 shadow-lg space-y-4">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-800 pb-3">
+        <div className="bg-white p-5 sm:p-6 rounded-2xl border border-amber-300/80 shadow-2xs space-y-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-200 pb-3">
             <div>
-              <span className="text-amber-400 font-bold text-xs uppercase tracking-wider block">ملخص المقايسة الإجمالي</span>
-              <h3 className="font-black text-lg text-white">إجمالي العقد ({quotation.rooms.length} غرف مسجلة)</h3>
+              <span className="text-amber-800 font-bold text-xs uppercase tracking-wider block">ملخص المقايسة الإجمالي</span>
+              <h3 className="font-black text-lg text-slate-900">إجمالي العقد ({quotation.rooms.length} غرف مسجلة)</h3>
             </div>
             <div className="text-right">
-              <span className="text-xs text-slate-400 block font-bold">إجمالي سعر الأوردر</span>
-              <strong className="text-2xl font-mono font-black text-amber-400">
+              <span className="text-xs text-slate-500 block font-bold">إجمالي سعر الأوردر</span>
+              <strong className="text-2xl font-mono font-black text-amber-950">
                 {quotation.totalAmount.toLocaleString()} ج.م
               </strong>
             </div>
@@ -1263,14 +1262,14 @@ export default function PricingDetailPage() {
           {quotation.rooms.length > 0 && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 text-xs">
               {quotation.rooms.map((rm, idx) => (
-                <div key={rm.id} className="bg-slate-800/80 p-3 rounded-xl border border-slate-700/80 flex justify-between items-center">
+                <div key={rm.id} className="bg-slate-50 p-3 rounded-xl border border-slate-200 flex justify-between items-center">
                   <div>
-                    <strong className="text-white block font-bold">{idx + 1}. {rm.name}</strong>
-                    <span className="text-[10px] text-slate-400 font-mono">
+                    <strong className="text-slate-900 block font-bold">{idx + 1}. {rm.name}</strong>
+                    <span className="text-[10px] text-slate-500 font-mono">
                       {rm.widthCm}×{rm.heightCm}سم • {rm.sides === 2 ? 'جنبين' : 'جنب'}
                     </span>
                   </div>
-                  <strong className="font-mono text-amber-300 font-bold">
+                  <strong className="font-mono text-amber-900 font-bold">
                     {rm.totalSellPrice.toLocaleString()} ج
                   </strong>
                 </div>
@@ -1278,18 +1277,18 @@ export default function PricingDetailPage() {
             </div>
           )}
 
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-800/80 text-xs">
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-200 text-xs">
             <div className="flex gap-4">
               <div>
-                <span className="text-slate-400 block">العربون المسدد:</span>
-                <strong className="text-emerald-400 font-mono text-sm">{quotation.depositPaid.toLocaleString()} ج</strong>
+                <span className="text-slate-500 block font-bold">العربون المسدد:</span>
+                <strong className="text-emerald-700 font-mono text-sm">{quotation.depositPaid.toLocaleString()} ج</strong>
               </div>
               <div>
-                <span className="text-slate-400 block">المتبقي للتحصيل:</span>
-                <strong className="text-rose-400 font-mono text-sm">{quotation.remainingAmount.toLocaleString()} ج</strong>
+                <span className="text-slate-500 block font-bold">المتبقي للتحصيل:</span>
+                <strong className="text-rose-700 font-mono text-sm">{quotation.remainingAmount.toLocaleString()} ج</strong>
               </div>
             </div>
-            <div className="text-slate-400 text-[11px] font-mono">
+            <div className="text-slate-500 text-[11px] font-mono font-bold">
               مسؤول المبيعات: {quotation.estimatorName || 'أحمد كشك'}
             </div>
           </div>
