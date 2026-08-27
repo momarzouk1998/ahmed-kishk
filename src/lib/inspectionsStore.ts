@@ -1,4 +1,4 @@
-export interface Room {
+﻿export interface Room {
   id: string;
   name: string;
   type: 'شباك' | 'بلكونة';
@@ -25,6 +25,14 @@ export interface InspectionData {
   createdAt?: string;
 }
 
+export interface PipeAccessories {
+  doubleBrackets: number; // حامل مجوز (55 ج)
+  singleBrackets: number; // حامل مفرد (45 ج)
+  sideCaps: number;       // قم جانبي / شكل (50 ج)
+  doubleRings: number;    // حلقات دبل (5 ج)
+  decorHangers: number;   // شماعة ديكور (100 ج)
+}
+
 export interface RoomPricing {
   id: string;
   name: string;
@@ -34,6 +42,12 @@ export interface RoomPricing {
   sides: number;
   installationType: string;
   ceilingType: string;
+
+  // Toggles for active layers
+  heavyEnabled?: boolean;
+  sheerEnabled?: boolean;
+  blackoutEnabled?: boolean;
+
   // Heavy / Main Sides Fabric (1st)
   heavyFabricCode?: string;
   heavyFabricName?: string;
@@ -41,6 +55,7 @@ export interface RoomPricing {
   heavyMultiplier?: number;
   heavyMeters: number;
   heavyPrice: number;
+
   // Sheer / Background Fabric (2nd)
   sheerFabricCode?: string;
   sheerFabricName?: string;
@@ -48,15 +63,27 @@ export interface RoomPricing {
   sheerMultiplier?: number;
   sheerMeters: number;
   sheerPrice: number;
+
   // Blackout Layer (3rd)
   blackoutFabricCode?: string;
   blackoutFabricName?: string;
+  blackoutTapeType?: string;
   blackoutMultiplier?: number;
   blackoutMeters: number;
   blackoutPrice: number;
-  // Track, Tape, Tailoring & Install
+
+  // Installation Category & Pipe details
+  installationCategory?: 'تراك' | 'مواسير فورجيه';
   trackMeters: number;
   trackPrice: number;
+
+  // Pipe Forge specifications & accessories
+  pipeTypeDescription?: 'سادة' | 'مجدول';
+  pipeColor?: 'فضى' | 'أوكسيديه' | 'أسود' | 'زيتى';
+  pipePricePerMeter?: number;
+  pipeAccessories?: PipeAccessories;
+
+  // Tape, Tailoring & Install
   tapeMeters: number;
   tapePrice: number;
   tailorPricePerSide: number;
@@ -70,14 +97,43 @@ export interface QuotationOrder {
   customerName: string;
   phone: string;
   address: string;
+  branch?: string;
   status: 'بانتظار التسعير' | 'تم إرسال المقايسة' | 'معتمد ومسدد العربون' | 'تم التحويل للورشة';
   totalAmount: number;
   depositPaid: number;
   remainingAmount: number;
   date: string;
+  deliveryDate?: string;
   estimatorName: string;
   rooms: RoomPricing[];
 }
+
+export const TAPE_PRICES: Record<string, number> = {
+  '٣ فتلة': 50,
+  'إيكيا': 70,
+  'ويفي': 140,
+  'جراب': 50,
+  'حلقات ديكور': 70,
+};
+
+export const TAPE_MULTIPLIERS: Record<string, number> = {
+  '٣ فتلة': 2.0,
+  'إيكيا': 2.0,
+  'ويفي': 2.5,
+  'جراب': 2.0,
+  'حلقات ديكور': 2.0,
+};
+
+export const ACCESSORY_PRICES = {
+  trackPerMeter: 100,
+  pipePerMeter: 65,
+  doubleBracket: 55,  // حامل مجوز
+  singleBracket: 45,  // حامل مفرد
+  sideCap: 50,        // قم جانبي
+  doubleRing: 5,      // حلقات دبل
+  decorHanger: 100,   // شماعة ديكور
+  defaultInstallFee: 125, // رسوم التركيب الثابتة
+};
 
 export const defaultInspectionsList: InspectionData[] = [
   {
@@ -152,60 +208,10 @@ export const defaultInspectionsList: InspectionData[] = [
         heightCm: 300,
         sides: 2,
         installationType: 'تراك سقف',
-        ceilingType: 'بيت نور / جبس بورد',
-        notes: 'ستائر عازلة للضوء والصوت',
-      },
-      {
-        id: 'r4',
-        name: 'مكتب رئيس مجلس الإدارة',
-        type: 'شباك',
-        widthCm: 280,
-        heightCm: 290,
-        sides: 2,
-        installationType: 'مواسير فورجيه',
-        ceilingType: 'بيت نور / جبس بورد',
-        notes: '',
-      }
-    ],
-  },
-  {
-    id: 'INS-004',
-    customerName: 'أسرة محمود سعيد',
-    phone: '01099887766',
-    address: 'مصر الجديدة، ميدان الحجاز',
-    branch: 'فرع عرابي',
-    scheduledAt: '2026-08-23 18:00',
-    technician: 'أحمد حسن',
-    status: 'مكتمل',
-    isLocked: true,
-    notes: '',
-    createdAt: '2026-08-23',
-    rooms: [
-      {
-        id: 'r5',
-        name: 'غرفة المعيشة',
-        type: 'شباك',
-        widthCm: 300,
-        heightCm: 270,
-        sides: 2,
-        installationType: 'تراك سقف',
         ceilingType: 'سقف عادي خرسانه',
+        notes: '3 شبابيك متساوية',
       }
     ],
-  },
-  {
-    id: 'INS-005',
-    customerName: 'د. طارق خيري',
-    phone: '01077665544',
-    address: 'المعادي، دجلة شارع 200',
-    branch: 'الفرع الرئيسي',
-    scheduledAt: '2026-08-28 15:00',
-    technician: 'أحمد حسن',
-    status: 'مُجدول',
-    isLocked: false,
-    notes: 'فيلا خاصة',
-    createdAt: '2026-08-25',
-    rooms: [],
   }
 ];
 
@@ -216,11 +222,13 @@ export const defaultQuotationsList: QuotationOrder[] = [
     customerName: 'محمود عبد الرحمن',
     phone: '01012345678',
     address: 'التجمع الخامس، فيلا 42',
+    branch: 'الفرع الرئيسي',
     status: 'معتمد ومسدد العربون',
     totalAmount: 12600,
     depositPaid: 7000,
     remainingAmount: 5600,
     date: '2026-08-25',
+    deliveryDate: '2026-09-02',
     estimatorName: 'أحمد كشك',
     rooms: [
       {
@@ -232,22 +240,28 @@ export const defaultQuotationsList: QuotationOrder[] = [
         sides: 2,
         installationType: 'تراك سقف',
         ceilingType: 'بيت نور / جبس بورد',
+        heavyEnabled: true,
+        sheerEnabled: true,
+        blackoutEnabled: false,
         sheerFabricCode: 'SH-101',
         sheerFabricName: 'شيفون حرير فاخر (أبيض سادة)',
+        sheerTapeType: 'ويفي',
         sheerMeters: 8.75,
         sheerPrice: 160,
         heavyFabricCode: 'HV-201',
         heavyFabricName: 'قطيفة جاجوار تركيات (درجات البيج)',
+        heavyTapeType: '٣ فتلة',
         heavyMeters: 7.0,
         heavyPrice: 380,
         blackoutMeters: 0,
         blackoutPrice: 0,
-        trackMeters: 3.5,
-        trackPrice: 120,
-        tapeMeters: 8.75,
-        tapePrice: 40,
-        tailorPricePerSide: 150,
-        installFee: 200,
+        installationCategory: 'تراك',
+        trackMeters: 7.0, // 2 tracks for 2 layers
+        trackPrice: 100,
+        tapeMeters: 15.75,
+        tapePrice: 50,
+        tailorPricePerSide: 0,
+        installFee: 125,
         totalSellPrice: 12600,
       }
     ]
@@ -258,11 +272,13 @@ export const defaultQuotationsList: QuotationOrder[] = [
     customerName: 'سارة أحمد',
     phone: '01298765432',
     address: 'الشيخ زايد، بيفرلي هيلز',
+    branch: 'فرع عرابي',
     status: 'بانتظار التسعير',
     totalAmount: 0,
     depositPaid: 0,
     remainingAmount: 0,
     date: '2026-08-25',
+    deliveryDate: '2026-09-05',
     estimatorName: 'أحمد كشك',
     rooms: [
       {
@@ -274,46 +290,49 @@ export const defaultQuotationsList: QuotationOrder[] = [
         sides: 2,
         installationType: 'مواسير فورجيه',
         ceilingType: 'سقف عادي خرسانه',
+        heavyEnabled: true,
+        sheerEnabled: true,
+        blackoutEnabled: true,
         sheerFabricCode: 'SH-102',
         sheerFabricName: 'تول مطرز كريستال تركيات',
+        sheerTapeType: 'ويفي',
         sheerMeters: 6.25,
         sheerPrice: 220,
         heavyFabricCode: 'HV-202',
         heavyFabricName: 'قطيفة شانيل كابوتونيه فاخر',
+        heavyTapeType: '٣ فتلة',
         heavyMeters: 5.0,
         heavyPrice: 450,
         blackoutFabricCode: 'BK-301',
         blackoutFabricName: 'بلاك آوت عازل حراري ومائي (ثلاثي)',
+        blackoutTapeType: 'جراب',
         blackoutMeters: 3.75,
         blackoutPrice: 250,
-        trackMeters: 2.5,
-        trackPrice: 120,
-        tapeMeters: 6.25,
-        tapePrice: 40,
-        tailorPricePerSide: 150,
-        installFee: 150,
+        installationCategory: 'مواسير فورجيه',
+        pipeTypeDescription: 'سادة',
+        pipeColor: 'فضى',
+        pipePricePerMeter: 65,
+        pipeAccessories: {
+          doubleBrackets: 2,
+          singleBrackets: 0,
+          sideCaps: 2,
+          doubleRings: 20,
+          decorHangers: 0,
+        },
+        trackMeters: 0,
+        trackPrice: 0,
+        tapeMeters: 15.0,
+        tapePrice: 50,
+        tailorPricePerSide: 0,
+        installFee: 125,
         totalSellPrice: 0,
       }
     ]
-  },
-  {
-    id: 'QOT-103',
-    inspectionId: 'INS-003',
-    customerName: 'شركة المعمار للمقاولات',
-    phone: '01155556666',
-    address: 'المهندسين، شارع البطل',
-    status: 'تم التحويل للورشة',
-    totalAmount: 28400,
-    depositPaid: 18400,
-    remainingAmount: 10000,
-    date: '2026-08-24',
-    estimatorName: 'أحمد كشك',
-    rooms: []
   }
 ];
 
-const INSPECTIONS_STORAGE_KEY = 'ahmed_kishk_inspections_data_v3';
-const QUOTATIONS_STORAGE_KEY = 'ahmed_kishk_quotations_data_v3';
+const INSPECTIONS_STORAGE_KEY = 'ahmed_kishk_inspections_data_v4';
+const QUOTATIONS_STORAGE_KEY = 'ahmed_kishk_quotations_data_v4';
 
 export function getStoredInspections(): InspectionData[] {
   if (typeof window === 'undefined') {
@@ -405,11 +424,7 @@ export function syncInspectionToPricing(inspection: InspectionData): QuotationOr
     const sheerMultiplier = 2.5;
     const sheerMeters = Math.round(widthMeters * sheerMultiplier * 100) / 100;
 
-    const blackoutMultiplier = 1.20;
-    const blackoutMeters = Math.round(widthMeters * blackoutMultiplier * 100) / 100;
-
-    const trackMeters = widthMeters;
-    const tapeMeters = Math.round((sheerMeters + heavyMeters) * 100) / 100;
+    const isPipe = r.installationType.includes('مواسير');
 
     return {
       id: r.id,
@@ -420,6 +435,11 @@ export function syncInspectionToPricing(inspection: InspectionData): QuotationOr
       sides: r.sides,
       installationType: r.installationType,
       ceilingType: r.ceilingType,
+
+      heavyEnabled: true,
+      sheerEnabled: true,
+      blackoutEnabled: false,
+
       // Heavy 1st
       heavyFabricCode: 'HV-201',
       heavyFabricName: 'قطيفة جاجوار تركيات (درجات البيج)',
@@ -427,6 +447,7 @@ export function syncInspectionToPricing(inspection: InspectionData): QuotationOr
       heavyMultiplier,
       heavyMeters,
       heavyPrice: 380,
+
       // Sheer 2nd
       sheerFabricCode: 'SH-101',
       sheerFabricName: 'شيفون حرير فاخر (أبيض سادة)',
@@ -434,26 +455,41 @@ export function syncInspectionToPricing(inspection: InspectionData): QuotationOr
       sheerMultiplier,
       sheerMeters,
       sheerPrice: 160,
+
       // Blackout 3rd
       blackoutFabricCode: '',
       blackoutFabricName: '',
-      blackoutMultiplier,
+      blackoutTapeType: 'جراب',
+      blackoutMultiplier: 1.2,
       blackoutMeters: 0,
       blackoutPrice: 0,
-      // Details
-      trackMeters,
-      trackPrice: 120,
-      tapeMeters,
-      tapePrice: 40,
-      tailorPricePerSide: 150,
-      installFee: 200,
+
+      // Installation Category
+      installationCategory: isPipe ? 'مواسير فورجيه' : 'تراك',
+      trackMeters: isPipe ? 0 : widthMeters * 2, // 2 tracks for 2 layers
+      trackPrice: isPipe ? 0 : 100,
+
+      pipeTypeDescription: 'سادة',
+      pipeColor: 'فضى',
+      pipePricePerMeter: 65,
+      pipeAccessories: {
+        doubleBrackets: 2,
+        singleBrackets: 0,
+        sideCaps: 2,
+        doubleRings: 0,
+        decorHangers: 0,
+      },
+
+      tapeMeters: Math.round((sheerMeters + heavyMeters) * 100) / 100,
+      tapePrice: 50,
+      tailorPricePerSide: 0,
+      installFee: 125,
       totalSellPrice: Math.round(
         (heavyMeters * 380) +
         (sheerMeters * 160) +
-        (trackMeters * 120) +
-        (tapeMeters * 40) +
-        (r.sides * 150) +
-        200
+        (isPipe ? (widthMeters * 65 + 2 * 55 + 2 * 50) : (widthMeters * 2 * 100)) +
+        (heavyMeters * 50 + sheerMeters * 140) +
+        125
       ),
     };
   });
@@ -467,6 +503,7 @@ export function syncInspectionToPricing(inspection: InspectionData): QuotationOr
       customerName: inspection.customerName,
       phone: inspection.phone,
       address: inspection.address,
+      branch: inspection.branch,
       rooms: convertedRooms,
       totalAmount: totalSum,
       remainingAmount: totalSum - quotations[existingIdx].depositPaid,
@@ -480,11 +517,13 @@ export function syncInspectionToPricing(inspection: InspectionData): QuotationOr
       customerName: inspection.customerName,
       phone: inspection.phone,
       address: inspection.address,
+      branch: inspection.branch,
       status: 'بانتظار التسعير',
       totalAmount: totalSum,
       depositPaid: 0,
       remainingAmount: totalSum,
       date: new Date().toISOString().split('T')[0],
+      deliveryDate: '',
       estimatorName: 'أحمد كشك',
       rooms: convertedRooms,
     };

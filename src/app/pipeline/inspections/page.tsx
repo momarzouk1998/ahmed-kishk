@@ -474,15 +474,29 @@ export default function PipelineInspectionsPage() {
                   <select value={branch} onChange={e => setBranch(e.target.value)} className="border border-slate-200 rounded-xl p-2 text-xs font-bold">
                     <option>الفرع الرئيسي</option>
                     <option>فرع عرابي</option>
+                    <option>فرع زايد</option>
                   </select>
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-bold text-slate-700">الفني</label>
+                  <label className="text-xs font-bold text-slate-700">الفني المسؤول</label>
                   <select value={tech} onChange={e => setTech(e.target.value)} className="border border-slate-200 rounded-xl p-2 text-xs font-bold">
                     <option>أحمد حسن</option>
                     <option>محمد علي</option>
                   </select>
                 </div>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-bold text-amber-900 bg-amber-50 px-2 py-1 rounded-md border border-amber-200 inline-block">
+                  📅 تاريخ ووقت المعاينة الميدانية المخطط *
+                </label>
+                <input
+                  type="datetime-local"
+                  value={schedule}
+                  onChange={e => setSchedule(e.target.value)}
+                  className="border border-slate-300 rounded-xl p-2.5 text-xs font-bold text-slate-900 focus:border-amber-500 bg-white"
+                  required
+                />
               </div>
 
               <div className="flex flex-col sm:flex-row gap-2 mt-4 pt-3 border-t border-slate-100">
