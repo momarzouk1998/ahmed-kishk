@@ -127,33 +127,22 @@ export default function PipelineInspectionsPage() {
     }
   };
 
+  const headerAction = (
+    <button
+      onClick={() => {
+        setName(''); setPhone(''); setAddress(''); setSchedule('');
+        setShowNewModal(true);
+      }}
+      className="bg-brand-gold hover:bg-brand-gold-hover text-slate-950 px-3.5 py-1.5 rounded-xl font-bold text-xs shadow-gold flex items-center gap-1 transition-all cursor-pointer shrink-0"
+    >
+      <span className="material-symbols-outlined text-[16px]">add</span>
+      <span>طلب جديد</span>
+    </button>
+  );
+
   return (
-    <PageShell title="المرحلة 1: رفع المقاسات والمعاينات الميدانية">
-      <div className="flex flex-col gap-5">
-        {/* Concise Header */}
-        <div className="flex items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
-          <div className="flex items-center gap-3">
-            <span className="w-9 h-9 rounded-xl bg-amber-100 text-amber-950 font-black text-xs flex items-center justify-center border border-amber-200">
-              01
-            </span>
-            <div>
-              <h1 className="font-black text-xl text-slate-900">سجل طلبات رفع المقاسات المعاينات</h1>
-              <p className="text-xs text-slate-500 mt-0.5">جدولة المعاينة، تسجيل الفني، ورفع مقاسات الغرف</p>
-            </div>
-          </div>
-
-          <button
-            onClick={() => {
-              setName(''); setPhone(''); setAddress(''); setSchedule('');
-              setShowNewModal(true);
-            }}
-            className="bg-brand-gold hover:bg-brand-gold-hover text-slate-950 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm shadow-gold flex items-center gap-1.5 transition-all cursor-pointer shrink-0"
-          >
-            <span className="material-symbols-outlined text-[18px]">add</span>
-            <span>طلب معاينة جديد</span>
-          </button>
-        </div>
-
+    <PageShell title="رفع المقاسات" badge="01" action={headerAction}>
+      <div className="flex flex-col gap-4">
         {/* 2-Tabs Navigation */}
         <div className="flex border-b border-slate-200 gap-2">
           <button
@@ -165,7 +154,7 @@ export default function PipelineInspectionsPage() {
             }`}
           >
             <span className="material-symbols-outlined text-[18px]">pending_actions</span>
-            <span>المعاينات المفتوحة</span>
+            <span>قيد التنفيذ</span>
             <span className={`text-[11px] px-2 py-0.2 rounded-full font-mono font-bold ${
               activeTab === 'OPEN' ? 'bg-amber-100 text-amber-950' : 'bg-slate-100 text-slate-500'
             }`}>
@@ -182,7 +171,7 @@ export default function PipelineInspectionsPage() {
             }`}
           >
             <span className="material-symbols-outlined text-[18px]">task_alt</span>
-            <span>سجل المعاينات المرسلة</span>
+            <span>مكتملة</span>
             <span className={`text-[11px] px-2 py-0.2 rounded-full font-mono font-bold ${
               activeTab === 'SENT' ? 'bg-amber-100 text-amber-950' : 'bg-slate-100 text-slate-500'
             }`}>
@@ -200,7 +189,7 @@ export default function PipelineInspectionsPage() {
         )}
 
         {/* Search & Filter Controls */}
-        <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
           {/* Search Box */}
           <div className="relative sm:col-span-6">
             <span className="material-symbols-outlined absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">
@@ -210,8 +199,8 @@ export default function PipelineInspectionsPage() {
               type="text"
               value={searchQuery}
               onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-              placeholder="بحث بالاسم، رقم الهاتف، العنوان أو اسم الفني..."
-              className="w-full bg-white border border-slate-200 rounded-xl pr-10 pl-4 py-2.5 text-xs sm:text-sm text-slate-900 focus:outline-none focus:border-brand-gold shadow-2xs"
+              placeholder="بحث بالاسم، رقم الهاتف، العنوان أو الفني..."
+              className="w-full bg-white border border-slate-200 rounded-xl pr-10 pl-4 py-2.5 text-xs text-slate-900 focus:outline-none focus:border-brand-gold shadow-2xs"
             />
           </div>
 
@@ -263,7 +252,7 @@ export default function PipelineInspectionsPage() {
           <div className="bg-white rounded-2xl border border-dashed border-slate-300 p-10 text-center">
             <span className="material-symbols-outlined text-[40px] text-slate-300 block mb-1">inbox</span>
             <h3 className="font-bold text-slate-700 text-sm">
-              {activeTab === 'OPEN' ? 'لا توجد معاينات مطابقة للتصفية حالياً' : 'سجل المعاينات المرسلة فارغ'}
+              {activeTab === 'OPEN' ? 'لا توجد معاينات قيد التنفيذ حالياً' : 'سجل المعاينات المكتملة فارغ'}
             </h3>
           </div>
         ) : (
@@ -274,10 +263,11 @@ export default function PipelineInspectionsPage() {
                 <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
                   <tr>
                     <th className="p-3.5">اسم العميل</th>
-                    <th className="p-3.5">العنوان والفرع</th>
+                    <th className="p-3.5">العنوان</th>
+                    <th className="p-3.5">الفرع</th>
                     <th className="p-3.5">الفني المسؤول</th>
                     <th className="p-3.5">موعد المعاينة</th>
-                    <th className="p-3.5 text-center">عدد الغرف</th>
+                    <th className="p-3.5 text-center">الغرف</th>
                     <th className="p-3.5 text-center">الحالة</th>
                     <th className="p-3.5 text-center">تواصل سريع</th>
                   </tr>
@@ -289,29 +279,37 @@ export default function PipelineInspectionsPage() {
                       onClick={() => router.push(`/pipeline/inspections/${item.id}`)}
                       className="hover:bg-amber-50/40 cursor-pointer transition-colors"
                     >
-                      {/* Customer Name only (No phone stacked under name) */}
+                      {/* Customer Name */}
                       <td className="p-3.5 align-middle">
                         <div className="font-black text-slate-900 text-sm">{item.customerName}</div>
                       </td>
 
-                      <td className="p-3.5 text-slate-600 align-middle">
-                        <div className="font-medium text-slate-800 truncate max-w-[180px]">{item.address || '—'}</div>
-                        <span className="text-[10px] text-slate-400 font-bold">{item.branch}</span>
+                      {/* Separate Address Column */}
+                      <td className="p-3.5 text-slate-800 font-medium align-middle truncate max-w-[180px]">
+                        {item.address || '—'}
                       </td>
 
+                      {/* Separate Branch Column */}
+                      <td className="p-3.5 text-slate-700 font-bold align-middle">
+                        {item.branch}
+                      </td>
+
+                      {/* Technician Column */}
                       <td className="p-3.5 font-bold text-slate-800 align-middle">{item.technician}</td>
 
-                      {/* 12-Hour Formatted Time */}
+                      {/* 12-Hour Formatted Time Column */}
                       <td className="p-3.5 font-mono text-slate-700 font-bold align-middle">
                         {format12hTime(item.scheduledAt)}
                       </td>
 
+                      {/* Rooms Column: Number Only */}
                       <td className="p-3.5 text-center align-middle">
                         <span className="font-mono font-bold bg-slate-100 px-2.5 py-1 rounded-md text-slate-800 text-xs inline-block">
-                          {item.rooms?.length || 0} غرف
+                          {item.rooms?.length || 0}
                         </span>
                       </td>
 
+                      {/* Status Badge Column */}
                       <td className="p-3.5 text-center align-middle">
                         <span className={`text-[11px] px-2.5 py-1 rounded-full font-bold border inline-block ${
                           item.status === 'تم رفع المقاسات' ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
@@ -323,13 +321,13 @@ export default function PipelineInspectionsPage() {
                         </span>
                       </td>
 
-                      {/* Communication Icon-Only Buttons */}
+                      {/* Communication Icon-Only Column */}
                       <td className="p-3.5 text-center align-middle" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-center gap-1.5">
                           <a
                             href={`tel:${item.phone}`}
                             className="w-8 h-8 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 flex items-center justify-center transition-colors shadow-2xs"
-                            title={`اتصال هاتفي (${item.phone})`}
+                            title={`اتصال (${item.phone})`}
                           >
                             <span className="material-symbols-outlined text-[17px]">call</span>
                           </a>
@@ -339,7 +337,7 @@ export default function PipelineInspectionsPage() {
                             target="_blank"
                             rel="noopener noreferrer"
                             className="w-8 h-8 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-600 flex items-center justify-center transition-colors shadow-2xs"
-                            title={`مراسلة واتساب (${item.phone})`}
+                            title={`واتساب (${item.phone})`}
                           >
                             <span className="material-symbols-outlined text-[17px]">chat</span>
                           </a>
@@ -371,11 +369,11 @@ export default function PipelineInspectionsPage() {
                   </div>
 
                   <div className="text-xs text-slate-500 font-mono">
-                    {format12hTime(item.scheduledAt)} • {item.technician}
+                    {format12hTime(item.scheduledAt)} • {item.technician} • {item.branch}
                   </div>
 
                   <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
-                    <span className="font-bold text-slate-700">{item.rooms?.length || 0} غرف مسجلة</span>
+                    <span className="font-bold text-slate-700">{item.rooms?.length || 0} غرف</span>
                     
                     <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                       <a
