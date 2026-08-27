@@ -8,10 +8,12 @@ interface HeaderProps {
 }
 
 export default function Header({ title }: HeaderProps) {
-  const { toggle } = useSidebar();
+  const { toggle, isCollapsed } = useSidebar();
 
   return (
-    <header className="fixed top-0 right-0 left-0 lg:right-64 h-16 bg-white/95 backdrop-blur-md border-b border-slate-200/80 z-40 flex items-center justify-between px-4 sm:px-6 lg:px-8 shadow-xs">
+    <header className={`fixed top-0 right-0 left-0 transition-all duration-300 h-16 bg-white/95 backdrop-blur-md border-b border-slate-200/80 z-40 flex items-center justify-between px-4 sm:px-6 lg:px-8 shadow-xs ${
+      isCollapsed ? 'lg:right-20' : 'lg:right-64'
+    }`}>
       <div className="flex items-center gap-2 sm:gap-3 min-w-0">
         {/* Hamburger - mobile only */}
         <button

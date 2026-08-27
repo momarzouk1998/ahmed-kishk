@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
@@ -117,14 +117,12 @@ export default function PipelinePricingPage() {
               <table className="w-full text-right text-xs min-w-[900px]">
                 <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
                   <tr>
-                    <th className="p-4">كود العقد والمعاينة</th>
                     <th className="p-4">اسم العميل والهاتف</th>
                     <th className="p-4">عنوان التركيب والمعاينة</th>
                     <th className="p-4 text-left font-mono">الإجمالي بالكامل</th>
                     <th className="p-4 text-left font-mono">العربون المسدد</th>
                     <th className="p-4 text-left font-mono">المتبقي للتحصيل</th>
                     <th className="p-4 text-center">حالة العقد</th>
-                    <th className="p-4 text-center">التفاصيل والتسعير</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -134,13 +132,6 @@ export default function PipelinePricingPage() {
                       className="hover:bg-amber-50/40 transition-colors cursor-pointer"
                       onClick={() => router.push(`/pipeline/pricing/${encodeURIComponent(q.id)}`)}
                     >
-                      <td className="p-4 align-middle">
-                        <span className="font-mono font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-md text-[11px] inline-block">
-                          {q.id}
-                        </span>
-                        <span className="text-[11px] text-slate-400 font-mono block mt-1">معاينة: {q.inspectionId}</span>
-                      </td>
-
                       <td className="p-4 align-middle">
                         <div className="font-black text-slate-900 text-sm">{q.customerName}</div>
                         <div className="text-[11px] text-slate-500 font-mono mt-0.5" dir="ltr">{q.phone}</div>
@@ -172,17 +163,6 @@ export default function PipelinePricingPage() {
                         }`}>
                           {q.status}
                         </span>
-                      </td>
-
-                      <td className="p-4 text-center align-middle" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          type="button"
-                          onClick={() => router.push(`/pipeline/pricing/${encodeURIComponent(q.id)}`)}
-                          className="bg-slate-900 hover:bg-slate-800 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-2xs cursor-pointer flex items-center gap-1.5 mx-auto"
-                        >
-                          <span>فتح التفاصيل والتسعير</span>
-                          <span>←</span>
-                        </button>
                       </td>
                     </tr>
                   ))}

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
@@ -7,11 +7,43 @@ import { getStoredInspections, saveOrUpdateInspection, InspectionData } from '@/
 
 export type InspectionSummary = InspectionData;
 
+function format12hTime(timeStr: string) {
+  if (!timeStr || timeStr === 'غير محدد') return 'غير محدد';
+  try {
+    const parts = timeStr.trim().split(' ');
+    if (parts.length === 2 && parts[0].includes('-') && parts[1].includes(':')) {
+      const [year, month, day] = parts[0].split('-');
+      const [h, m] = parts[1].split(':');
+      let hourNum = parseInt(h, 10);
+      const ampm = hourNum >= 12 ? 'م' : 'ص';
+      hourNum = hourNum % 12 || 12;
+      const formattedHour = String(hourNum).padStart(2, '0');
+      
+      const monthsArabic: Record<string, string> = {
+        '01': 'يناير', '02': 'فبراير', '03': 'مارس', '04': 'أبريل',
+        '05': 'مايو', '06': 'يونيو', '07': 'يوليو', '08': 'أغسطس',
+        '09': 'سبتمبر', '10': 'أكتوبر', '11': 'نوفمبر', '12': 'ديسمبر'
+      };
+      const monthName = monthsArabic[month] || month;
+      return `${parseInt(day, 10)} ${monthName} • ${formattedHour}:${m} ${ampm}`;
+    }
+    return timeStr;
+  } catch {
+    return timeStr;
+  }
+}
+
 export default function PipelineInspectionsPage() {
   const router = useRouter();
   const [inspections, setInspections] = useState<InspectionData[]>(() => getStoredInspections());
   const [activeTab, setActiveTab] = useState<'OPEN' | 'SENT'>('OPEN');
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Filters
+  const [selectedTech, setSelectedTech] = useState<string>('ALL');
+  const [selectedBranch, setSelectedBranch] = useState<string>('ALL');
+  const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
+
   const [showNewModal, setShowNewModal] = useState(false);
   const [successToast, setSuccessToast] = useState<string | null>(null);
 
@@ -42,12 +74,17 @@ export default function PipelineInspectionsPage() {
   });
 
   const filtered = tabFiltered.filter(item => {
-    return (
+    const matchesSearch =
       item.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.phone.includes(searchQuery) ||
-      item.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.technician.includes(searchQuery)
-    );
+      item.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.technician.includes(searchQuery);
+
+    const matchesTech = selectedTech === 'ALL' || item.technician === selectedTech;
+    const matchesBranch = selectedBranch === 'ALL' || item.branch === selectedBranch;
+    const matchesStatus = selectedStatus === 'ALL' || item.status === selectedStatus;
+
+    return matchesSearch && matchesTech && matchesBranch && matchesStatus;
   });
 
   const totalPages = Math.ceil(filtered.length / pageSize) || 1;
@@ -85,21 +122,24 @@ export default function PipelineInspectionsPage() {
     if (openDirectly) {
       router.push(`/pipeline/inspections/${newId}`);
     } else {
-      setSuccessToast(`تم تسجيل طلب المعاينة بنجاح للعميل (${newItem.customerName}) بكود ${newItem.id} ✓`);
+      setSuccessToast(`تم تسجيل طلب المعاينة بنجاح للعميل (${newItem.customerName}) ✓`);
       setTimeout(() => setSuccessToast(null), 4000);
     }
   };
 
   return (
-    <PageShell title="المرحلة 1: رفع المقاسات">
+    <PageShell title="المرحلة 1: رفع المقاسات والمعاينات الميدانية">
       <div className="flex flex-col gap-5">
         {/* Concise Header */}
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-100 text-amber-950 border border-amber-200">
-              المرحلة 1
+        <div className="flex items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
+          <div className="flex items-center gap-3">
+            <span className="w-9 h-9 rounded-xl bg-amber-100 text-amber-950 font-black text-xs flex items-center justify-center border border-amber-200">
+              01
             </span>
-            <h1 className="font-display font-black text-xl sm:text-2xl text-slate-900">رفع المقاسات</h1>
+            <div>
+              <h1 className="font-black text-xl text-slate-900">سجل طلبات رفع المقاسات المعاينات</h1>
+              <p className="text-xs text-slate-500 mt-0.5">جدولة المعاينة، تسجيل الفني، ورفع مقاسات الغرف</p>
+            </div>
           </div>
 
           <button
@@ -110,7 +150,7 @@ export default function PipelineInspectionsPage() {
             className="bg-brand-gold hover:bg-brand-gold-hover text-slate-950 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm shadow-gold flex items-center gap-1.5 transition-all cursor-pointer shrink-0"
           >
             <span className="material-symbols-outlined text-[18px]">add</span>
-            <span>طلب جديد</span>
+            <span>طلب معاينة جديد</span>
           </button>
         </div>
 
@@ -118,7 +158,7 @@ export default function PipelineInspectionsPage() {
         <div className="flex border-b border-slate-200 gap-2">
           <button
             onClick={() => { setActiveTab('OPEN'); setCurrentPage(1); }}
-            className={`pb-3 px-4 text-xs sm:text-sm font-black flex items-center gap-2 border-b-2 transition-all ${
+            className={`pb-3 px-4 text-xs sm:text-sm font-black flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
               activeTab === 'OPEN'
                 ? 'border-brand-gold text-slate-950'
                 : 'border-transparent text-slate-400 hover:text-slate-700'
@@ -135,7 +175,7 @@ export default function PipelineInspectionsPage() {
 
           <button
             onClick={() => { setActiveTab('SENT'); setCurrentPage(1); }}
-            className={`pb-3 px-4 text-xs sm:text-sm font-black flex items-center gap-2 border-b-2 transition-all ${
+            className={`pb-3 px-4 text-xs sm:text-sm font-black flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
               activeTab === 'SENT'
                 ? 'border-brand-gold text-slate-950'
                 : 'border-transparent text-slate-400 hover:text-slate-700'
@@ -159,18 +199,63 @@ export default function PipelineInspectionsPage() {
           </div>
         )}
 
-        {/* Search Input */}
-        <div className="relative">
-          <span className="material-symbols-outlined absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">
-            search
-          </span>
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-            placeholder="بحث سريع بالاسم، الهاتف، كود المعاينة..."
-            className="w-full bg-white border border-slate-200 rounded-xl pr-10 pl-4 py-2.5 text-xs sm:text-sm text-slate-900 focus:outline-none focus:border-brand-gold shadow-xs"
-          />
+        {/* Search & Filter Controls */}
+        <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+          {/* Search Box */}
+          <div className="relative sm:col-span-6">
+            <span className="material-symbols-outlined absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">
+              search
+            </span>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+              placeholder="بحث بالاسم، رقم الهاتف، العنوان أو اسم الفني..."
+              className="w-full bg-white border border-slate-200 rounded-xl pr-10 pl-4 py-2.5 text-xs sm:text-sm text-slate-900 focus:outline-none focus:border-brand-gold shadow-2xs"
+            />
+          </div>
+
+          {/* Filter 1: Technician */}
+          <div className="sm:col-span-2">
+            <select
+              value={selectedTech}
+              onChange={(e) => { setSelectedTech(e.target.value); setCurrentPage(1); }}
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-brand-gold shadow-2xs"
+            >
+              <option value="ALL">جميع الفنيين</option>
+              <option value="أحمد حسن">أحمد حسن</option>
+              <option value="محمد علي">محمد علي</option>
+            </select>
+          </div>
+
+          {/* Filter 2: Branch */}
+          <div className="sm:col-span-2">
+            <select
+              value={selectedBranch}
+              onChange={(e) => { setSelectedBranch(e.target.value); setCurrentPage(1); }}
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-brand-gold shadow-2xs"
+            >
+              <option value="ALL">جميع الفروع</option>
+              <option value="الفرع الرئيسي">الفرع الرئيسي</option>
+              <option value="فرع عرابي">فرع عرابي</option>
+            </select>
+          </div>
+
+          {/* Filter 3: Status */}
+          <div className="sm:col-span-2">
+            <select
+              value={selectedStatus}
+              onChange={(e) => { setSelectedStatus(e.target.value); setCurrentPage(1); }}
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-brand-gold shadow-2xs"
+            >
+              <option value="ALL">جميع الحالات</option>
+              <option value="مُجدول">مُجدول</option>
+              <option value="تم رفع المقاسات">تم رفع المقاسات</option>
+              <option value="قيد التسعير">قيد التسعير</option>
+              <option value="في الورشة">في الورشة</option>
+              <option value="مكتمل">مكتمل</option>
+            </select>
+          </div>
         </div>
 
         {/* Data View */}
@@ -178,58 +263,87 @@ export default function PipelineInspectionsPage() {
           <div className="bg-white rounded-2xl border border-dashed border-slate-300 p-10 text-center">
             <span className="material-symbols-outlined text-[40px] text-slate-300 block mb-1">inbox</span>
             <h3 className="font-bold text-slate-700 text-sm">
-              {activeTab === 'OPEN' ? 'لا توجد معاينات مفتوحة حالياً' : 'سجل المعاينات المرسلة فارغ'}
+              {activeTab === 'OPEN' ? 'لا توجد معاينات مطابقة للتصفية حالياً' : 'سجل المعاينات المرسلة فارغ'}
             </h3>
           </div>
         ) : (
           <>
             {/* Desktop Table View */}
-            <div className="hidden md:block bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-soft">
+            <div className="hidden md:block bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-2xs">
               <table className="w-full text-right text-xs">
-                <thead className="bg-slate-50 text-slate-500 font-mono border-b border-slate-200">
+                <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
                   <tr>
-                    <th className="p-3.5">الكود</th>
-                    <th className="p-3.5">العميل</th>
-                    <th className="p-3.5">العنوان</th>
-                    <th className="p-3.5">الفني</th>
-                    <th className="p-3.5">الموعد</th>
-                    <th className="p-3.5 text-center">الغرف</th>
+                    <th className="p-3.5">اسم العميل</th>
+                    <th className="p-3.5">العنوان والفرع</th>
+                    <th className="p-3.5">الفني المسؤول</th>
+                    <th className="p-3.5">موعد المعاينة</th>
+                    <th className="p-3.5 text-center">عدد الغرف</th>
                     <th className="p-3.5 text-center">الحالة</th>
-                    <th className="p-3.5 text-center">إجراء</th>
+                    <th className="p-3.5 text-center">تواصل سريع</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-slate-100">
                   {paginatedItems.map((item) => (
                     <tr
                       key={item.id}
                       onClick={() => router.push(`/pipeline/inspections/${item.id}`)}
-                      className="border-t border-slate-100 hover:bg-amber-50/40 cursor-pointer transition-colors"
+                      className="hover:bg-amber-50/40 cursor-pointer transition-colors"
                     >
-                      <td className="p-3.5 font-mono font-bold text-brand-gold-dark">{item.id}</td>
-                      <td className="p-3.5">
-                        <div className="font-bold text-sm text-slate-900">{item.customerName}</div>
-                        <div className="text-slate-400 font-mono" dir="ltr">{item.phone}</div>
+                      {/* Customer Name only (No phone stacked under name) */}
+                      <td className="p-3.5 align-middle">
+                        <div className="font-black text-slate-900 text-sm">{item.customerName}</div>
                       </td>
-                      <td className="p-3.5 text-slate-600 truncate max-w-[160px]">{item.address || '—'}</td>
-                      <td className="p-3.5 font-bold text-slate-800">{item.technician}</td>
-                      <td className="p-3.5 font-mono text-slate-600">{item.scheduledAt}</td>
-                      <td className="p-3.5 text-center">
-                        <span className="font-mono font-bold bg-slate-100 px-2 py-0.5 rounded text-slate-800">
-                          {item.rooms?.length || 0}
+
+                      <td className="p-3.5 text-slate-600 align-middle">
+                        <div className="font-medium text-slate-800 truncate max-w-[180px]">{item.address || '—'}</div>
+                        <span className="text-[10px] text-slate-400 font-bold">{item.branch}</span>
+                      </td>
+
+                      <td className="p-3.5 font-bold text-slate-800 align-middle">{item.technician}</td>
+
+                      {/* 12-Hour Formatted Time */}
+                      <td className="p-3.5 font-mono text-slate-700 font-bold align-middle">
+                        {format12hTime(item.scheduledAt)}
+                      </td>
+
+                      <td className="p-3.5 text-center align-middle">
+                        <span className="font-mono font-bold bg-slate-100 px-2.5 py-1 rounded-md text-slate-800 text-xs inline-block">
+                          {item.rooms?.length || 0} غرف
                         </span>
                       </td>
-                      <td className="p-3.5 text-center">
-                        <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-bold border ${
-                          item.status === 'تم رفع المقاسات' ? 'bg-emerald-100 text-emerald-900 border-emerald-200'
-                          : item.status === 'في الورشة' ? 'bg-purple-100 text-purple-900 border-purple-200'
-                          : item.status === 'قيد التسعير' ? 'bg-blue-100 text-blue-900 border-blue-200'
-                          : 'bg-amber-100 text-amber-900 border-amber-200'
+
+                      <td className="p-3.5 text-center align-middle">
+                        <span className={`text-[11px] px-2.5 py-1 rounded-full font-bold border inline-block ${
+                          item.status === 'تم رفع المقاسات' ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                          : item.status === 'في الورشة' ? 'bg-purple-50 text-purple-800 border-purple-200'
+                          : item.status === 'قيد التسعير' ? 'bg-blue-50 text-blue-800 border-blue-200'
+                          : 'bg-amber-50 text-amber-800 border-amber-200'
                         }`}>
                           {item.status}
                         </span>
                       </td>
-                      <td className="p-3.5 text-center font-bold text-brand-gold-dark hover:underline">
-                        فتح ←
+
+                      {/* Communication Icon-Only Buttons */}
+                      <td className="p-3.5 text-center align-middle" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-center gap-1.5">
+                          <a
+                            href={`tel:${item.phone}`}
+                            className="w-8 h-8 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 flex items-center justify-center transition-colors shadow-2xs"
+                            title={`اتصال هاتفي (${item.phone})`}
+                          >
+                            <span className="material-symbols-outlined text-[17px]">call</span>
+                          </a>
+
+                          <a
+                            href={`https://wa.me/20${item.phone.replace(/^0/, '')}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-8 h-8 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-600 flex items-center justify-center transition-colors shadow-2xs"
+                            title={`مراسلة واتساب (${item.phone})`}
+                          >
+                            <span className="material-symbols-outlined text-[17px]">chat</span>
+                          </a>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -243,28 +357,44 @@ export default function PipelineInspectionsPage() {
                 <div
                   key={item.id}
                   onClick={() => router.push(`/pipeline/inspections/${item.id}`)}
-                  className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-soft active:scale-[0.99] cursor-pointer"
+                  className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs active:scale-[0.99] cursor-pointer space-y-2"
                 >
-                  <div className="flex justify-between items-start mb-1.5">
-                    <div>
-                      <span className="text-[11px] font-mono font-bold text-brand-gold-dark">{item.id}</span>
-                      <h3 className="font-bold text-sm text-slate-900">{item.customerName}</h3>
-                      <p className="text-xs text-slate-400 font-mono" dir="ltr">{item.phone}</p>
-                    </div>
+                  <div className="flex justify-between items-start">
+                    <h3 className="font-bold text-sm text-slate-900">{item.customerName}</h3>
                     <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${
-                      item.status === 'تم رفع المقاسات' ? 'bg-emerald-100 text-emerald-900 border-emerald-200'
-                      : item.status === 'في الورشة' ? 'bg-purple-100 text-purple-900 border-purple-200'
-                      : 'bg-amber-100 text-amber-900 border-amber-200'
+                      item.status === 'تم رفع المقاسات' ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                      : item.status === 'في الورشة' ? 'bg-purple-50 text-purple-800 border-purple-200'
+                      : 'bg-amber-50 text-amber-800 border-amber-200'
                     }`}>
                       {item.status}
                     </span>
                   </div>
 
+                  <div className="text-xs text-slate-500 font-mono">
+                    {format12hTime(item.scheduledAt)} • {item.technician}
+                  </div>
+
                   <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
-                    <span className="text-slate-500">الفني: <strong>{item.technician}</strong></span>
-                    <span className="font-bold text-brand-gold-dark bg-amber-50 px-2 py-0.5 rounded">
-                      {item.rooms?.length || 0} غرف ←
-                    </span>
+                    <span className="font-bold text-slate-700">{item.rooms?.length || 0} غرف مسجلة</span>
+                    
+                    <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                      <a
+                        href={`tel:${item.phone}`}
+                        className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center"
+                        title="اتصال"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">call</span>
+                      </a>
+                      <a
+                        href={`https://wa.me/20${item.phone.replace(/^0/, '')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center"
+                        title="واتساب"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">chat</span>
+                      </a>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -273,19 +403,19 @@ export default function PipelineInspectionsPage() {
             {/* Pagination */}
             {totalPages > 1 && (
               <div className="flex items-center justify-between bg-white p-3 rounded-xl border border-slate-200 text-xs">
-                <span className="text-slate-500">صفحة {currentPage} من {totalPages}</span>
+                <span className="text-slate-500 font-bold">صفحة {currentPage} من {totalPages}</span>
                 <div className="flex gap-2">
                   <button
                     disabled={currentPage === 1}
                     onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                    className="px-2.5 py-1 rounded border border-slate-200 disabled:opacity-40 font-bold"
+                    className="px-3 py-1 rounded-lg border border-slate-200 disabled:opacity-40 font-bold bg-white hover:bg-slate-50 cursor-pointer"
                   >
                     السابق
                   </button>
                   <button
                     disabled={currentPage === totalPages}
                     onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                    className="px-2.5 py-1 rounded border border-slate-200 disabled:opacity-40 font-bold"
+                    className="px-3 py-1 rounded-lg border border-slate-200 disabled:opacity-40 font-bold bg-white hover:bg-slate-50 cursor-pointer"
                   >
                     التالي
                   </button>
@@ -296,7 +426,7 @@ export default function PipelineInspectionsPage() {
         )}
       </div>
 
-      {/* New Modal */}
+      {/* New Request Modal */}
       {showNewModal && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl p-5 sm:p-6 w-full max-w-lg">
@@ -321,14 +451,14 @@ export default function PipelineInspectionsPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-bold text-slate-700">الفرع</label>
-                  <select value={branch} onChange={e => setBranch(e.target.value)} className="border border-slate-200 rounded-xl p-2 text-xs">
+                  <select value={branch} onChange={e => setBranch(e.target.value)} className="border border-slate-200 rounded-xl p-2 text-xs font-bold">
                     <option>الفرع الرئيسي</option>
                     <option>فرع عرابي</option>
                   </select>
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-bold text-slate-700">الفني</label>
-                  <select value={tech} onChange={e => setTech(e.target.value)} className="border border-slate-200 rounded-xl p-2 text-xs">
+                  <select value={tech} onChange={e => setTech(e.target.value)} className="border border-slate-200 rounded-xl p-2 text-xs font-bold">
                     <option>أحمد حسن</option>
                     <option>محمد علي</option>
                   </select>
