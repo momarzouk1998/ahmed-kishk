@@ -14,16 +14,15 @@ import {
 } from '@/lib/inspectionsStore';
 
 const installOptions = [
-  'مجرى سقف (تراك ألومنيوم)',
-  'مجرى حائط',
-  'مواسير استيل مذهبة',
-  'مواسير خشب',
+  'تراك سقف',
+  'تراك حائط',
+  'مواسير فورجيه',
 ];
 
 const ceilingOptions = [
-  'جيبسون بورد / بيت نور',
-  'سقف عادي خرسانة',
-  'سقف معلق خشب',
+  'بيت نور خرسانه',
+  'بيت نور / جبس بورد',
+  'سقف عادي خرسانه',
 ];
 
 export default function InspectionDetailPage() {
@@ -69,8 +68,8 @@ export default function InspectionDetailPage() {
   const [widthCm, setWidthCm] = useState<number>(250);
   const [heightCm, setHeightCm] = useState<number>(270);
   const [sides, setSides] = useState<number>(2);
-  const [installType, setInstallType] = useState('مجرى سقف (تراك ألومنيوم)');
-  const [ceilingType, setCeilingType] = useState('جيبسون بورد / بيت نور');
+  const [installType, setInstallType] = useState('تراك سقف');
+  const [ceilingType, setCeilingType] = useState('بيت نور / جبس بورد');
   const [roomNotes, setRoomNotes] = useState('');
 
   // Lock status (Read-Only when locked or sent)
@@ -85,8 +84,8 @@ export default function InspectionDetailPage() {
       setWidthCm(room.widthCm);
       setHeightCm(room.heightCm);
       setSides(room.sides);
-      setInstallType(room.installationType);
-      setCeilingType(room.ceilingType);
+      setInstallType(room.installationType || 'تراك سقف');
+      setCeilingType(room.ceilingType || 'بيت نور / جبس بورد');
       setRoomNotes(room.notes || '');
     } else {
       setEditingRoomId(null);
@@ -95,8 +94,8 @@ export default function InspectionDetailPage() {
       setWidthCm(250);
       setHeightCm(270);
       setSides(2);
-      setInstallType('مجرى سقف (تراك ألومنيوم)');
-      setCeilingType('جيبسون بورد / بيت نور');
+      setInstallType('تراك سقف');
+      setCeilingType('بيت نور / جبس بورد');
       setRoomNotes('');
     }
     setShowRoomModal(true);
@@ -526,18 +525,18 @@ export default function InspectionDetailPage() {
               {/* 🎯 طريقة التركيب (اختيارات واضحة وظاهرة يعلم عليها صح) */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-black text-slate-800">طريقة التركيب:</label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   {installOptions.map((opt) => (
                     <label
                       key={opt}
                       onClick={() => setInstallType(opt)}
-                      className={`p-2.5 rounded-xl border flex items-center justify-between cursor-pointer text-xs font-bold transition-all ${
+                      className={`p-2.5 rounded-xl border flex items-center justify-between sm:flex-col sm:text-center sm:gap-1.5 cursor-pointer text-xs font-bold transition-all ${
                         installType === opt
                           ? 'bg-amber-50 border-brand-gold text-slate-950 shadow-xs ring-1 ring-brand-gold/40'
                           : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
                       }`}
                     >
-                      <span>{opt}</span>
+                      <span className="leading-tight">{opt}</span>
                       <span className={`w-4 h-4 rounded-full border flex items-center justify-center text-[10px] ${
                         installType === opt ? 'bg-brand-gold border-brand-gold text-slate-950 font-black' : 'border-slate-300'
                       }`}>

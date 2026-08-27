@@ -712,10 +712,9 @@ export default function InspectionsPage() {
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-bold text-slate-700">نوع التركيب</label>
                   <select value={installType} onChange={e => setInstallType(e.target.value)} className="border border-slate-200 rounded-xl p-2 text-xs">
-                    <option value="مجرى سقف (تراك ألومنيوم)">مجرى سقف (تراك ألومنيوم)</option>
-                    <option value="مجرى حائط">مجرى حائط</option>
-                    <option value="مواسير استيل مذهبة">مواسير استيل مذهبة</option>
-                    <option value="مواسير خشب">مواسير خشب</option>
+                    <option value="تراك سقف">تراك سقف</option>
+                    <option value="تراك حائط">تراك حائط</option>
+                    <option value="مواسير فورجيه">مواسير فورجيه</option>
                   </select>
                 </div>
                 <div className="flex flex-col gap-1">
@@ -725,9 +724,9 @@ export default function InspectionsPage() {
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-bold text-slate-700">نوع السقف</label>
                   <select value={ceilingType} onChange={e => setCeilingType(e.target.value)} className="border border-slate-200 rounded-xl p-2 text-xs">
-                    <option value="جيبسون بورد / بيت نور">جيبسون بورد / بيت نور</option>
-                    <option value="سقف عادي">سقف عادي (خرسانة)</option>
-                    <option value="سقف خشب">سقف خشب معلق</option>
+                    <option value="بيت نور خرسانه">بيت نور خرسانه</option>
+                    <option value="بيت نور / جبس بورد">بيت نور / جبس بورد</option>
+                    <option value="سقف عادي خرسانه">سقف عادي خرسانه</option>
                   </select>
                 </div>
               </div>

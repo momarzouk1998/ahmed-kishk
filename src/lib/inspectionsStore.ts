@@ -91,8 +91,8 @@ export const defaultInspectionsList: InspectionData[] = [
         widthCm: 350,
         heightCm: 280,
         sides: 2,
-        installationType: 'مجرى سقف (تراك ألومنيوم)',
-        ceilingType: 'جيبسون بورد / بيت نور',
+        installationType: 'تراك سقف',
+        ceilingType: 'بيت نور / جبس بورد',
         notes: 'يوجد بيت نور بعمق 15سم — ثني الذيل 12سم',
       },
       {
@@ -102,8 +102,8 @@ export const defaultInspectionsList: InspectionData[] = [
         widthCm: 200,
         heightCm: 260,
         sides: 2,
-        installationType: 'مواسير استيل مذهبة',
-        ceilingType: 'سقف عادي خرسانة',
+        installationType: 'مواسير فورجيه',
+        ceilingType: 'سقف عادي خرسانه',
         notes: 'تثبيت الماسورة أعلى حلق الشباك بـ 15سم',
       }
     ],
@@ -142,8 +142,8 @@ export const defaultInspectionsList: InspectionData[] = [
         widthCm: 500,
         heightCm: 300,
         sides: 2,
-        installationType: 'مجرى سقف (تراك ألومنيوم)',
-        ceilingType: 'جيبسون بورد / بيت نور',
+        installationType: 'تراك سقف',
+        ceilingType: 'بيت نور / جبس بورد',
         notes: 'ستائر عازلة للضوء والصوت',
       },
       {
@@ -153,8 +153,8 @@ export const defaultInspectionsList: InspectionData[] = [
         widthCm: 280,
         heightCm: 290,
         sides: 2,
-        installationType: 'مواسير استيل مذهبة',
-        ceilingType: 'جيبسون بورد / بيت نور',
+        installationType: 'مواسير فورجيه',
+        ceilingType: 'بيت نور / جبس بورد',
         notes: '',
       }
     ],
@@ -179,8 +179,8 @@ export const defaultInspectionsList: InspectionData[] = [
         widthCm: 300,
         heightCm: 270,
         sides: 2,
-        installationType: 'مجرى سقف (تراك ألومنيوم)',
-        ceilingType: 'سقف عادي خرسانة',
+        installationType: 'تراك سقف',
+        ceilingType: 'سقف عادي خرسانه',
       }
     ],
   },
@@ -221,8 +221,8 @@ export const defaultQuotationsList: QuotationOrder[] = [
         widthCm: 350,
         heightCm: 280,
         sides: 2,
-        installationType: 'مجرى سقف (تراك ألومنيوم)',
-        ceilingType: 'جيبسون بورد / بيت نور',
+        installationType: 'تراك سقف',
+        ceilingType: 'بيت نور / جبس بورد',
         sheerFabricCode: 'SH-101',
         sheerFabricName: 'شيفون حرير فاخر (أبيض سادة)',
         sheerMeters: 8.75,
@@ -263,8 +263,8 @@ export const defaultQuotationsList: QuotationOrder[] = [
         widthCm: 250,
         heightCm: 270,
         sides: 2,
-        installationType: 'مواسير استيل مذهبة',
-        ceilingType: 'سقف عادي خرسانة',
+        installationType: 'مواسير فورجيه',
+        ceilingType: 'سقف عادي خرسانه',
         sheerFabricCode: 'SH-102',
         sheerFabricName: 'تول مطرز كريستال تركيات',
         sheerMeters: 6.25,
@@ -303,8 +303,8 @@ export const defaultQuotationsList: QuotationOrder[] = [
   }
 ];
 
-const INSPECTIONS_STORAGE_KEY = 'ahmed_kishk_inspections_data_v2';
-const QUOTATIONS_STORAGE_KEY = 'ahmed_kishk_quotations_data_v2';
+const INSPECTIONS_STORAGE_KEY = 'ahmed_kishk_inspections_data_v3';
+const QUOTATIONS_STORAGE_KEY = 'ahmed_kishk_quotations_data_v3';
 
 export function getStoredInspections(): InspectionData[] {
   if (typeof window === 'undefined') {
