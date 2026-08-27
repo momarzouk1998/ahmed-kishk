@@ -314,13 +314,7 @@ export default function PricingDetailPage() {
               ←
             </Link>
             <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-mono font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-md">
-                  عقد رقم: {quotation.id}
-                </span>
-                <span className="text-xs font-mono text-slate-500">كود المعاينة: {quotation.inspectionId}</span>
-              </div>
-              <h1 className="font-black text-xl text-slate-900 mt-1">{quotation.customerName}</h1>
+              <h1 className="font-black text-xl text-slate-900 leading-tight">{quotation.customerName}</h1>
             </div>
           </div>
 
@@ -333,16 +327,6 @@ export default function PricingDetailPage() {
             }`}>
               {quotation.status}
             </span>
-
-            {quotation.totalAmount > 0 && (
-              <button
-                onClick={() => setShowPrintModal(true)}
-                className="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-2xs cursor-pointer transition-colors"
-              >
-                <span className="material-symbols-outlined text-[16px]">print</span>
-                معاينة وطباعة (PDF)
-              </button>
-            )}
           </div>
         </div>
 
@@ -366,12 +350,7 @@ export default function PricingDetailPage() {
             </div>
             <div>
               <span className="text-slate-400 font-bold block">مسؤول المبيعات والتسعير:</span>
-              <input
-                value={estimator}
-                onChange={e => setEstimator(e.target.value)}
-                className="mt-1 border border-slate-300 rounded-lg px-2.5 py-1 text-xs w-full bg-white font-bold text-slate-900"
-                placeholder="أحمد كشك"
-              />
+              <strong className="text-slate-900 text-sm block mt-1">{estimator || 'أحمد كشك'}</strong>
             </div>
           </div>
         </div>
@@ -408,135 +387,119 @@ export default function PricingDetailPage() {
         </div>
 
         {/* Section 3: Detailed Rooms Table & Fabric Selection */}
-        <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <h2 className="font-black text-base text-slate-900 flex items-center gap-2">
-              <span className="material-symbols-outlined text-amber-600">table_view</span>
-              تفاصيل غرف العميل والأقمشة والأشرطة والتكلفة ({quotation.rooms.length} غرفة):
+        <div className="space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+            <h2 className="font-black text-base text-indigo-950 flex items-center gap-2">
+              <span className="material-symbols-outlined text-amber-600">room_preferences</span>
+              تفاصيل غرف العميل والأقمشة والتسعير ({quotation.rooms.length} غرفة):
             </h2>
           </div>
 
           {quotation.rooms.length === 0 ? (
-            <p className="text-xs text-slate-400 text-center py-6 bg-slate-50 border border-slate-200 rounded-xl">
+            <p className="text-xs text-slate-400 text-center py-8 bg-slate-50 border border-slate-200 rounded-xl">
               لا توجد غرف مسجلة بهذه المعاينة.
             </p>
           ) : (
-            <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
-              <div className="overflow-x-auto">
-                <table className="w-full text-right text-xs min-w-[750px]">
-                  <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
-                    <tr>
-                      <th className="p-3">الغرفة والمقاسات</th>
-                      <th className="p-3">١. قماش الجوانب (الثقيل)</th>
-                      <th className="p-3">٢. قماش الخلفية (الشيفون)</th>
-                      <th className="p-3">٣. البلاك آوت</th>
-                      <th className="p-3 text-left font-mono">إجمالي الغرفة</th>
-                      <th className="p-3 text-center">الإجراء</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {quotation.rooms.map((room) => {
-                      const isEditing = editingRoomId === room.id;
-                      const widthM = room.widthCm / 100;
-                      const heightM = room.heightCm / 100;
+            <div className="grid grid-cols-1 gap-4">
+              {quotation.rooms.map((room) => {
+                const isEditing = editingRoomId === room.id;
+                const widthM = room.widthCm / 100;
 
-                      return (
-                        <tr
-                          key={room.id}
-                          className={`transition-colors ${
-                            isEditing ? 'bg-amber-50/60' : 'hover:bg-slate-50/60'
+                return (
+                  <div
+                    key={room.id}
+                    className={`bg-white rounded-2xl border p-4 sm:p-5 transition-all space-y-4 shadow-3xs ${
+                      isEditing ? 'border-amber-400 ring-2 ring-amber-400/20' : 'border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    {/* Card Header: Room name, specs tags and price */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+                      <div>
+                        <h3 className="font-black text-indigo-950 text-sm sm:text-base">{room.name}</h3>
+                        <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                          <span className="text-[11px] font-mono text-slate-600 font-bold bg-slate-100 px-2 py-0.5 rounded-md">
+                            مقاس الحائط: {room.widthCm}×{room.heightCm} سم ({widthM.toFixed(2)}م)
+                          </span>
+                          <span className="text-[10px] bg-slate-100 text-slate-800 px-2 py-0.5 rounded font-bold">
+                            {room.sides === 2 ? 'جنبين' : 'جنب'}
+                          </span>
+                          <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded">
+                            {room.installationType || 'تراك سقف'}
+                          </span>
+                          <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded">
+                            {room.ceilingType || 'بيت نور'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-4 self-start sm:self-center">
+                        <div className="text-right">
+                          <span className="text-[10px] text-slate-400 block font-bold">إجمالي سعر الغرفة</span>
+                          <strong className="font-mono font-black text-xl text-slate-900 block leading-tight">
+                            {room.totalSellPrice.toLocaleString()} ج
+                          </strong>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => isEditing ? setEditingRoomId(null) : startPricingRoom(room)}
+                          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
+                            isEditing
+                              ? 'bg-amber-100 text-amber-950 border-amber-300'
+                              : 'bg-slate-900 hover:bg-slate-850 text-white border-slate-900 shadow-2xs'
                           }`}
                         >
-                          {/* Room Name & Specifications */}
-                          <td className="p-3.5 align-top">
-                            <div className="font-black text-slate-900 text-xs">{room.name}</div>
-                            <div className="text-[11px] text-slate-500 font-mono mt-0.5">
-                              {room.widthCm}×{room.heightCm} سم ({widthM.toFixed(2)}م)
-                            </div>
-                            <div className="flex flex-wrap gap-1 mt-1.5">
-                              <span className="text-[10px] bg-slate-100 text-slate-800 px-1.5 py-0.2 rounded font-bold">
-                                {room.sides === 2 ? 'جنبين' : 'جنب'}
-                              </span>
-                              <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.2 rounded">
-                                {room.installationType || 'تراك سقف'}
-                              </span>
-                              <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.2 rounded">
-                                {room.ceilingType || 'بيت نور'}
-                              </span>
-                            </div>
-                          </td>
+                          {isEditing ? 'إغلاق ✕' : 'تسعير / تعديل'}
+                        </button>
+                      </div>
+                    </div>
 
-                          {/* Heavy Fabric Layer (1) */}
-                          <td className="p-3.5 align-top">
-                            <div className="font-bold text-slate-900">
-                              {room.heavyFabricName || 'لم يحدد'}
-                            </div>
-                            <div className="text-[11px] text-slate-500 font-mono mt-0.5">
-                              شريط {room.heavyTapeType || '٣ فتلة'} (معامل ×{room.heavyMultiplier ?? 2.0})
-                            </div>
-                            <div className="text-[11px] font-mono font-bold text-indigo-950 mt-1">
-                              {room.heavyMeters}م × {room.heavyPrice}ج = {(room.heavyMeters * room.heavyPrice).toLocaleString()} ج
-                            </div>
-                          </td>
+                    {/* Card Body: Room fabric layers */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs pt-1">
+                      {/* Layer 1: Heavy Fabric */}
+                      <div className="bg-slate-50/70 p-3.5 rounded-xl border border-slate-150 space-y-1">
+                        <span className="text-slate-400 font-bold block text-[10px] uppercase tracking-wider">١. قماش الجوانب (الثقيل)</span>
+                        <strong className="text-slate-950 text-xs block">{room.heavyFabricName || 'لم يحدد'}</strong>
+                        <div className="text-[11px] text-slate-500 font-mono">
+                          شريط {room.heavyTapeType || '٣ فتلة'} (معامل ×{room.heavyMultiplier ?? 2.0})
+                        </div>
+                        <div className="font-mono font-bold text-indigo-900 text-[11px] pt-1">
+                          {room.heavyMeters}م × {room.heavyPrice}ج = {(room.heavyMeters * room.heavyPrice).toLocaleString()} ج
+                        </div>
+                      </div>
 
-                          {/* Sheer Fabric Layer (2) */}
-                          <td className="p-3.5 align-top">
-                            <div className="font-bold text-slate-900">
-                              {room.sheerFabricName || 'لم يحدد'}
-                            </div>
-                            <div className="text-[11px] text-slate-500 font-mono mt-0.5">
-                              شريط {room.sheerTapeType || 'ويفي'} (معامل ×{room.sheerMultiplier ?? 2.5})
-                            </div>
-                            <div className="text-[11px] font-mono font-bold text-amber-900 mt-1">
-                              {room.sheerMeters}م × {room.sheerPrice}ج = {(room.sheerMeters * room.sheerPrice).toLocaleString()} ج
-                            </div>
-                          </td>
+                      {/* Layer 2: Sheer Fabric */}
+                      <div className="bg-slate-50/70 p-3.5 rounded-xl border border-slate-150 space-y-1">
+                        <span className="text-slate-400 font-bold block text-[10px] uppercase tracking-wider">٢. قماش الخلفية (الشيفون)</span>
+                        <strong className="text-slate-950 text-xs block">{room.sheerFabricName || 'لم يحدد'}</strong>
+                        <div className="text-[11px] text-slate-500 font-mono">
+                          شريط {room.sheerTapeType || 'ويفي'} (معامل ×{room.sheerMultiplier ?? 2.5})
+                        </div>
+                        <div className="font-mono font-bold text-amber-900 text-[11px] pt-1">
+                          {room.sheerMeters}م × {room.sheerPrice}ج = {(room.sheerMeters * room.sheerPrice).toLocaleString()} ج
+                        </div>
+                      </div>
 
-                          {/* Blackout Layer (3) */}
-                          <td className="p-3.5 align-top">
-                            {room.blackoutMeters > 0 && room.blackoutFabricName ? (
-                              <>
-                                <div className="font-bold text-slate-800">{room.blackoutFabricName}</div>
-                                <div className="text-[11px] font-mono text-slate-600 mt-0.5">
-                                  (معامل ×{room.blackoutMultiplier ?? 1.20}) • {room.blackoutMeters}م
-                                </div>
-                                <div className="text-[11px] font-mono font-bold text-slate-900 mt-1">
-                                  {(room.blackoutMeters * room.blackoutPrice).toLocaleString()} ج
-                                </div>
-                              </>
-                            ) : (
-                              <span className="text-slate-400 text-[11px]">-</span>
-                            )}
-                          </td>
-
-                          {/* Room Total Price */}
-                          <td className="p-3.5 text-left font-mono align-top">
-                            <span className="font-black text-sm text-slate-900 block">
-                              {room.totalSellPrice.toLocaleString()} ج
-                            </span>
-                            <span className="text-[10px] text-slate-400 block mt-0.5">شامل المصنعيات والتركيب</span>
-                          </td>
-
-                          {/* Action Button */}
-                          <td className="p-3.5 text-center align-middle">
-                            <button
-                              type="button"
-                              onClick={() => isEditing ? setEditingRoomId(null) : startPricingRoom(room)}
-                              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
-                                isEditing
-                                  ? 'bg-amber-100 text-amber-950 border-amber-300'
-                                  : 'bg-white hover:bg-slate-100 text-slate-800 border-slate-300 shadow-2xs'
-                              }`}
-                            >
-                              {isEditing ? 'إغلاق ✕' : 'تسعير / تعديل'}
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                      {/* Layer 3: Blackout Layer */}
+                      <div className="bg-slate-50/70 p-3.5 rounded-xl border border-slate-150 space-y-1">
+                        <span className="text-slate-400 font-bold block text-[10px] uppercase tracking-wider">٣. طبقة البلاك آوت</span>
+                        {room.blackoutMeters > 0 && room.blackoutFabricName ? (
+                          <>
+                            <strong className="text-slate-900 text-xs block">{room.blackoutFabricName}</strong>
+                            <div className="text-[11px] text-slate-500 font-mono">
+                              (معامل ×{room.blackoutMultiplier ?? 1.20}) • {room.blackoutMeters}م
+                            </div>
+                            <div className="font-mono font-bold text-slate-950 text-[11px] pt-1">
+                              {(room.blackoutMeters * room.blackoutPrice).toLocaleString()} ج
+                            </div>
+                          </>
+                        ) : (
+                          <span className="text-slate-400 block pt-1">- لا يوجد -</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
