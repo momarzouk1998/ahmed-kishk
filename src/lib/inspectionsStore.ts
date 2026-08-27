@@ -34,18 +34,27 @@ export interface RoomPricing {
   sides: number;
   installationType: string;
   ceilingType: string;
-  sheerFabricCode?: string;
-  sheerFabricName?: string;
-  sheerMeters: number;
-  sheerPrice: number;
+  // Heavy / Main Sides Fabric (1st)
   heavyFabricCode?: string;
   heavyFabricName?: string;
+  heavyTapeType?: string;
+  heavyMultiplier?: number;
   heavyMeters: number;
   heavyPrice: number;
+  // Sheer / Background Fabric (2nd)
+  sheerFabricCode?: string;
+  sheerFabricName?: string;
+  sheerTapeType?: string;
+  sheerMultiplier?: number;
+  sheerMeters: number;
+  sheerPrice: number;
+  // Blackout Layer (3rd)
   blackoutFabricCode?: string;
   blackoutFabricName?: string;
+  blackoutMultiplier?: number;
   blackoutMeters: number;
   blackoutPrice: number;
+  // Track, Tape, Tailoring & Install
   trackMeters: number;
   trackPrice: number;
   tapeMeters: number;
@@ -388,9 +397,17 @@ export function syncInspectionToPricing(inspection: InspectionData): QuotationOr
 
   const convertedRooms: RoomPricing[] = inspection.rooms.map(r => {
     const widthMeters = r.widthCm / 100;
-    const sheerMeters = Math.round(widthMeters * 2.5 * 100) / 100;
-    const heavyMeters = Math.round(widthMeters * 2.0 * 100) / 100;
-    const blackoutMeters = Math.round(widthMeters * 1.5 * 100) / 100;
+    const heavyTapeType = '٣ فتلة';
+    const heavyMultiplier = 2.0;
+    const heavyMeters = Math.round(widthMeters * heavyMultiplier * 100) / 100;
+
+    const sheerTapeType = 'ويفي';
+    const sheerMultiplier = 2.5;
+    const sheerMeters = Math.round(widthMeters * sheerMultiplier * 100) / 100;
+
+    const blackoutMultiplier = 1.20;
+    const blackoutMeters = Math.round(widthMeters * blackoutMultiplier * 100) / 100;
+
     const trackMeters = widthMeters;
     const tapeMeters = Math.round((sheerMeters + heavyMeters) * 100) / 100;
 
@@ -403,16 +420,27 @@ export function syncInspectionToPricing(inspection: InspectionData): QuotationOr
       sides: r.sides,
       installationType: r.installationType,
       ceilingType: r.ceilingType,
-      sheerFabricCode: 'SH-101',
-      sheerFabricName: 'شيفون حرير فاخر (أبيض سادة)',
-      sheerMeters,
-      sheerPrice: 160,
+      // Heavy 1st
       heavyFabricCode: 'HV-201',
       heavyFabricName: 'قطيفة جاجوار تركيات (درجات البيج)',
+      heavyTapeType,
+      heavyMultiplier,
       heavyMeters,
       heavyPrice: 380,
+      // Sheer 2nd
+      sheerFabricCode: 'SH-101',
+      sheerFabricName: 'شيفون حرير فاخر (أبيض سادة)',
+      sheerTapeType,
+      sheerMultiplier,
+      sheerMeters,
+      sheerPrice: 160,
+      // Blackout 3rd
+      blackoutFabricCode: '',
+      blackoutFabricName: '',
+      blackoutMultiplier,
       blackoutMeters: 0,
       blackoutPrice: 0,
+      // Details
       trackMeters,
       trackPrice: 120,
       tapeMeters,
@@ -420,8 +448,8 @@ export function syncInspectionToPricing(inspection: InspectionData): QuotationOr
       tailorPricePerSide: 150,
       installFee: 200,
       totalSellPrice: Math.round(
-        (sheerMeters * 160) +
         (heavyMeters * 380) +
+        (sheerMeters * 160) +
         (trackMeters * 120) +
         (tapeMeters * 40) +
         (r.sides * 150) +

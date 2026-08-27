@@ -8,13 +8,18 @@ export interface PrintRoomItem {
   widthCm: number;
   heightCm: number;
   sides: number;
-  sheerFabricName?: string;
-  sheerMeters: number;
-  sheerPrice: number;
   heavyFabricName?: string;
+  heavyTapeType?: string;
+  heavyMultiplier?: number;
   heavyMeters: number;
   heavyPrice: number;
+  sheerFabricName?: string;
+  sheerTapeType?: string;
+  sheerMultiplier?: number;
+  sheerMeters: number;
+  sheerPrice: number;
   blackoutFabricName?: string;
+  blackoutMultiplier?: number;
   blackoutMeters: number;
   blackoutPrice: number;
   trackMeters: number;
@@ -137,33 +142,42 @@ export default function ContractPrintModal({ isOpen, onClose, data }: ContractPr
                       </td>
                     </tr>
 
-                    {/* Sheer fabric row */}
-                    {room.sheerMeters > 0 && (
-                      <tr className="border border-slate-200">
-                        <td className="p-2 border border-slate-200 text-slate-500 font-bold">طبقة الشيفون / التول</td>
-                        <td className="p-2 border border-slate-200 text-slate-900 font-bold">{room.sheerFabricName || 'شيفون حرير فاخر'}</td>
-                        <td className="p-2 border border-slate-200 text-center font-mono">{room.sheerMeters} م</td>
-                        <td className="p-2 border border-slate-200 text-left font-mono">{room.sheerPrice} ج</td>
-                        <td className="p-2 border border-slate-200 text-left font-mono font-bold">{(room.sheerMeters * room.sheerPrice).toLocaleString()} ج</td>
-                      </tr>
-                    )}
-
-                    {/* Heavy fabric row */}
+                    {/* 1. Heavy fabric row (1st) */}
                     {room.heavyMeters > 0 && (
                       <tr className="border border-slate-200">
-                        <td className="p-2 border border-slate-200 text-slate-500 font-bold">طبقة القطيفة / الثقيل</td>
-                        <td className="p-2 border border-slate-200 text-slate-900 font-bold">{room.heavyFabricName || 'قطيفة جاجوار تركيات'}</td>
+                        <td className="p-2 border border-slate-200 text-slate-500 font-bold">1. قماش الجوانب (الثقيل)</td>
+                        <td className="p-2 border border-slate-200 text-slate-900 font-bold">
+                          {room.heavyFabricName || 'قطيفة جاجوار تركيات'}
+                          <span className="text-[11px] text-slate-500 block font-normal">شريط {room.heavyTapeType || '٣ فتلة'} (معامل ×{room.heavyMultiplier ?? 2.0})</span>
+                        </td>
                         <td className="p-2 border border-slate-200 text-center font-mono">{room.heavyMeters} م</td>
                         <td className="p-2 border border-slate-200 text-left font-mono">{room.heavyPrice} ج</td>
                         <td className="p-2 border border-slate-200 text-left font-mono font-bold">{(room.heavyMeters * room.heavyPrice).toLocaleString()} ج</td>
                       </tr>
                     )}
 
-                    {/* Blackout fabric row */}
-                    {room.blackoutMeters > 0 && (
+                    {/* 2. Sheer fabric row (2nd) */}
+                    {room.sheerMeters > 0 && (
                       <tr className="border border-slate-200">
-                        <td className="p-2 border border-slate-200 text-slate-500 font-bold">طبقة البلاك آوت العازل</td>
-                        <td className="p-2 border border-slate-200 text-slate-900 font-bold">{room.blackoutFabricName || 'بلاك آوت عازل حراري'}</td>
+                        <td className="p-2 border border-slate-200 text-slate-500 font-bold">2. قماش الخلفية (الشيفون)</td>
+                        <td className="p-2 border border-slate-200 text-slate-900 font-bold">
+                          {room.sheerFabricName || 'شيفون حرير فاخر'}
+                          <span className="text-[11px] text-slate-500 block font-normal">شريط {room.sheerTapeType || 'ويفي'} (معامل ×{room.sheerMultiplier ?? 2.5})</span>
+                        </td>
+                        <td className="p-2 border border-slate-200 text-center font-mono">{room.sheerMeters} م</td>
+                        <td className="p-2 border border-slate-200 text-left font-mono">{room.sheerPrice} ج</td>
+                        <td className="p-2 border border-slate-200 text-left font-mono font-bold">{(room.sheerMeters * room.sheerPrice).toLocaleString()} ج</td>
+                      </tr>
+                    )}
+
+                    {/* 3. Blackout fabric row (3rd) */}
+                    {room.blackoutMeters > 0 && room.blackoutFabricName && (
+                      <tr className="border border-slate-200">
+                        <td className="p-2 border border-slate-200 text-slate-500 font-bold">3. طبقة البلاك آوت العازل</td>
+                        <td className="p-2 border border-slate-200 text-slate-900 font-bold">
+                          {room.blackoutFabricName || 'بلاك آوت عازل حراري'}
+                          <span className="text-[11px] text-slate-500 block font-normal">(معامل ×{room.blackoutMultiplier ?? 1.20})</span>
+                        </td>
                         <td className="p-2 border border-slate-200 text-center font-mono">{room.blackoutMeters} م</td>
                         <td className="p-2 border border-slate-200 text-left font-mono">{room.blackoutPrice} ج</td>
                         <td className="p-2 border border-slate-200 text-left font-mono font-bold">{(room.blackoutMeters * room.blackoutPrice).toLocaleString()} ج</td>
