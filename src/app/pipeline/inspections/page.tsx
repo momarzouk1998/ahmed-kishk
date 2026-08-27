@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
@@ -30,6 +30,19 @@ function format12hTime(timeStr: string) {
     return timeStr;
   } catch {
     return timeStr;
+  }
+}
+
+function getBranchBadgeStyle(branchName: string) {
+  switch (branchName) {
+    case 'الفرع الرئيسي':
+      return 'bg-indigo-50 text-indigo-800 border-indigo-200';
+    case 'فرع عرابي':
+      return 'bg-teal-50 text-teal-800 border-teal-200';
+    case 'فرع زايد':
+      return 'bg-purple-50 text-purple-800 border-purple-200';
+    default:
+      return 'bg-slate-100 text-slate-700 border-slate-200';
   }
 }
 
@@ -127,56 +140,57 @@ export default function PipelineInspectionsPage() {
     }
   };
 
-  const headerAction = (
-    <button
-      onClick={() => {
-        setName(''); setPhone(''); setAddress(''); setSchedule('');
-        setShowNewModal(true);
-      }}
-      className="bg-brand-gold hover:bg-brand-gold-hover text-slate-950 px-3.5 py-1.5 rounded-xl font-bold text-xs shadow-gold flex items-center gap-1 transition-all cursor-pointer shrink-0"
-    >
-      <span className="material-symbols-outlined text-[16px]">add</span>
-      <span>طلب جديد</span>
-    </button>
-  );
-
   return (
-    <PageShell title="رفع المقاسات" badge="01" action={headerAction}>
+    <PageShell title="رفع المقاسات" badge="01">
       <div className="flex flex-col gap-4">
-        {/* 2-Tabs Navigation */}
-        <div className="flex border-b border-slate-200 gap-2">
-          <button
-            onClick={() => { setActiveTab('OPEN'); setCurrentPage(1); }}
-            className={`pb-3 px-4 text-xs sm:text-sm font-black flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
-              activeTab === 'OPEN'
-                ? 'border-brand-gold text-slate-950'
-                : 'border-transparent text-slate-400 hover:text-slate-700'
-            }`}
-          >
-            <span className="material-symbols-outlined text-[18px]">pending_actions</span>
-            <span>قيد التنفيذ</span>
-            <span className={`text-[11px] px-2 py-0.2 rounded-full font-mono font-bold ${
-              activeTab === 'OPEN' ? 'bg-amber-100 text-amber-950' : 'bg-slate-100 text-slate-500'
-            }`}>
-              {openCount}
-            </span>
-          </button>
+        {/* Tabs Bar with Action Button Beside It */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-200 pb-1 gap-2">
+          <div className="flex gap-2">
+            <button
+              onClick={() => { setActiveTab('OPEN'); setCurrentPage(1); }}
+              className={`pb-2.5 px-4 text-xs sm:text-sm font-black flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
+                activeTab === 'OPEN'
+                  ? 'border-brand-gold text-slate-950'
+                  : 'border-transparent text-slate-400 hover:text-slate-700'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[18px]">pending_actions</span>
+              <span>قيد التنفيذ</span>
+              <span className={`text-[11px] px-2 py-0.2 rounded-full font-mono font-bold ${
+                activeTab === 'OPEN' ? 'bg-amber-100 text-amber-950' : 'bg-slate-100 text-slate-500'
+              }`}>
+                {openCount}
+              </span>
+            </button>
 
+            <button
+              onClick={() => { setActiveTab('SENT'); setCurrentPage(1); }}
+              className={`pb-2.5 px-4 text-xs sm:text-sm font-black flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
+                activeTab === 'SENT'
+                  ? 'border-brand-gold text-slate-950'
+                  : 'border-transparent text-slate-400 hover:text-slate-700'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[18px]">task_alt</span>
+              <span>مكتملة</span>
+              <span className={`text-[11px] px-2 py-0.2 rounded-full font-mono font-bold ${
+                activeTab === 'SENT' ? 'bg-amber-100 text-amber-950' : 'bg-slate-100 text-slate-500'
+              }`}>
+                {sentCount}
+              </span>
+            </button>
+          </div>
+
+          {/* Action Button Beside Tabs */}
           <button
-            onClick={() => { setActiveTab('SENT'); setCurrentPage(1); }}
-            className={`pb-3 px-4 text-xs sm:text-sm font-black flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
-              activeTab === 'SENT'
-                ? 'border-brand-gold text-slate-950'
-                : 'border-transparent text-slate-400 hover:text-slate-700'
-            }`}
+            onClick={() => {
+              setName(''); setPhone(''); setAddress(''); setSchedule('');
+              setShowNewModal(true);
+            }}
+            className="bg-brand-gold hover:bg-brand-gold-hover text-slate-950 px-3.5 py-1.5 rounded-xl font-bold text-xs shadow-gold flex items-center justify-center gap-1.5 transition-all cursor-pointer shrink-0 mb-1 sm:mb-0"
           >
-            <span className="material-symbols-outlined text-[18px]">task_alt</span>
-            <span>مكتملة</span>
-            <span className={`text-[11px] px-2 py-0.2 rounded-full font-mono font-bold ${
-              activeTab === 'SENT' ? 'bg-amber-100 text-amber-950' : 'bg-slate-100 text-slate-500'
-            }`}>
-              {sentCount}
-            </span>
+            <span className="material-symbols-outlined text-[16px]">add</span>
+            <span>طلب معاينة جديد</span>
           </button>
         </div>
 
@@ -279,9 +293,9 @@ export default function PipelineInspectionsPage() {
                       onClick={() => router.push(`/pipeline/inspections/${item.id}`)}
                       className="hover:bg-amber-50/40 cursor-pointer transition-colors"
                     >
-                      {/* Customer Name */}
+                      {/* Customer Name with distinct indigo color */}
                       <td className="p-3.5 align-middle">
-                        <div className="font-black text-slate-900 text-sm">{item.customerName}</div>
+                        <div className="font-black text-indigo-950 hover:text-amber-900 transition-colors text-sm">{item.customerName}</div>
                       </td>
 
                       {/* Separate Address Column */}
@@ -289,9 +303,11 @@ export default function PipelineInspectionsPage() {
                         {item.address || '—'}
                       </td>
 
-                      {/* Separate Branch Column */}
-                      <td className="p-3.5 text-slate-700 font-bold align-middle">
-                        {item.branch}
+                      {/* Branch Badge with distinct colors */}
+                      <td className="p-3.5 align-middle">
+                        <span className={`text-[11px] px-2.5 py-0.5 rounded-md font-bold border inline-block ${getBranchBadgeStyle(item.branch)}`}>
+                          {item.branch}
+                        </span>
                       </td>
 
                       {/* Technician Column */}
@@ -358,7 +374,7 @@ export default function PipelineInspectionsPage() {
                   className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs active:scale-[0.99] cursor-pointer space-y-2"
                 >
                   <div className="flex justify-between items-start">
-                    <h3 className="font-bold text-sm text-slate-900">{item.customerName}</h3>
+                    <h3 className="font-black text-indigo-950 text-sm">{item.customerName}</h3>
                     <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${
                       item.status === 'تم رفع المقاسات' ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                       : item.status === 'في الورشة' ? 'bg-purple-50 text-purple-800 border-purple-200'
@@ -368,12 +384,18 @@ export default function PipelineInspectionsPage() {
                     </span>
                   </div>
 
-                  <div className="text-xs text-slate-500 font-mono">
-                    {format12hTime(item.scheduledAt)} • {item.technician} • {item.branch}
+                  <div className="text-xs text-slate-500 font-mono flex items-center gap-2 flex-wrap">
+                    <span>{format12hTime(item.scheduledAt)}</span>
+                    <span>•</span>
+                    <span>{item.technician}</span>
+                    <span>•</span>
+                    <span className={`px-2 py-0.2 rounded font-bold border text-[10px] ${getBranchBadgeStyle(item.branch)}`}>
+                      {item.branch}
+                    </span>
                   </div>
 
                   <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
-                    <span className="font-bold text-slate-700">{item.rooms?.length || 0} غرف</span>
+                    <span className="font-bold text-slate-700">الغرف: {item.rooms?.length || 0}</span>
                     
                     <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                       <a
