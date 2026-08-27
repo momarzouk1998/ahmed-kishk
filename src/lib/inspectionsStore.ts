@@ -83,13 +83,29 @@ export interface RoomPricing {
   pipePricePerMeter?: number;
   pipeAccessories?: PipeAccessories;
 
-  // Tape, Tailoring & Install
+  // Tape, Tailoring, Install & Transport
   tapeMeters: number;
   tapePrice: number;
   tailorPricePerSide: number;
+  installFeeEnabled?: boolean; // رسوم التركيب (اختياري)
   installFee: number;
+  transportFeeEnabled?: boolean; // رسوم النقل للمحافظات (اختياري)
+  transportFee?: number;
   totalSellPrice: number;
 }
+
+export type QuotationStatus =
+  | 'المعاينات'
+  | 'تم ارسال المعاينات'
+  | 'بانتظار التسعير'
+  | 'تم إرسال المقايسة'
+  | 'معتمد ومسدد العربون'
+  | 'معتمد و مسدد العربون'
+  | 'تم التحويل للورشة'
+  | 'تم التحويل الى الورشه'
+  | 'جاهز للستليم'
+  | 'تم التسليم'
+  | 'مكتمل ومسلم';
 
 export interface QuotationOrder {
   id: string;
@@ -98,7 +114,7 @@ export interface QuotationOrder {
   phone: string;
   address: string;
   branch?: string;
-  status: 'بانتظار التسعير' | 'تم إرسال المقايسة' | 'معتمد ومسدد العربون' | 'تم التحويل للورشة' | 'مكتمل ومسلم';
+  status: QuotationStatus;
   totalAmount: number;
   depositPaid: number;
   remainingAmount: number;
@@ -550,12 +566,16 @@ export function updateQuotationStageAndStatus(orderId: string, newStatus: Quotat
     // Sync inspection
     const insp = getInspectionById(target.inspectionId);
     if (insp) {
-      if (newStatus === 'تم التحويل للورشة') {
+      if (newStatus === 'تم التحويل الى الورشه' || newStatus === 'جاهز للستليم') {
         insp.status = 'في الورشة';
-      } else if (newStatus === 'مكتمل ومسلم') {
+      } else if (newStatus === 'تم التسليم') {
         insp.status = 'مكتمل';
       } else if (newStatus === 'بانتظار التسعير') {
         insp.status = 'قيد التسعير';
+      } else if (newStatus === 'المعاينات') {
+        insp.status = 'مُجدول';
+      } else if (newStatus === 'تم ارسال المعاينات') {
+        insp.status = 'تم رفع المقاسات';
       }
       saveOrUpdateInspection(insp);
     }

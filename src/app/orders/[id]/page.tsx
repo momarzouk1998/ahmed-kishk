@@ -404,6 +404,36 @@ export default function OrderDetailPage() {
                         </select>
                       </div>
                     </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-amber-200/60">
+                      <label className="flex items-center gap-2 bg-white p-2 rounded-lg border border-amber-200 cursor-pointer font-bold text-slate-800">
+                        <input
+                          type="checkbox"
+                          checked={rm.installFeeEnabled !== false}
+                          onChange={e => updateRoomInState({
+                            ...rm,
+                            installFeeEnabled: e.target.checked,
+                            installFee: e.target.checked ? (rm.installFee || 125) : 0,
+                          })}
+                          className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
+                        />
+                        <span>رسوم التركيب للغرفة ({rm.installFeeEnabled !== false ? rm.installFee : 0}ج)</span>
+                      </label>
+
+                      <label className="flex items-center gap-2 bg-white p-2 rounded-lg border border-amber-200 cursor-pointer font-bold text-slate-800">
+                        <input
+                          type="checkbox"
+                          checked={!!rm.transportFeeEnabled}
+                          onChange={e => updateRoomInState({
+                            ...rm,
+                            transportFeeEnabled: e.target.checked,
+                            transportFee: e.target.checked ? (rm.transportFee || 0) : 0,
+                          })}
+                          className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
+                        />
+                        <span>رسوم نقل المحافظات ({rm.transportFeeEnabled ? (rm.transportFee || 0) : 0}ج)</span>
+                      </label>
+                    </div>
                   </div>
                 )}
               </div>

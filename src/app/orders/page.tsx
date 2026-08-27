@@ -12,11 +12,13 @@ import {
 
 const STAGE_OPTIONS = [
   'الكل',
+  'المعاينات',
+  'تم ارسال المعاينات',
   'بانتظار التسعير',
-  'تم إرسال المقايسة',
-  'معتمد ومسدد العربون',
-  'تم التحويل للورشة',
-  'مكتمل ومسلم',
+  'معتمد و مسدد العربون',
+  'تم التحويل الى الورشه',
+  'جاهز للستليم',
+  'تم التسليم',
 ];
 
 export default function OrdersPage() {
@@ -227,11 +229,13 @@ export default function OrdersPage() {
                             className="text-[10px] border border-slate-300 rounded-lg p-1 bg-white font-bold text-slate-700 cursor-pointer focus:border-amber-500"
                             title="تغيير مرحلة الأوردر استثنائياً"
                           >
-                            <option value="بانتظار التسعير">مرحلة 1: بانتظار التسعير</option>
-                            <option value="تم إرسال المقايسة">مرحلة 2: تم إرسال المقايسة</option>
-                            <option value="معتمد ومسدد العربون">مرحلة 2: معتمد ومسدد العربون</option>
-                            <option value="تم التحويل للورشة">مرحلة 3: تم التحويل للورشة (التفصيل)</option>
-                            <option value="مكتمل ومسلم">مرحلة 4: مكتمل وتم التسليم</option>
+                            <option value="المعاينات">مرحلة 1: المعاينات</option>
+                            <option value="تم ارسال المعاينات">مرحلة 2: تم ارسال المعاينات</option>
+                            <option value="بانتظار التسعير">مرحلة 3: بانتظار التسعير</option>
+                            <option value="معتمد و مسدد العربون">مرحلة 4: معتمد و مسدد العربون</option>
+                            <option value="تم التحويل الى الورشه">مرحلة 5: تم التحويل الى الورشه</option>
+                            <option value="جاهز للستليم">مرحلة 6: جاهز للستليم</option>
+                            <option value="تم التسليم">مرحلة 7: تم التسليم</option>
                           </select>
                         </div>
                       </td>

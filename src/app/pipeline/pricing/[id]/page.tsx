@@ -107,7 +107,10 @@ export default function PricingDetailPage() {
     decorHangers: 0,
   });
 
+  const [installFeeEnabled, setInstallFeeEnabled] = useState<boolean>(true);
   const [installFee, setInstallFee] = useState<number>(125);
+  const [transportFeeEnabled, setTransportFeeEnabled] = useState<boolean>(false);
+  const [transportFee, setTransportFee] = useState<number>(0);
 
   useEffect(() => {
     if (quotation) {
@@ -123,9 +126,9 @@ export default function PricingDetailPage() {
     setEditingRoomId(room.id);
     const widthM = room.widthCm / 100;
 
-    setHeavyEnabled(room.heavyEnabled ?? true);
-    setSheerEnabled(room.sheerEnabled ?? true);
-    setBlackoutEnabled(room.blackoutEnabled ?? false);
+    setHeavyEnabled(room.heavyEnabled !== false);
+    setSheerEnabled(room.sheerEnabled !== false);
+    setBlackoutEnabled(!!room.blackoutEnabled);
 
     const hTape = room.heavyTapeType || '٣ فتلة';
     const hMul = room.heavyMultiplier ?? (TAPE_MULTIPLIERS[hTape] || 2.0);
@@ -167,7 +170,10 @@ export default function PricingDetailPage() {
       decorHangers: 0,
     });
 
-    setInstallFee(room.installFee || 125);
+    setInstallFeeEnabled(room.installFeeEnabled !== false);
+    setInstallFee(room.installFee ?? 125);
+    setTransportFeeEnabled(!!room.transportFeeEnabled);
+    setTransportFee(room.transportFee ?? 0);
   };
 
   const handleHeavyTapeSelect = (tapeName: string) => {
@@ -266,7 +272,10 @@ export default function PricingDetailPage() {
           installationTotal = pipeBaseCost + accessoriesCost;
         }
 
-        const total = heavyCost + sheerCost + blackoutCost + totalTapeCost + installationTotal + installFee;
+        const effectiveInstallFee = installFeeEnabled ? installFee : 0;
+        const effectiveTransportFee = transportFeeEnabled ? (transportFee || 0) : 0;
+
+        const total = heavyCost + sheerCost + blackoutCost + totalTapeCost + installationTotal + effectiveInstallFee + effectiveTransportFee;
 
         return {
           ...rm,
@@ -307,7 +316,10 @@ export default function PricingDetailPage() {
           tapeMeters: Math.round((effectiveHeavyMeters + effectiveSheerMeters + effectiveBlackoutMeters) * 100) / 100,
           tapePrice: 50,
           tailorPricePerSide: 0,
-          installFee,
+          installFeeEnabled,
+          installFee: effectiveInstallFee,
+          transportFeeEnabled,
+          transportFee: effectiveTransportFee,
           totalSellPrice: Math.round(total),
         };
       });
@@ -1019,17 +1031,59 @@ export default function PricingDetailPage() {
                 )}
               </div>
 
-              {/* Fixed Installation Fee */}
-              <div className="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs">
-                <span className="font-bold text-slate-800">رسوم التركيب للستارة / الغرفة (ثابتة):</span>
-                <div className="flex items-center gap-1">
-                  <input
-                    type="number"
-                    value={installFee}
-                    onChange={e => setInstallFee(Number(e.target.value))}
-                    className="w-24 text-center font-mono font-bold text-slate-900 bg-white border border-slate-300 rounded-lg py-1 text-xs"
-                  />
-                  <span className="font-bold text-slate-700">جنيه</span>
+              {/* Installation Fee (Optional) & Transport Fee (Optional) */}
+              <div className="space-y-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200 text-xs">
+                {/* 1. Installation Fee Toggle */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200/80 pb-2">
+                  <label className="font-bold text-slate-800 flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={installFeeEnabled}
+                      onChange={e => setInstallFeeEnabled(e.target.checked)}
+                      className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
+                    />
+                    <span>إضافة رسوم تركيب الستارة للغرفة (اختياري عند طلب التركيب):</span>
+                  </label>
+                  {installFeeEnabled ? (
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        value={installFee}
+                        onChange={e => setInstallFee(Number(e.target.value))}
+                        className="w-24 text-center font-mono font-bold text-slate-900 bg-white border border-slate-300 rounded-lg py-1 text-xs"
+                      />
+                      <span className="font-bold text-slate-700">جنيه</span>
+                    </div>
+                  ) : (
+                    <span className="text-[11px] text-slate-400 font-bold italic">بدون رسوم تركيب (0ج)</span>
+                  )}
+                </div>
+
+                {/* 2. Transport/Shipping Fee Toggle */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1">
+                  <label className="font-bold text-slate-800 flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={transportFeeEnabled}
+                      onChange={e => setTransportFeeEnabled(e.target.checked)}
+                      className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
+                    />
+                    <span>إضافة رسوم نقل وتوصيل (اختياري عند النقل لمحافظة أخرى):</span>
+                  </label>
+                  {transportFeeEnabled ? (
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        placeholder="السعر"
+                        value={transportFee || ''}
+                        onChange={e => setTransportFee(Number(e.target.value))}
+                        className="w-24 text-center font-mono font-bold text-slate-900 bg-white border border-slate-300 rounded-lg py-1 text-xs"
+                      />
+                      <span className="font-bold text-slate-700">جنيه</span>
+                    </div>
+                  ) : (
+                    <span className="text-[11px] text-slate-400 font-bold italic">بدون رسوم نقل (0ج)</span>
+                  )}
                 </div>
               </div>
             </div>
