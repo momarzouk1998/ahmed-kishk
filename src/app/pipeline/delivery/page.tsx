@@ -11,7 +11,7 @@ interface DeliveryJob {
   branch: string;
   notes: string;
   remainingAmount: number;
-  status: 'جاهز للتسليم بالمعرض' | 'تم التسليم للعميل بنجاح';
+  status: 'جاهز للتسليم بالمعرض' | 'تم التسليم للعميل بنجاح' | 'في التركيبات';
 }
 
 const initialDeliveryJobs: DeliveryJob[] = [
@@ -218,17 +218,27 @@ export default function PipelineDeliveryPage() {
                     💬 إرسال إشعار الجاهزية للعميل (واتساب)
                   </a>
 
-                  {job.status !== 'تم التسليم للعميل بنجاح' ? (
-                    <button
-                      onClick={() => completeDelivery(job.id)}
-                      className="w-full bg-blue-600 hover:bg-blue-500 text-white py-2.5 rounded-xl text-xs font-black shadow-xs flex items-center justify-center gap-1 cursor-pointer transition-colors"
-                    >
-                      <span className="material-symbols-outlined text-[16px]">check_circle</span>
-                      تأكيد تسليم الأوردر للعميل وتحصيل ({job.remainingAmount.toLocaleString()} ج)
-                    </button>
+                  {job.status !== 'تم التسليم للعميل بنجاح' && job.status !== 'في التركيبات' ? (
+                    <div className="space-y-2">
+                      <button
+                        onClick={() => completeDelivery(job.id)}
+                        className="w-full bg-blue-600 hover:bg-blue-500 text-white py-2.5 rounded-xl text-xs font-black shadow-xs flex items-center justify-center gap-1 cursor-pointer transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">check_circle</span>
+                        تأكيد تسليم الأوردر للعميل وتحصيل ({job.remainingAmount.toLocaleString()} ج)
+                      </button>
+                      <button
+                        onClick={() => {
+                          setJobs(prev => prev.map(j => j.id === job.id ? { ...j, status: 'في التركيبات' } : j));
+                        }}
+                        className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 py-2 rounded-xl text-xs font-black shadow-gold cursor-pointer transition-colors"
+                      >
+                        نقل إلى التركيبات ←
+                      </button>
+                    </div>
                   ) : (
                     <div className="w-full text-center py-1.5 text-xs font-bold text-emerald-800 bg-emerald-50 rounded-xl border border-emerald-200">
-                      ✓ تم تسليم الطلب للعميل إغلاق الملف
+                      ✓ تم تحويل الطلب للسجل ومغلق
                     </div>
                   )}
                 </div>

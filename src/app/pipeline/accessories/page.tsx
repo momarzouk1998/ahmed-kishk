@@ -52,7 +52,7 @@ const initialKits: AccessoryKit[] = [
 
 export default function PipelineAccessoriesPage() {
   const [kits, setKits] = useState<AccessoryKit[]>(initialKits);
-  const [activeTab, setActiveTab] = useState<'OPEN' | 'SENT'>('OPEN');
+  const [activeTab, setActiveTab] = useState<'PREPARING' | 'PREPARED' | 'HISTORY'>('PREPARING');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Add Custom Item Modal State
@@ -61,9 +61,16 @@ export default function PipelineAccessoriesPage() {
   const [newItemDetail, setNewItemDetail] = useState('');
   const [newItemQty, setNewItemQty] = useState(1);
 
-  const isSent = (status: AccessoryKit['status']) => status === 'في التركيبات' || status === 'في التسليمات';
+  const tabFiltered = kits.filter(k => {
+    if (activeTab === 'PREPARING') {
+      return k.status === 'جاري التجهيز';
+    } else if (activeTab === 'PREPARED') {
+      return k.status === 'تم التجهيز';
+    } else {
+      return k.status === 'في التركيبات' || k.status === 'في التسليمات';
+    }
+  });
 
-  const tabFiltered = kits.filter(k => activeTab === 'OPEN' ? !isSent(k.status) : isSent(k.status));
   const filtered = tabFiltered.filter(k =>
     k.customerName.includes(searchQuery) || k.id.includes(searchQuery) || k.orderId.includes(searchQuery)
   );
@@ -106,8 +113,9 @@ export default function PipelineAccessoriesPage() {
     alert('تم إضافة الإكسسوار الإضافي للطلب بنجاح ✓');
   };
 
-  const openCount = kits.filter(k => !isSent(k.status)).length;
-  const sentCount = kits.filter(k => isSent(k.status)).length;
+  const preparingCount = kits.filter(k => k.status === 'جاري التجهيز').length;
+  const preparedCount = kits.filter(k => k.status === 'تم التجهيز').length;
+  const historyCount = kits.filter(k => k.status === 'في التركيبات' || k.status === 'في التسليمات').length;
 
   return (
     <PageShell title="الإكسسوارات">
@@ -122,12 +130,12 @@ export default function PipelineAccessoriesPage() {
           </div>
         </div>
 
-        {/* 2-Tabs Navigation */}
+        {/* 3-Tabs Navigation */}
         <div className="flex border-b border-slate-200 gap-2">
           <button
-            onClick={() => setActiveTab('OPEN')}
-            className={`pb-3 px-4 text-xs sm:text-sm font-black flex items-center gap-2 border-b-2 transition-all ${
-              activeTab === 'OPEN'
+            onClick={() => setActiveTab('PREPARING')}
+            className={`pb-3 px-4 text-xs sm:text-sm font-black flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
+              activeTab === 'PREPARING'
                 ? 'border-brand-gold text-slate-950'
                 : 'border-transparent text-slate-400 hover:text-slate-700'
             }`}
@@ -135,16 +143,33 @@ export default function PipelineAccessoriesPage() {
             <span className="material-symbols-outlined text-[18px]">handyman</span>
             <span>الإكسسوارات</span>
             <span className={`text-[11px] px-2 py-0.2 rounded-full font-mono font-bold ${
-              activeTab === 'OPEN' ? 'bg-amber-100 text-amber-950' : 'bg-slate-100 text-slate-500'
+              activeTab === 'PREPARING' ? 'bg-amber-100 text-amber-950' : 'bg-slate-100 text-slate-500'
             }`}>
-              {openCount}
+              {preparingCount}
             </span>
           </button>
 
           <button
-            onClick={() => setActiveTab('SENT')}
-            className={`pb-3 px-4 text-xs sm:text-sm font-black flex items-center gap-2 border-b-2 transition-all ${
-              activeTab === 'SENT'
+            onClick={() => setActiveTab('PREPARED')}
+            className={`pb-3 px-4 text-xs sm:text-sm font-black flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
+              activeTab === 'PREPARED'
+                ? 'border-brand-gold text-slate-950'
+                : 'border-transparent text-slate-400 hover:text-slate-700'
+            }`}
+          >
+            <span className="material-symbols-outlined text-[18px]">check_circle</span>
+            <span>تم التجهيز</span>
+            <span className={`text-[11px] px-2 py-0.2 rounded-full font-mono font-bold ${
+              activeTab === 'PREPARED' ? 'bg-amber-100 text-amber-950' : 'bg-slate-100 text-slate-500'
+            }`}>
+              {preparedCount}
+            </span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('HISTORY')}
+            className={`pb-3 px-4 text-xs sm:text-sm font-black flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
+              activeTab === 'HISTORY'
                 ? 'border-brand-gold text-slate-950'
                 : 'border-transparent text-slate-400 hover:text-slate-700'
             }`}
@@ -152,9 +177,9 @@ export default function PipelineAccessoriesPage() {
             <span className="material-symbols-outlined text-[18px]">history</span>
             <span>السجل</span>
             <span className={`text-[11px] px-2 py-0.2 rounded-full font-mono font-bold ${
-              activeTab === 'SENT' ? 'bg-amber-100 text-amber-950' : 'bg-slate-100 text-slate-500'
+              activeTab === 'HISTORY' ? 'bg-amber-100 text-amber-950' : 'bg-slate-100 text-slate-500'
             }`}>
-              {sentCount}
+              {historyCount}
             </span>
           </button>
         </div>
@@ -177,11 +202,11 @@ export default function PipelineAccessoriesPage() {
           <div className="bg-white rounded-2xl border border-dashed border-slate-300 p-10 text-center">
             <span className="material-symbols-outlined text-[40px] text-slate-300 block mb-1">inbox</span>
             <h3 className="font-bold text-slate-700 text-sm">
-              {activeTab === 'OPEN' ? 'لا توجد طلبات اكسسوار قيد التجهيز' : 'السجل فارغ'}
+              {activeTab === 'PREPARING' ? 'لا توجد طلبات إكسسوار قيد التجهيز' : activeTab === 'PREPARED' ? 'لا توجد طلبات جاهزة وتنتظر النقل' : 'السجل فارغ'}
             </h3>
           </div>
-        ) : activeTab === 'SENT' ? (
-          /* TAB 2: Table Format (جدول السجل) */
+        ) : activeTab === 'HISTORY' ? (
+          /* TAB 3: Table Format (جدول السجل) */
           <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-soft">
             <div className="overflow-x-auto">
               <table className="w-full text-right text-xs min-w-[700px]">
@@ -240,7 +265,7 @@ export default function PipelineAccessoriesPage() {
             </div>
           </div>
         ) : (
-          /* TAB 1: Active Cards (الكرت) */
+          /* TAB 1 & TAB 2: Active Cards (الكرت) */
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {filtered.map(kit => (
               <div key={kit.id} className="bg-white rounded-2xl border border-slate-200 p-5 shadow-soft flex flex-col justify-between space-y-4">
@@ -293,15 +318,18 @@ export default function PipelineAccessoriesPage() {
                     💬 إرسال تحديث للعميل (واتساب)
                   </a>
 
-                  {kit.status === 'جاري التجهيز' ? (
+                  {/* TAB 1: زر تأكيد تم التجهيز */}
+                  {activeTab === 'PREPARING' && (
                     <button
                       onClick={() => updateKitStatus(kit.id, 'تم التجهيز')}
                       className="w-full bg-slate-900 hover:bg-slate-800 text-white py-2.5 rounded-xl text-xs font-bold cursor-pointer transition-colors shadow-xs"
                     >
                       ✓ تأكيد تم التجهيز
                     </button>
-                  ) : (
-                    /* 🎯 أزرار النقل تكون في التاب الأول عند اكتمال التجهيز */
+                  )}
+
+                  {/* TAB 2: أزرار النقل للتسليمات أو التركيبات */}
+                  {activeTab === 'PREPARED' && (
                     <div className="grid grid-cols-2 gap-2">
                       <button
                         onClick={() => updateKitStatus(kit.id, 'في التسليمات')}

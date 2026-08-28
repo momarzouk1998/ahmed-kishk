@@ -12,7 +12,7 @@ interface TailoringTask {
   fabricName: string;
   tapeStyle: string;
   tailorName: string;
-  status: 'تمت الخياطة' | 'جاهز للتسليم' | 'في التركيبات' | 'في التسليمات';
+  status: 'جاري الخياطة' | 'تمت الخياطة' | 'جاهز للتسليم' | 'في التركيبات' | 'في التسليمات';
   notes: string;
 }
 
@@ -26,7 +26,7 @@ const initialTasks: TailoringTask[] = [
     fabricName: 'تول خفيف مطرز (8.75متر)',
     tapeStyle: 'شريط كشكشة 3 فتلة',
     tailorName: 'عم مصطفى',
-    status: 'تمت الخياطة',
+    status: 'جاري الخياطة',
     notes: 'ثني الذيل 12 سم وثني الأجناب 3 سم',
   },
   {
@@ -38,7 +38,7 @@ const initialTasks: TailoringTask[] = [
     fabricName: 'بلاك آوت عازل (2.60متر)',
     tapeStyle: 'حلقات كبس مذهبة',
     tailorName: 'أحمد شحاتة',
-    status: 'جاهز للتسليم',
+    status: 'تمت الخياطة',
     notes: 'استخدام فازلين تقوية تحت الحلقات',
   },
   {
@@ -50,19 +50,38 @@ const initialTasks: TailoringTask[] = [
     fabricName: 'بلاك آوت عازل (16متر)',
     tapeStyle: 'شريط كشكشة 3 فتلة',
     tailorName: 'عم مصطفى',
-    status: 'جاهز للتسليم',
+    status: 'في التركيبات',
     notes: 'تم الكي والتغليف في أكياس حماية',
+  },
+  {
+    id: 'TLR-104',
+    orderId: 'ORD-004',
+    customerName: 'د. سارة أحمد',
+    phone: '01298765432',
+    roomName: 'غرفة المعيشة',
+    fabricName: 'كتان هازل بني (12متر)',
+    tapeStyle: 'شريط ويفي حديث',
+    tailorName: 'حسن إبراهيم',
+    status: 'جاري الخياطة',
+    notes: 'تأكيد ضبط كشكشة الشريط الويفي',
   }
 ];
 
 export default function PipelineTailoringPage() {
   const [tasks, setTasks] = useState<TailoringTask[]>(initialTasks);
-  const [activeTab, setActiveTab] = useState<'OPEN' | 'SENT'>('OPEN');
+  const [activeTab, setActiveTab] = useState<'WORKSHOP' | 'SEWN' | 'HISTORY'>('WORKSHOP');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const isSent = (status: TailoringTask['status']) => status === 'في التركيبات' || status === 'في التسليمات';
+  const tabFiltered = tasks.filter(t => {
+    if (activeTab === 'WORKSHOP') {
+      return t.status === 'جاري الخياطة';
+    } else if (activeTab === 'SEWN') {
+      return t.status === 'تمت الخياطة' || t.status === 'جاهز للتسليم';
+    } else {
+      return t.status === 'في التركيبات' || t.status === 'في التسليمات';
+    }
+  });
 
-  const tabFiltered = tasks.filter(t => activeTab === 'OPEN' ? !isSent(t.status) : isSent(t.status));
   const filtered = tabFiltered.filter(t =>
     t.customerName.includes(searchQuery) || t.fabricName.includes(searchQuery) || t.id.includes(searchQuery)
   );
@@ -71,8 +90,9 @@ export default function PipelineTailoringPage() {
     setTasks(prev => prev.map(t => t.id === id ? { ...t, status } : t));
   };
 
-  const openCount = tasks.filter(t => !isSent(t.status)).length;
-  const sentCount = tasks.filter(t => isSent(t.status)).length;
+  const workshopCount = tasks.filter(t => t.status === 'جاري الخياطة').length;
+  const sewnCount = tasks.filter(t => t.status === 'تمت الخياطة' || t.status === 'جاهز للتسليم').length;
+  const historyCount = tasks.filter(t => t.status === 'في التركيبات' || t.status === 'في التسليمات').length;
 
   return (
     <PageShell title="الورشة">
@@ -87,12 +107,12 @@ export default function PipelineTailoringPage() {
           </div>
         </div>
 
-        {/* 2-Tabs Navigation */}
+        {/* 3-Tabs Navigation */}
         <div className="flex border-b border-slate-200 gap-2">
           <button
-            onClick={() => setActiveTab('OPEN')}
-            className={`pb-3 px-4 text-xs sm:text-sm font-black flex items-center gap-2 border-b-2 transition-all ${
-              activeTab === 'OPEN'
+            onClick={() => setActiveTab('WORKSHOP')}
+            className={`pb-3 px-4 text-xs sm:text-sm font-black flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
+              activeTab === 'WORKSHOP'
                 ? 'border-brand-gold text-slate-950'
                 : 'border-transparent text-slate-400 hover:text-slate-700'
             }`}
@@ -100,16 +120,33 @@ export default function PipelineTailoringPage() {
             <span className="material-symbols-outlined text-[18px]">precision_manufacturing</span>
             <span>الورشة</span>
             <span className={`text-[11px] px-2 py-0.2 rounded-full font-mono font-bold ${
-              activeTab === 'OPEN' ? 'bg-amber-100 text-amber-950' : 'bg-slate-100 text-slate-500'
+              activeTab === 'WORKSHOP' ? 'bg-amber-100 text-amber-950' : 'bg-slate-100 text-slate-500'
             }`}>
-              {openCount}
+              {workshopCount}
             </span>
           </button>
 
           <button
-            onClick={() => setActiveTab('SENT')}
-            className={`pb-3 px-4 text-xs sm:text-sm font-black flex items-center gap-2 border-b-2 transition-all ${
-              activeTab === 'SENT'
+            onClick={() => setActiveTab('SEWN')}
+            className={`pb-3 px-4 text-xs sm:text-sm font-black flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
+              activeTab === 'SEWN'
+                ? 'border-brand-gold text-slate-950'
+                : 'border-transparent text-slate-400 hover:text-slate-700'
+            }`}
+          >
+            <span className="material-symbols-outlined text-[18px]">stitch</span>
+            <span>تم الخياطة</span>
+            <span className={`text-[11px] px-2 py-0.2 rounded-full font-mono font-bold ${
+              activeTab === 'SEWN' ? 'bg-amber-100 text-amber-950' : 'bg-slate-100 text-slate-500'
+            }`}>
+              {sewnCount}
+            </span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('HISTORY')}
+            className={`pb-3 px-4 text-xs sm:text-sm font-black flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
+              activeTab === 'HISTORY'
                 ? 'border-brand-gold text-slate-950'
                 : 'border-transparent text-slate-400 hover:text-slate-700'
             }`}
@@ -117,9 +154,9 @@ export default function PipelineTailoringPage() {
             <span className="material-symbols-outlined text-[18px]">history</span>
             <span>السجل</span>
             <span className={`text-[11px] px-2 py-0.2 rounded-full font-mono font-bold ${
-              activeTab === 'SENT' ? 'bg-amber-100 text-amber-950' : 'bg-slate-100 text-slate-500'
+              activeTab === 'HISTORY' ? 'bg-amber-100 text-amber-950' : 'bg-slate-100 text-slate-500'
             }`}>
-              {sentCount}
+              {historyCount}
             </span>
           </button>
         </div>
@@ -142,11 +179,11 @@ export default function PipelineTailoringPage() {
           <div className="bg-white rounded-2xl border border-dashed border-slate-300 p-10 text-center">
             <span className="material-symbols-outlined text-[40px] text-slate-300 block mb-1">inbox</span>
             <h3 className="font-bold text-slate-700 text-sm">
-              {activeTab === 'OPEN' ? 'لا توجد قطع قيد الخياطة' : 'السجل فارغ'}
+              {activeTab === 'WORKSHOP' ? 'لا توجد قطع قيد التفصيل بالورشة' : activeTab === 'SEWN' ? 'لا توجد قطع منتهية الخياطة وتنتظر التسليم' : 'السجل فارغ'}
             </h3>
           </div>
-        ) : activeTab === 'SENT' ? (
-          /* TAB 2: Table Format (جدول السجل) */
+        ) : activeTab === 'HISTORY' ? (
+          /* TAB 3: Table Format (جدول السجل - المحولات) */
           <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-soft">
             <div className="overflow-x-auto">
               <table className="w-full text-right text-xs min-w-[700px]">
@@ -156,7 +193,7 @@ export default function PipelineTailoringPage() {
                     <th className="p-3.5">العميل</th>
                     <th className="p-3.5">الغرفة والمكان</th>
                     <th className="p-3.5">الخامة والتفصيل</th>
-                    <th className="p-3.5">الترزي</th>
+                    <th className="p-3.5">مسؤول الورشة</th>
                     <th className="p-3.5 text-center">وجهة النقل</th>
                     <th className="p-3.5 text-center">واتساب</th>
                     <th className="p-3.5 text-center">الحالة</th>
@@ -189,7 +226,7 @@ export default function PipelineTailoringPage() {
                       </td>
                       <td className="p-3.5 text-center">
                         <span className="text-[11px] px-2.5 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-900 border border-emerald-200">
-                          تمت الخياطة والنقل
+                          مكتمل ومحول
                         </span>
                       </td>
                     </tr>
@@ -199,7 +236,7 @@ export default function PipelineTailoringPage() {
             </div>
           </div>
         ) : (
-          /* TAB 1: Active Cards (الكرت) */
+          /* TAB 1 & TAB 2: Active Cards View */
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {filtered.map(task => (
               <div key={task.id} className="bg-white rounded-2xl border border-slate-200 p-5 shadow-soft flex flex-col justify-between space-y-4">
@@ -211,7 +248,9 @@ export default function PipelineTailoringPage() {
                       <p className="text-xs text-slate-600 font-bold">{task.roomName}</p>
                     </div>
                     <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold border ${
-                      task.status === 'تمت الخياطة' ? 'bg-amber-100 text-amber-900 border-amber-200' : 'bg-emerald-100 text-emerald-900 border-emerald-200'
+                      task.status === 'جاري الخياطة' ? 'bg-amber-100 text-amber-900 border-amber-200'
+                      : task.status === 'تمت الخياطة' ? 'bg-indigo-100 text-indigo-900 border-indigo-200'
+                      : 'bg-emerald-100 text-emerald-900 border-emerald-200'
                     }`}>
                       {task.status}
                     </span>
@@ -235,41 +274,42 @@ export default function PipelineTailoringPage() {
                     💬 إرسال تحديث للعميل (واتساب)
                   </a>
 
-                  {/* 🎯 بندين فقط: تمت الخياطة | جاهز للتسليم */}
-                  <div className="grid grid-cols-2 gap-2 text-xs font-bold">
+                  {/* TAB 1: زر تمت الخياطة فقط */}
+                  {activeTab === 'WORKSHOP' && (
                     <button
                       onClick={() => updateTaskStatus(task.id, 'تمت الخياطة')}
-                      className={`p-2.5 rounded-xl border transition-all cursor-pointer ${
-                        task.status === 'تمت الخياطة' ? 'bg-amber-500 text-slate-950 border-amber-500 font-black shadow-xs' : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
-                      }`}
+                      className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 py-2.5 rounded-xl text-xs font-black shadow-gold cursor-pointer transition-colors"
                     >
-                      تمت الخياطة
+                      تمت الخياطة ←
                     </button>
-                    <button
-                      onClick={() => updateTaskStatus(task.id, 'جاهز للتسليم')}
-                      className={`p-2.5 rounded-xl border transition-all cursor-pointer ${
-                        task.status === 'جاهز للتسليم' ? 'bg-emerald-600 text-white border-emerald-600 font-black shadow-xs' : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
-                      }`}
-                    >
-                      جاهز للتسليم ✓
-                    </button>
-                  </div>
+                  )}
 
-                  {/* 🎯 أزرار النقل تكون في التاب الأول عند الوصول لجاهز للتسليم */}
-                  {task.status === 'جاهز للتسليم' && (
-                    <div className="grid grid-cols-2 gap-2 pt-1">
-                      <button
-                        onClick={() => updateTaskStatus(task.id, 'في التسليمات')}
-                        className="bg-blue-600 hover:bg-blue-500 text-white py-2 rounded-xl text-xs font-black shadow-xs cursor-pointer transition-colors"
-                      >
-                        نقل إلى التسليمات ←
-                      </button>
-                      <button
-                        onClick={() => updateTaskStatus(task.id, 'في التركيبات')}
-                        className="bg-amber-500 hover:bg-amber-400 text-slate-950 py-2 rounded-xl text-xs font-black shadow-gold cursor-pointer transition-colors"
-                      >
-                        نقل إلى التركيبات ←
-                      </button>
+                  {/* TAB 2: زر جاهز للتسليم وأزرار النقل */}
+                  {activeTab === 'SEWN' && (
+                    <div className="space-y-2">
+                      {task.status !== 'جاهز للتسليم' ? (
+                        <button
+                          onClick={() => updateTaskStatus(task.id, 'جاهز للتسليم')}
+                          className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 rounded-xl text-xs font-black shadow-xs cursor-pointer transition-colors"
+                        >
+                          جاهز للتسليم ✓
+                        </button>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-2 pt-1">
+                          <button
+                            onClick={() => updateTaskStatus(task.id, 'في التسليمات')}
+                            className="bg-blue-600 hover:bg-blue-500 text-white py-2.5 rounded-xl text-xs font-black shadow-xs cursor-pointer transition-colors"
+                          >
+                            نقل إلى التسليمات ←
+                          </button>
+                          <button
+                            onClick={() => updateTaskStatus(task.id, 'في التركيبات')}
+                            className="bg-amber-500 hover:bg-amber-400 text-slate-950 py-2.5 rounded-xl text-xs font-black shadow-gold cursor-pointer transition-colors"
+                          >
+                            نقل إلى التركيبات ←
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
