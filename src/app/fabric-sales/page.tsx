@@ -254,27 +254,22 @@ export default function FabricSalesPage() {
         <div className="modal-overlay fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 overflow-y-auto">
           <style>{`
             @media print {
-              html, body {
-                background: white !important;
-                color: black !important;
-                overflow: visible !important;
+              body * {
+                visibility: hidden !important;
               }
-              .modal-overlay {
-                position: static !important;
-                background: transparent !important;
-                padding: 0 !important;
-                margin: 0 !important;
-                display: block !important;
+              #printable-sales-receipt,
+              #printable-sales-receipt * {
+                visibility: visible !important;
               }
               #printable-sales-receipt {
-                position: static !important;
-                display: block !important;
-                visibility: visible !important;
+                position: fixed !important;
+                left: 0 !important;
+                top: 0 !important;
                 width: 100% !important;
                 margin: 0 !important;
-                padding: 10px !important;
-                background: white !important;
-                color: black !important;
+                padding: 15px !important;
+                background: #ffffff !important;
+                color: #000000 !important;
                 box-shadow: none !important;
                 border: none !important;
               }

@@ -60,6 +60,7 @@ export default function PipelineAccessoriesPage() {
   const [newItemName, setNewItemName] = useState('');
   const [newItemDetail, setNewItemDetail] = useState('');
   const [newItemQty, setNewItemQty] = useState(1);
+  const [selectedBranch, setSelectedBranch] = useState<string>('ALL');
 
   const tabFiltered = kits.filter(k => {
     if (activeTab === 'PREPARING') {
@@ -71,9 +72,11 @@ export default function PipelineAccessoriesPage() {
     }
   });
 
-  const filtered = tabFiltered.filter(k =>
-    k.customerName.includes(searchQuery) || k.id.includes(searchQuery) || k.orderId.includes(searchQuery)
-  );
+  const filtered = tabFiltered.filter(k => {
+    const matchesSearch = k.customerName.includes(searchQuery) || k.id.includes(searchQuery) || k.orderId.includes(searchQuery);
+    const matchesBranch = selectedBranch === 'ALL' || (k as any).branch === selectedBranch;
+    return matchesSearch && matchesBranch;
+  });
 
   const toggleItem = (kitId: string, idx: number) => {
     setKits(prev => prev.map(k => {
@@ -120,16 +123,6 @@ export default function PipelineAccessoriesPage() {
   return (
     <PageShell title="الإكسسوارات">
       <div className="flex flex-col gap-5">
-        {/* Concise Header */}
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-100 text-amber-950 border border-amber-200">
-              المرحلة 6
-            </span>
-            <h1 className="font-display font-black text-xl sm:text-2xl text-slate-900">الإكسسوارات (التراكات والمواسير والحوامل)</h1>
-          </div>
-        </div>
-
         {/* 3-Tabs Navigation */}
         <div className="flex border-b border-slate-200 gap-2">
           <button
@@ -184,18 +177,30 @@ export default function PipelineAccessoriesPage() {
           </button>
         </div>
 
-        {/* Search */}
-        <div className="relative">
-          <span className="material-symbols-outlined absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">
-            search
-          </span>
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="بحث بالاسم، الكود..."
-            className="w-full bg-white border border-slate-200 rounded-xl pr-10 pl-4 py-2.5 text-xs sm:text-sm text-slate-900 focus:outline-none focus:border-brand-gold shadow-xs"
-          />
+        {/* Search & Branch Filter Row */}
+        <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
+          <div className="relative sm:col-span-8">
+            <span className="material-symbols-outlined absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">search</span>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="بحث باسم العميل، رقم الهاتف..."
+              className="w-full bg-white border border-slate-200 rounded-xl pr-10 pl-4 py-2.5 text-xs sm:text-sm text-slate-900 focus:outline-none focus:border-brand-gold shadow-2xs"
+            />
+          </div>
+
+          <div className="sm:col-span-4">
+            <select
+              value={selectedBranch}
+              onChange={(e) => setSelectedBranch(e.target.value)}
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-brand-gold shadow-2xs cursor-pointer"
+            >
+              <option value="ALL">عوامل تصفية: جميع الفروع</option>
+              <option value="الفرع الرئيسي">الفرع الرئيسي</option>
+              <option value="فرع عرابي">فرع عرابي</option>
+            </select>
+          </div>
         </div>
 
         {filtered.length === 0 ? (

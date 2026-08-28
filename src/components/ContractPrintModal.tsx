@@ -63,38 +63,24 @@ export default function ContractPrintModal({ isOpen, onClose, data }: ContractPr
     <div className="modal-overlay fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs">
       <style>{`
         @media print {
-          body > *:not(.modal-overlay) {
-            display: none !important;
+          body * {
+            visibility: hidden !important;
           }
-          html, body {
-            background: white !important;
-            color: black !important;
-            overflow: visible !important;
+          #printable-contract-modal,
+          #printable-contract-modal * {
+            visibility: visible !important;
           }
-          .modal-overlay {
-            position: absolute !important;
+          #printable-contract-modal {
+            position: fixed !important;
             left: 0 !important;
             top: 0 !important;
             width: 100% !important;
-            background: white !important;
-            padding: 0 !important;
-            margin: 0 !important;
-            overflow: visible !important;
-            display: block !important;
-            z-index: 999999 !important;
-          }
-          #printable-contract-modal {
-            position: relative !important;
-            display: block !important;
-            visibility: visible !important;
-            width: 100% !important;
             margin: 0 !important;
             padding: 15px !important;
-            background: white !important;
-            color: black !important;
+            background: #ffffff !important;
+            color: #000000 !important;
             box-shadow: none !important;
             border: none !important;
-            max-height: none !important;
           }
           .print\\:hidden, .no-print {
             display: none !important;

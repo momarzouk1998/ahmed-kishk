@@ -41,22 +41,26 @@ export default function PipelineDeliveryPage() {
   const [jobs, setJobs] = useState<DeliveryJob[]>(initialDeliveryJobs);
   const [activeTab, setActiveTab] = useState<'OPEN' | 'SENT'>('OPEN');
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedBranch, setSelectedBranch] = useState<string>('ALL');
 
   const isSent = (status: DeliveryJob['status']) => status === 'تم التسليم للعميل بنجاح' || status === 'في التركيبات';
 
-  const tabFiltered = jobs.filter(j => activeTab === 'OPEN' ? !isSent(j.status) : isSent(j.status));
-  const filtered = tabFiltered.filter(j =>
-    j.customerName.includes(searchQuery) || j.phone.includes(searchQuery) || j.id.includes(searchQuery)
-  );
+  const tabFiltered = jobs.filter(j => {
+    if (activeTab === 'OPEN') {
+      return !isSent(j.status);
+    } else {
+      return isSent(j.status);
+    }
+  });
+
+  const filtered = tabFiltered.filter(j => {
+    const matchesSearch = j.customerName.includes(searchQuery) || j.id.includes(searchQuery) || j.orderId.includes(searchQuery);
+    const matchesBranch = selectedBranch === 'ALL' || j.branch === selectedBranch;
+    return matchesSearch && matchesBranch;
+  });
 
   const completeDelivery = (id: string) => {
-    setJobs(prev => prev.map(j => {
-      if (j.id !== id) return j;
-      return {
-        ...j,
-        status: 'تم التسليم للعميل بنجاح',
-      };
-    }));
+    setJobs(prev => prev.map(j => j.id === id ? { ...j, status: 'تم التسليم للعميل بنجاح' } : j));
     alert('تم تسجيل تسليم الأوردر للعميل بنجاح وإغلاق الطلب.');
   };
 
@@ -66,16 +70,6 @@ export default function PipelineDeliveryPage() {
   return (
     <PageShell title="التسليمات">
       <div className="flex flex-col gap-5">
-        {/* Concise Header */}
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-blue-100 text-blue-950 border border-blue-200">
-              تسليمات المعرض والشحن
-            </span>
-            <h1 className="font-display font-black text-xl sm:text-2xl text-slate-900">التسليمات</h1>
-          </div>
-        </div>
-
         {/* 2-Tabs Navigation */}
         <div className="flex border-b border-slate-200 gap-2">
           <button
@@ -113,18 +107,32 @@ export default function PipelineDeliveryPage() {
           </button>
         </div>
 
-        {/* Search */}
-        <div className="relative">
-          <span className="material-symbols-outlined absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">
-            search
-          </span>
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="بحث بالاسم، الهاتف، الأوردر..."
-            className="w-full bg-white border border-slate-200 rounded-xl pr-10 pl-4 py-2.5 text-xs sm:text-sm text-slate-900 focus:outline-none focus:border-brand-gold shadow-xs"
-          />
+        {/* Search & Branch Filter Row */}
+        <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
+          <div className="relative sm:col-span-8">
+            <span className="material-symbols-outlined absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">
+              search
+            </span>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="بحث باسم العميل، رقم الهاتف أو الفرع..."
+              className="w-full bg-white border border-slate-200 rounded-xl pr-10 pl-4 py-2.5 text-xs sm:text-sm text-slate-900 focus:outline-none focus:border-brand-gold shadow-2xs"
+            />
+          </div>
+
+          <div className="sm:col-span-4">
+            <select
+              value={selectedBranch}
+              onChange={(e) => setSelectedBranch(e.target.value)}
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-brand-gold shadow-2xs cursor-pointer"
+            >
+              <option value="ALL">عوامل تصفية: جميع الفروع</option>
+              <option value="الفرع الرئيسي">الفرع الرئيسي</option>
+              <option value="فرع عرابي">فرع عرابي</option>
+            </select>
+          </div>
         </div>
 
         {filtered.length === 0 ? (

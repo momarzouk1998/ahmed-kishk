@@ -90,21 +90,24 @@ export default function PipelineCuttingPage() {
   const [orders, setOrders] = useState<CuttingOrder[]>(initialOrders);
   const [activeTab, setActiveTab] = useState<'OPEN' | 'SENT'>('OPEN');
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedBranch, setSelectedBranch] = useState<string>('ALL');
   const [selectedOrderForPrint, setSelectedOrderForPrint] = useState<CuttingOrder | null>(null);
 
   const isSent = (status: CuttingOrder['status']) => status === 'تم القص وجاهز للخياطة';
 
   const tabFiltered = orders.filter(o => activeTab === 'OPEN' ? !isSent(o.status) : isSent(o.status));
-  const filtered = tabFiltered.filter(o =>
-    o.customerName.includes(searchQuery) || o.id.includes(searchQuery) || o.orderId.includes(searchQuery)
-  );
+  const filtered = tabFiltered.filter(o => {
+    const matchesSearch = o.customerName.includes(searchQuery) || o.id.includes(searchQuery) || o.orderId.includes(searchQuery);
+    const matchesBranch = selectedBranch === 'ALL' || o.branch === selectedBranch;
+    return matchesSearch && matchesBranch;
+  });
 
   const updateOrderStatus = (id: string, newStatus: CuttingOrder['status']) => {
     setOrders(prev => prev.map(o => o.id === id ? { ...o, status: newStatus } : o));
   };
 
-  const openCount = orders.filter(o => !isSent(o.status)).length;
-  const sentCount = orders.filter(o => isSent(o.status)).length;
+  const openCount = orders.filter(o => o.status === 'بانتظار القص').length;
+  const sentCount = orders.filter(o => o.status === 'تم القص وجاهز للخياطة').length;
 
   // Calculate Fabric Summary for an Order
   const getFabricTotals = (rooms: RoomFabricItem[]) => {
@@ -126,16 +129,6 @@ export default function PipelineCuttingPage() {
   return (
     <PageShell title="قص القماش">
       <div className="flex flex-col gap-5">
-        {/* Concise Header */}
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-100 text-amber-950 border border-amber-200">
-              المرحلة 4
-            </span>
-            <h1 className="font-display font-black text-xl sm:text-2xl text-slate-900">قص القماش والأثواب</h1>
-          </div>
-        </div>
-
         {/* 2-Tabs Navigation */}
         <div className="flex border-b border-slate-200 gap-2">
           <button
@@ -173,18 +166,32 @@ export default function PipelineCuttingPage() {
           </button>
         </div>
 
-        {/* Search */}
-        <div className="relative">
-          <span className="material-symbols-outlined absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">
-            search
-          </span>
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="بحث بالاسم، الكود، اسم القماش..."
-            className="w-full bg-white border border-slate-200 rounded-xl pr-10 pl-4 py-2.5 text-xs sm:text-sm text-slate-900 focus:outline-none focus:border-brand-gold shadow-xs"
-          />
+        {/* Search & Branch Filter Row */}
+        <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
+          <div className="relative sm:col-span-8">
+            <span className="material-symbols-outlined absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">
+              search
+            </span>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="بحث باسم العميل، رقم الهاتف أو اسم القماش..."
+              className="w-full bg-white border border-slate-200 rounded-xl pr-10 pl-4 py-2.5 text-xs sm:text-sm text-slate-900 focus:outline-none focus:border-brand-gold shadow-2xs"
+            />
+          </div>
+
+          <div className="sm:col-span-4">
+            <select
+              value={selectedBranch}
+              onChange={(e) => setSelectedBranch(e.target.value)}
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-brand-gold shadow-2xs cursor-pointer"
+            >
+              <option value="ALL">عوامل تصفية: جميع الفروع</option>
+              <option value="الفرع الرئيسي">الفرع الرئيسي</option>
+              <option value="فرع عرابي">فرع عرابي</option>
+            </select>
+          </div>
         </div>
 
         {filtered.length === 0 ? (
@@ -351,35 +358,22 @@ export default function PipelineCuttingPage() {
           {/* Printable CSS styles */}
           <style>{`
             @media print {
-              body > *:not(.modal-overlay) {
-                display: none !important;
+              body * {
+                visibility: hidden !important;
               }
-              html, body {
-                background: white !important;
-                color: black !important;
-                overflow: visible !important;
+              #printable-cut-sheet-modal,
+              #printable-cut-sheet-modal * {
+                visibility: visible !important;
               }
-              .modal-overlay {
-                position: absolute !important;
+              #printable-cut-sheet-modal {
+                position: fixed !important;
                 left: 0 !important;
                 top: 0 !important;
                 width: 100% !important;
-                background: white !important;
-                padding: 0 !important;
                 margin: 0 !important;
-                overflow: visible !important;
-                display: block !important;
-                z-index: 999999 !important;
-              }
-              #printable-cut-sheet-modal {
-                position: relative !important;
-                display: block !important;
-                visibility: visible !important;
-                width: 100% !important;
-                margin: 0 !important;
-                padding: 10px !important;
-                background: white !important;
-                color: black !important;
+                padding: 15px !important;
+                background: #ffffff !important;
+                color: #000000 !important;
                 box-shadow: none !important;
                 border: none !important;
               }

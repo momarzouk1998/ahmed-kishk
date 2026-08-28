@@ -148,6 +148,7 @@ export default function PipelineTailoringPage() {
   const [orders, setOrders] = useState<TailoringJobOrder[]>(initialTailoringOrders);
   const [activeTab, setActiveTab] = useState<'WORKSHOP' | 'SEWN' | 'HISTORY'>('WORKSHOP');
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedBranch, setSelectedBranch] = useState<string>('ALL');
   const [selectedOrderForWorksheet, setSelectedOrderForWorksheet] = useState<TailoringJobOrder | null>(null);
 
   const tabFiltered = orders.filter(o => {
@@ -160,9 +161,11 @@ export default function PipelineTailoringPage() {
     }
   });
 
-  const filtered = tabFiltered.filter(o =>
-    o.customerName.includes(searchQuery) || o.id.includes(searchQuery) || o.orderId.includes(searchQuery)
-  );
+  const filtered = tabFiltered.filter(o => {
+    const matchesSearch = o.customerName.includes(searchQuery) || o.id.includes(searchQuery) || o.orderId.includes(searchQuery);
+    const matchesBranch = selectedBranch === 'ALL' || o.branch === selectedBranch;
+    return matchesSearch && matchesBranch;
+  });
 
   const updateOrderStatus = (id: string, newStatus: TailoringJobOrder['status']) => {
     setOrders(prev => prev.map(o => o.id === id ? { ...o, status: newStatus } : o));
@@ -175,15 +178,6 @@ export default function PipelineTailoringPage() {
   return (
     <PageShell title="الورشة والتفصيل">
       <div className="flex flex-col gap-5">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-100 text-amber-950 border border-amber-200">
-              المرحلة 5
-            </span>
-            <h1 className="font-display font-black text-xl sm:text-2xl text-slate-900">الورشة والتفصيل</h1>
-          </div>
-        </div>
-
         <div className="flex border-b border-slate-200 gap-2">
           <button onClick={() => setActiveTab('WORKSHOP')} className={`pb-3 px-4 text-xs sm:text-sm font-black flex items-center gap-2 border-b-2 ${activeTab === 'WORKSHOP' ? 'border-brand-gold text-slate-950' : 'border-transparent text-slate-400'}`}>
             <span>الورشة</span>
@@ -199,15 +193,30 @@ export default function PipelineTailoringPage() {
           </button>
         </div>
 
-        <div className="relative">
-          <span className="material-symbols-outlined absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">search</span>
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="بحث بالاسم، الكود، اسم القماش..."
-            className="w-full bg-white border border-slate-200 rounded-xl pr-10 pl-4 py-2.5 text-xs sm:text-sm text-slate-900 focus:outline-none focus:border-brand-gold shadow-xs"
-          />
+        {/* Search & Branch Filter Row */}
+        <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
+          <div className="relative sm:col-span-8">
+            <span className="material-symbols-outlined absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">search</span>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="بحث باسم العميل، رقم الهاتف أو اسم الخياط..."
+              className="w-full bg-white border border-slate-200 rounded-xl pr-10 pl-4 py-2.5 text-xs sm:text-sm text-slate-900 focus:outline-none focus:border-brand-gold shadow-2xs"
+            />
+          </div>
+
+          <div className="sm:col-span-4">
+            <select
+              value={selectedBranch}
+              onChange={(e) => setSelectedBranch(e.target.value)}
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-brand-gold shadow-2xs cursor-pointer"
+            >
+              <option value="ALL">عوامل تصفية: جميع الفروع</option>
+              <option value="الفرع الرئيسي">الفرع الرئيسي</option>
+              <option value="فرع عرابي">فرع عرابي</option>
+            </select>
+          </div>
         </div>
 
         {filtered.length === 0 ? (
@@ -306,31 +315,25 @@ export default function PipelineTailoringPage() {
       {/* 🖨️ Printable Tailoring Worksheet Modal (ورقة الورشة والتفصيل للخياط) */}
       {selectedOrderForWorksheet && (
         <div className="modal-overlay fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 overflow-y-auto">
-          {/* Printable CSS styles for PDF / Print */}
+          {/* Printable CSS styles */}
           <style>{`
             @media print {
-              html, body {
-                background: white !important;
-                color: black !important;
-                overflow: visible !important;
+              body * {
+                visibility: hidden !important;
               }
-              .modal-overlay {
-                position: static !important;
-                background: transparent !important;
-                padding: 0 !important;
-                margin: 0 !important;
-                overflow: visible !important;
-                display: block !important;
+              #printable-tailoring-worksheet,
+              #printable-tailoring-worksheet * {
+                visibility: visible !important;
               }
               #printable-tailoring-worksheet {
-                position: static !important;
-                display: block !important;
-                visibility: visible !important;
+                position: fixed !important;
+                left: 0 !important;
+                top: 0 !important;
                 width: 100% !important;
                 margin: 0 !important;
-                padding: 10px !important;
-                background: white !important;
-                color: black !important;
+                padding: 15px !important;
+                background: #ffffff !important;
+                color: #000000 !important;
                 box-shadow: none !important;
                 border: none !important;
               }
