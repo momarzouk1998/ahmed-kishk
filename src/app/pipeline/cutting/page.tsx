@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
+import { getStoredPipelineOrders, updatePipelineOrderStatus } from '@/lib/pipelineStore';
 
 interface RoomFabricItem {
   roomName: string;
@@ -93,7 +94,14 @@ export default function PipelineCuttingPage() {
   const [selectedBranch, setSelectedBranch] = useState<string>('ALL');
   const [selectedOrderForPrint, setSelectedOrderForPrint] = useState<CuttingOrder | null>(null);
 
-  const isSent = (status: CuttingOrder['status']) => status === 'تم القص وجاهز للخياطة';
+  useEffect(() => {
+    const stored = getStoredPipelineOrders();
+    if (stored && stored.length > 0) {
+      setOrders(stored as any);
+    }
+  }, []);
+
+  const isSent = (status: any) => status !== 'بانتظار القص';
 
   const tabFiltered = orders.filter(o => activeTab === 'OPEN' ? !isSent(o.status) : isSent(o.status));
   const filtered = tabFiltered.filter(o => {
@@ -104,10 +112,11 @@ export default function PipelineCuttingPage() {
 
   const updateOrderStatus = (id: string, newStatus: CuttingOrder['status']) => {
     setOrders(prev => prev.map(o => o.id === id ? { ...o, status: newStatus } : o));
+    updatePipelineOrderStatus(id, newStatus as any);
   };
 
-  const openCount = orders.filter(o => o.status === 'بانتظار القص').length;
-  const sentCount = orders.filter(o => o.status === 'تم القص وجاهز للخياطة').length;
+  const openCount = orders.filter(o => !isSent(o.status)).length;
+  const sentCount = orders.filter(o => isSent(o.status)).length;
 
   // Calculate Fabric Summary for an Order
   const getFabricTotals = (rooms: RoomFabricItem[]) => {
@@ -115,7 +124,7 @@ export default function PipelineCuttingPage() {
     rooms.forEach(r => {
       [r.heavyFabric, r.sheerFabric, r.blackoutFabric].forEach(f => {
         if (f) {
-          const key = f.code || f.name;
+          const key = f.name;
           if (!totals[key]) {
             totals[key] = { name: f.name, code: f.code, meters: 0 };
           }
@@ -127,7 +136,7 @@ export default function PipelineCuttingPage() {
   };
 
   return (
-    <PageShell title="قص القماش">
+    <PageShell title="قص القماش والأثواب" badge="المرحلة 4">
       <div className="flex flex-col gap-5">
         {/* 2-Tabs Navigation */}
         <div className="flex border-b border-slate-200 gap-2">
@@ -293,19 +302,19 @@ export default function PipelineCuttingPage() {
                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 text-xs">
                             {room.heavyFabric && (
                               <div className="bg-amber-100/70 text-amber-950 p-1.5 rounded-lg border border-amber-200/60 flex justify-between items-center">
-                                <span className="font-bold">ثقيل ({room.heavyFabric.code}):</span>
+                                <span className="font-bold">ثقيل:</span>
                                 <strong className="font-mono font-black text-sm">{room.heavyFabric.meters}م</strong>
                               </div>
                             )}
                             {room.sheerFabric && (
                               <div className="bg-blue-50 text-blue-950 p-1.5 rounded-lg border border-blue-200/60 flex justify-between items-center">
-                                <span className="font-bold">تول ({room.sheerFabric.code}):</span>
+                                <span className="font-bold">تول:</span>
                                 <strong className="font-mono font-black text-sm">{room.sheerFabric.meters}م</strong>
                               </div>
                             )}
                             {room.blackoutFabric && (
                               <div className="bg-slate-200/70 text-slate-900 p-1.5 rounded-lg border border-slate-300 flex justify-between items-center">
-                                <span className="font-bold">بلاك آوت ({room.blackoutFabric.code}):</span>
+                                <span className="font-bold">بلاك آوت:</span>
                                 <strong className="font-mono font-black text-sm">{room.blackoutFabric.meters}م</strong>
                               </div>
                             )}

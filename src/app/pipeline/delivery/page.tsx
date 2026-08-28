@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
+import { getStoredPipelineOrders, updatePipelineOrderStatus } from '@/lib/pipelineStore';
 
 interface DeliveryJob {
   id: string;
@@ -43,7 +44,14 @@ export default function PipelineDeliveryPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBranch, setSelectedBranch] = useState<string>('ALL');
 
-  const isSent = (status: DeliveryJob['status']) => status === 'تم التسليم للعميل بنجاح' || status === 'في التركيبات';
+  useEffect(() => {
+    const stored = getStoredPipelineOrders();
+    if (stored && stored.length > 0) {
+      setJobs(stored as any);
+    }
+  }, []);
+
+  const isSent = (status: any) => status === 'تم التسليم للعميل بنجاح' || status === 'في التركيبات' || status === 'تم التركيب بنجاح ومغلق';
 
   const tabFiltered = jobs.filter(j => {
     if (activeTab === 'OPEN') {
@@ -54,21 +62,27 @@ export default function PipelineDeliveryPage() {
   });
 
   const filtered = tabFiltered.filter(j => {
-    const matchesSearch = j.customerName.includes(searchQuery) || j.id.includes(searchQuery) || j.orderId.includes(searchQuery);
+    const matchesSearch = j.customerName.includes(searchQuery) || j.id.includes(searchQuery) || (j as any).orderId?.includes(searchQuery);
     const matchesBranch = selectedBranch === 'ALL' || j.branch === selectedBranch;
     return matchesSearch && matchesBranch;
   });
 
   const completeDelivery = (id: string) => {
     setJobs(prev => prev.map(j => j.id === id ? { ...j, status: 'تم التسليم للعميل بنجاح' } : j));
+    updatePipelineOrderStatus(id, 'تم التسليم للعميل بنجاح');
     alert('تم تسجيل تسليم الأوردر للعميل بنجاح وإغلاق الطلب.');
+  };
+
+  const transferToInstallation = (id: string) => {
+    setJobs(prev => prev.map(j => j.id === id ? { ...j, status: 'في التركيبات' } : j));
+    updatePipelineOrderStatus(id, 'في التركيبات');
   };
 
   const openCount = jobs.filter(j => !isSent(j.status)).length;
   const sentCount = jobs.filter(j => isSent(j.status)).length;
 
   return (
-    <PageShell title="التسليمات">
+    <PageShell title="تسليمات المعرض والشحن" badge="المرحلة 7">
       <div className="flex flex-col gap-5">
         {/* 2-Tabs Navigation */}
         <div className="flex border-b border-slate-200 gap-2">
@@ -235,9 +249,7 @@ export default function PipelineDeliveryPage() {
                         تأكيد تسليم الأوردر للعميل وتحصيل ({job.remainingAmount.toLocaleString()} ج)
                       </button>
                       <button
-                        onClick={() => {
-                          setJobs(prev => prev.map(j => j.id === job.id ? { ...j, status: 'في التركيبات' } : j));
-                        }}
+                        onClick={() => transferToInstallation(job.id)}
                         className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 py-2 rounded-xl text-xs font-black shadow-gold cursor-pointer transition-colors"
                       >
                         نقل إلى التركيبات ←

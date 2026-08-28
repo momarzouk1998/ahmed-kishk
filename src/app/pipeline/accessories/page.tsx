@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
+import { getStoredPipelineOrders, updatePipelineOrderStatus } from '@/lib/pipelineStore';
 
 interface AccessoryItemSpec {
   name: string;
@@ -121,7 +122,7 @@ export default function PipelineAccessoriesPage() {
   const historyCount = kits.filter(k => k.status === 'في التركيبات' || k.status === 'في التسليمات').length;
 
   return (
-    <PageShell title="الإكسسوارات">
+    <PageShell title="الإكسسوارات (التراكات والمواسير)" badge="المرحلة 6">
       <div className="flex flex-col gap-5">
         {/* 3-Tabs Navigation */}
         <div className="flex border-b border-slate-200 gap-2">

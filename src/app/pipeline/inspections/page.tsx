@@ -141,7 +141,7 @@ export default function PipelineInspectionsPage() {
   };
 
   return (
-    <PageShell title="رفع المقاسات" badge="01">
+    <PageShell title="المعاينات الميدانية" badge="المرحلة 2">
       <div className="flex flex-col gap-4">
         {/* Tabs Bar with Action Button Beside It */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-200 pb-1 gap-2">

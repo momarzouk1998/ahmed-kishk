@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
+import { getStoredPipelineOrders, updatePipelineOrderStatus } from '@/lib/pipelineStore';
 
 interface InstallJob {
   id: string;
@@ -44,10 +45,16 @@ export default function PipelineInstallationPage() {
   const [jobs, setJobs] = useState<InstallJob[]>(initialJobs);
   const [activeTab, setActiveTab] = useState<'OPEN' | 'SENT'>('OPEN');
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedBranch, setSelectedBranch] = useState<string>('ALL');
+
+  useEffect(() => {
+    const stored = getStoredPipelineOrders();
+    if (stored && stored.length > 0) {
+      setJobs(stored as any);
+    }
+  }, []);
 
   const isSent = (status: InstallJob['status']) => status === 'تم التركيب بنجاح ومغلق';
-
-  const [selectedBranch, setSelectedBranch] = useState<string>('ALL');
 
   const tabFiltered = jobs.filter(j => activeTab === 'OPEN' ? !isSent(j.status) : isSent(j.status));
   const filtered = tabFiltered.filter(j => {
@@ -64,6 +71,7 @@ export default function PipelineInstallationPage() {
         status: 'تم التركيب بنجاح ومغلق',
       };
     }));
+    updatePipelineOrderStatus(id, 'تم التركيب بنجاح ومغلق');
     alert('تم تسجيل إتمام التركيب وتحصيل المبلغ المتبقي وإغلاق الطلب بنجاح.');
   };
 
@@ -71,7 +79,7 @@ export default function PipelineInstallationPage() {
   const sentCount = jobs.filter(j => isSent(j.status)).length;
 
   return (
-    <PageShell title="التركيبات">
+    <PageShell title="التركيبات الميدانية" badge="المرحلة 8">
       <div className="flex flex-col gap-5">
         {/* 2-Tabs Navigation */}
         <div className="flex border-b border-slate-200 gap-2">

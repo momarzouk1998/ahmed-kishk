@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
+import { getStoredPipelineOrders, updatePipelineOrderStatus } from '@/lib/pipelineStore';
 
 interface RoomTailoringDetail {
   roomName: string;
@@ -151,14 +152,21 @@ export default function PipelineTailoringPage() {
   const [selectedBranch, setSelectedBranch] = useState<string>('ALL');
   const [selectedOrderForWorksheet, setSelectedOrderForWorksheet] = useState<TailoringJobOrder | null>(null);
 
-  const tabFiltered = orders.filter(o => {
-    if (activeTab === 'WORKSHOP') {
-      return o.status === 'جاري الخياطة';
-    } else if (activeTab === 'SEWN') {
-      return o.status === 'تمت الخياطة' || o.status === 'جاهز للتسليم';
-    } else {
-      return o.status === 'في الإكسسوارات' || o.status === 'في التركيبات' || o.status === 'في التسليمات';
+  useEffect(() => {
+    const stored = getStoredPipelineOrders();
+    if (stored && stored.length > 0) {
+      setOrders(stored as any);
     }
+  }, []);
+
+  const isWorkshop = (status: string) => status === 'جاري الخياطة' || status === 'قيد التفصيل' || status === 'تم القص وجاهز للخياطة';
+  const isSewn = (status: string) => status === 'تمت الخياطة' || status === 'جاهز للتسليم' || status === 'تم الخياطة وجاهز للتسليم';
+  const isHistory = (status: string) => status === 'تم التحويل للتسليمات' || status === 'في الإكسسوارات' || status === 'في التركيبات' || status === 'في التسليمات' || status === 'تم التسليم للعميل بنجاح' || status === 'تم التركيب بنجاح ومغلق';
+
+  const tabFiltered = orders.filter(o => {
+    if (activeTab === 'WORKSHOP') return isWorkshop(o.status);
+    if (activeTab === 'SEWN') return isSewn(o.status);
+    return isHistory(o.status);
   });
 
   const filtered = tabFiltered.filter(o => {
@@ -169,14 +177,15 @@ export default function PipelineTailoringPage() {
 
   const updateOrderStatus = (id: string, newStatus: TailoringJobOrder['status']) => {
     setOrders(prev => prev.map(o => o.id === id ? { ...o, status: newStatus } : o));
+    updatePipelineOrderStatus(id, newStatus as any);
   };
 
-  const workshopCount = orders.filter(o => o.status === 'جاري الخياطة').length;
-  const sewnCount = orders.filter(o => o.status === 'تمت الخياطة' || o.status === 'جاهز للتسليم').length;
-  const historyCount = orders.filter(o => o.status === 'في الإكسسوارات' || o.status === 'في التركيبات' || o.status === 'في التسليمات').length;
+  const workshopCount = orders.filter(o => isWorkshop(o.status)).length;
+  const sewnCount = orders.filter(o => isSewn(o.status)).length;
+  const historyCount = orders.filter(o => isHistory(o.status)).length;
 
   return (
-    <PageShell title="الورشة والتفصيل">
+    <PageShell title="الورشة والتفصيل" badge="المرحلة 5">
       <div className="flex flex-col gap-5">
         <div className="flex border-b border-slate-200 gap-2">
           <button onClick={() => setActiveTab('WORKSHOP')} className={`pb-3 px-4 text-xs sm:text-sm font-black flex items-center gap-2 border-b-2 ${activeTab === 'WORKSHOP' ? 'border-brand-gold text-slate-950' : 'border-transparent text-slate-400'}`}>

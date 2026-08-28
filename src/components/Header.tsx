@@ -27,7 +27,7 @@ export default function Header({ title, badge, action }: HeaderProps) {
         </button>
 
         {badge ? (
-          <span className="w-7 h-7 rounded-full bg-amber-400 text-slate-950 font-black text-xs flex items-center justify-center shrink-0 shadow-2xs">
+          <span className="px-2.5 py-0.5 rounded-full bg-amber-400 text-slate-950 font-black text-xs flex items-center justify-center shrink-0 shadow-2xs">
             {badge}
           </span>
         ) : (
