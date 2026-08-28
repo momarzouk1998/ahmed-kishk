@@ -509,7 +509,7 @@ export default function PricingDetailPage() {
           <h2 className="font-black text-sm text-slate-900 border-r-4 border-amber-500 pr-2.5">
             معلومات العميل والمعاينة الميدانية:
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 text-xs bg-slate-50/70 p-4 rounded-xl border border-slate-100">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-xs bg-slate-50/70 p-4 rounded-xl border border-slate-100">
             <div>
               <span className="text-slate-400 font-bold block">اسم العميل:</span>
               <strong className="text-slate-900 text-sm">{quotation.customerName}</strong>
@@ -526,33 +526,39 @@ export default function PricingDetailPage() {
               <span className="text-slate-400 font-bold block">مسؤول المبيعات والتسعير:</span>
               <strong className="text-slate-900 text-sm block mt-1">{estimator || 'أحمد كشك'}</strong>
             </div>
-            <div className="md:col-span-1 border-r border-slate-200 pr-3 space-y-2">
-              <span className="text-amber-900 font-black block text-xs">📅 نوع الموعد والتاريخ:</span>
-              
-              {/* Toggle Buttons Choice (تسليم أو تركيب) */}
-              <div className="flex bg-slate-200/80 p-0.5 rounded-lg text-[11px] font-bold">
+          </div>
+
+          {/* Compact Single-Row Date & Fulfillment Selector Bar */}
+          <div className="flex flex-wrap items-center justify-between gap-3 bg-amber-50/60 p-3 rounded-xl border border-amber-200/80 text-xs">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-amber-950 font-black flex items-center gap-1 shrink-0">
+                <span>📅 نوع الموعد والتاريخ:</span>
+              </span>
+
+              {/* Toggle Buttons (تسليم أو تركيب) */}
+              <div className="inline-flex bg-slate-200/90 p-0.5 rounded-lg font-bold">
                 <button
                   type="button"
                   onClick={() => handleFulfillmentChange('DELIVERY', deliveryDate)}
-                  className={`flex-1 py-1 rounded-md transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                  className={`px-3 py-1 rounded-md transition-all cursor-pointer text-xs ${
                     fulfillmentType === 'DELIVERY'
-                      ? 'bg-amber-400 text-slate-950 shadow-2xs font-black'
-                      : 'text-slate-600 hover:text-slate-900'
+                      ? 'bg-amber-400 text-slate-950 font-black shadow-2xs'
+                      : 'text-slate-700 hover:text-slate-900'
                   }`}
                 >
-                  <span>تسليم</span>
+                  تسليم
                 </button>
 
                 <button
                   type="button"
                   onClick={() => handleFulfillmentChange('INSTALLATION', deliveryDate)}
-                  className={`flex-1 py-1 rounded-md transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                  className={`px-3 py-1 rounded-md transition-all cursor-pointer text-xs ${
                     fulfillmentType === 'INSTALLATION'
-                      ? 'bg-amber-400 text-slate-950 shadow-2xs font-black'
-                      : 'text-slate-600 hover:text-slate-900'
+                      ? 'bg-amber-400 text-slate-950 font-black shadow-2xs'
+                      : 'text-slate-700 hover:text-slate-900'
                   }`}
                 >
-                  <span>تركيب</span>
+                  تركيب
                 </button>
               </div>
 
@@ -561,16 +567,16 @@ export default function PricingDetailPage() {
                 type="date"
                 value={deliveryDate || ''}
                 onChange={(e) => handleFulfillmentChange(fulfillmentType, e.target.value)}
-                className="w-full bg-white border border-amber-300 rounded-lg px-2.5 py-1 text-slate-900 font-mono font-bold text-xs focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
+                className="bg-white border border-amber-300 rounded-lg px-3 py-1 text-slate-900 font-mono font-bold text-xs focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
               />
-
-              {/* Target Tab Badge Indicator */}
-              {deliveryDate && (
-                <div className="text-[10px] font-bold text-slate-600 bg-amber-50 p-1 rounded text-center border border-amber-200">
-                  سيظهر في صفحة ({fulfillmentType === 'DELIVERY' ? 'التسليمات' : 'التركيبات'}) - تاب ({isTodayOrOverdue(deliveryDate) ? 'اليوم' : 'مجدول'})
-                </div>
-              )}
             </div>
+
+            {/* Target Tab Badge Indicator */}
+            {deliveryDate && (
+              <div className="text-[11px] font-bold text-slate-700 bg-white px-2.5 py-1 rounded-md border border-amber-200 shadow-3xs">
+                سيظهر في صفحة ({fulfillmentType === 'DELIVERY' ? 'التسليمات' : 'التركيبات'}) - تاب ({isTodayOrOverdue(deliveryDate) ? 'اليوم' : 'مجدول'})
+              </div>
+            )}
           </div>
         </div>
 
