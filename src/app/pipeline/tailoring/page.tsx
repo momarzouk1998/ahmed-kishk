@@ -60,7 +60,7 @@ export default function PipelineTailoringPage() {
   const [activeTab, setActiveTab] = useState<'OPEN' | 'SENT'>('OPEN');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const isSent = (status: TailoringTask['status']) => status === 'جاهز للتسليم' || status === 'في التركيبات' || status === 'في التسليمات';
+  const isSent = (status: TailoringTask['status']) => status === 'في التركيبات' || status === 'في التسليمات';
 
   const tabFiltered = tasks.filter(t => activeTab === 'OPEN' ? !isSent(t.status) : isSent(t.status));
   const filtered = tabFiltered.filter(t =>
@@ -81,9 +81,9 @@ export default function PipelineTailoringPage() {
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-100 text-amber-950 border border-amber-200">
-              الورشة والتفصيل
+              المرحلة 5
             </span>
-            <h1 className="font-display font-black text-xl sm:text-2xl text-slate-900">الورشة</h1>
+            <h1 className="font-display font-black text-xl sm:text-2xl text-slate-900">الورشة والتفصيل</h1>
           </div>
         </div>
 
@@ -145,8 +145,61 @@ export default function PipelineTailoringPage() {
               {activeTab === 'OPEN' ? 'لا توجد قطع قيد الخياطة' : 'السجل فارغ'}
             </h3>
           </div>
+        ) : activeTab === 'SENT' ? (
+          /* TAB 2: Table Format (جدول السجل) */
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-soft">
+            <div className="overflow-x-auto">
+              <table className="w-full text-right text-xs min-w-[700px]">
+                <thead className="bg-slate-50 text-slate-500 font-mono border-b border-slate-200">
+                  <tr>
+                    <th className="p-3.5">كود الورشة</th>
+                    <th className="p-3.5">العميل</th>
+                    <th className="p-3.5">الغرفة والمكان</th>
+                    <th className="p-3.5">الخامة والتفصيل</th>
+                    <th className="p-3.5">الترزي</th>
+                    <th className="p-3.5 text-center">وجهة النقل</th>
+                    <th className="p-3.5 text-center">واتساب</th>
+                    <th className="p-3.5 text-center">الحالة</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map(task => (
+                    <tr key={task.id} className="border-t border-slate-100 hover:bg-slate-50/60 transition-colors">
+                      <td className="p-3.5 font-mono font-bold text-amber-800">{task.id} • {task.orderId}</td>
+                      <td className="p-3.5 font-bold text-slate-900">{task.customerName}</td>
+                      <td className="p-3.5 text-slate-700">{task.roomName}</td>
+                      <td className="p-3.5 text-slate-800 font-medium">{task.fabricName} — {task.tapeStyle}</td>
+                      <td className="p-3.5 text-slate-700">{task.tailorName}</td>
+                      <td className="p-3.5 text-center">
+                        <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-bold border ${
+                          task.status === 'في التركيبات' ? 'bg-amber-100 text-amber-900 border-amber-200' : 'bg-blue-100 text-blue-900 border-blue-200'
+                        }`}>
+                          {task.status}
+                        </span>
+                      </td>
+                      <td className="p-3.5 text-center">
+                        <a
+                          href={`https://wa.me/2${task.phone}?text=${encodeURIComponent(`مرحباً ${task.customerName}، تم إتمام خياطة الستائر ونقلها إلى (${task.status}) بمؤسسة أحمد كشك. شكراً لثقتكم بنا!`)}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 px-2.5 py-1 rounded-lg text-xs font-bold border border-emerald-200"
+                        >
+                          💬 واتساب
+                        </a>
+                      </td>
+                      <td className="p-3.5 text-center">
+                        <span className="text-[11px] px-2.5 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-900 border border-emerald-200">
+                          تمت الخياطة والنقل
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         ) : (
-          /* Cards View */
+          /* TAB 1: Active Cards (الكرت) */
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {filtered.map(task => (
               <div key={task.id} className="bg-white rounded-2xl border border-slate-200 p-5 shadow-soft flex flex-col justify-between space-y-4">
@@ -202,20 +255,20 @@ export default function PipelineTailoringPage() {
                     </button>
                   </div>
 
-                  {/* خيارات النقل */}
+                  {/* 🎯 أزرار النقل تكون في التاب الأول عند الوصول لجاهز للتسليم */}
                   {task.status === 'جاهز للتسليم' && (
                     <div className="grid grid-cols-2 gap-2 pt-1">
-                      <button
-                        onClick={() => updateTaskStatus(task.id, 'في التركيبات')}
-                        className="bg-slate-900 hover:bg-slate-800 text-white py-2 rounded-xl text-xs font-black shadow-xs cursor-pointer transition-colors"
-                      >
-                        نقل إلى التركيبات ←
-                      </button>
                       <button
                         onClick={() => updateTaskStatus(task.id, 'في التسليمات')}
                         className="bg-blue-600 hover:bg-blue-500 text-white py-2 rounded-xl text-xs font-black shadow-xs cursor-pointer transition-colors"
                       >
                         نقل إلى التسليمات ←
+                      </button>
+                      <button
+                        onClick={() => updateTaskStatus(task.id, 'في التركيبات')}
+                        className="bg-amber-500 hover:bg-amber-400 text-slate-950 py-2 rounded-xl text-xs font-black shadow-gold cursor-pointer transition-colors"
+                      >
+                        نقل إلى التركيبات ←
                       </button>
                     </div>
                   )}

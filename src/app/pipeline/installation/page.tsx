@@ -137,7 +137,55 @@ export default function PipelineInstallationPage() {
               {activeTab === 'OPEN' ? 'لا توجد طلبات تركيب جارية حالياً' : 'السجل فارغ'}
             </h3>
           </div>
+        ) : activeTab === 'SENT' ? (
+          /* TAB 2: Table Format (جدول السجل) */
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-soft">
+            <div className="overflow-x-auto">
+              <table className="w-full text-right text-xs min-w-[700px]">
+                <thead className="bg-slate-50 text-slate-500 font-mono border-b border-slate-200">
+                  <tr>
+                    <th className="p-3.5">كود التركيب</th>
+                    <th className="p-3.5">كود الطلب</th>
+                    <th className="p-3.5">العميل والهاتف</th>
+                    <th className="p-3.5">عنوان التركيب</th>
+                    <th className="p-3.5">الفني المسؤول</th>
+                    <th className="p-3.5">تاريخ وموعد التركيب</th>
+                    <th className="p-3.5 text-center">واتساب</th>
+                    <th className="p-3.5 text-center">الحالة</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map(job => (
+                    <tr key={job.id} className="border-t border-slate-100 hover:bg-slate-50/60 transition-colors">
+                      <td className="p-3.5 font-mono font-bold text-brand-gold-dark">{job.id}</td>
+                      <td className="p-3.5 font-mono text-slate-500">{job.orderId}</td>
+                      <td className="p-3.5 font-bold text-slate-900">{job.customerName} ({job.phone})</td>
+                      <td className="p-3.5 text-slate-700">{job.address}</td>
+                      <td className="p-3.5 text-slate-800 font-bold">{job.technicianName}</td>
+                      <td className="p-3.5 font-mono text-slate-700">{job.scheduledDate}</td>
+                      <td className="p-3.5 text-center">
+                        <a
+                          href={`https://wa.me/2${job.phone}?text=${encodeURIComponent(`مرحباً ${job.customerName}، تم إتمام تركيب الستائر في موقعكم بنجاح بواسطة فني مؤسسة أحمد كشك. شكراً لثقتكم بنا!`)}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 px-2.5 py-1 rounded-lg text-xs font-bold border border-emerald-200"
+                        >
+                          💬 واتساب
+                        </a>
+                      </td>
+                      <td className="p-3.5 text-center">
+                        <span className="text-[11px] px-2.5 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-900 border border-emerald-200">
+                          تم التركيب ومغلق
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         ) : (
+          /* TAB 1: Active Cards (الكرت) */
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {filtered.map(job => (
               <div key={job.id} className="bg-white rounded-2xl border border-slate-200 p-5 shadow-soft flex flex-col justify-between space-y-4">

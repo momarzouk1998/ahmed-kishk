@@ -9,15 +9,15 @@ export interface PagePermission {
 }
 
 export const ALL_SYSTEM_PAGES: PagePermission[] = [
-  // مراحل الستائر (Pipeline) - أسماء جديدة ومحدثة
+  // مراحل الستائر (Pipeline) - الترتيب التسلسلي الجديد
   { id: 'p_orders', name: 'سجل أوامر الستائر', shortName: 'الأوامر', category: 'مراحل الستائر', href: '/orders', icon: 'receipt_long', hasPriceControl: true },
   { id: 'p_inspections', name: 'رفع المقاسات', shortName: 'المقاسات', category: 'مراحل الستائر', href: '/pipeline/inspections', icon: 'square_foot', hasPriceControl: true },
   { id: 'p_pricing', name: 'التسعير والعقد', shortName: 'التسعير', category: 'مراحل الستائر', href: '/pipeline/pricing', icon: 'request_quote', hasPriceControl: true },
   { id: 'p_cutting', name: 'قص القماش', shortName: 'قص القماش', category: 'مراحل الستائر', href: '/pipeline/cutting', icon: 'content_cut' },
-  { id: 'p_accessories', name: 'الإكسسوارات', shortName: 'الإكسسوارات', category: 'مراحل الستائر', href: '/pipeline/accessories', icon: 'handyman' },
   { id: 'p_tailoring', name: 'الورشة', shortName: 'الورشة', category: 'مراحل الستائر', href: '/pipeline/tailoring', icon: 'precision_manufacturing' },
-  { id: 'p_installation', name: 'التركيبات', shortName: 'التركيبات', category: 'مراحل الستائر', href: '/pipeline/installation', icon: 'build_circle' },
+  { id: 'p_accessories', name: 'الإكسسوارات', shortName: 'الإكسسوارات', category: 'مراحل الستائر', href: '/pipeline/accessories', icon: 'handyman' },
   { id: 'p_delivery', name: 'التسليمات', shortName: 'التسليمات', category: 'مراحل الستائر', href: '/pipeline/delivery', icon: 'local_shipping' },
+  { id: 'p_installation', name: 'التركيبات', shortName: 'التركيبات', category: 'مراحل الستائر', href: '/pipeline/installation', icon: 'build_circle' },
 
   // المبيعات والحسابات
   { id: 'p_dashboard', name: 'الرئيسية', shortName: 'الرئيسية', category: 'المبيعات والحسابات', href: '/', icon: 'dashboard' },
