@@ -10,25 +10,25 @@ interface RoomTailoringDetail {
     name: string;
     code: string;
     meters: number;
-    pieces: 'جنبين' | 'جنب واحد';
-    tapeType: string;
-    netHeight: string;
+    pieces?: string;
+    tapeType?: string;
+    netHeight?: string;
   };
   sheerFabric?: {
     name: string;
     code: string;
     meters: number;
-    pieces: 'قطعة واحدة' | 'قطعتين';
-    tapeType: string;
-    netHeight: string;
+    pieces?: string;
+    tapeType?: string;
+    netHeight?: string;
   };
   blackoutFabric?: {
     name: string;
     code: string;
     meters: number;
-    pieces: 'قطعة واحدة' | 'قطعتين' | 'جنبين';
-    tapeType: string;
-    netHeight: string;
+    pieces?: string;
+    tapeType?: string;
+    netHeight?: string;
   };
 }
 
@@ -68,23 +68,23 @@ const initialTailoringOrders: TailoringJobOrder[] = [
         heavyFabric: {
           name: 'قطيفة تركي ثقيل',
           code: 'V-990',
-          meters: 6.00,
+          meters: 6.30,
           pieces: 'جنبين',
-          tapeType: 'شريط كشكشة 3 فتلة',
+          tapeType: 'شريط 3 فتلة (معامل ×2)',
           netHeight: '280 سم',
         },
         sheerFabric: {
           name: 'خلفية شيفون مطرز',
           code: 'SH-40',
-          meters: 6.00,
+          meters: 8.75,
           pieces: 'قطعة واحدة',
-          tapeType: 'شريط ويفي 8سم',
+          tapeType: 'شريط ويفي (معامل ×2.5)',
           netHeight: '278 سم',
         },
         blackoutFabric: {
           name: 'بلاك آوت عازل',
           code: 'BL-101',
-          meters: 3.50,
+          meters: 2.25,
           pieces: 'قطعة واحدة',
           tapeType: 'شريط كشكشة عريض',
           netHeight: '275 سم',
@@ -97,7 +97,7 @@ const initialTailoringOrders: TailoringJobOrder[] = [
           code: 'V-990',
           meters: 4.50,
           pieces: 'جنبين',
-          tapeType: 'حلقات كبس مذهبة',
+          tapeType: 'شريط 3 فتلة (معامل ×2)',
           netHeight: '265 سم',
         },
         sheerFabric: {
@@ -105,7 +105,7 @@ const initialTailoringOrders: TailoringJobOrder[] = [
           code: 'T-402',
           meters: 5.00,
           pieces: 'قطعة واحدة',
-          tapeType: 'شريط ويفي 8سم',
+          tapeType: 'شريط ويفي (معامل ×2.5)',
           netHeight: '263 سم',
         },
       },
@@ -132,7 +132,7 @@ const initialTailoringOrders: TailoringJobOrder[] = [
           code: 'LN-77',
           meters: 12.00,
           pieces: 'جنبين',
-          tapeType: 'شريط ويفي 8سم',
+          tapeType: 'شريط ويفي (معامل ×2.5)',
           netHeight: '290 سم',
         },
         sheerFabric: {
@@ -140,7 +140,7 @@ const initialTailoringOrders: TailoringJobOrder[] = [
           code: 'TW-10',
           meters: 12.00,
           pieces: 'قطعتين',
-          tapeType: 'شريط ويفي 8سم',
+          tapeType: 'شريط ويفي (معامل ×2.5)',
           netHeight: '288 سم',
         },
       },
@@ -214,6 +214,26 @@ export default function PipelineTailoringPage() {
       const target = updated.find(o => o.id === orderId);
       if (target) setSelectedOrderDetails(target);
     }
+  };
+
+  // Dynamic Total Meters Calculation
+  const calculateTotalMeters = (rooms: RoomTailoringDetail[]) => {
+    let heavy = 0;
+    let sheer = 0;
+    let blackout = 0;
+
+    (rooms || []).forEach(r => {
+      if (r.heavyFabric) heavy += Number(r.heavyFabric.meters || 0);
+      if (r.sheerFabric) sheer += Number(r.sheerFabric.meters || 0);
+      if (r.blackoutFabric) blackout += Number(r.blackoutFabric.meters || 0);
+    });
+
+    return {
+      heavy: Math.round(heavy * 100) / 100,
+      sheer: Math.round(sheer * 100) / 100,
+      blackout: Math.round(blackout * 100) / 100,
+      total: Math.round((heavy + sheer + blackout) * 100) / 100,
+    };
   };
 
   const sewingCount = orders.filter(isSewing).length;
@@ -300,84 +320,89 @@ export default function PipelineTailoringPage() {
                   <tr>
                     <th className="p-3.5">اسم العميل</th>
                     <th className="p-3.5">الهاتف والعنوان</th>
-                    <th className="p-3.5">الفرع</th>
+                    <th className="p-3.5">الفرع والخياط</th>
                     <th className="p-3.5">تاريخ الاستلام</th>
-                    <th className="p-3.5 text-center">الغرفة/الستائر</th>
+                    <th className="p-3.5 text-center font-mono">إجمالي الأمتار والقطع</th>
                     <th className="p-3.5 text-center">واتساب</th>
                     <th className="p-3.5 text-center">الإجراء السريع</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map(order => (
-                    <tr
-                      key={order.id}
-                      onClick={() => setSelectedOrderDetails(order)}
-                      className="border-t border-slate-100 hover:bg-amber-50/40 cursor-pointer transition-colors"
-                    >
-                      <td className="p-3.5 font-bold text-slate-900">
-                        <div className="text-sm font-black text-indigo-950">{order.customerName}</div>
-                        <div className="text-[10px] text-slate-400 font-mono">اضغط لفتح التفاصيل والتعديل 📋</div>
-                      </td>
+                  {filtered.map(order => {
+                    const totals = calculateTotalMeters(order.rooms);
 
-                      <td className="p-3.5 text-slate-700">
-                        <div className="font-mono text-slate-800 font-bold" dir="ltr">{order.phone}</div>
-                        <div className="text-slate-500 text-[11px] truncate max-w-[200px]">{order.address}</div>
-                      </td>
+                    return (
+                      <tr
+                        key={order.id}
+                        onClick={() => setSelectedOrderDetails(order)}
+                        className="border-t border-slate-100 hover:bg-amber-50/40 cursor-pointer transition-colors"
+                      >
+                        <td className="p-3.5 font-bold text-slate-900">
+                          <div className="text-sm font-black text-indigo-950">{order.customerName}</div>
+                          <div className="text-[10px] text-slate-400 font-mono">اضغط لفتح التفاصيل والارتفاعات 📋</div>
+                        </td>
 
-                      <td className="p-3.5 text-slate-700 font-bold">
-                        {order.branch}
-                      </td>
+                        <td className="p-3.5 text-slate-700">
+                          <div className="font-mono text-slate-800 font-bold" dir="ltr">{order.phone}</div>
+                          <div className="text-slate-500 text-[11px] truncate max-w-[200px]">{order.address}</div>
+                        </td>
 
-                      <td className="p-3.5 font-mono font-bold text-rose-800">
-                        {order.deliveryDate || 'غير محدد'}
-                      </td>
+                        <td className="p-3.5 text-slate-700">
+                          <div className="font-bold text-slate-900">{order.branch}</div>
+                          <div className="text-slate-500 text-[11px]">الخياط: {order.tailorName || 'أبو فهد'}</div>
+                        </td>
 
-                      <td className="p-3.5 text-center">
-                        <span className="font-mono font-bold bg-slate-100 px-2.5 py-1 rounded-md text-slate-800 text-xs inline-block">
-                          {order.rooms?.length || 0} غرف
-                        </span>
-                      </td>
+                        <td className="p-3.5 font-mono font-bold text-rose-800">
+                          {order.deliveryDate || 'غير محدد'}
+                        </td>
 
-                      <td className="p-3.5 text-center" onClick={e => e.stopPropagation()}>
-                        <a
-                          href={`https://wa.me/2${order.phone}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-xl text-xs font-bold border border-emerald-200 transition-colors inline-block"
-                        >
-                          💬 واتساب
-                        </a>
-                      </td>
-
-                      <td className="p-3.5 text-center" onClick={e => e.stopPropagation()}>
-                        {activeTab === 'SEWING' && (
-                          <button
-                            type="button"
-                            onClick={() => updateOrderStatus(order.id, 'في الورشة', 'جاري الكي')}
-                            className="bg-amber-500 hover:bg-amber-400 text-slate-950 px-3 py-1.5 rounded-xl text-xs font-black shadow-gold cursor-pointer transition-colors"
-                          >
-                            تمت الخياطة وتحويل للكي ←
-                          </button>
-                        )}
-
-                        {activeTab === 'IRONING' && (
-                          <button
-                            type="button"
-                            onClick={() => updateOrderStatus(order.id, 'تجهيز الاكسسوارات', 'تم التجهيز')}
-                            className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-xl text-xs font-black shadow-xs cursor-pointer transition-colors"
-                          >
-                            تم الكي والتحويل للإكسسوارات / التسليم ✓
-                          </button>
-                        )}
-
-                        {activeTab === 'HISTORY' && (
-                          <span className="text-[11px] px-2.5 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-900 border border-emerald-200">
-                            {order.status}
+                        <td className="p-3.5 text-center font-mono">
+                          <span className="font-bold bg-amber-100/80 text-amber-950 px-2.5 py-1 rounded-lg text-xs inline-block">
+                            {totals.total} متر ({order.rooms?.length || 0} غرف)
                           </span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+
+                        <td className="p-3.5 text-center" onClick={e => e.stopPropagation()}>
+                          <a
+                            href={`https://wa.me/2${order.phone}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-xl text-xs font-bold border border-emerald-200 transition-colors inline-block"
+                          >
+                            💬 واتساب
+                          </a>
+                        </td>
+
+                        <td className="p-3.5 text-center" onClick={e => e.stopPropagation()}>
+                          {activeTab === 'SEWING' && (
+                            <button
+                              type="button"
+                              onClick={() => updateOrderStatus(order.id, 'في الورشة', 'جاري الكي')}
+                              className="bg-amber-500 hover:bg-amber-400 text-slate-950 px-3 py-1.5 rounded-xl text-xs font-black shadow-gold cursor-pointer transition-colors"
+                            >
+                              تمت الخياطة وتحويل للكي ←
+                            </button>
+                          )}
+
+                          {activeTab === 'IRONING' && (
+                            <button
+                              type="button"
+                              onClick={() => updateOrderStatus(order.id, 'تجهيز الاكسسوارات', 'تم التجهيز')}
+                              className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-xl text-xs font-black shadow-xs cursor-pointer transition-colors"
+                            >
+                              تم الكي والتحويل للإكسسوارات / التسليم ✓
+                            </button>
+                          )}
+
+                          {activeTab === 'HISTORY' && (
+                            <span className="text-[11px] px-2.5 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-900 border border-emerald-200">
+                              {order.status}
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -458,7 +483,7 @@ export default function PipelineTailoringPage() {
               <div className="text-rose-900 font-bold"><strong>📅 موعد الاستلام:</strong> {selectedOrderDetails.deliveryDate}</div>
               <div><strong>العنوان:</strong> {selectedOrderDetails.address}</div>
               <div><strong>الفرع:</strong> {selectedOrderDetails.branch}</div>
-              <div><strong>مسؤول الخياطة:</strong> {selectedOrderDetails.tailorName || 'أبو فهد'}</div>
+              <div><strong>مسؤول الخياطة:</strong> {selectedOrderDetails.tailorName || 'أبو فهد الخياط'}</div>
             </div>
 
             {/* Room-by-Room Specs with Editable Heights */}
@@ -491,23 +516,22 @@ export default function PipelineTailoringPage() {
                             قطيفة / ثقيل ({room.heavyFabric.name})
                           </td>
                           <td className="p-2 border border-slate-300 font-mono font-bold text-amber-900">
-                            {room.heavyFabric.meters} متر ({room.heavyFabric.pieces})
+                            {room.heavyFabric.meters} متر ({room.heavyFabric.pieces || 'جنبين'})
                           </td>
-                          <td className="p-2 border border-slate-300">
-                            {room.heavyFabric.tapeType}
+                          <td className="p-2 border border-slate-300 font-bold text-slate-800">
+                            {room.heavyFabric.tapeType || 'شريط 3 فتلة (معامل ×2)'}
                           </td>
                           <td className="p-2 border border-slate-300 text-center font-mono">
                             <div className="no-print inline-flex items-center gap-1">
                               <input
                                 type="text"
-                                value={room.heavyFabric.netHeight || ''}
+                                value={room.heavyFabric.netHeight || '280 سم'}
                                 onChange={(e) => handleHeightChange(selectedOrderDetails.id, rIdx, 'heavy', e.target.value)}
                                 className="w-24 bg-white border border-amber-300 rounded-lg px-2 py-1 text-center font-mono font-black text-xs text-slate-950 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
-                                placeholder="مثلاً 280سم"
                               />
                             </div>
                             <span className="print-only font-black text-sm text-slate-950">
-                              {room.heavyFabric.netHeight || '_______ سم'}
+                              {room.heavyFabric.netHeight || '280 سم'}
                             </span>
                           </td>
                         </tr>
@@ -520,23 +544,22 @@ export default function PipelineTailoringPage() {
                             خلفية شيفون / تول ({room.sheerFabric.name})
                           </td>
                           <td className="p-2 border border-slate-300 font-mono font-bold text-blue-900">
-                            {room.sheerFabric.meters} متر ({room.sheerFabric.pieces})
+                            {room.sheerFabric.meters} متر ({room.sheerFabric.pieces || 'قطعة واحدة'})
                           </td>
-                          <td className="p-2 border border-slate-300">
-                            {room.sheerFabric.tapeType}
+                          <td className="p-2 border border-slate-300 font-bold text-slate-800">
+                            {room.sheerFabric.tapeType || 'شريط ويفي (معامل ×2.5)'}
                           </td>
                           <td className="p-2 border border-slate-300 text-center font-mono">
                             <div className="no-print inline-flex items-center gap-1">
                               <input
                                 type="text"
-                                value={room.sheerFabric.netHeight || ''}
+                                value={room.sheerFabric.netHeight || '278 سم'}
                                 onChange={(e) => handleHeightChange(selectedOrderDetails.id, rIdx, 'sheer', e.target.value)}
                                 className="w-24 bg-white border border-blue-300 rounded-lg px-2 py-1 text-center font-mono font-black text-xs text-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs"
-                                placeholder="مثلاً 278سم"
                               />
                             </div>
                             <span className="print-only font-black text-sm text-slate-950">
-                              {room.sheerFabric.netHeight || '_______ سم'}
+                              {room.sheerFabric.netHeight || '278 سم'}
                             </span>
                           </td>
                         </tr>
@@ -549,23 +572,22 @@ export default function PipelineTailoringPage() {
                             بلاك آوت عازل ({room.blackoutFabric.name})
                           </td>
                           <td className="p-2 border border-slate-300 font-mono font-bold">
-                            {room.blackoutFabric.meters} متر ({room.blackoutFabric.pieces})
+                            {room.blackoutFabric.meters} متر ({room.blackoutFabric.pieces || 'قطعة واحدة'})
                           </td>
-                          <td className="p-2 border border-slate-300">
-                            {room.blackoutFabric.tapeType}
+                          <td className="p-2 border border-slate-300 font-bold text-slate-800">
+                            {room.blackoutFabric.tapeType || 'شريط كشكشة عريض'}
                           </td>
                           <td className="p-2 border border-slate-300 text-center font-mono">
                             <div className="no-print inline-flex items-center gap-1">
                               <input
                                 type="text"
-                                value={room.blackoutFabric.netHeight || ''}
+                                value={room.blackoutFabric.netHeight || '275 سم'}
                                 onChange={(e) => handleHeightChange(selectedOrderDetails.id, rIdx, 'blackout', e.target.value)}
                                 className="w-24 bg-white border border-slate-300 rounded-lg px-2 py-1 text-center font-mono font-black text-xs text-slate-950 focus:outline-none focus:ring-2 focus:ring-slate-500 shadow-2xs"
-                                placeholder="مثلاً 275سم"
                               />
                             </div>
                             <span className="print-only font-black text-sm text-slate-950">
-                              {room.blackoutFabric.netHeight || '_______ سم'}
+                              {room.blackoutFabric.netHeight || '275 سم'}
                             </span>
                           </td>
                         </tr>
@@ -575,6 +597,35 @@ export default function PipelineTailoringPage() {
                 </div>
               ))}
             </div>
+
+            {/* Dynamic Total Meters Summary Card */}
+            {(() => {
+              const totals = calculateTotalMeters(selectedOrderDetails.rooms);
+              return (
+                <div className="bg-amber-50/80 border border-amber-300 p-4 rounded-2xl flex flex-wrap items-center justify-between gap-3 text-xs">
+                  <span className="font-black text-slate-900 text-sm flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-amber-700">straighten</span>
+                    إجمالي الأمتار المجمعة للطلب:
+                  </span>
+                  <div className="flex flex-wrap items-center gap-2 font-mono font-bold">
+                    <span className="bg-amber-200/80 text-amber-950 px-2.5 py-1 rounded-lg border border-amber-300">
+                      ثقيل: {totals.heavy} متر
+                    </span>
+                    <span className="bg-blue-200/80 text-blue-950 px-2.5 py-1 rounded-lg border border-blue-300">
+                      شيفون/تول: {totals.sheer} متر
+                    </span>
+                    {totals.blackout > 0 && (
+                      <span className="bg-slate-200 text-slate-950 px-2.5 py-1 rounded-lg border border-slate-300">
+                        بلاك آوت: {totals.blackout} متر
+                      </span>
+                    )}
+                    <span className="bg-slate-900 text-amber-400 px-3 py-1 rounded-lg font-black text-sm shadow-2xs">
+                      المجموع الكلي: {totals.total} متر
+                    </span>
+                  </div>
+                </div>
+              );
+            })()}
 
             {selectedOrderDetails.notes && (
               <div className="bg-amber-50 p-3 rounded-xl border border-amber-200 text-xs">
@@ -609,7 +660,7 @@ export default function PipelineTailoringPage() {
                 onClick={() => setSelectedOrderDetails(null)}
                 className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-xl text-xs font-bold transition-colors cursor-pointer"
               >
-                إغلاق
+                إغلاق النافذة
               </button>
             </div>
           </div>

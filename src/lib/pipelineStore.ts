@@ -34,7 +34,7 @@ export interface PipelineMasterOrder {
   rooms: any[];
 }
 
-const STORAGE_KEY = 'ahmed_kishk_pipeline_orders_v3';
+const STORAGE_KEY = 'ahmed_kishk_pipeline_orders_v4';
 
 export const DEFAULT_PIPELINE_ORDERS: PipelineMasterOrder[] = [
   {
@@ -57,15 +57,15 @@ export const DEFAULT_PIPELINE_ORDERS: PipelineMasterOrder[] = [
     rooms: [
       {
         roomName: 'غرفة (1) - الصالة الرئيسية',
-        heavyFabric: { name: 'قطيفة تركي ثقيل', code: 'V-990', meters: 6.3 },
-        sheerFabric: { name: 'تول خفيف مطرز', code: 'T-402', meters: 8.75 },
-        blackoutFabric: { name: 'بلاك آوت عازل', code: 'BL-101', meters: 2.25 },
+        heavyFabric: { name: 'قطيفة تركي ثقيل', code: 'V-990', meters: 6.3, pieces: 'جنبين', tapeType: 'شريط 3 فتلة (معامل ×2)', netHeight: '280 سم' },
+        sheerFabric: { name: 'تول خفيف مطرز', code: 'T-402', meters: 8.75, pieces: 'قطعة واحدة', tapeType: 'شريط ويفي (معامل ×2.5)', netHeight: '278 سم' },
+        blackoutFabric: { name: 'بلاك آوت عازل', code: 'BL-101', meters: 2.25, pieces: 'قطعة واحدة', tapeType: 'شريط كشكشة عريض', netHeight: '275 سم' },
       },
       {
         roomName: 'غرفة (2) - غرفة النوم الرئيسية',
-        heavyFabric: { name: 'قطيفة تركي ثقيل', code: 'V-990', meters: 4.5 },
-        sheerFabric: { name: 'تول خفيف مطرز', code: 'T-402', meters: 5.0 },
-        blackoutFabric: { name: 'بلاك آوت عازل', code: 'BL-101', meters: 3.0 },
+        heavyFabric: { name: 'قطيفة تركي ثقيل', code: 'V-990', meters: 4.5, pieces: 'جنبين', tapeType: 'شريط 3 فتلة (معامل ×2)', netHeight: '265 سم' },
+        sheerFabric: { name: 'تول خفيف مطرز', code: 'T-402', meters: 5.0, pieces: 'قطعة واحدة', tapeType: 'شريط ويفي (معامل ×2.5)', netHeight: '263 سم' },
+        blackoutFabric: { name: 'بلاك آوت عازل', code: 'BL-101', meters: 3.0, pieces: 'قطعة واحدة', tapeType: 'شريط كشكشة عريض', netHeight: '260 سم' },
       },
     ],
   },
@@ -89,8 +89,8 @@ export const DEFAULT_PIPELINE_ORDERS: PipelineMasterOrder[] = [
     rooms: [
       {
         roomName: 'غرفة المعيشة',
-        heavyFabric: { name: 'كتان هازل بني', code: 'LN-77', meters: 12.0 },
-        sheerFabric: { name: 'تول ويفي أبيض', code: 'TW-10', meters: 12.0 },
+        heavyFabric: { name: 'كتان هازل بني', code: 'LN-77', meters: 12.0, pieces: 'جنبين', tapeType: 'شريط ويفي (معامل ×2.5)', netHeight: '290 سم' },
+        sheerFabric: { name: 'تول ويفي أبيض', code: 'TW-10', meters: 12.0, pieces: 'قطعتين', tapeType: 'شريط ويفي (معامل ×2.5)', netHeight: '288 سم' },
       },
     ],
   },
@@ -114,8 +114,8 @@ export const DEFAULT_PIPELINE_ORDERS: PipelineMasterOrder[] = [
     rooms: [
       {
         roomName: 'صالون الضيوف',
-        heavyFabric: { name: 'شانيل تركيات بيج', code: 'CH-88', meters: 8.5 },
-        sheerFabric: { name: 'تول سادة أوف وايت', code: 'TS-01', meters: 9.0 },
+        heavyFabric: { name: 'شانيل تركيات بيج', code: 'CH-88', meters: 8.5, pieces: 'جنبين', tapeType: 'شريط 3 فتلة (معامل ×2)', netHeight: '280 سم' },
+        sheerFabric: { name: 'تول سادة أوف وايت', code: 'TS-01', meters: 9.0, pieces: 'قطعة واحدة', tapeType: 'شريط ويفي (معامل ×2.5)', netHeight: '278 سم' },
       },
     ],
   },
