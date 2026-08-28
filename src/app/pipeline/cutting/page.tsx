@@ -353,7 +353,34 @@ export default function PipelineCuttingPage() {
       {/* 🖨️ Printable Order Cut Sheet Modal (ورقة قص القماش للبياع) */}
       {selectedOrderForPrint && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-5 text-slate-900 border border-slate-200 my-8">
+          {/* Printable CSS styles */}
+          <style>{`
+            @media print {
+              body * {
+                visibility: hidden !important;
+              }
+              #printable-cut-sheet-modal, #printable-cut-sheet-modal * {
+                visibility: visible !important;
+              }
+              #printable-cut-sheet-modal {
+                position: absolute !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 15px !important;
+                background: white !important;
+                color: black !important;
+                box-shadow: none !important;
+                border: none !important;
+              }
+              .no-print {
+                display: none !important;
+              }
+            }
+          `}</style>
+
+          <div id="printable-cut-sheet-modal" className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-5 text-slate-900 border border-slate-200 my-8">
             {/* Printable Header */}
             <div className="flex justify-between items-center pb-4 border-b-2 border-slate-900">
               <div>
@@ -432,7 +459,7 @@ export default function PipelineCuttingPage() {
                 <div><strong>مسؤول القص / البياع:</strong> {selectedOrderForPrint.cutterName}</div>
                 <div><strong>التوقيع بالاستلام والقص:</strong> ________________________</div>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 no-print">
                 <button
                   onClick={() => window.print()}
                   className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-4 py-2 rounded-xl text-xs shadow-soft transition-colors cursor-pointer"
