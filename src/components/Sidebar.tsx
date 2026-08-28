@@ -180,6 +180,7 @@ export default function Sidebar() {
         {isAllowed('p_dashboard') && (
           <Link
             href="/"
+            onClick={close}
             title="الرئيسية"
             className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all ${
               pathname === '/'
@@ -199,7 +200,7 @@ export default function Sidebar() {
           <div className="rounded-xl border border-slate-800/60 bg-slate-900/40 overflow-hidden">
             <button
               onClick={() => toggleSection('pipeline')}
-              className={`w-full flex items-center justify-between px-3 py-2.5 transition-colors text-right ${
+              className={`w-full flex items-center justify-between px-3 py-2.5 transition-colors text-right cursor-pointer ${
                 expandedSections.pipeline ? 'bg-slate-800/60 text-brand-gold font-bold' : 'text-slate-300 hover:text-white'
               } ${isCollapsed ? 'justify-center' : ''}`}
               title="مراحل الستائر"
@@ -232,6 +233,7 @@ export default function Sidebar() {
                     <Link
                       key={page.id}
                       href={page.href}
+                      onClick={close}
                       title={page.name}
                       className={`flex items-center justify-between px-2.5 py-2 rounded-lg text-xs transition-all ${
                         isActive
@@ -263,7 +265,7 @@ export default function Sidebar() {
           <div className="rounded-xl border border-slate-800/60 bg-slate-900/40 overflow-hidden">
             <button
               onClick={() => toggleSection('sales')}
-              className={`w-full flex items-center justify-between px-3 py-2.5 transition-colors text-right ${
+              className={`w-full flex items-center justify-between px-3 py-2.5 transition-colors text-right cursor-pointer ${
                 expandedSections.sales ? 'bg-slate-800/60 text-brand-gold font-bold' : 'text-slate-300 hover:text-white'
               } ${isCollapsed ? 'justify-center' : ''}`}
               title="المبيعات"
@@ -291,6 +293,7 @@ export default function Sidebar() {
                     <Link
                       key={page.id}
                       href={page.href}
+                      onClick={close}
                       title={page.name}
                       className={`flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs transition-all ${
                         isActive
@@ -315,7 +318,7 @@ export default function Sidebar() {
           <div className="rounded-xl border border-slate-800/60 bg-slate-900/40 overflow-hidden">
             <button
               onClick={() => toggleSection('admin')}
-              className={`w-full flex items-center justify-between px-3 py-2.5 transition-colors text-right ${
+              className={`w-full flex items-center justify-between px-3 py-2.5 transition-colors text-right cursor-pointer ${
                 expandedSections.admin ? 'bg-slate-800/60 text-brand-gold font-bold' : 'text-slate-300 hover:text-white'
               } ${isCollapsed ? 'justify-center' : ''}`}
               title="الإدارة والمخزون"
@@ -343,6 +346,7 @@ export default function Sidebar() {
                     <Link
                       key={page.id}
                       href={page.href}
+                      onClick={close}
                       title={page.name}
                       className={`flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs transition-all ${
                         isActive
@@ -367,6 +371,7 @@ export default function Sidebar() {
       <div className="p-2.5 border-t border-slate-800 bg-slate-950/70 space-y-2 shrink-0">
         <Link
           href="/profile"
+          onClick={close}
           className={`flex items-center gap-2.5 p-2 rounded-xl bg-slate-900 border border-slate-800 hover:border-brand-gold/60 text-slate-300 transition-colors ${
             isCollapsed ? 'justify-center' : ''
           }`}
