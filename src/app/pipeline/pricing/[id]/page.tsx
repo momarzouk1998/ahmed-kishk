@@ -17,6 +17,7 @@ import {
   ACCESSORY_PRICES,
   PipeAccessories
 } from '@/lib/inspectionsStore';
+import { getStoredPipelineOrders, saveStoredPipelineOrders, PipelineMasterOrder, isTodayOrOverdue } from '@/lib/pipelineStore';
 import { canUserEditPrices } from '@/lib/permissions';
 
 interface InventoryFabric {
@@ -65,7 +66,50 @@ export default function PricingDetailPage() {
 
   const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
   const [deliveryDate, setDeliveryDate] = useState<string>('');
+  const [fulfillmentType, setFulfillmentType] = useState<'DELIVERY' | 'INSTALLATION'>('INSTALLATION');
   const [estimator, setEstimator] = useState<string>('أحمد كشك');
+
+  const handleFulfillmentChange = (type: 'DELIVERY' | 'INSTALLATION', date: string) => {
+    setFulfillmentType(type);
+    setDeliveryDate(date);
+
+    if (!quotation) return;
+
+    const targetStatus = type === 'DELIVERY' ? 'في التسليمات' : 'في التركيبات';
+
+    // 1. Update quotation store
+    const updatedQuotations = quotations.map(q =>
+      q.id === quotation.id ? { ...q, deliveryDate: date, fulfillmentType: type } : q
+    );
+    setQuotations(updatedQuotations);
+    saveAllQuotations(updatedQuotations);
+
+    // 2. Sync master pipeline store
+    const storedOrders = getStoredPipelineOrders();
+    const existingOrder = storedOrders.find(o => o.orderId === quotation.id || o.customerName === quotation.customerName);
+
+    if (existingOrder) {
+      const updated = storedOrders.map(o =>
+        o.id === existingOrder.id ? { ...o, deliveryDate: date, status: targetStatus as any } : o
+      );
+      saveStoredPipelineOrders(updated);
+    } else {
+      const newMaster: PipelineMasterOrder = {
+        id: `ORD-${String(storedOrders.length + 1).padStart(3, '0')}`,
+        orderId: quotation.id,
+        customerName: quotation.customerName,
+        phone: quotation.phone,
+        address: quotation.address,
+        branch: quotation.branch || 'الفرع الرئيسي',
+        deliveryDate: date,
+        status: targetStatus as any,
+        createdAt: quotation.date || new Date().toISOString().split('T')[0],
+        remainingAmount: quotation.remainingAmount,
+        rooms: quotation.rooms || [],
+      };
+      saveStoredPipelineOrders([newMaster, ...storedOrders]);
+    }
+  };
 
   // Layer Toggles
   const [heavyEnabled, setHeavyEnabled] = useState<boolean>(true);
@@ -467,22 +511,50 @@ export default function PricingDetailPage() {
               <span className="text-slate-400 font-bold block">مسؤول المبيعات والتسعير:</span>
               <strong className="text-slate-900 text-sm block mt-1">{estimator || 'أحمد كشك'}</strong>
             </div>
-            <div>
-              <span className="text-amber-800 font-bold block">📅 موعد / تاريخ التركيب:</span>
+            <div className="md:col-span-1 border-r border-slate-200 pr-3 space-y-2">
+              <span className="text-amber-900 font-black block text-xs">📅 نوع الموعد والتاريخ:</span>
+              
+              {/* Toggle Buttons Choice (تسليم أو تركيب) */}
+              <div className="flex bg-slate-200/80 p-0.5 rounded-lg text-[11px] font-bold">
+                <button
+                  type="button"
+                  onClick={() => handleFulfillmentChange('DELIVERY', deliveryDate)}
+                  className={`flex-1 py-1 rounded-md transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                    fulfillmentType === 'DELIVERY'
+                      ? 'bg-amber-400 text-slate-950 shadow-2xs font-black'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <span>🏬 تسليم/شحن</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleFulfillmentChange('INSTALLATION', deliveryDate)}
+                  className={`flex-1 py-1 rounded-md transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                    fulfillmentType === 'INSTALLATION'
+                      ? 'bg-amber-400 text-slate-950 shadow-2xs font-black'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <span>🛠️ تركيب ميداني</span>
+                </button>
+              </div>
+
+              {/* Date Input */}
               <input
                 type="date"
                 value={deliveryDate || ''}
-                onChange={(e) => {
-                  const d = e.target.value;
-                  setDeliveryDate(d);
-                  if (quotation) {
-                    const updatedList = quotations.map(q => q.id === quotation.id ? { ...q, deliveryDate: d } : q);
-                    setQuotations(updatedList);
-                    saveAllQuotations(updatedList);
-                  }
-                }}
-                className="w-full bg-white border border-amber-300 rounded-lg px-2.5 py-1 text-slate-900 font-mono font-bold text-xs mt-1 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
+                onChange={(e) => handleFulfillmentChange(fulfillmentType, e.target.value)}
+                className="w-full bg-white border border-amber-300 rounded-lg px-2.5 py-1 text-slate-900 font-mono font-bold text-xs focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
               />
+
+              {/* Target Tab Badge Indicator */}
+              {deliveryDate && (
+                <div className="text-[10px] font-bold text-slate-600 bg-amber-50 p-1 rounded text-center border border-amber-200">
+                  سيظهر في صفحة ({fulfillmentType === 'DELIVERY' ? 'التسليمات' : 'التركيبات'}) - تاب ({isTodayOrOverdue(deliveryDate) ? 'اليوم' : 'مجدول'})
+                </div>
+              )}
             </div>
           </div>
         </div>

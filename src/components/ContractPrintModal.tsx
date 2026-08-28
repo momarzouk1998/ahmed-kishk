@@ -141,7 +141,7 @@ export default function ContractPrintModal({ isOpen, onClose, data }: ContractPr
               <strong className="text-slate-900">{data.address}</strong>
             </div>
             <div>
-              <span className="text-amber-800 font-bold block">موعد التركيب:</span>
+              <span className="text-amber-800 font-bold block">نوع وموعد الاستلام:</span>
               <strong className="text-slate-900 font-mono text-sm block mt-0.5">{data.deliveryDate || 'غير محدد'}</strong>
             </div>
           </div>
