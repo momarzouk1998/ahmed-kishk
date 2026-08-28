@@ -154,8 +154,8 @@ export default function PipelineInspectionsPage() {
                   : 'border-transparent text-slate-400 hover:text-slate-700'
               }`}
             >
-              <span className="material-symbols-outlined text-[18px]">pending_actions</span>
-              <span>قيد التنفيذ</span>
+              <span className="material-symbols-outlined text-[18px]">square_foot</span>
+              <span>المعاينات</span>
               <span className={`text-[11px] px-2 py-0.2 rounded-full font-mono font-bold ${
                 activeTab === 'OPEN' ? 'bg-amber-100 text-amber-950' : 'bg-slate-100 text-slate-500'
               }`}>
@@ -171,8 +171,8 @@ export default function PipelineInspectionsPage() {
                   : 'border-transparent text-slate-400 hover:text-slate-700'
               }`}
             >
-              <span className="material-symbols-outlined text-[18px]">task_alt</span>
-              <span>مكتملة</span>
+              <span className="material-symbols-outlined text-[18px]">history</span>
+              <span>السجل</span>
               <span className={`text-[11px] px-2 py-0.2 rounded-full font-mono font-bold ${
                 activeTab === 'SENT' ? 'bg-amber-100 text-amber-950' : 'bg-slate-100 text-slate-500'
               }`}>

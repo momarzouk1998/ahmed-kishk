@@ -102,7 +102,7 @@ export default function PipelineAccessoriesPage() {
             }`}
           >
             <span className="material-symbols-outlined text-[18px]">handyman</span>
-            <span>جاري التجهيز</span>
+            <span>الإكسسوارات</span>
             <span className={`text-[11px] px-2 py-0.2 rounded-full font-mono font-bold ${
               activeTab === 'OPEN' ? 'bg-amber-100 text-amber-950' : 'bg-slate-100 text-slate-500'
             }`}>
@@ -118,8 +118,8 @@ export default function PipelineAccessoriesPage() {
                 : 'border-transparent text-slate-400 hover:text-slate-700'
             }`}
           >
-            <span className="material-symbols-outlined text-[18px]">check_circle</span>
-            <span>تم التجهيز والجاهز للنقل</span>
+            <span className="material-symbols-outlined text-[18px]">history</span>
+            <span>السجل</span>
             <span className={`text-[11px] px-2 py-0.2 rounded-full font-mono font-bold ${
               activeTab === 'SENT' ? 'bg-amber-100 text-amber-950' : 'bg-slate-100 text-slate-500'
             }`}>

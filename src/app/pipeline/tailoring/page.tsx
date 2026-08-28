@@ -98,7 +98,7 @@ export default function PipelineTailoringPage() {
             }`}
           >
             <span className="material-symbols-outlined text-[18px]">precision_manufacturing</span>
-            <span>القطع قيد التفصيل والخياطة</span>
+            <span>الورشة</span>
             <span className={`text-[11px] px-2 py-0.2 rounded-full font-mono font-bold ${
               activeTab === 'OPEN' ? 'bg-amber-100 text-amber-950' : 'bg-slate-100 text-slate-500'
             }`}>
@@ -114,8 +114,8 @@ export default function PipelineTailoringPage() {
                 : 'border-transparent text-slate-400 hover:text-slate-700'
             }`}
           >
-            <span className="material-symbols-outlined text-[18px]">check_circle</span>
-            <span>سجل الستائر الجاهزة للنقل</span>
+            <span className="material-symbols-outlined text-[18px]">history</span>
+            <span>السجل</span>
             <span className={`text-[11px] px-2 py-0.2 rounded-full font-mono font-bold ${
               activeTab === 'SENT' ? 'bg-amber-100 text-amber-950' : 'bg-slate-100 text-slate-500'
             }`}>
