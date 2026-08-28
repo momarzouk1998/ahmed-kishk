@@ -525,7 +525,7 @@ export default function PricingDetailPage() {
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
-                  <span>🏬 تسليم/شحن</span>
+                  <span>تسليم</span>
                 </button>
 
                 <button
@@ -537,7 +537,7 @@ export default function PricingDetailPage() {
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
-                  <span>🛠️ تركيب ميداني</span>
+                  <span>تركيب</span>
                 </button>
               </div>
 

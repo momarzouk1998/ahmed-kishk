@@ -147,7 +147,7 @@ const initialTailoringOrders: TailoringJobOrder[] = [
 
 export default function PipelineTailoringPage() {
   const [orders, setOrders] = useState<TailoringJobOrder[]>(initialTailoringOrders);
-  const [activeTab, setActiveTab] = useState<'WORKSHOP' | 'SEWN' | 'HISTORY'>('WORKSHOP');
+  const [activeTab, setActiveTab] = useState<'SEWING' | 'IRONING' | 'HISTORY'>('SEWING');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBranch, setSelectedBranch] = useState<string>('ALL');
   const [selectedOrderForWorksheet, setSelectedOrderForWorksheet] = useState<TailoringJobOrder | null>(null);
@@ -159,14 +159,14 @@ export default function PipelineTailoringPage() {
     }
   }, []);
 
-  const isWorkshop = (status: string) => status === 'جاري الخياطة' || status === 'قيد التفصيل' || status === 'تم القص وجاهز للخياطة';
-  const isSewn = (status: string) => status === 'تمت الخياطة' || status === 'جاهز للتسليم' || status === 'تم الخياطة وجاهز للتسليم';
-  const isHistory = (status: string) => status === 'تم التحويل للتسليمات' || status === 'في الإكسسوارات' || status === 'في التركيبات' || status === 'في التسليمات' || status === 'تم التسليم للعميل بنجاح' || status === 'تم التركيب بنجاح ومغلق';
+  const isSewing = (o: any) => o.status === 'في الورشة' && (!o.localStatus || o.localStatus === 'جاري الخياطة' || o.localStatus === 'بانتظار القص');
+  const isIroning = (o: any) => o.status === 'في الورشة' && (o.localStatus === 'جاري الكي' || o.localStatus === 'تمت الخياطة');
+  const isHistory = (o: any) => o.status !== 'في الورشة' && o.status !== 'في المقص' && o.status !== 'المعاينات' && o.status !== 'انتظار تسعير';
 
   const tabFiltered = orders.filter(o => {
-    if (activeTab === 'WORKSHOP') return isWorkshop(o.status);
-    if (activeTab === 'SEWN') return isSewn(o.status);
-    return isHistory(o.status);
+    if (activeTab === 'SEWING') return isSewing(o);
+    if (activeTab === 'IRONING') return isIroning(o);
+    return isHistory(o);
   });
 
   const filtered = tabFiltered.filter(o => {
@@ -175,30 +175,30 @@ export default function PipelineTailoringPage() {
     return matchesSearch && matchesBranch;
   });
 
-  const updateOrderStatus = (id: string, newStatus: TailoringJobOrder['status']) => {
-    setOrders(prev => prev.map(o => o.id === id ? { ...o, status: newStatus } : o));
-    updatePipelineOrderStatus(id, newStatus as any);
+  const updateOrderStatus = (id: string, newStatus: string, localStatus?: string) => {
+    setOrders(prev => prev.map(o => o.id === id ? { ...o, status: newStatus as any, localStatus } : o));
+    updatePipelineOrderStatus(id, newStatus, localStatus);
   };
 
-  const workshopCount = orders.filter(o => isWorkshop(o.status)).length;
-  const sewnCount = orders.filter(o => isSewn(o.status)).length;
-  const historyCount = orders.filter(o => isHistory(o.status)).length;
+  const sewingCount = orders.filter(isSewing).length;
+  const ironingCount = orders.filter(isIroning).length;
+  const historyCount = orders.filter(isHistory).length;
 
   return (
     <PageShell title="الورشة والتفصيل" badge="المرحلة 5">
       <div className="flex flex-col gap-5">
         <div className="flex border-b border-slate-200 gap-2">
-          <button onClick={() => setActiveTab('WORKSHOP')} className={`pb-3 px-4 text-xs sm:text-sm font-black flex items-center gap-2 border-b-2 ${activeTab === 'WORKSHOP' ? 'border-brand-gold text-slate-950' : 'border-transparent text-slate-400'}`}>
-            <span>الورشة</span>
-            <span className="bg-slate-100 px-2 rounded-full text-[11px]">{workshopCount}</span>
+          <button onClick={() => setActiveTab('SEWING')} className={`pb-3 px-4 text-xs sm:text-sm font-black flex items-center gap-2 border-b-2 transition-all cursor-pointer ${activeTab === 'SEWING' ? 'border-brand-gold text-slate-950' : 'border-transparent text-slate-400'}`}>
+            <span>🧵 جاري الخياطة</span>
+            <span className="bg-amber-100 text-amber-950 px-2 rounded-full text-[11px] font-mono font-bold">{sewingCount}</span>
           </button>
-          <button onClick={() => setActiveTab('SEWN')} className={`pb-3 px-4 text-xs sm:text-sm font-black flex items-center gap-2 border-b-2 ${activeTab === 'SEWN' ? 'border-brand-gold text-slate-950' : 'border-transparent text-slate-400'}`}>
-            <span>تم الخياطة</span>
-            <span className="bg-slate-100 px-2 rounded-full text-[11px]">{sewnCount}</span>
+          <button onClick={() => setActiveTab('IRONING')} className={`pb-3 px-4 text-xs sm:text-sm font-black flex items-center gap-2 border-b-2 transition-all cursor-pointer ${activeTab === 'IRONING' ? 'border-brand-gold text-slate-950' : 'border-transparent text-slate-400'}`}>
+            <span>🧺 جاري الكي</span>
+            <span className="bg-amber-100 text-amber-950 px-2 rounded-full text-[11px] font-mono font-bold">{ironingCount}</span>
           </button>
-          <button onClick={() => setActiveTab('HISTORY')} className={`pb-3 px-4 text-xs sm:text-sm font-black flex items-center gap-2 border-b-2 ${activeTab === 'HISTORY' ? 'border-brand-gold text-slate-950' : 'border-transparent text-slate-400'}`}>
-            <span>السجل</span>
-            <span className="bg-slate-100 px-2 rounded-full text-[11px]">{historyCount}</span>
+          <button onClick={() => setActiveTab('HISTORY')} className={`pb-3 px-4 text-xs sm:text-sm font-black flex items-center gap-2 border-b-2 transition-all cursor-pointer ${activeTab === 'HISTORY' ? 'border-brand-gold text-slate-950' : 'border-transparent text-slate-400'}`}>
+            <span>📜 السجل</span>
+            <span className="bg-slate-100 text-slate-600 px-2 rounded-full text-[11px] font-mono font-bold">{historyCount}</span>
           </button>
         </div>
 
@@ -231,7 +231,7 @@ export default function PipelineTailoringPage() {
         {filtered.length === 0 ? (
           <div className="bg-white rounded-2xl border border-dashed border-slate-300 p-10 text-center">
             <h3 className="font-bold text-slate-700 text-sm">
-              {activeTab === 'WORKSHOP' ? 'لا توجد أوامر تفصيل جارية' : activeTab === 'SEWN' ? 'لا توجد قطع بانتظار الجاهزية' : 'السجل فارغ'}
+              {activeTab === 'SEWING' ? 'لا توجد أوامر خياطة جارية' : activeTab === 'IRONING' ? 'لا توجد أوردرات بانتظار الكي' : 'السجل فارغ'}
             </h3>
           </div>
         ) : activeTab === 'HISTORY' ? (
@@ -297,21 +297,21 @@ export default function PipelineTailoringPage() {
                 </div>
                 <div className="pt-3 border-t border-slate-100 space-y-2">
                   <a href={`https://wa.me/2${order.phone}`} target="_blank" rel="noreferrer" className="w-full bg-emerald-50 text-emerald-800 border border-emerald-200 py-1.5 rounded-xl text-xs font-bold flex justify-center">💬 إرسال تحديث للعميل (واتساب)</a>
-                  {activeTab === 'WORKSHOP' && (
+                  {activeTab === 'SEWING' && (
                     <button
-                      onClick={() => updateOrderStatus(order.id, 'تمت الخياطة')}
+                      onClick={() => updateOrderStatus(order.id, 'في الورشة', 'جاري الكي')}
                       className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 py-2.5 rounded-xl text-xs font-black shadow-gold cursor-pointer transition-colors"
                     >
-                      تمت الخياطة ←
+                      تمت الخياطة وتحويل للكي ←
                     </button>
                   )}
 
-                  {activeTab === 'SEWN' && (
+                  {activeTab === 'IRONING' && (
                     <button
-                      onClick={() => updateOrderStatus(order.id, 'في التسليمات')}
+                      onClick={() => updateOrderStatus(order.id, 'تجهيز الاكسسوارات', 'تم التجهيز')}
                       className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 rounded-xl text-xs font-black shadow-xs cursor-pointer transition-colors"
                     >
-                      جاهز للتسليم ✓
+                      تم الكي والتحويل للإكسسوارات / التسليم ✓
                     </button>
                   )}
                 </div>

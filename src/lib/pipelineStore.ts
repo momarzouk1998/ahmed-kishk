@@ -1,6 +1,19 @@
 'use client';
 
-// Shared Pipeline Order Interface
+// Master Pipeline Stage Enum/Union
+export type GlobalMasterStage =
+  | 'المعاينات'
+  | 'انتظار تسعير'
+  | 'في المقص'
+  | 'في الورشة'
+  | 'تجهيز الاكسسوارات'
+  | 'جاهز للاستلام'
+  | 'جاهز للتركيب'
+  | 'مكتمل';
+
+export type LocalTailoringStatus = 'جاري الخياطة' | 'جاري الكي' | 'تمت الخياطة';
+
+// Shared Master Order Interface
 export interface PipelineMasterOrder {
   id: string;
   orderId: string;
@@ -12,23 +25,16 @@ export interface PipelineMasterOrder {
   cutterName?: string;
   tailorName?: string;
   technicianName?: string;
-  status:
-    | 'بانتظار القص'
-    | 'تم القص وجاهز للخياطة'
-    | 'جاري الخياطة'
-    | 'تمت الخياطة'
-    | 'جاهز للتسليم'
-    | 'تم التحويل للتسليمات'
-    | 'في التسليمات'
-    | 'تم التسليم للعميل بنجاح'
-    | 'في التركيبات'
-    | 'تم التركيب بنجاح ومغلق';
+  status: GlobalMasterStage | string;
+  localStatus?: LocalTailoringStatus | 'اليوم' | 'مجدول' | string;
   createdAt: string;
   remainingAmount?: number;
+  totalAmount?: number;
+  depositPaid?: number;
   rooms: any[];
 }
 
-const STORAGE_KEY = 'ahmed_kishk_pipeline_orders_v2';
+const STORAGE_KEY = 'ahmed_kishk_pipeline_orders_v3';
 
 export const DEFAULT_PIPELINE_ORDERS: PipelineMasterOrder[] = [
   {
@@ -42,8 +48,11 @@ export const DEFAULT_PIPELINE_ORDERS: PipelineMasterOrder[] = [
     cutterName: 'عم مصطفى البياع',
     tailorName: 'أبو فهد الخياط',
     technicianName: 'م. أحمد عبده',
-    status: 'بانتظار القص',
+    status: 'في المقص',
+    localStatus: 'بانتظار القص',
     createdAt: '2026-08-28',
+    totalAmount: 9400,
+    depositPaid: 5200,
     remainingAmount: 4200,
     rooms: [
       {
@@ -71,8 +80,11 @@ export const DEFAULT_PIPELINE_ORDERS: PipelineMasterOrder[] = [
     cutterName: 'سيد القصاد',
     tailorName: 'الأسطى إبراهيم',
     technicianName: 'م. هاني سعيد',
-    status: 'بانتظار القص',
+    status: 'في المقص',
+    localStatus: 'بانتظار القص',
     createdAt: '2026-08-27',
+    totalAmount: 8500,
+    depositPaid: 4700,
     remainingAmount: 3800,
     rooms: [
       {
@@ -93,8 +105,11 @@ export const DEFAULT_PIPELINE_ORDERS: PipelineMasterOrder[] = [
     cutterName: 'عم مصطفى البياع',
     tailorName: 'أبو فهد الخياط',
     technicianName: 'م. أحمد عبده',
-    status: 'تم القص وجاهز للخياطة',
+    status: 'في الورشة',
+    localStatus: 'جاري الخياطة',
     createdAt: '2026-08-25',
+    totalAmount: 7200,
+    depositPaid: 4000,
     remainingAmount: 3200,
     rooms: [
       {
@@ -105,6 +120,23 @@ export const DEFAULT_PIPELINE_ORDERS: PipelineMasterOrder[] = [
     ],
   },
 ];
+
+/**
+ * Normalizes any status to official Global Master Stage
+ */
+export function normalizeMasterStage(statusStr: string): GlobalMasterStage {
+  if (!statusStr) return 'المعاينات';
+  const s = statusStr.trim();
+  if (s === 'المعاينات' || s === 'في المعاينات' || s.includes('معاينة') || s === 'مُجدول') return 'المعاينات';
+  if (s === 'انتظار تسعير' || s === 'في التسعير' || s.includes('تسعير') || s === 'قيد التسعير') return 'انتظار تسعير';
+  if (s === 'في المقص' || s === 'بانتظار القص' || s === 'قص القماش') return 'في المقص';
+  if (s === 'في الورشة' || s === 'جاري الخياطة' || s === 'جاري الكي' || s === 'تمت الخياطة' || s === 'تم القص وجاهز للخياطة') return 'في الورشة';
+  if (s === 'تجهيز الاكسسوارات' || s === 'تجهيز الاكسسوار' || s === 'جاري التجهيز' || s === 'تم التجهيز') return 'تجهيز الاكسسوارات';
+  if (s === 'جاهز للاستلام' || s === 'في التسليمات' || s === 'تسليمات المعرض والشحن') return 'جاهز للاستلام';
+  if (s === 'جاهز للتركيب' || s === 'في التركيبات' || s === 'التركيبات') return 'جاهز للتركيب';
+  if (s === 'مكتمل' || s === 'تم التسليم للعميل بنجاح' || s === 'تم التركيب بنجاح ومغلق' || s === 'مكتمل ومسلم') return 'مكتمل';
+  return 'المعاينات';
+}
 
 export function getStoredPipelineOrders(): PipelineMasterOrder[] {
   if (typeof window === 'undefined') return DEFAULT_PIPELINE_ORDERS;
@@ -130,9 +162,25 @@ export function saveStoredPipelineOrders(orders: PipelineMasterOrder[]) {
   }
 }
 
-export function updatePipelineOrderStatus(id: string, newStatus: PipelineMasterOrder['status']) {
+export function updatePipelineOrderStatus(
+  id: string,
+  newStatus: GlobalMasterStage | string,
+  localStatus?: string
+) {
   const current = getStoredPipelineOrders();
-  const updated = current.map(o => o.id === id || o.orderId === id ? { ...o, status: newStatus } : o);
+  const normalized = normalizeMasterStage(newStatus);
+
+  const updated = current.map(o => {
+    if (o.id === id || o.orderId === id) {
+      return {
+        ...o,
+        status: normalized,
+        localStatus: localStatus || o.localStatus || newStatus,
+      };
+    }
+    return o;
+  });
+
   saveStoredPipelineOrders(updated);
   return updated;
 }
