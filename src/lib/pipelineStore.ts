@@ -136,3 +136,22 @@ export function updatePipelineOrderStatus(id: string, newStatus: PipelineMasterO
   saveStoredPipelineOrders(updated);
   return updated;
 }
+
+export function isTodayOrOverdue(dateStr?: string): boolean {
+  if (!dateStr || dateStr.trim() === '' || dateStr.includes('غير محدد') || dateStr.includes('اليوم')) {
+    return true;
+  }
+
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const todayStr = `${year}-${month}-${day}`;
+
+  const match = dateStr.match(/\d{4}-\d{2}-\d{2}/);
+  if (match) {
+    return match[0] <= todayStr;
+  }
+
+  return true;
+}

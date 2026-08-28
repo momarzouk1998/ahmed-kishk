@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
-import { getStoredPipelineOrders, updatePipelineOrderStatus } from '@/lib/pipelineStore';
+import { getStoredPipelineOrders, updatePipelineOrderStatus, isTodayOrOverdue } from '@/lib/pipelineStore';
 
 interface InstallJob {
   id: string;
@@ -55,10 +55,7 @@ export default function PipelineInstallationPage() {
   }, []);
 
   const isSent = (status: InstallJob['status']) => status === 'تم التركيب بنجاح ومغلق';
-  const isTodayJob = (j: any) => {
-    const s = j.scheduledDate || j.deliveryDate || '';
-    return s.includes('2026-08-28') || s === '' || !j.scheduledDate || s <= '2026-08-28';
-  };
+  const isTodayJob = (j: any) => isTodayOrOverdue(j.scheduledDate || j.deliveryDate);
 
   const tabFiltered = jobs.filter(j => {
     if (activeTab === 'TODAY') {

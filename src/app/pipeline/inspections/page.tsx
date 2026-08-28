@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
 import { useRouter } from 'next/navigation';
 import { getStoredInspections, saveOrUpdateInspection, InspectionData } from '@/lib/inspectionsStore';
+import { isTodayOrOverdue } from '@/lib/pipelineStore';
 
 export type InspectionSummary = InspectionData;
 
@@ -77,10 +78,7 @@ export default function PipelineInspectionsPage() {
   const pageSize = 8;
 
   const isSent = (status: InspectionData['status']) => status === 'قيد التسعير' || status === 'في الورشة' || status === 'مكتمل';
-  const isTodayItem = (item: InspectionData) => {
-    const s = item.scheduledAt || '';
-    return s.includes('2026-08-28') || s.includes('اليوم') || s === 'غير محدد' || s.includes('08-28') || s.includes('10:00') || s.includes('12:30');
-  };
+  const isTodayItem = (item: InspectionData) => isTodayOrOverdue(item.scheduledAt || item.createdAt);
 
   const tabFiltered = inspections.filter(item => {
     if (activeTab === 'TODAY') {

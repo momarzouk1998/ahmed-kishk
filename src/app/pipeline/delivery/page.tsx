@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
-import { getStoredPipelineOrders, updatePipelineOrderStatus } from '@/lib/pipelineStore';
+import { getStoredPipelineOrders, updatePipelineOrderStatus, isTodayOrOverdue } from '@/lib/pipelineStore';
 
 interface DeliveryJob {
   id: string;
@@ -52,11 +52,7 @@ export default function PipelineDeliveryPage() {
   }, []);
 
   const isSent = (status: any) => status === 'تم التسليم للعميل بنجاح' || status === 'في التركيبات' || status === 'تم التركيب بنجاح ومغلق';
-
-  const isTodayDelivery = (j: any) => {
-    const dateStr = j.deliveryDate || j.createdAt || '';
-    return dateStr.includes('2026-08-28') || dateStr === '' || !j.deliveryDate || dateStr <= '2026-08-28';
-  };
+  const isTodayDelivery = (j: any) => isTodayOrOverdue(j.deliveryDate || j.createdAt);
 
   const tabFiltered = jobs.filter(j => {
     if (activeTab === 'TODAY') {
