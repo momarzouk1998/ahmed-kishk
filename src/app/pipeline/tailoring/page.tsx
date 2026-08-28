@@ -284,33 +284,14 @@ export default function PipelineTailoringPage() {
                     </button>
                   )}
 
-                  {/* TAB 2: زر جاهز للتسليم وأزرار النقل */}
+                  {/* TAB 2: زر جاهز للتسليم يحول مباشرة للتسليمات والسجل */}
                   {activeTab === 'SEWN' && (
-                    <div className="space-y-2">
-                      {task.status !== 'جاهز للتسليم' ? (
-                        <button
-                          onClick={() => updateTaskStatus(task.id, 'جاهز للتسليم')}
-                          className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 rounded-xl text-xs font-black shadow-xs cursor-pointer transition-colors"
-                        >
-                          جاهز للتسليم ✓
-                        </button>
-                      ) : (
-                        <div className="grid grid-cols-2 gap-2 pt-1">
-                          <button
-                            onClick={() => updateTaskStatus(task.id, 'في التسليمات')}
-                            className="bg-blue-600 hover:bg-blue-500 text-white py-2.5 rounded-xl text-xs font-black shadow-xs cursor-pointer transition-colors"
-                          >
-                            نقل إلى التسليمات ←
-                          </button>
-                          <button
-                            onClick={() => updateTaskStatus(task.id, 'في التركيبات')}
-                            className="bg-amber-500 hover:bg-amber-400 text-slate-950 py-2.5 rounded-xl text-xs font-black shadow-gold cursor-pointer transition-colors"
-                          >
-                            نقل إلى التركيبات ←
-                          </button>
-                        </div>
-                      )}
-                    </div>
+                    <button
+                      onClick={() => updateTaskStatus(task.id, 'في التسليمات')}
+                      className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 rounded-xl text-xs font-black shadow-xs cursor-pointer transition-colors"
+                    >
+                      جاهز للتسليم ✓
+                    </button>
                   )}
                 </div>
               </div>

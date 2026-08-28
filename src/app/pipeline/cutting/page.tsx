@@ -249,22 +249,12 @@ export default function PipelineCuttingPage() {
                     💬 إرسال تحديث للعميل (واتساب)
                   </a>
 
-                  {item.status === 'بانتظار القص' && (
-                    <button
-                      onClick={() => updateItemStatus(item.id, 'تم استلام القماش')}
-                      className="w-full bg-slate-100 hover:bg-slate-200 text-slate-900 py-2 rounded-xl text-xs font-bold cursor-pointer"
-                    >
-                      استلام الثوب
-                    </button>
-                  )}
-                  {item.status === 'تم استلام القماش' && (
-                    <button
-                      onClick={() => updateItemStatus(item.id, 'تم القص وجاهز للخياطة')}
-                      className="w-full bg-brand-gold hover:bg-brand-gold-hover text-slate-950 py-2 rounded-xl text-xs font-black shadow-gold cursor-pointer"
-                    >
-                      تأكيد القص والتحويل للورشة ←
-                    </button>
-                  )}
+                  <button
+                    onClick={() => updateItemStatus(item.id, 'تم القص وجاهز للخياطة')}
+                    className="w-full bg-brand-gold hover:bg-brand-gold-hover text-slate-950 py-2.5 rounded-xl text-xs font-black shadow-gold cursor-pointer transition-colors"
+                  >
+                    تم قص القماش ←
+                  </button>
                 </div>
               </div>
             ))}
