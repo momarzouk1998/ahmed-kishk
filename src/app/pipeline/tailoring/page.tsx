@@ -153,7 +153,9 @@ export default function PipelineTailoringPage() {
   const [activeTab, setActiveTab] = useState<'SEWING' | 'IRONING' | 'HISTORY'>('SEWING');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBranch, setSelectedBranch] = useState<string>('ALL');
-  const [selectedOrderForWorksheet, setSelectedOrderForWorksheet] = useState<TailoringJobOrder | null>(null);
+
+  // Selected Order for Detail View & Editable Heights Modal
+  const [selectedOrderDetails, setSelectedOrderDetails] = useState<TailoringJobOrder | null>(null);
 
   useEffect(() => {
     const stored = getStoredPipelineOrders();
@@ -182,6 +184,9 @@ export default function PipelineTailoringPage() {
     const updated = orders.map(o => o.id === id ? { ...o, status: newStatus, localStatus } : o);
     setOrders(updated);
     updatePipelineOrderStatus(id, newStatus, localStatus);
+    if (selectedOrderDetails?.id === id) {
+      setSelectedOrderDetails(null);
+    }
   };
 
   const handleHeightChange = (orderId: string, roomIdx: number, layer: 'heavy' | 'sheer' | 'blackout', newHeight: string) => {
@@ -204,6 +209,11 @@ export default function PipelineTailoringPage() {
 
     setOrders(updated);
     saveStoredPipelineOrders(updated as any);
+
+    if (selectedOrderDetails && selectedOrderDetails.id === orderId) {
+      const target = updated.find(o => o.id === orderId);
+      if (target) setSelectedOrderDetails(target);
+    }
   };
 
   const sewingCount = orders.filter(isSewing).length;
@@ -275,7 +285,7 @@ export default function PipelineTailoringPage() {
           </div>
         </div>
 
-        {/* Table View for All Tabs (SEWING, IRONING, HISTORY) */}
+        {/* Simple 1-Line Table View for Orders */}
         {filtered.length === 0 ? (
           <div className="bg-white rounded-2xl border border-dashed border-slate-300 p-10 text-center">
             <h3 className="font-bold text-slate-700 text-sm">
@@ -285,120 +295,50 @@ export default function PipelineTailoringPage() {
         ) : (
           <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-soft">
             <div className="overflow-x-auto">
-              <table className="w-full text-right text-xs min-w-[850px]">
+              <table className="w-full text-right text-xs min-w-[750px]">
                 <thead className="bg-slate-50 text-slate-500 font-mono border-b border-slate-200">
                   <tr>
-                    <th className="p-3.5">العميل والهاتف</th>
-                    <th className="p-3.5">العنوان والفرع</th>
+                    <th className="p-3.5">اسم العميل</th>
+                    <th className="p-3.5">الهاتف والعنوان</th>
+                    <th className="p-3.5">الفرع</th>
                     <th className="p-3.5">تاريخ الاستلام</th>
-                    <th className="p-3.5 text-right">تفاصيل الستائر والارتفاع الصافي (قابل للتعديل ✏️)</th>
-                    <th className="p-3.5 text-center">ورقة الورشة</th>
+                    <th className="p-3.5 text-center">الغرفة/الستائر</th>
                     <th className="p-3.5 text-center">واتساب</th>
-                    <th className="p-3.5 text-center">الإجراء والحالة</th>
+                    <th className="p-3.5 text-center">الإجراء السريع</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filtered.map(order => (
-                    <tr key={order.id} className="border-t border-slate-100 hover:bg-slate-50/60 align-top">
+                    <tr
+                      key={order.id}
+                      onClick={() => setSelectedOrderDetails(order)}
+                      className="border-t border-slate-100 hover:bg-amber-50/40 cursor-pointer transition-colors"
+                    >
                       <td className="p-3.5 font-bold text-slate-900">
-                        <div className="font-bold text-sm text-slate-900">{order.customerName}</div>
-                        <div className="font-mono text-xs text-slate-600" dir="ltr">{order.phone}</div>
-                        <div className="text-[10px] text-amber-800 font-mono font-bold mt-0.5">{order.id}</div>
+                        <div className="text-sm font-black text-indigo-950">{order.customerName}</div>
+                        <div className="text-[10px] text-slate-400 font-mono">اضغط لفتح التفاصيل والتعديل 📋</div>
                       </td>
 
                       <td className="p-3.5 text-slate-700">
-                        <div className="font-bold text-slate-800">{order.address}</div>
-                        <div className="text-slate-500 text-[11px]">{order.branch}</div>
-                        <div className="text-[11px] text-slate-600 mt-1">الخياط: <strong>{order.tailorName || 'أبو فهد'}</strong></div>
+                        <div className="font-mono text-slate-800 font-bold" dir="ltr">{order.phone}</div>
+                        <div className="text-slate-500 text-[11px] truncate max-w-[200px]">{order.address}</div>
+                      </td>
+
+                      <td className="p-3.5 text-slate-700 font-bold">
+                        {order.branch}
                       </td>
 
                       <td className="p-3.5 font-mono font-bold text-rose-800">
                         {order.deliveryDate || 'غير محدد'}
                       </td>
 
-                      {/* Editable Heights Column per Room Layer */}
-                      <td className="p-3.5">
-                        <div className="space-y-2 max-w-md">
-                          {order.rooms.map((room, rIdx) => (
-                            <div key={rIdx} className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 space-y-1.5 text-xs">
-                              <span className="font-black text-slate-900 block border-b border-slate-200 pb-1">
-                                {room.roomName}
-                              </span>
-
-                              {/* Heavy Layer Height Edit */}
-                              {room.heavyFabric && (
-                                <div className="flex items-center justify-between gap-2 bg-amber-50/70 p-1.5 rounded-lg border border-amber-200/60">
-                                  <span className="text-amber-950 font-bold">
-                                    ثقيل: {room.heavyFabric.name} ({room.heavyFabric.meters}م)
-                                  </span>
-                                  <div className="flex items-center gap-1 shrink-0">
-                                    <span className="text-[11px] font-bold text-slate-600">الارتفاع:</span>
-                                    <input
-                                      type="text"
-                                      value={room.heavyFabric.netHeight || ''}
-                                      onChange={(e) => handleHeightChange(order.id, rIdx, 'heavy', e.target.value)}
-                                      className="w-20 bg-white border border-amber-300 rounded px-1.5 py-0.5 text-center font-mono font-bold text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
-                                      placeholder="مثلاً 280سم"
-                                    />
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* Sheer Layer Height Edit */}
-                              {room.sheerFabric && (
-                                <div className="flex items-center justify-between gap-2 bg-blue-50/70 p-1.5 rounded-lg border border-blue-200/60">
-                                  <span className="text-blue-950 font-bold">
-                                    خلفية: {room.sheerFabric.name} ({room.sheerFabric.meters}م)
-                                  </span>
-                                  <div className="flex items-center gap-1 shrink-0">
-                                    <span className="text-[11px] font-bold text-slate-600">الارتفاع:</span>
-                                    <input
-                                      type="text"
-                                      value={room.sheerFabric.netHeight || ''}
-                                      onChange={(e) => handleHeightChange(order.id, rIdx, 'sheer', e.target.value)}
-                                      className="w-20 bg-white border border-blue-300 rounded px-1.5 py-0.5 text-center font-mono font-bold text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                      placeholder="مثلاً 278سم"
-                                    />
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* Blackout Layer Height Edit */}
-                              {room.blackoutFabric && (
-                                <div className="flex items-center justify-between gap-2 bg-slate-100 p-1.5 rounded-lg border border-slate-300">
-                                  <span className="text-slate-900 font-bold">
-                                    بلاك آوت: {room.blackoutFabric.name} ({room.blackoutFabric.meters}م)
-                                  </span>
-                                  <div className="flex items-center gap-1 shrink-0">
-                                    <span className="text-[11px] font-bold text-slate-600">الارتفاع:</span>
-                                    <input
-                                      type="text"
-                                      value={room.blackoutFabric.netHeight || ''}
-                                      onChange={(e) => handleHeightChange(order.id, rIdx, 'blackout', e.target.value)}
-                                      className="w-20 bg-white border border-slate-300 rounded px-1.5 py-0.5 text-center font-mono font-bold text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-500"
-                                      placeholder="مثلاً 275سم"
-                                    />
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
+                      <td className="p-3.5 text-center">
+                        <span className="font-mono font-bold bg-slate-100 px-2.5 py-1 rounded-md text-slate-800 text-xs inline-block">
+                          {order.rooms?.length || 0} غرف
+                        </span>
                       </td>
 
-                      {/* Print Worksheet Button */}
-                      <td className="p-3.5 text-center align-middle">
-                        <button
-                          type="button"
-                          onClick={() => setSelectedOrderForWorksheet(order)}
-                          className="bg-slate-900 hover:bg-slate-800 text-white px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center justify-center gap-1 mx-auto"
-                        >
-                          <span>🖨️ ورقة الورشة</span>
-                        </button>
-                      </td>
-
-                      {/* WhatsApp Button */}
-                      <td className="p-3.5 text-center align-middle">
+                      <td className="p-3.5 text-center" onClick={e => e.stopPropagation()}>
                         <a
                           href={`https://wa.me/2${order.phone}`}
                           target="_blank"
@@ -409,13 +349,12 @@ export default function PipelineTailoringPage() {
                         </a>
                       </td>
 
-                      {/* Action Button */}
-                      <td className="p-3.5 text-center align-middle">
+                      <td className="p-3.5 text-center" onClick={e => e.stopPropagation()}>
                         {activeTab === 'SEWING' && (
                           <button
                             type="button"
                             onClick={() => updateOrderStatus(order.id, 'في الورشة', 'جاري الكي')}
-                            className="bg-amber-500 hover:bg-amber-400 text-slate-950 px-3 py-2 rounded-xl text-xs font-black shadow-gold cursor-pointer transition-colors"
+                            className="bg-amber-500 hover:bg-amber-400 text-slate-950 px-3 py-1.5 rounded-xl text-xs font-black shadow-gold cursor-pointer transition-colors"
                           >
                             تمت الخياطة وتحويل للكي ←
                           </button>
@@ -425,7 +364,7 @@ export default function PipelineTailoringPage() {
                           <button
                             type="button"
                             onClick={() => updateOrderStatus(order.id, 'تجهيز الاكسسوارات', 'تم التجهيز')}
-                            className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2 rounded-xl text-xs font-black shadow-xs cursor-pointer transition-colors"
+                            className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-xl text-xs font-black shadow-xs cursor-pointer transition-colors"
                           >
                             تم الكي والتحويل للإكسسوارات / التسليم ✓
                           </button>
@@ -446,9 +385,9 @@ export default function PipelineTailoringPage() {
         )}
       </div>
 
-      {/* 🖨️ Printable Tailoring Worksheet Modal */}
-      {selectedOrderForWorksheet && (
-        <div className="modal-overlay fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 overflow-y-auto">
+      {/* 🔍 Full Order Details & Editable Heights & Printable Worksheet Modal */}
+      {selectedOrderDetails && (
+        <div className="modal-overlay fixed inset-0 bg-black/75 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
           <style>{`
             @media print {
               body * {
@@ -476,63 +415,63 @@ export default function PipelineTailoringPage() {
             }
           `}</style>
 
-          <div id="printable-tailoring-worksheet" className="bg-white rounded-2xl max-w-3xl w-full p-6 shadow-2xl space-y-5 text-slate-900 border border-slate-200 my-8">
-            {/* Control Bar (Hidden on print) */}
+          <div id="printable-tailoring-worksheet" className="bg-white rounded-3xl max-w-3xl w-full p-6 shadow-2xl space-y-5 text-slate-900 border border-slate-200 my-auto max-h-[92vh] overflow-y-auto">
+            {/* Control Header (Hidden on Print) */}
             <div className="no-print flex justify-between items-center pb-3 border-b border-slate-200">
-              <h3 className="font-bold text-sm text-slate-900">معاينة وطباعة ورقة تفصيل الورشة</h3>
-              <div className="flex gap-2">
+              <h3 className="font-bold text-sm text-slate-900">تفاصيل تفصيل الورشة وتعديل الارتفاعات</h3>
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => window.print()}
-                  className="bg-brand-gold hover:bg-amber-400 text-slate-950 px-4 py-1.5 rounded-xl text-xs font-black shadow-gold flex items-center gap-1 cursor-pointer"
+                  className="bg-brand-gold hover:bg-amber-400 text-slate-950 px-4 py-2 rounded-xl text-xs font-black shadow-gold flex items-center gap-1 cursor-pointer"
                 >
                   <span className="material-symbols-outlined text-[16px]">print</span>
                   طباعة ورقة الورشة (PDF)
                 </button>
+
                 <button
                   type="button"
-                  onClick={() => setSelectedOrderForWorksheet(null)}
-                  className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer"
+                  onClick={() => setSelectedOrderDetails(null)}
+                  className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-sm transition-colors cursor-pointer"
                 >
-                  إغلاق ✕
+                  ✕
                 </button>
               </div>
             </div>
 
-            {/* Header Branding */}
+            {/* Document Header */}
             <div className="flex justify-between items-center pb-4 border-b-2 border-slate-900">
               <div>
                 <h2 className="font-display font-black text-xl text-slate-950">مؤسسة أحمد كشك للأقمشة والستائر</h2>
                 <p className="text-xs font-bold text-amber-800">أمر ورقة الورشة والتفصيل (للخياط والورشة)</p>
               </div>
               <div className="text-left font-mono text-xs">
-                <div><strong>كود التفصيل:</strong> {selectedOrderForWorksheet.id}</div>
-                <div><strong>كود الطلب:</strong> {selectedOrderForWorksheet.orderId}</div>
-                <div><strong>التاريخ:</strong> {selectedOrderForWorksheet.createdAt}</div>
+                <div><strong>التاريخ:</strong> {selectedOrderDetails.createdAt}</div>
+                <div><strong>موعد الاستلام:</strong> {selectedOrderDetails.deliveryDate}</div>
               </div>
             </div>
 
-            {/* Customer Information */}
-            <div className="bg-slate-50 p-4 rounded-xl border border-slate-300 grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
-              <div><strong>اسم العميل:</strong> {selectedOrderForWorksheet.customerName}</div>
-              <div><strong>رقم الهاتف:</strong> {selectedOrderForWorksheet.phone}</div>
-              <div className="text-rose-900 font-bold"><strong>📅 موعد الاستلام:</strong> {selectedOrderForWorksheet.deliveryDate}</div>
-              <div><strong>العنوان:</strong> {selectedOrderForWorksheet.address}</div>
-              <div><strong>الفرع:</strong> {selectedOrderForWorksheet.branch}</div>
-              <div><strong>مسؤول الخياطة:</strong> {selectedOrderForWorksheet.tailorName || 'أبو فهد'}</div>
+            {/* Customer Information Box */}
+            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+              <div><strong>اسم العميل:</strong> {selectedOrderDetails.customerName}</div>
+              <div><strong>رقم الهاتف:</strong> {selectedOrderDetails.phone}</div>
+              <div className="text-rose-900 font-bold"><strong>📅 موعد الاستلام:</strong> {selectedOrderDetails.deliveryDate}</div>
+              <div><strong>العنوان:</strong> {selectedOrderDetails.address}</div>
+              <div><strong>الفرع:</strong> {selectedOrderDetails.branch}</div>
+              <div><strong>مسؤول الخياطة:</strong> {selectedOrderDetails.tailorName || 'أبو فهد'}</div>
             </div>
 
-            {/* Room-by-Room Worksheet Table */}
+            {/* Room-by-Room Specs with Editable Heights */}
             <div className="space-y-4">
               <h3 className="font-black text-sm text-slate-950 border-b border-slate-300 pb-1">
-                🧵 تفاصيل الخياطة والقطع والارتفاعات المطلوبة لكل غرفة:
+                🧵 تفاصيل الخياطة وتعديل الارتفاعات الصافية (تُحفظ فوراً ✏️):
               </h3>
 
-              {selectedOrderForWorksheet.rooms.map((room, rIdx) => (
-                <div key={rIdx} className="border-2 border-slate-300 rounded-xl p-3.5 space-y-3 bg-slate-50/40">
-                  <div className="bg-slate-900 text-white px-3 py-1.5 rounded-lg font-bold text-xs flex justify-between items-center">
+              {selectedOrderDetails.rooms.map((room, rIdx) => (
+                <div key={rIdx} className="border-2 border-slate-300 rounded-2xl p-4 space-y-3 bg-slate-50/40">
+                  <div className="bg-slate-900 text-white px-3.5 py-1.5 rounded-xl font-bold text-xs flex justify-between items-center">
                     <span>{room.roomName}</span>
-                    <span className="text-[11px] text-amber-400">تعليمات الخياطة والقص</span>
+                    <span className="text-[11px] text-amber-400">تعليمات القص والتفصيل</span>
                   </div>
 
                   <table className="w-full text-right text-xs border-collapse border border-slate-300">
@@ -541,10 +480,11 @@ export default function PipelineTailoringPage() {
                         <th className="p-2 border border-slate-300">الصنف / الطبقة</th>
                         <th className="p-2 border border-slate-300">الكمية والقطع</th>
                         <th className="p-2 border border-slate-300">نوع الشريط والتشطيب</th>
-                        <th className="p-2 border border-slate-300 text-center w-28">الارتفاع الصافي</th>
+                        <th className="p-2 border border-slate-300 text-center w-36">الارتفاع الصافي (قابل للتعديل ✏️)</th>
                       </tr>
                     </thead>
                     <tbody>
+                      {/* Heavy Layer */}
                       {room.heavyFabric && (
                         <tr className="border-b border-slate-200 bg-amber-50/40">
                           <td className="p-2 border border-slate-300 font-bold">
@@ -556,12 +496,24 @@ export default function PipelineTailoringPage() {
                           <td className="p-2 border border-slate-300">
                             {room.heavyFabric.tapeType}
                           </td>
-                          <td className="p-2 border border-slate-300 text-center font-mono font-black text-sm text-slate-950">
-                            {room.heavyFabric.netHeight || '_______ سم'}
+                          <td className="p-2 border border-slate-300 text-center font-mono">
+                            <div className="no-print inline-flex items-center gap-1">
+                              <input
+                                type="text"
+                                value={room.heavyFabric.netHeight || ''}
+                                onChange={(e) => handleHeightChange(selectedOrderDetails.id, rIdx, 'heavy', e.target.value)}
+                                className="w-24 bg-white border border-amber-300 rounded-lg px-2 py-1 text-center font-mono font-black text-xs text-slate-950 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
+                                placeholder="مثلاً 280سم"
+                              />
+                            </div>
+                            <span className="print-only font-black text-sm text-slate-950">
+                              {room.heavyFabric.netHeight || '_______ سم'}
+                            </span>
                           </td>
                         </tr>
                       )}
 
+                      {/* Sheer Layer */}
                       {room.sheerFabric && (
                         <tr className="border-b border-slate-200 bg-blue-50/40">
                           <td className="p-2 border border-slate-300 font-bold">
@@ -573,12 +525,24 @@ export default function PipelineTailoringPage() {
                           <td className="p-2 border border-slate-300">
                             {room.sheerFabric.tapeType}
                           </td>
-                          <td className="p-2 border border-slate-300 text-center font-mono font-black text-sm text-slate-950">
-                            {room.sheerFabric.netHeight || '_______ سم'}
+                          <td className="p-2 border border-slate-300 text-center font-mono">
+                            <div className="no-print inline-flex items-center gap-1">
+                              <input
+                                type="text"
+                                value={room.sheerFabric.netHeight || ''}
+                                onChange={(e) => handleHeightChange(selectedOrderDetails.id, rIdx, 'sheer', e.target.value)}
+                                className="w-24 bg-white border border-blue-300 rounded-lg px-2 py-1 text-center font-mono font-black text-xs text-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs"
+                                placeholder="مثلاً 278سم"
+                              />
+                            </div>
+                            <span className="print-only font-black text-sm text-slate-950">
+                              {room.sheerFabric.netHeight || '_______ سم'}
+                            </span>
                           </td>
                         </tr>
                       )}
 
+                      {/* Blackout Layer */}
                       {room.blackoutFabric && (
                         <tr className="border-b border-slate-200 bg-slate-100">
                           <td className="p-2 border border-slate-300 font-bold">
@@ -590,8 +554,19 @@ export default function PipelineTailoringPage() {
                           <td className="p-2 border border-slate-300">
                             {room.blackoutFabric.tapeType}
                           </td>
-                          <td className="p-2 border border-slate-300 text-center font-mono font-black text-sm text-slate-950">
-                            {room.blackoutFabric.netHeight || '_______ سم'}
+                          <td className="p-2 border border-slate-300 text-center font-mono">
+                            <div className="no-print inline-flex items-center gap-1">
+                              <input
+                                type="text"
+                                value={room.blackoutFabric.netHeight || ''}
+                                onChange={(e) => handleHeightChange(selectedOrderDetails.id, rIdx, 'blackout', e.target.value)}
+                                className="w-24 bg-white border border-slate-300 rounded-lg px-2 py-1 text-center font-mono font-black text-xs text-slate-950 focus:outline-none focus:ring-2 focus:ring-slate-500 shadow-2xs"
+                                placeholder="مثلاً 275سم"
+                              />
+                            </div>
+                            <span className="print-only font-black text-sm text-slate-950">
+                              {room.blackoutFabric.netHeight || '_______ سم'}
+                            </span>
                           </td>
                         </tr>
                       )}
@@ -601,11 +576,42 @@ export default function PipelineTailoringPage() {
               ))}
             </div>
 
-            {selectedOrderForWorksheet.notes && (
+            {selectedOrderDetails.notes && (
               <div className="bg-amber-50 p-3 rounded-xl border border-amber-200 text-xs">
-                <strong>📝 ملاحظات فنية للخياط:</strong> {selectedOrderForWorksheet.notes}
+                <strong>📝 ملاحظات فنية للخياط:</strong> {selectedOrderDetails.notes}
               </div>
             )}
+
+            {/* Action Footer in Modal */}
+            <div className="no-print pt-3 border-t border-slate-200 flex justify-between items-center gap-2">
+              {activeTab === 'SEWING' && (
+                <button
+                  type="button"
+                  onClick={() => updateOrderStatus(selectedOrderDetails.id, 'في الورشة', 'جاري الكي')}
+                  className="bg-amber-500 hover:bg-amber-400 text-slate-950 px-5 py-2.5 rounded-xl text-xs font-black shadow-gold cursor-pointer transition-colors"
+                >
+                  تمت الخياطة وتحويل للكي ←
+                </button>
+              )}
+
+              {activeTab === 'IRONING' && (
+                <button
+                  type="button"
+                  onClick={() => updateOrderStatus(selectedOrderDetails.id, 'تجهيز الاكسسوارات', 'تم التجهيز')}
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-xl text-xs font-black shadow-xs cursor-pointer transition-colors"
+                >
+                  تم الكي والتحويل للإكسسوارات / التسليم ✓
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setSelectedOrderDetails(null)}
+                className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+              >
+                إغلاق
+              </button>
+            </div>
           </div>
         </div>
       )}
