@@ -41,12 +41,20 @@ export default function Sidebar() {
       .then((d) => {
         if (d.user) {
           setUser(d.user);
-          try {
-            const savedPerms = localStorage.getItem(`user_perms_${d.user.phone}`);
-            if (savedPerms) {
-              setAllowedPageIds(JSON.parse(savedPerms));
+          if (d.user.role === 'ADMIN') {
+            setAllowedPageIds(null); // Admin sees ALL current system pages
+          } else {
+            try {
+              const savedPerms = localStorage.getItem(`user_perms_${d.user.phone}`);
+              if (savedPerms) {
+                setAllowedPageIds(JSON.parse(savedPerms));
+              } else {
+                setAllowedPageIds(null);
+              }
+            } catch {
+              setAllowedPageIds(null);
             }
-          } catch {}
+          }
         }
       })
       .catch(() => {});
@@ -129,6 +137,7 @@ export default function Sidebar() {
   };
 
   const isAllowed = (pageId: string) => {
+    if (!user || user.role === 'ADMIN') return true;
     if (!allowedPageIds) return true;
     return allowedPageIds.includes(pageId);
   };

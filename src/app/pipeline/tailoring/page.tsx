@@ -134,7 +134,7 @@ export default function PipelineTailoringPage() {
                 : 'border-transparent text-slate-400 hover:text-slate-700'
             }`}
           >
-            <span className="material-symbols-outlined text-[18px]">stitch</span>
+            <span className="material-symbols-outlined text-[18px]">check_circle</span>
             <span>تم الخياطة</span>
             <span className={`text-[11px] px-2 py-0.2 rounded-full font-mono font-bold ${
               activeTab === 'SEWN' ? 'bg-amber-100 text-amber-950' : 'bg-slate-100 text-slate-500'
