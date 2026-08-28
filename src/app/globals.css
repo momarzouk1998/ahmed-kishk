@@ -62,11 +62,18 @@
 
 /* 🖨️ Professional A4 Printable Template Stylesheet */
 @media print {
-  /* 1. Hide UI, menus, headers, sidebars, buttons, warnings, backdrop shadows */
+  /* 1. When a modal is open, hide all page content outside the modal overlay */
+  body:has(.modal-overlay) > *:not(.modal-overlay),
+  body:has(.modal-overlay) main {
+    display: none !important;
+  }
+
+  /* 2. Hide UI, menus, headers, search bars, inputs, sidebars, buttons, backdrop shadows */
   aside,
   header,
   nav,
   button,
+  input,
   .no-print,
   [role="button"],
   .fixed:not(.modal-overlay),

@@ -351,21 +351,28 @@ export default function PipelineCuttingPage() {
           {/* Printable CSS styles */}
           <style>{`
             @media print {
+              body > *:not(.modal-overlay) {
+                display: none !important;
+              }
               html, body {
                 background: white !important;
                 color: black !important;
                 overflow: visible !important;
               }
               .modal-overlay {
-                position: static !important;
-                background: transparent !important;
+                position: absolute !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 100% !important;
+                background: white !important;
                 padding: 0 !important;
                 margin: 0 !important;
                 overflow: visible !important;
                 display: block !important;
+                z-index: 999999 !important;
               }
               #printable-cut-sheet-modal {
-                position: static !important;
+                position: relative !important;
                 display: block !important;
                 visibility: visible !important;
                 width: 100% !important;
@@ -390,29 +397,25 @@ export default function PipelineCuttingPage() {
                 <p className="text-xs font-bold text-amber-800">أمر ورقة قص القماش (للبياع / أمين المخزن)</p>
               </div>
               <div className="text-left font-mono text-xs">
-                <div><strong>كود القص:</strong> {selectedOrderForPrint.id}</div>
-                <div><strong>كود الطلب:</strong> {selectedOrderForPrint.orderId}</div>
                 <div><strong>التاريخ:</strong> {selectedOrderForPrint.createdAt}</div>
               </div>
             </div>
 
             {/* Customer Box */}
-            <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 grid grid-cols-2 gap-2 text-xs">
-              <div><strong>اسم العميل:</strong> {selectedOrderForPrint.customerName}</div>
-              <div><strong>رقم الهاتف:</strong> {selectedOrderForPrint.phone}</div>
-              <div><strong>العنوان:</strong> {selectedOrderForPrint.address}</div>
-              <div><strong>الفرع:</strong> {selectedOrderForPrint.branch}</div>
+            <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 flex justify-between items-center text-xs">
+              <div><strong>اسم العميل:</strong> <span className="font-bold text-sm text-slate-900">{selectedOrderForPrint.customerName}</span></div>
+              <div><strong>الفرع:</strong> <span className="font-bold">{selectedOrderForPrint.branch}</span></div>
             </div>
 
             {/* Detailed Table Per Room */}
             <div className="space-y-2">
-              <h3 className="font-bold text-sm text-slate-900">بيانات الأقمشة والأمتار المطلوب قصهامن التوب لكل غرفة:</h3>
+              <h3 className="font-bold text-xs text-slate-900">بيانات الأقمشة والأمتار المطلوب قصها لكل غرفة:</h3>
               <table className="w-full text-right text-xs border-collapse border border-slate-300">
                 <thead className="bg-slate-100 font-bold border-b border-slate-300 text-slate-800">
                   <tr>
-                    <th className="p-2 border border-slate-300">اسم الغرفة</th>
-                    <th className="p-2 border border-slate-300">نوع القماش والكود</th>
-                    <th className="p-2 border border-slate-300 text-center">الأمتار المطلوب قصهامن التوب</th>
+                    <th className="p-2 border border-slate-300 w-1/3">اسم الغرفة</th>
+                    <th className="p-2 border border-slate-300">نوع القماش</th>
+                    <th className="p-2 border border-slate-300 text-center w-28">الأمتار المطلوب</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -426,15 +429,15 @@ export default function PipelineCuttingPage() {
                     return fabrics.map((f: any, fIdx) => (
                       <tr key={`${rIdx}-${fIdx}`} className="border-b border-slate-200">
                         {fIdx === 0 && (
-                          <td rowSpan={fabrics.length} className="p-2 font-bold border border-slate-300 bg-slate-50/50 align-top">
+                          <td rowSpan={fabrics.length} className="p-2 font-bold border border-slate-300 bg-slate-50/50 align-top text-xs">
                             {room.roomName}
                           </td>
                         )}
-                        <td className="p-2 border border-slate-300 font-medium">
-                          {f.name} <span className="font-mono text-slate-500">({f.code})</span>
+                        <td className="p-2 border border-slate-300 font-bold text-xs">
+                          {f.name}
                         </td>
-                        <td className="p-2 border border-slate-300 text-center font-mono font-black text-sm text-amber-900">
-                          {f.meters} متر
+                        <td className="p-2 border border-slate-300 text-center font-mono font-bold text-xs text-amber-950">
+                          {f.meters}م
                         </td>
                       </tr>
                     ));
@@ -445,36 +448,30 @@ export default function PipelineCuttingPage() {
 
             {/* Total Summary Box */}
             <div className="bg-amber-50 border-2 border-amber-400 p-3.5 rounded-xl space-y-1.5 text-xs">
-              <h4 className="font-black text-amber-950 text-sm">ملخص إجمالي الأمتار المطلوب سحبها وقصها من أثواب القماش بالكامل:</h4>
-              <div className="flex flex-wrap gap-3 font-mono font-bold text-slate-900">
+              <h4 className="font-black text-amber-950 text-xs">ملخص إجمالي الأمتار :</h4>
+              <div className="flex flex-wrap gap-2.5 font-mono font-bold text-slate-900">
                 {getFabricTotals(selectedOrderForPrint.rooms).map((t, idx) => (
-                  <span key={idx} className="bg-white border border-amber-300 px-3 py-1 rounded-lg shadow-2xs">
-                    {t.name} ({t.code}): <strong className="text-amber-800 text-base">{t.meters}م</strong>
+                  <span key={idx} className="bg-white border border-amber-300 px-3 py-1 rounded-lg shadow-2xs text-xs">
+                    {t.name}: <strong className="text-amber-900 font-black">{t.meters}م</strong>
                   </span>
                 ))}
               </div>
             </div>
 
-            {/* Signatures & Footer */}
-            <div className="pt-4 border-t border-slate-200 flex justify-between items-end text-xs">
-              <div>
-                <div><strong>مسؤول القص / البياع:</strong> {selectedOrderForPrint.cutterName}</div>
-                <div><strong>التوقيع بالاستلام والقص:</strong> ________________________</div>
-              </div>
-              <div className="flex gap-2 no-print">
-                <button
-                  onClick={() => window.print()}
-                  className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-4 py-2 rounded-xl text-xs shadow-soft transition-colors cursor-pointer"
-                >
-                  🖨️ طباعة الورقة الآن
-                </button>
-                <button
-                  onClick={() => setSelectedOrderForPrint(null)}
-                  className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-4 py-2 rounded-xl text-xs transition-colors cursor-pointer"
-                >
-                  إغلاق
-                </button>
-              </div>
+            {/* Modal Actions Footer */}
+            <div className="pt-3 border-t border-slate-200 flex justify-end gap-2 no-print">
+              <button
+                onClick={() => window.print()}
+                className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-4 py-2 rounded-xl text-xs shadow-soft transition-colors cursor-pointer"
+              >
+                🖨️ طباعة الورقة الآن
+              </button>
+              <button
+                onClick={() => setSelectedOrderForPrint(null)}
+                className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-4 py-2 rounded-xl text-xs transition-colors cursor-pointer"
+              >
+                إغلاق
+              </button>
             </div>
           </div>
         </div>
