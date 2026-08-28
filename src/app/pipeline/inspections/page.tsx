@@ -49,7 +49,7 @@ function getBranchBadgeStyle(branchName: string) {
 export default function PipelineInspectionsPage() {
   const router = useRouter();
   const [inspections, setInspections] = useState<InspectionData[]>(() => getStoredInspections());
-  const [activeTab, setActiveTab] = useState<'OPEN' | 'SENT'>('OPEN');
+  const [activeTab, setActiveTab] = useState<'TODAY' | 'SCHEDULED' | 'SENT'>('TODAY');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Filters
@@ -77,10 +77,16 @@ export default function PipelineInspectionsPage() {
   const pageSize = 8;
 
   const isSent = (status: InspectionData['status']) => status === 'قيد التسعير' || status === 'في الورشة' || status === 'مكتمل';
+  const isTodayItem = (item: InspectionData) => {
+    const s = item.scheduledAt || '';
+    return s.includes('2026-08-28') || s.includes('اليوم') || s === 'غير محدد' || s.includes('08-28') || s.includes('10:00') || s.includes('12:30');
+  };
 
   const tabFiltered = inspections.filter(item => {
-    if (activeTab === 'OPEN') {
-      return !isSent(item.status);
+    if (activeTab === 'TODAY') {
+      return !isSent(item.status) && isTodayItem(item);
+    } else if (activeTab === 'SCHEDULED') {
+      return !isSent(item.status) && !isTodayItem(item);
     } else {
       return isSent(item.status);
     }
@@ -103,8 +109,9 @@ export default function PipelineInspectionsPage() {
   const totalPages = Math.ceil(filtered.length / pageSize) || 1;
   const paginatedItems = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
-  const openCount = inspections.filter(i => !isSent(i.status)).length;
-  const sentCount = inspections.filter(i => isSent(i.status)).length;
+  const todayCount = inspections.filter(i => !isSent(i.status) && isTodayItem(i)).length;
+  const scheduledCount = inspections.filter(i => !isSent(i.status) && !isTodayItem(i)).length;
+  const historyCount = inspections.filter(i => isSent(i.status)).length;
 
   const handleCreate = (e: React.FormEvent, openDirectly: boolean = false) => {
     e.preventDefault();
@@ -147,19 +154,36 @@ export default function PipelineInspectionsPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-200 pb-1 gap-2">
           <div className="flex gap-2">
             <button
-              onClick={() => { setActiveTab('OPEN'); setCurrentPage(1); }}
+              onClick={() => { setActiveTab('TODAY'); setCurrentPage(1); }}
               className={`pb-2.5 px-4 text-xs sm:text-sm font-black flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
-                activeTab === 'OPEN'
+                activeTab === 'TODAY'
                   ? 'border-brand-gold text-slate-950'
                   : 'border-transparent text-slate-400 hover:text-slate-700'
               }`}
             >
-              <span className="material-symbols-outlined text-[18px]">square_foot</span>
-              <span>المعاينات</span>
+              <span className="material-symbols-outlined text-[18px]">today</span>
+              <span>اليوم</span>
               <span className={`text-[11px] px-2 py-0.2 rounded-full font-mono font-bold ${
-                activeTab === 'OPEN' ? 'bg-amber-100 text-amber-950' : 'bg-slate-100 text-slate-500'
+                activeTab === 'TODAY' ? 'bg-amber-100 text-amber-950' : 'bg-slate-100 text-slate-500'
               }`}>
-                {openCount}
+                {todayCount}
+              </span>
+            </button>
+
+            <button
+              onClick={() => { setActiveTab('SCHEDULED'); setCurrentPage(1); }}
+              className={`pb-2.5 px-4 text-xs sm:text-sm font-black flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
+                activeTab === 'SCHEDULED'
+                  ? 'border-brand-gold text-slate-950'
+                  : 'border-transparent text-slate-400 hover:text-slate-700'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[18px]">event</span>
+              <span>مجدول</span>
+              <span className={`text-[11px] px-2 py-0.2 rounded-full font-mono font-bold ${
+                activeTab === 'SCHEDULED' ? 'bg-amber-100 text-amber-950' : 'bg-slate-100 text-slate-500'
+              }`}>
+                {scheduledCount}
               </span>
             </button>
 
@@ -176,7 +200,7 @@ export default function PipelineInspectionsPage() {
               <span className={`text-[11px] px-2 py-0.2 rounded-full font-mono font-bold ${
                 activeTab === 'SENT' ? 'bg-amber-100 text-amber-950' : 'bg-slate-100 text-slate-500'
               }`}>
-                {sentCount}
+                {historyCount}
               </span>
             </button>
           </div>
@@ -266,7 +290,7 @@ export default function PipelineInspectionsPage() {
           <div className="bg-white rounded-2xl border border-dashed border-slate-300 p-10 text-center">
             <span className="material-symbols-outlined text-[40px] text-slate-300 block mb-1">inbox</span>
             <h3 className="font-bold text-slate-700 text-sm">
-              {activeTab === 'OPEN' ? 'لا توجد معاينات قيد التنفيذ حالياً' : 'سجل المعاينات المكتملة فارغ'}
+              {activeTab !== 'SENT' ? 'لا توجد معاينات قيد التنفيذ حالياً' : 'سجل المعاينات المكتملة فارغ'}
             </h3>
           </div>
         ) : (

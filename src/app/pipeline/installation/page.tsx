@@ -43,7 +43,7 @@ const initialJobs: InstallJob[] = [
 
 export default function PipelineInstallationPage() {
   const [jobs, setJobs] = useState<InstallJob[]>(initialJobs);
-  const [activeTab, setActiveTab] = useState<'OPEN' | 'SENT'>('OPEN');
+  const [activeTab, setActiveTab] = useState<'TODAY' | 'SCHEDULED' | 'SENT'>('TODAY');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBranch, setSelectedBranch] = useState<string>('ALL');
 
@@ -55,8 +55,21 @@ export default function PipelineInstallationPage() {
   }, []);
 
   const isSent = (status: InstallJob['status']) => status === 'تم التركيب بنجاح ومغلق';
+  const isTodayJob = (j: any) => {
+    const s = j.scheduledDate || j.deliveryDate || '';
+    return s.includes('2026-08-28') || s === '' || !j.scheduledDate || s <= '2026-08-28';
+  };
 
-  const tabFiltered = jobs.filter(j => activeTab === 'OPEN' ? !isSent(j.status) : isSent(j.status));
+  const tabFiltered = jobs.filter(j => {
+    if (activeTab === 'TODAY') {
+      return !isSent(j.status) && isTodayJob(j);
+    } else if (activeTab === 'SCHEDULED') {
+      return !isSent(j.status) && !isTodayJob(j);
+    } else {
+      return isSent(j.status);
+    }
+  });
+
   const filtered = tabFiltered.filter(j => {
     const matchesSearch = j.customerName.includes(searchQuery) || j.phone.includes(searchQuery) || j.id.includes(searchQuery);
     const matchesBranch = selectedBranch === 'ALL' || (j as any).branch === selectedBranch;
@@ -75,34 +88,52 @@ export default function PipelineInstallationPage() {
     alert('تم تسجيل إتمام التركيب وتحصيل المبلغ المتبقي وإغلاق الطلب بنجاح.');
   };
 
-  const openCount = jobs.filter(j => !isSent(j.status)).length;
-  const sentCount = jobs.filter(j => isSent(j.status)).length;
+  const todayCount = jobs.filter(j => !isSent(j.status) && isTodayJob(j)).length;
+  const scheduledCount = jobs.filter(j => !isSent(j.status) && !isTodayJob(j)).length;
+  const historyCount = jobs.filter(j => isSent(j.status)).length;
 
   return (
     <PageShell title="التركيبات الميدانية" badge="المرحلة 8">
       <div className="flex flex-col gap-5">
-        {/* 2-Tabs Navigation */}
+        {/* 3-Tabs Navigation */}
         <div className="flex border-b border-slate-200 gap-2">
           <button
-            onClick={() => setActiveTab('OPEN')}
-            className={`pb-3 px-4 text-xs sm:text-sm font-black flex items-center gap-2 border-b-2 transition-all ${
-              activeTab === 'OPEN'
+            onClick={() => setActiveTab('TODAY')}
+            className={`pb-3 px-4 text-xs sm:text-sm font-black flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
+              activeTab === 'TODAY'
                 ? 'border-brand-gold text-slate-950'
                 : 'border-transparent text-slate-400 hover:text-slate-700'
             }`}
           >
-            <span className="material-symbols-outlined text-[18px]">build_circle</span>
-            <span>التركيبات</span>
+            <span className="material-symbols-outlined text-[18px]">today</span>
+            <span>اليوم</span>
             <span className={`text-[11px] px-2 py-0.2 rounded-full font-mono font-bold ${
-              activeTab === 'OPEN' ? 'bg-amber-100 text-amber-950' : 'bg-slate-100 text-slate-500'
+              activeTab === 'TODAY' ? 'bg-amber-100 text-amber-950' : 'bg-slate-100 text-slate-500'
             }`}>
-              {openCount}
+              {todayCount}
+            </span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('SCHEDULED')}
+            className={`pb-3 px-4 text-xs sm:text-sm font-black flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
+              activeTab === 'SCHEDULED'
+                ? 'border-brand-gold text-slate-950'
+                : 'border-transparent text-slate-400 hover:text-slate-700'
+            }`}
+          >
+            <span className="material-symbols-outlined text-[18px]">event</span>
+            <span>مجدول</span>
+            <span className={`text-[11px] px-2 py-0.2 rounded-full font-mono font-bold ${
+              activeTab === 'SCHEDULED' ? 'bg-amber-100 text-amber-950' : 'bg-slate-100 text-slate-500'
+            }`}>
+              {scheduledCount}
             </span>
           </button>
 
           <button
             onClick={() => setActiveTab('SENT')}
-            className={`pb-3 px-4 text-xs sm:text-sm font-black flex items-center gap-2 border-b-2 transition-all ${
+            className={`pb-3 px-4 text-xs sm:text-sm font-black flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
               activeTab === 'SENT'
                 ? 'border-brand-gold text-slate-950'
                 : 'border-transparent text-slate-400 hover:text-slate-700'
@@ -113,7 +144,7 @@ export default function PipelineInstallationPage() {
             <span className={`text-[11px] px-2 py-0.2 rounded-full font-mono font-bold ${
               activeTab === 'SENT' ? 'bg-amber-100 text-amber-950' : 'bg-slate-100 text-slate-500'
             }`}>
-              {sentCount}
+              {historyCount}
             </span>
           </button>
         </div>
@@ -150,7 +181,7 @@ export default function PipelineInstallationPage() {
           <div className="bg-white rounded-2xl border border-dashed border-slate-300 p-10 text-center">
             <span className="material-symbols-outlined text-[40px] text-slate-300 block mb-1">inbox</span>
             <h3 className="font-bold text-slate-700 text-sm">
-              {activeTab === 'OPEN' ? 'لا توجد طلبات تركيب جارية حالياً' : 'السجل فارغ'}
+              {activeTab !== 'SENT' ? 'لا توجد طلبات تركيب جارية حالياً' : 'السجل فارغ'}
             </h3>
           </div>
         ) : activeTab === 'SENT' ? (

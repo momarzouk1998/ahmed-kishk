@@ -40,7 +40,7 @@ const initialDeliveryJobs: DeliveryJob[] = [
 
 export default function PipelineDeliveryPage() {
   const [jobs, setJobs] = useState<DeliveryJob[]>(initialDeliveryJobs);
-  const [activeTab, setActiveTab] = useState<'OPEN' | 'SENT'>('OPEN');
+  const [activeTab, setActiveTab] = useState<'TODAY' | 'SCHEDULED' | 'SENT'>('TODAY');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBranch, setSelectedBranch] = useState<string>('ALL');
 
@@ -53,9 +53,16 @@ export default function PipelineDeliveryPage() {
 
   const isSent = (status: any) => status === 'تم التسليم للعميل بنجاح' || status === 'في التركيبات' || status === 'تم التركيب بنجاح ومغلق';
 
+  const isTodayDelivery = (j: any) => {
+    const dateStr = j.deliveryDate || j.createdAt || '';
+    return dateStr.includes('2026-08-28') || dateStr === '' || !j.deliveryDate || dateStr <= '2026-08-28';
+  };
+
   const tabFiltered = jobs.filter(j => {
-    if (activeTab === 'OPEN') {
-      return !isSent(j.status);
+    if (activeTab === 'TODAY') {
+      return !isSent(j.status) && isTodayDelivery(j);
+    } else if (activeTab === 'SCHEDULED') {
+      return !isSent(j.status) && !isTodayDelivery(j);
     } else {
       return isSent(j.status);
     }
@@ -78,34 +85,52 @@ export default function PipelineDeliveryPage() {
     updatePipelineOrderStatus(id, 'في التركيبات');
   };
 
-  const openCount = jobs.filter(j => !isSent(j.status)).length;
-  const sentCount = jobs.filter(j => isSent(j.status)).length;
+  const todayCount = jobs.filter(j => !isSent(j.status) && isTodayDelivery(j)).length;
+  const scheduledCount = jobs.filter(j => !isSent(j.status) && !isTodayDelivery(j)).length;
+  const historyCount = jobs.filter(j => isSent(j.status)).length;
 
   return (
     <PageShell title="تسليمات المعرض والشحن" badge="المرحلة 7">
       <div className="flex flex-col gap-5">
-        {/* 2-Tabs Navigation */}
+        {/* 3-Tabs Navigation */}
         <div className="flex border-b border-slate-200 gap-2">
           <button
-            onClick={() => setActiveTab('OPEN')}
-            className={`pb-3 px-4 text-xs sm:text-sm font-black flex items-center gap-2 border-b-2 transition-all ${
-              activeTab === 'OPEN'
+            onClick={() => setActiveTab('TODAY')}
+            className={`pb-3 px-4 text-xs sm:text-sm font-black flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
+              activeTab === 'TODAY'
                 ? 'border-brand-gold text-slate-950'
                 : 'border-transparent text-slate-400 hover:text-slate-700'
             }`}
           >
-            <span className="material-symbols-outlined text-[18px]">local_shipping</span>
-            <span>التسليمات</span>
+            <span className="material-symbols-outlined text-[18px]">today</span>
+            <span>اليوم</span>
             <span className={`text-[11px] px-2 py-0.2 rounded-full font-mono font-bold ${
-              activeTab === 'OPEN' ? 'bg-amber-100 text-amber-950' : 'bg-slate-100 text-slate-500'
+              activeTab === 'TODAY' ? 'bg-amber-100 text-amber-950' : 'bg-slate-100 text-slate-500'
             }`}>
-              {openCount}
+              {todayCount}
+            </span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('SCHEDULED')}
+            className={`pb-3 px-4 text-xs sm:text-sm font-black flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
+              activeTab === 'SCHEDULED'
+                ? 'border-brand-gold text-slate-950'
+                : 'border-transparent text-slate-400 hover:text-slate-700'
+            }`}
+          >
+            <span className="material-symbols-outlined text-[18px]">event</span>
+            <span>مجدول</span>
+            <span className={`text-[11px] px-2 py-0.2 rounded-full font-mono font-bold ${
+              activeTab === 'SCHEDULED' ? 'bg-amber-100 text-amber-950' : 'bg-slate-100 text-slate-500'
+            }`}>
+              {scheduledCount}
             </span>
           </button>
 
           <button
             onClick={() => setActiveTab('SENT')}
-            className={`pb-3 px-4 text-xs sm:text-sm font-black flex items-center gap-2 border-b-2 transition-all ${
+            className={`pb-3 px-4 text-xs sm:text-sm font-black flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
               activeTab === 'SENT'
                 ? 'border-brand-gold text-slate-950'
                 : 'border-transparent text-slate-400 hover:text-slate-700'
@@ -116,7 +141,7 @@ export default function PipelineDeliveryPage() {
             <span className={`text-[11px] px-2 py-0.2 rounded-full font-mono font-bold ${
               activeTab === 'SENT' ? 'bg-amber-100 text-amber-950' : 'bg-slate-100 text-slate-500'
             }`}>
-              {sentCount}
+              {historyCount}
             </span>
           </button>
         </div>
@@ -153,7 +178,7 @@ export default function PipelineDeliveryPage() {
           <div className="bg-white rounded-2xl border border-dashed border-slate-300 p-10 text-center">
             <span className="material-symbols-outlined text-[40px] text-slate-300 block mb-1">inbox</span>
             <h3 className="font-bold text-slate-700 text-sm">
-              {activeTab === 'OPEN' ? 'لا توجد طلبات تسليم بالمعرض حالياً' : 'السجل فارغ'}
+              {activeTab !== 'SENT' ? 'لا توجد طلبات تسليم بالمعرض حالياً' : 'السجل فارغ'}
             </h3>
           </div>
         ) : activeTab === 'SENT' ? (
