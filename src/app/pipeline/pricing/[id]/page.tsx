@@ -17,7 +17,7 @@ import {
   ACCESSORY_PRICES,
   PipeAccessories
 } from '@/lib/inspectionsStore';
-import { getStoredPipelineOrders, saveStoredPipelineOrders, PipelineMasterOrder, isTodayOrOverdue } from '@/lib/pipelineStore';
+import { getStoredPipelineOrders, saveStoredPipelineOrders, updatePipelineOrderStatus, PipelineMasterOrder, isTodayOrOverdue } from '@/lib/pipelineStore';
 import { canUserEditPrices } from '@/lib/permissions';
 
 interface InventoryFabric {
@@ -478,6 +478,21 @@ export default function PricingDetailPage() {
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                const updatedList = quotations.map(q => q.id === quotation.id ? { ...q, status: 'معتمد ومسدد العربون' as const } : q);
+                setQuotations(updatedList);
+                saveAllQuotations(updatedList);
+                updatePipelineOrderStatus(quotation.id, 'في المقص', 'بانتظار القص');
+                alert('تم اعتماد المقايسة وتسديد العربون بنجاح ونقل الطلب لمرحلة قص القماش ✓');
+                router.push('/pipeline/cutting');
+              }}
+              className="bg-brand-gold hover:bg-brand-gold-hover text-slate-950 px-4 py-2 rounded-xl text-xs font-black shadow-gold cursor-pointer transition-colors flex items-center gap-1"
+            >
+              <span>اعتماد المقايسة وتحويل لمرحلة المقص ←</span>
+            </button>
+
             <span className={`text-xs px-3 py-1 rounded-full font-bold border ${
               quotation.status === 'معتمد ومسدد العربون' ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
               : quotation.status === 'تم إرسال المقايسة' ? 'bg-blue-50 text-blue-800 border-blue-200'

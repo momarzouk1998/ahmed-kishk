@@ -12,6 +12,7 @@ import {
   InspectionData,
   Room
 } from '@/lib/inspectionsStore';
+import { updatePipelineOrderStatus } from '@/lib/pipelineStore';
 
 const installOptions = [
   'تراك سقف',
@@ -238,7 +239,20 @@ export default function InspectionDetailPage() {
               <h1 className="font-display font-black text-xl sm:text-2xl text-slate-900 mt-2">{data.customerName}</h1>
             </div>
 
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  saveOrUpdateInspection({ ...data, status: 'تم رفع المقاسات' });
+                  const qot = syncInspectionToPricing(data.id);
+                  updatePipelineOrderStatus(data.id, 'انتظار تسعير', 'في التسعير');
+                  router.push(`/pipeline/pricing/${encodeURIComponent(qot.id)}`);
+                }}
+                className="bg-amber-400 hover:bg-amber-300 text-slate-950 px-4 py-2.5 rounded-xl text-xs font-black shadow-gold flex items-center gap-1.5 cursor-pointer transition-colors"
+              >
+                <span>اعتماد ونقل لمرحلة التسعير والعقد ←</span>
+              </button>
+
               <a
                 href={`tel:${data.phone}`}
                 className="bg-slate-900 text-white px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs"

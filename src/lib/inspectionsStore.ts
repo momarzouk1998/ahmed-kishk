@@ -437,7 +437,23 @@ export function saveAllQuotations(list: QuotationOrder[]): void {
   }
 }
 
-export function syncInspectionToPricing(inspection: InspectionData): QuotationOrder {
+export function syncInspectionToPricing(inspectionOrId: InspectionData | string): QuotationOrder {
+  const inspection: InspectionData = typeof inspectionOrId === 'string'
+    ? (getInspectionById(inspectionOrId) || {
+        id: inspectionOrId,
+        customerName: 'عميل جديد',
+        phone: '',
+        address: '',
+        branch: 'الفرع الرئيسي',
+        scheduledAt: '',
+        technician: '',
+        status: 'تم رفع المقاسات',
+        isLocked: false,
+        notes: '',
+        rooms: []
+      })
+    : inspectionOrId;
+
   const quotations = getStoredQuotations();
   const existingIdx = quotations.findIndex(q => q.inspectionId.toUpperCase() === inspection.id.toUpperCase());
 

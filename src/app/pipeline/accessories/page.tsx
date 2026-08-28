@@ -90,6 +90,8 @@ export default function PipelineAccessoriesPage() {
 
   const updateKitStatus = (kitId: string, status: AccessoryKit['status']) => {
     setKits(prev => prev.map(k => k.id === kitId ? { ...k, status } : k));
+    const nextMaster = status === 'تم التجهيز' ? 'جاهز للاستلام' : 'تجهيز الاكسسوارات';
+    updatePipelineOrderStatus(kitId, nextMaster, status);
   };
 
   const handleAddCustomItem = (e: React.FormEvent) => {

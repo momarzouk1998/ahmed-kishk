@@ -72,13 +72,13 @@ export default function PipelineDeliveryPage() {
 
   const completeDelivery = (id: string) => {
     setJobs(prev => prev.map(j => j.id === id ? { ...j, status: 'تم التسليم للعميل بنجاح' } : j));
-    updatePipelineOrderStatus(id, 'تم التسليم للعميل بنجاح');
+    updatePipelineOrderStatus(id, 'مكتمل', 'تم التسليم للعميل بنجاح');
     alert('تم تسجيل تسليم الأوردر للعميل بنجاح وإغلاق الطلب.');
   };
 
   const transferToInstallation = (id: string) => {
     setJobs(prev => prev.map(j => j.id === id ? { ...j, status: 'في التركيبات' } : j));
-    updatePipelineOrderStatus(id, 'في التركيبات');
+    updatePipelineOrderStatus(id, 'جاهز للتركيب', 'في التركيبات');
   };
 
   const todayCount = jobs.filter(j => !isSent(j.status) && isTodayDelivery(j)).length;

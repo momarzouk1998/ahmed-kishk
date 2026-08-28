@@ -81,7 +81,7 @@ export default function PipelineInstallationPage() {
         status: 'تم التركيب بنجاح ومغلق',
       };
     }));
-    updatePipelineOrderStatus(id, 'تم التركيب بنجاح ومغلق');
+    updatePipelineOrderStatus(id, 'مكتمل', 'تم التركيب بنجاح ومغلق');
     alert('تم تسجيل إتمام التركيب وتحصيل المبلغ المتبقي وإغلاق الطلب بنجاح.');
   };
 

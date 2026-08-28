@@ -112,7 +112,7 @@ export default function PipelineCuttingPage() {
 
   const updateOrderStatus = (id: string, newStatus: CuttingOrder['status']) => {
     setOrders(prev => prev.map(o => o.id === id ? { ...o, status: newStatus } : o));
-    updatePipelineOrderStatus(id, newStatus as any);
+    updatePipelineOrderStatus(id, 'في الورشة', 'جاري الخياطة');
   };
 
   const openCount = orders.filter(o => !isSent(o.status)).length;
