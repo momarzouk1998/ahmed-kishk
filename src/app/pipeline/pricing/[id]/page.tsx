@@ -123,6 +123,7 @@ export default function PricingDetailPage() {
   const [installFee, setInstallFee] = useState<number>(125);
   const [transportFeeEnabled, setTransportFeeEnabled] = useState<boolean>(false);
   const [transportFee, setTransportFee] = useState<number>(0);
+  const [sheerPieces, setSheerPieces] = useState<'قطعة واحدة' | 'قطعتين'>('قطعة واحدة');
 
   const [showWorkshopModal, setShowWorkshopModal] = useState<boolean>(false);
 
@@ -794,6 +795,29 @@ export default function PricingDetailPage() {
                             {tape.name}
                           </button>
                         ))}
+                      </div>
+
+                      {/* Sheer Pieces Selection (قطعة واحدة أم قطعتين) */}
+                      <div className="flex items-center gap-1.5 bg-blue-50/70 p-1 rounded-lg border border-blue-200">
+                        <span className="text-blue-950 font-bold text-[11px]">تقسيم الخلفية:</span>
+                        <button
+                          type="button"
+                          onClick={() => setSheerPieces('قطعة واحدة')}
+                          className={`px-2 py-0.5 rounded text-[11px] font-bold border cursor-pointer transition-colors ${
+                            sheerPieces === 'قطعة واحدة' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-700 border-slate-300'
+                          }`}
+                        >
+                          قطعة واحدة
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSheerPieces('قطعتين')}
+                          className={`px-2 py-0.5 rounded text-[11px] font-bold border cursor-pointer transition-colors ${
+                            sheerPieces === 'قطعتين' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-700 border-slate-300'
+                          }`}
+                        >
+                          قطعتين
+                        </button>
                       </div>
 
                       <div className="flex items-center gap-1.5 mr-auto">

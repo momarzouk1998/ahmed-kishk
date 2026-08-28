@@ -352,23 +352,30 @@ export default function PipelineCuttingPage() {
 
       {/* 🖨️ Printable Order Cut Sheet Modal (ورقة قص القماش للبياع) */}
       {selectedOrderForPrint && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 overflow-y-auto">
+        <div className="modal-overlay fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 overflow-y-auto">
           {/* Printable CSS styles */}
           <style>{`
             @media print {
-              body * {
-                visibility: hidden !important;
+              html, body {
+                background: white !important;
+                color: black !important;
+                overflow: visible !important;
               }
-              #printable-cut-sheet-modal, #printable-cut-sheet-modal * {
-                visibility: visible !important;
+              .modal-overlay {
+                position: static !important;
+                background: transparent !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                overflow: visible !important;
+                display: block !important;
               }
               #printable-cut-sheet-modal {
-                position: absolute !important;
-                left: 0 !important;
-                top: 0 !important;
+                position: static !important;
+                display: block !important;
+                visibility: visible !important;
                 width: 100% !important;
                 margin: 0 !important;
-                padding: 15px !important;
+                padding: 10px !important;
                 background: white !important;
                 color: black !important;
                 box-shadow: none !important;
