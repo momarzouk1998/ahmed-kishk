@@ -36,25 +36,24 @@ export default function Sidebar() {
   });
 
   useEffect(() => {
+    // Purge old stale permission caches to prevent old sidebar items from appearing
+    if (typeof window !== 'undefined') {
+      try {
+        Object.keys(localStorage).forEach(key => {
+          if (key.startsWith('user_perms_')) {
+            localStorage.removeItem(key);
+          }
+        });
+      } catch {}
+    }
+
     fetch('/api/auth/profile')
       .then((r) => r.json())
       .then((d) => {
         if (d.user) {
           setUser(d.user);
-          if (d.user.role === 'ADMIN') {
-            setAllowedPageIds(null); // Admin sees ALL current system pages
-          } else {
-            try {
-              const savedPerms = localStorage.getItem(`user_perms_${d.user.phone}`);
-              if (savedPerms) {
-                setAllowedPageIds(JSON.parse(savedPerms));
-              } else {
-                setAllowedPageIds(null);
-              }
-            } catch {
-              setAllowedPageIds(null);
-            }
-          }
+          // Always show all system pages to ADMIN and logged in staff
+          setAllowedPageIds(null);
         }
       })
       .catch(() => {});

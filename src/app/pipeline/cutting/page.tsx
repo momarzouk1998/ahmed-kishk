@@ -3,84 +3,125 @@
 import React, { useState } from 'react';
 import PageShell from '@/components/PageShell';
 
-interface CuttingItem {
+interface RoomFabricItem {
+  roomName: string;
+  heavyFabric?: { name: string; code: string; meters: number };
+  sheerFabric?: { name: string; code: string; meters: number };
+  blackoutFabric?: { name: string; code: string; meters: number };
+}
+
+interface CuttingOrder {
   id: string;
   orderId: string;
   customerName: string;
   phone: string;
-  roomName: string;
-  dimensions: string;
-  fabricName: string;
-  fabricCode: string;
-  requiredMeters: number;
-  status: 'بانتظار القص' | 'تم استلام القماش' | 'تم القص وجاهز للخياطة';
+  address: string;
+  branch: string;
   cutterName: string;
-  notes: string;
+  rooms: RoomFabricItem[];
+  status: 'بانتظار القص' | 'تم القص وجاهز للخياطة';
+  createdAt: string;
 }
 
-const initialItems: CuttingItem[] = [
+const initialOrders: CuttingOrder[] = [
   {
     id: 'CUT-101',
     orderId: 'ORD-001',
     customerName: 'محمود عبد الرحمن',
     phone: '01012345678',
-    roomName: 'الصالة الرئيسية (بلكونة)',
-    dimensions: 'عرض 350سم × ارتفاع 280سم',
-    fabricName: 'تول خفيف مطرز',
-    fabricCode: 'T-402',
-    requiredMeters: 8.75,
-    status: 'تم القص وجاهز للخياطة',
-    cutterName: 'عم مصطفى',
-    notes: 'قص قطعتين متساويتين',
+    address: 'التجمع الخامس، فيلا 42',
+    branch: 'الفرع الرئيسي',
+    cutterName: 'عم مصطفى البياع',
+    status: 'بانتظار القص',
+    createdAt: '2026-08-28',
+    rooms: [
+      {
+        roomName: 'غرفة (1) - الصالة الرئيسية',
+        heavyFabric: { name: 'قطيفة تركي ثقيل', code: 'V-990', meters: 6.30 },
+        sheerFabric: { name: 'تول خفيف مطرز', code: 'T-402', meters: 8.75 },
+        blackoutFabric: { name: 'بلاك آوت عازل', code: 'BL-101', meters: 2.25 },
+      },
+      {
+        roomName: 'غرفة (2) - غرفة النوم الرئيسية',
+        heavyFabric: { name: 'قطيفة تركي ثقيل', code: 'V-990', meters: 4.50 },
+        sheerFabric: { name: 'تول خفيف مطرز', code: 'T-402', meters: 5.00 },
+        blackoutFabric: { name: 'بلاك آوت عازل', code: 'BL-101', meters: 3.00 },
+      },
+    ],
   },
   {
     id: 'CUT-102',
-    orderId: 'ORD-001',
-    customerName: 'محمود عبد الرحمن',
-    phone: '01012345678',
-    roomName: 'الصالة الرئيسية (بلكونة)',
-    dimensions: 'عرض 350سم × ارتفاع 280سم',
-    fabricName: 'قطيفة تركي ثقيل',
-    fabricCode: 'V-990',
-    requiredMeters: 6.30,
-    status: 'بانتظار القص',
-    cutterName: 'عم مصطفى',
-    notes: 'مراعاة اتجاه وبَر القطيفة',
+    orderId: 'ORD-002',
+    customerName: 'شركة المعمار لترميم الفيصلية',
+    phone: '01155556666',
+    address: 'مصر الجديدة، شارع الثورة',
+    branch: 'فرع عرابي',
+    cutterName: 'أحمد شحاتة',
+    status: 'تم القص وجاهز للخياطة',
+    createdAt: '2026-08-27',
+    rooms: [
+      {
+        roomName: 'قاعة الاجتماعات الرئيسية',
+        blackoutFabric: { name: 'بلاك آوت عازل ضوء', code: 'BL-900', meters: 16.00 },
+      },
+    ],
   },
   {
     id: 'CUT-103',
-    orderId: 'ORD-002',
-    customerName: 'شركة المعمار',
-    phone: '01155556666',
-    roomName: 'قاعة الاجتماعات',
-    dimensions: 'عرض 500سم × ارتفاع 300سم',
-    fabricName: 'بلاك آوت عازل ضوء',
-    fabricCode: 'BL-900',
-    requiredMeters: 16.00,
-    status: 'تم القص وجاهز للخياطة',
-    cutterName: 'أحمد شحاتة',
-    notes: '3 شبابيك متساوية',
-  }
+    orderId: 'ORD-004',
+    customerName: 'د. سارة أحمد',
+    phone: '01298765432',
+    address: 'الشيخ زايد، بيفرلي هيلز',
+    branch: 'الفرع الرئيسي',
+    cutterName: 'حسن إبراهيم',
+    status: 'بانتظار القص',
+    createdAt: '2026-08-28',
+    rooms: [
+      {
+        roomName: 'غرفة المعيشة',
+        heavyFabric: { name: 'كتان هازل بني', code: 'LN-77', meters: 12.00 },
+        sheerFabric: { name: 'تول ويفي أبيض', code: 'TW-10', meters: 12.00 },
+      },
+    ],
+  },
 ];
 
 export default function PipelineCuttingPage() {
-  const [items, setItems] = useState<CuttingItem[]>(initialItems);
+  const [orders, setOrders] = useState<CuttingOrder[]>(initialOrders);
   const [activeTab, setActiveTab] = useState<'OPEN' | 'SENT'>('OPEN');
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedOrderForPrint, setSelectedOrderForPrint] = useState<CuttingOrder | null>(null);
 
-  const isSent = (status: CuttingItem['status']) => status === 'تم القص وجاهز للخياطة';
+  const isSent = (status: CuttingOrder['status']) => status === 'تم القص وجاهز للخياطة';
 
-  const tabFiltered = items.filter(i => activeTab === 'OPEN' ? !isSent(i.status) : isSent(i.status));
-  const filtered = tabFiltered.filter(i =>
-    i.customerName.includes(searchQuery) || i.fabricCode.includes(searchQuery) || i.id.includes(searchQuery)
+  const tabFiltered = orders.filter(o => activeTab === 'OPEN' ? !isSent(o.status) : isSent(o.status));
+  const filtered = tabFiltered.filter(o =>
+    o.customerName.includes(searchQuery) || o.id.includes(searchQuery) || o.orderId.includes(searchQuery)
   );
 
-  const updateItemStatus = (id: string, newStatus: CuttingItem['status']) => {
-    setItems(prev => prev.map(i => i.id === id ? { ...i, status: newStatus } : i));
+  const updateOrderStatus = (id: string, newStatus: CuttingOrder['status']) => {
+    setOrders(prev => prev.map(o => o.id === id ? { ...o, status: newStatus } : o));
   };
 
-  const openCount = items.filter(i => !isSent(i.status)).length;
-  const sentCount = items.filter(i => isSent(i.status)).length;
+  const openCount = orders.filter(o => !isSent(o.status)).length;
+  const sentCount = orders.filter(o => isSent(o.status)).length;
+
+  // Calculate Fabric Summary for an Order
+  const getFabricTotals = (rooms: RoomFabricItem[]) => {
+    const totals: Record<string, { name: string; code: string; meters: number }> = {};
+    rooms.forEach(r => {
+      [r.heavyFabric, r.sheerFabric, r.blackoutFabric].forEach(f => {
+        if (f) {
+          const key = f.code || f.name;
+          if (!totals[key]) {
+            totals[key] = { name: f.name, code: f.code, meters: 0 };
+          }
+          totals[key].meters += f.meters;
+        }
+      });
+    });
+    return Object.values(totals);
+  };
 
   return (
     <PageShell title="قص القماش">
@@ -89,9 +130,9 @@ export default function PipelineCuttingPage() {
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-100 text-amber-950 border border-amber-200">
-              مرحلة القص
+              المرحلة 4
             </span>
-            <h1 className="font-display font-black text-xl sm:text-2xl text-slate-900">قص القماش</h1>
+            <h1 className="font-display font-black text-xl sm:text-2xl text-slate-900">قص القماش والأثواب</h1>
           </div>
         </div>
 
@@ -99,7 +140,7 @@ export default function PipelineCuttingPage() {
         <div className="flex border-b border-slate-200 gap-2">
           <button
             onClick={() => setActiveTab('OPEN')}
-            className={`pb-3 px-4 text-xs sm:text-sm font-black flex items-center gap-2 border-b-2 transition-all ${
+            className={`pb-3 px-4 text-xs sm:text-sm font-black flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
               activeTab === 'OPEN'
                 ? 'border-brand-gold text-slate-950'
                 : 'border-transparent text-slate-400 hover:text-slate-700'
@@ -116,7 +157,7 @@ export default function PipelineCuttingPage() {
 
           <button
             onClick={() => setActiveTab('SENT')}
-            className={`pb-3 px-4 text-xs sm:text-sm font-black flex items-center gap-2 border-b-2 transition-all ${
+            className={`pb-3 px-4 text-xs sm:text-sm font-black flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
               activeTab === 'SENT'
                 ? 'border-brand-gold text-slate-950'
                 : 'border-transparent text-slate-400 hover:text-slate-700'
@@ -141,7 +182,7 @@ export default function PipelineCuttingPage() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="بحث بالاسم، الكود، كود القماش..."
+            placeholder="بحث بالاسم، الكود، اسم القماش..."
             className="w-full bg-white border border-slate-200 rounded-xl pr-10 pl-4 py-2.5 text-xs sm:text-sm text-slate-900 focus:outline-none focus:border-brand-gold shadow-xs"
           />
         </div>
@@ -150,117 +191,265 @@ export default function PipelineCuttingPage() {
           <div className="bg-white rounded-2xl border border-dashed border-slate-300 p-10 text-center">
             <span className="material-symbols-outlined text-[40px] text-slate-300 block mb-1">inbox</span>
             <h3 className="font-bold text-slate-700 text-sm">
-              {activeTab === 'OPEN' ? 'لا توجد أوامر قص جارية' : 'السجل فارغ'}
+              {activeTab === 'OPEN' ? 'لا توجد أوامر قص جارية حالياً' : 'سجل المقصوص فارغ'}
             </h3>
           </div>
         ) : activeTab === 'SENT' ? (
-          /* TAB 2: Table for History */
+          /* TAB 2: Table Format (جدول السجل) */
           <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-soft">
             <div className="overflow-x-auto">
-              <table className="w-full text-right text-xs min-w-[700px]">
+              <table className="w-full text-right text-xs min-w-[750px]">
                 <thead className="bg-slate-50 text-slate-500 font-mono border-b border-slate-200">
                   <tr>
                     <th className="p-3.5">كود القص</th>
                     <th className="p-3.5">كود الطلب</th>
                     <th className="p-3.5">العميل</th>
-                    <th className="p-3.5">الغرفة</th>
-                    <th className="p-3.5">القماش</th>
-                    <th className="p-3.5 text-center font-mono">الأمتار المقصوصة</th>
-                    <th className="p-3.5">المسؤول</th>
-                    <th className="p-3.5 text-center">تحديث واتساب</th>
+                    <th className="p-3.5">العنوان والفرع</th>
+                    <th className="p-3.5">الأقمشة المقصوصة والمجموع</th>
+                    <th className="p-3.5 text-center">ورقة القص</th>
+                    <th className="p-3.5 text-center">واتساب</th>
                     <th className="p-3.5 text-center">الحالة</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map(item => (
-                    <tr key={item.id} className="border-t border-slate-100 hover:bg-slate-50/60 transition-colors">
-                      <td className="p-3.5 font-mono font-bold text-brand-gold-dark">{item.id}</td>
-                      <td className="p-3.5 font-mono text-slate-500">{item.orderId}</td>
-                      <td className="p-3.5 font-bold text-slate-900">{item.customerName}</td>
-                      <td className="p-3.5 text-slate-700">{item.roomName}</td>
-                      <td className="p-3.5 font-bold text-slate-800">{item.fabricName}</td>
-                      <td className="p-3.5 text-center font-mono font-black text-amber-800">{item.requiredMeters} م</td>
-                      <td className="p-3.5 text-slate-700">{item.cutterName}</td>
-                      <td className="p-3.5 text-center">
-                        <a
-                          href={`https://wa.me/2${item.phone}?text=${encodeURIComponent(`مرحباً ${item.customerName}، نود إعلامك بأنه تم قص القماش الخاص بأوردر الستائر في مؤسسة أحمد كشك وجاري تحويله للورشة والتفصيل. شكراً لثقتكم بنا!`)}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 px-2.5 py-1 rounded-lg text-xs font-bold border border-emerald-200"
-                        >
-                          💬 واتساب
-                        </a>
-                      </td>
-                      <td className="p-3.5 text-center">
-                        <span className="text-[11px] px-2.5 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-900 border border-emerald-200">
-                          تم القص والتحويل للورشة
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
+                  {filtered.map(order => {
+                    const totals = getFabricTotals(order.rooms);
+                    return (
+                      <tr key={order.id} className="border-t border-slate-100 hover:bg-slate-50/60 transition-colors">
+                        <td className="p-3.5 font-mono font-bold text-brand-gold-dark">{order.id}</td>
+                        <td className="p-3.5 font-mono text-slate-500">{order.orderId}</td>
+                        <td className="p-3.5 font-bold text-slate-900">{order.customerName}</td>
+                        <td className="p-3.5 text-slate-700">{order.address}</td>
+                        <td className="p-3.5 text-slate-800">
+                          <div className="flex flex-wrap gap-1">
+                            {totals.map((t, idx) => (
+                              <span key={idx} className="bg-amber-50 text-amber-950 border border-amber-200 px-2 py-0.5 rounded text-[11px] font-bold">
+                                {t.name} ({t.meters}م)
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="p-3.5 text-center">
+                          <button
+                            onClick={() => setSelectedOrderForPrint(order)}
+                            className="bg-slate-900 hover:bg-slate-800 text-white px-2.5 py-1 rounded-lg text-xs font-bold transition-colors"
+                          >
+                            🖨️ طباعة
+                          </button>
+                        </td>
+                        <td className="p-3.5 text-center">
+                          <a
+                            href={`https://wa.me/2${order.phone}?text=${encodeURIComponent(`مرحباً ${order.customerName}، تم قص أقمشة أوردر الستائر الخاص بكم بنجاح بمؤسسة أحمد كشك وجاري تحويله للورشة. شكراً لثقتكم بنا!`)}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 px-2.5 py-1 rounded-lg text-xs font-bold border border-emerald-200"
+                          >
+                            💬 واتساب
+                          </a>
+                        </td>
+                        <td className="p-3.5 text-center">
+                          <span className="text-[11px] px-2.5 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-900 border border-emerald-200">
+                            تم القص والتحويل للورشة
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
           </div>
         ) : (
-          /* TAB 1: Active Cards View */
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filtered.map(item => (
-              <div key={item.id} className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-soft flex flex-col justify-between">
-                <div>
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <span className="text-[11px] font-mono font-bold text-brand-gold-dark">{item.id}</span>
-                      <h3 className="font-bold text-base text-slate-900">{item.customerName}</h3>
-                      <p className="text-xs text-slate-600 font-bold">{item.roomName}</p>
+          /* TAB 1: Active Cards (أمر القص المجمع لكل غرفة) */
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {filtered.map(order => {
+              const totals = getFabricTotals(order.rooms);
+              return (
+                <div key={order.id} className="bg-white rounded-2xl border border-slate-200 p-5 shadow-soft flex flex-col justify-between space-y-4">
+                  <div>
+                    {/* Customer Header */}
+                    <div className="flex justify-between items-start pb-3 border-b border-slate-100">
+                      <div>
+                        <span className="text-[11px] font-mono font-bold text-amber-800">{order.id} • {order.orderId}</span>
+                        <h3 className="font-bold text-base text-slate-900">{order.customerName}</h3>
+                        <p className="text-xs text-slate-500">{order.address}</p>
+                      </div>
+                      <button
+                        onClick={() => setSelectedOrderForPrint(order)}
+                        className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-2xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                      >
+                        <span>🖨️ ورقة قص القماش (للبياع)</span>
+                      </button>
                     </div>
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${
-                      item.status === 'تم استلام القماش' ? 'bg-blue-100 text-blue-900 border-blue-200' : 'bg-amber-100 text-amber-900 border-amber-200'
-                    }`}>
-                      {item.status}
-                    </span>
+
+                    {/* Breakdown Per Room */}
+                    <div className="my-3 space-y-2.5">
+                      <span className="text-[11px] font-black text-slate-700 block">✂️ الأقمشة والأمتار المطلوبة لكل غرفة على حدة:</span>
+                      {order.rooms.map((room, rIdx) => (
+                        <div key={rIdx} className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1.5">
+                          <span className="font-bold text-xs text-slate-900 block border-b border-slate-200/80 pb-1">{room.roomName}</span>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 text-xs">
+                            {room.heavyFabric && (
+                              <div className="bg-amber-100/70 text-amber-950 p-1.5 rounded-lg border border-amber-200/60 flex justify-between items-center">
+                                <span className="font-bold">ثقيل ({room.heavyFabric.code}):</span>
+                                <strong className="font-mono font-black text-sm">{room.heavyFabric.meters}م</strong>
+                              </div>
+                            )}
+                            {room.sheerFabric && (
+                              <div className="bg-blue-50 text-blue-950 p-1.5 rounded-lg border border-blue-200/60 flex justify-between items-center">
+                                <span className="font-bold">تول ({room.sheerFabric.code}):</span>
+                                <strong className="font-mono font-black text-sm">{room.sheerFabric.meters}م</strong>
+                              </div>
+                            )}
+                            {room.blackoutFabric && (
+                              <div className="bg-slate-200/70 text-slate-900 p-1.5 rounded-lg border border-slate-300 flex justify-between items-center">
+                                <span className="font-bold">بلاك آوت ({room.blackoutFabric.code}):</span>
+                                <strong className="font-mono font-black text-sm">{room.blackoutFabric.meters}م</strong>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Order Total Fabrics Summary */}
+                    <div className="bg-amber-500/10 border border-amber-400/30 p-2.5 rounded-xl text-xs flex flex-wrap items-center justify-between gap-2">
+                      <span className="font-bold text-amber-950">إجمالي الأمتار المجمعة للطلب:</span>
+                      <div className="flex flex-wrap gap-2">
+                        {totals.map((t, idx) => (
+                          <span key={idx} className="bg-white font-bold text-slate-900 border border-slate-200 px-2 py-0.5 rounded-lg shadow-2xs font-mono">
+                            {t.name}: <strong className="text-amber-800">{t.meters}م</strong>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="p-3 bg-slate-50 rounded-xl my-2.5 text-xs space-y-1.5 font-medium">
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">القماش:</span>
-                      <strong className="text-slate-900">{item.fabricName}</strong>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">المطلوب قصه:</span>
-                      <strong className="font-mono font-black text-amber-800 text-sm">{item.requiredMeters} متر</strong>
-                    </div>
+                  {/* Actions Footer */}
+                  <div className="pt-3 border-t border-slate-100 space-y-2">
+                    <a
+                      href={`https://wa.me/2${order.phone}?text=${encodeURIComponent(`مرحباً ${order.customerName}، نود إعلامك بأن أوردر الستائر الخاص بكم في مرحلة قص القماش حالياً بمؤسسة أحمد كشك. شكراً لثقتكم بنا!`)}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 py-1.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
+                    >
+                      💬 إرسال تحديث للعميل (واتساب)
+                    </a>
+
+                    <button
+                      onClick={() => updateOrderStatus(order.id, 'تم القص وجاهز للخياطة')}
+                      className="w-full bg-brand-gold hover:bg-brand-gold-hover text-slate-950 py-2.5 rounded-xl text-xs font-black shadow-gold cursor-pointer transition-colors"
+                    >
+                      تم قص القماش ←
+                    </button>
                   </div>
-
-                  {item.notes && (
-                    <p className="text-xs text-amber-950 bg-amber-50 p-2 rounded-lg border border-amber-200 mb-3">
-                      {item.notes}
-                    </p>
-                  )}
                 </div>
-
-                <div className="pt-2.5 border-t border-slate-100 space-y-2">
-                  <a
-                    href={`https://wa.me/2${item.phone}?text=${encodeURIComponent(`مرحباً ${item.customerName}، نود إعلامك بأن أوردر الستائر الخاص بك في مرحلة قص القماش حالياً بمؤسسة أحمد كشك. شكراً لثقتكم بنا!`)}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 py-1.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
-                  >
-                    💬 إرسال تحديث للعميل (واتساب)
-                  </a>
-
-                  <button
-                    onClick={() => updateItemStatus(item.id, 'تم القص وجاهز للخياطة')}
-                    className="w-full bg-brand-gold hover:bg-brand-gold-hover text-slate-950 py-2.5 rounded-xl text-xs font-black shadow-gold cursor-pointer transition-colors"
-                  >
-                    تم قص القماش ←
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
+
+      {/* 🖨️ Printable Order Cut Sheet Modal (ورقة قص القماش للبياع) */}
+      {selectedOrderForPrint && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-5 text-slate-900 border border-slate-200 my-8">
+            {/* Printable Header */}
+            <div className="flex justify-between items-center pb-4 border-b-2 border-slate-900">
+              <div>
+                <h2 className="font-display font-black text-xl text-slate-950">مؤسسة أحمد كشك للأقمشة والستائر</h2>
+                <p className="text-xs font-bold text-amber-800">أمر ورقة قص القماش (للبياع / أمين المخزن)</p>
+              </div>
+              <div className="text-left font-mono text-xs">
+                <div><strong>كود القص:</strong> {selectedOrderForPrint.id}</div>
+                <div><strong>كود الطلب:</strong> {selectedOrderForPrint.orderId}</div>
+                <div><strong>التاريخ:</strong> {selectedOrderForPrint.createdAt}</div>
+              </div>
+            </div>
+
+            {/* Customer Box */}
+            <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 grid grid-cols-2 gap-2 text-xs">
+              <div><strong>اسم العميل:</strong> {selectedOrderForPrint.customerName}</div>
+              <div><strong>رقم الهاتف:</strong> {selectedOrderForPrint.phone}</div>
+              <div><strong>العنوان:</strong> {selectedOrderForPrint.address}</div>
+              <div><strong>الفرع:</strong> {selectedOrderForPrint.branch}</div>
+            </div>
+
+            {/* Detailed Table Per Room */}
+            <div className="space-y-2">
+              <h3 className="font-bold text-sm text-slate-900">بيانات الأقمشة والأمتار المطلوب قصهامن التوب لكل غرفة:</h3>
+              <table className="w-full text-right text-xs border-collapse border border-slate-300">
+                <thead className="bg-slate-100 font-bold border-b border-slate-300 text-slate-800">
+                  <tr>
+                    <th className="p-2 border border-slate-300">اسم الغرفة</th>
+                    <th className="p-2 border border-slate-300">نوع القماش والكود</th>
+                    <th className="p-2 border border-slate-300 text-center">الأمتار المطلوب قصهامن التوب</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {selectedOrderForPrint.rooms.map((room, rIdx) => {
+                    const fabrics = [
+                      room.heavyFabric ? { type: 'ثقيل', ...room.heavyFabric } : null,
+                      room.sheerFabric ? { type: 'تول', ...room.sheerFabric } : null,
+                      room.blackoutFabric ? { type: 'بلاك آوت', ...room.blackoutFabric } : null,
+                    ].filter(Boolean);
+
+                    return fabrics.map((f: any, fIdx) => (
+                      <tr key={`${rIdx}-${fIdx}`} className="border-b border-slate-200">
+                        {fIdx === 0 && (
+                          <td rowSpan={fabrics.length} className="p-2 font-bold border border-slate-300 bg-slate-50/50 align-top">
+                            {room.roomName}
+                          </td>
+                        )}
+                        <td className="p-2 border border-slate-300 font-medium">
+                          {f.name} <span className="font-mono text-slate-500">({f.code})</span>
+                        </td>
+                        <td className="p-2 border border-slate-300 text-center font-mono font-black text-sm text-amber-900">
+                          {f.meters} متر
+                        </td>
+                      </tr>
+                    ));
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Total Summary Box */}
+            <div className="bg-amber-50 border-2 border-amber-400 p-3.5 rounded-xl space-y-1.5 text-xs">
+              <h4 className="font-black text-amber-950 text-sm">ملخص إجمالي الأمتار المطلوب سحبها وقصها من أثواب القماش بالكامل:</h4>
+              <div className="flex flex-wrap gap-3 font-mono font-bold text-slate-900">
+                {getFabricTotals(selectedOrderForPrint.rooms).map((t, idx) => (
+                  <span key={idx} className="bg-white border border-amber-300 px-3 py-1 rounded-lg shadow-2xs">
+                    {t.name} ({t.code}): <strong className="text-amber-800 text-base">{t.meters}م</strong>
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* Signatures & Footer */}
+            <div className="pt-4 border-t border-slate-200 flex justify-between items-end text-xs">
+              <div>
+                <div><strong>مسؤول القص / البياع:</strong> {selectedOrderForPrint.cutterName}</div>
+                <div><strong>التوقيع بالاستلام والقص:</strong> ________________________</div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => window.print()}
+                  className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-4 py-2 rounded-xl text-xs shadow-soft transition-colors cursor-pointer"
+                >
+                  🖨️ طباعة الورقة الآن
+                </button>
+                <button
+                  onClick={() => setSelectedOrderForPrint(null)}
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-4 py-2 rounded-xl text-xs transition-colors cursor-pointer"
+                >
+                  إغلاق
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </PageShell>
   );
 }
