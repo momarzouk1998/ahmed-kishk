@@ -42,7 +42,7 @@ export default function PipelineDeliveryPage() {
   const [activeTab, setActiveTab] = useState<'OPEN' | 'SENT'>('OPEN');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const isSent = (status: DeliveryJob['status']) => status === 'تم التسليم للعميل بنجاح';
+  const isSent = (status: DeliveryJob['status']) => status === 'تم التسليم للعميل بنجاح' || status === 'في التركيبات';
 
   const tabFiltered = jobs.filter(j => activeTab === 'OPEN' ? !isSent(j.status) : isSent(j.status));
   const filtered = tabFiltered.filter(j =>
@@ -169,8 +169,12 @@ export default function PipelineDeliveryPage() {
                         </a>
                       </td>
                       <td className="p-3.5 text-center">
-                        <span className="text-[11px] px-2.5 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-900 border border-emerald-200">
-                          تم التسليم ومغلق
+                        <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-bold border ${
+                          job.status === 'في التركيبات'
+                            ? 'bg-amber-100 text-amber-950 border-amber-200'
+                            : 'bg-emerald-100 text-emerald-900 border-emerald-200'
+                        }`}>
+                          {job.status === 'في التركيبات' ? 'تم النقل للتركيبات ←' : 'تم التسليم للعميل بنجاح'}
                         </span>
                       </td>
                     </tr>
