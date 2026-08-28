@@ -222,10 +222,9 @@ export default function PipelineTailoringPage() {
               <table className="w-full text-right text-xs min-w-[750px]">
                 <thead className="bg-slate-50 text-slate-500 font-mono border-b border-slate-200">
                   <tr>
-                    <th className="p-3.5">كود التفصيل</th>
-                    <th className="p-3.5">كود الطلب</th>
                     <th className="p-3.5">العميل والهاتف</th>
                     <th className="p-3.5">تاريخ الاستلام</th>
+                    <th className="p-3.5">العنوان والفرع</th>
                     <th className="p-3.5">مسؤول الورشة</th>
                     <th className="p-3.5 text-center">ورقة الورشة</th>
                     <th className="p-3.5 text-center">واتساب</th>
@@ -235,10 +234,9 @@ export default function PipelineTailoringPage() {
                 <tbody>
                   {filtered.map(order => (
                     <tr key={order.id} className="border-t border-slate-100 hover:bg-slate-50/60">
-                      <td className="p-3.5 font-mono font-bold text-amber-800">{order.id}</td>
-                      <td className="p-3.5 font-mono text-slate-500">{order.orderId}</td>
                       <td className="p-3.5 font-bold text-slate-900">{order.customerName} ({order.phone})</td>
                       <td className="p-3.5 font-mono font-bold text-rose-800">{order.deliveryDate}</td>
+                      <td className="p-3.5 text-slate-700">{order.address} ({order.branch})</td>
                       <td className="p-3.5 text-slate-700">{order.tailorName}</td>
                       <td className="p-3.5 text-center">
                         <button onClick={() => setSelectedOrderForWorksheet(order)} className="bg-slate-900 hover:bg-slate-800 text-white px-2.5 py-1 rounded-lg text-xs font-bold">🖨️ ورقة الورشة</button>
@@ -262,7 +260,6 @@ export default function PipelineTailoringPage() {
                 <div>
                   <div className="flex justify-between items-start pb-3 border-b border-slate-100">
                     <div>
-                      <span className="text-[11px] font-mono font-bold text-amber-800">{order.id} • {order.orderId}</span>
                       <h3 className="font-bold text-base text-slate-900">{order.customerName}</h3>
                       <p className="text-xs text-rose-800 font-bold font-mono">📅 تاريخ الاستلام: {order.deliveryDate}</p>
                     </div>

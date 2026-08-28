@@ -212,9 +212,8 @@ export default function PipelineAccessoriesPage() {
               <table className="w-full text-right text-xs min-w-[700px]">
                 <thead className="bg-slate-50 text-slate-500 font-mono border-b border-slate-200">
                   <tr>
-                    <th className="p-3.5">كود الإكسسوار</th>
-                    <th className="p-3.5">العميل</th>
-                    <th className="p-3.5">العنوان</th>
+                    <th className="p-3.5">العميل والهاتف</th>
+                    <th className="p-3.5">العنوان والفرع</th>
                     <th className="p-3.5">الأصناف المجهزة</th>
                     <th className="p-3.5 text-center">وجهة النقل</th>
                     <th className="p-3.5 text-center">واتساب</th>
@@ -224,8 +223,7 @@ export default function PipelineAccessoriesPage() {
                 <tbody>
                   {filtered.map(kit => (
                     <tr key={kit.id} className="border-t border-slate-100 hover:bg-slate-50/60 transition-colors">
-                      <td className="p-3.5 font-mono font-bold text-amber-800">{kit.id} • {kit.orderId}</td>
-                      <td className="p-3.5 font-bold text-slate-900">{kit.customerName}</td>
+                      <td className="p-3.5 font-bold text-slate-900">{kit.customerName} ({kit.phone})</td>
                       <td className="p-3.5 text-slate-700">{kit.address}</td>
                       <td className="p-3.5 text-slate-800">
                         <div className="flex flex-wrap gap-1">
@@ -272,7 +270,6 @@ export default function PipelineAccessoriesPage() {
                 <div>
                   <div className="flex justify-between items-start pb-3 border-b border-slate-100">
                     <div>
-                      <span className="text-[11px] font-mono font-bold text-amber-800">{kit.id} • {kit.orderId}</span>
                       <h3 className="font-bold text-base text-slate-900">{kit.customerName}</h3>
                       <p className="text-xs text-slate-500">{kit.address}</p>
                     </div>

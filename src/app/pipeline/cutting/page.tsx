@@ -201,9 +201,7 @@ export default function PipelineCuttingPage() {
               <table className="w-full text-right text-xs min-w-[750px]">
                 <thead className="bg-slate-50 text-slate-500 font-mono border-b border-slate-200">
                   <tr>
-                    <th className="p-3.5">كود القص</th>
-                    <th className="p-3.5">كود الطلب</th>
-                    <th className="p-3.5">العميل</th>
+                    <th className="p-3.5">العميل والهاتف</th>
                     <th className="p-3.5">العنوان والفرع</th>
                     <th className="p-3.5">الأقمشة المقصوصة والمجموع</th>
                     <th className="p-3.5 text-center">ورقة القص</th>
@@ -216,10 +214,8 @@ export default function PipelineCuttingPage() {
                     const totals = getFabricTotals(order.rooms);
                     return (
                       <tr key={order.id} className="border-t border-slate-100 hover:bg-slate-50/60 transition-colors">
-                        <td className="p-3.5 font-mono font-bold text-brand-gold-dark">{order.id}</td>
-                        <td className="p-3.5 font-mono text-slate-500">{order.orderId}</td>
-                        <td className="p-3.5 font-bold text-slate-900">{order.customerName}</td>
-                        <td className="p-3.5 text-slate-700">{order.address}</td>
+                        <td className="p-3.5 font-bold text-slate-900">{order.customerName} ({order.phone})</td>
+                        <td className="p-3.5 text-slate-700">{order.address} ({order.branch})</td>
                         <td className="p-3.5 text-slate-800">
                           <div className="flex flex-wrap gap-1">
                             {totals.map((t, idx) => (
@@ -270,7 +266,6 @@ export default function PipelineCuttingPage() {
                     {/* Customer Header */}
                     <div className="flex justify-between items-start pb-3 border-b border-slate-100">
                       <div>
-                        <span className="text-[11px] font-mono font-bold text-amber-800">{order.id} • {order.orderId}</span>
                         <h3 className="font-bold text-base text-slate-900">{order.customerName}</h3>
                         <p className="text-xs text-slate-500">{order.address}</p>
                       </div>

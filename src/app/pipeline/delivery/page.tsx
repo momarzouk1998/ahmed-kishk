@@ -141,8 +141,6 @@ export default function PipelineDeliveryPage() {
               <table className="w-full text-right text-xs min-w-[700px]">
                 <thead className="bg-slate-50 text-slate-500 font-mono border-b border-slate-200">
                   <tr>
-                    <th className="p-3.5">كود التسليم</th>
-                    <th className="p-3.5">كود الطلب</th>
                     <th className="p-3.5">العميل والهاتف</th>
                     <th className="p-3.5">الفرع والنقطة</th>
                     <th className="p-3.5">ملاحظات التسليم</th>
@@ -153,8 +151,6 @@ export default function PipelineDeliveryPage() {
                 <tbody>
                   {filtered.map(job => (
                     <tr key={job.id} className="border-t border-slate-100 hover:bg-slate-50/60 transition-colors">
-                      <td className="p-3.5 font-mono font-bold text-blue-700">{job.id}</td>
-                      <td className="p-3.5 font-mono text-slate-500">{job.orderId}</td>
                       <td className="p-3.5 font-bold text-slate-900">{job.customerName} ({job.phone})</td>
                       <td className="p-3.5 text-slate-700">{job.branch}</td>
                       <td className="p-3.5 text-slate-800">{job.notes}</td>
@@ -191,7 +187,6 @@ export default function PipelineDeliveryPage() {
                 <div>
                   <div className="flex justify-between items-start mb-2">
                     <div>
-                      <span className="text-[11px] font-mono font-bold text-blue-700">{job.id} • {job.orderId}</span>
                       <h3 className="font-bold text-base text-slate-900">{job.customerName}</h3>
                       <p className="text-xs text-slate-500 font-mono" dir="ltr">{job.phone}</p>
                     </div>

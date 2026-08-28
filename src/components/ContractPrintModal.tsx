@@ -63,26 +63,33 @@ export default function ContractPrintModal({ isOpen, onClose, data }: ContractPr
     <div className="modal-overlay fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs">
       <style>{`
         @media print {
+          body > *:not(.modal-overlay) {
+            display: none !important;
+          }
           html, body {
             background: white !important;
             color: black !important;
             overflow: visible !important;
           }
           .modal-overlay {
-            position: static !important;
-            background: transparent !important;
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            background: white !important;
             padding: 0 !important;
             margin: 0 !important;
             overflow: visible !important;
             display: block !important;
+            z-index: 999999 !important;
           }
           #printable-contract-modal {
-            position: static !important;
+            position: relative !important;
             display: block !important;
             visibility: visible !important;
             width: 100% !important;
             margin: 0 !important;
-            padding: 10px !important;
+            padding: 15px !important;
             background: white !important;
             color: black !important;
             box-shadow: none !important;
@@ -112,7 +119,7 @@ export default function ContractPrintModal({ isOpen, onClose, data }: ContractPr
             </button>
             <button
               onClick={onClose}
-              className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center text-sm font-bold transition-colors"
+              className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center text-sm font-bold transition-colors cursor-pointer"
             >
               ✕
             </button>
@@ -245,25 +252,50 @@ export default function ContractPrintModal({ isOpen, onClose, data }: ContractPr
             </table>
           </div>
 
-          {/* Financial Breakdown Table */}
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 bg-slate-900 text-white p-4 rounded-xl">
-            <div className="space-y-1 text-xs text-slate-300">
-              <p>مسؤول المبيعات والتسعير: <strong className="text-white">{data.estimatorName}</strong></p>
-              <p>حالة العقد: <strong className="text-amber-400">معتمد ومسدد العربون</strong></p>
+          {/* Redesigned Premium Financial Breakdown Card */}
+          <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 text-white p-5 sm:p-6 rounded-2xl border-2 border-amber-500/40 shadow-xl space-y-4 print:border-slate-800">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-4 border-b border-slate-800">
+              <div className="space-y-1">
+                <span className="text-[11px] text-amber-400 font-bold uppercase tracking-wider block">اعتماد مقايسة وتكاليف العقد</span>
+                <h4 className="font-display font-black text-lg text-white">الملخص المالي والتحصيل</h4>
+              </div>
+              <div className="flex flex-wrap items-center gap-3 text-xs">
+                <div className="bg-slate-800/80 px-3 py-1.5 rounded-xl border border-slate-700 text-slate-300">
+                  مسؤول التسعير: <strong className="text-white font-bold">{data.estimatorName}</strong>
+                </div>
+                <div className="bg-emerald-950/80 text-emerald-300 px-3 py-1.5 rounded-xl border border-emerald-800 font-bold">
+                  ✓ العقد معتمد ومسدد العربون
+                </div>
+              </div>
             </div>
-            <div className="w-full sm:w-64 space-y-1.5 text-xs font-mono text-left">
-              <div className="flex justify-between border-b border-slate-700 pb-1">
-                <span className="text-slate-400">إجمالي مقايسة العقد:</span>
-                <strong className="text-base text-white">{data.totalAmount.toLocaleString()} جنيه</strong>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+              <div className="bg-slate-900/90 p-3.5 rounded-xl border border-slate-800 text-right">
+                <span className="text-slate-400 text-xs font-bold block mb-1">إجمالي مقايسة العقد:</span>
+                <strong className="font-mono text-xl sm:text-2xl font-black text-white block">
+                  {data.totalAmount.toLocaleString()} <span className="text-xs text-amber-400 font-bold">ج.م</span>
+                </strong>
               </div>
-              <div className="flex justify-between border-b border-slate-700 pb-1">
-                <span className="text-emerald-400">العربون المدفوع:</span>
-                <strong className="text-base text-emerald-400">{data.depositPaid.toLocaleString()} جنيه</strong>
+
+              <div className="bg-emerald-950/40 p-3.5 rounded-xl border border-emerald-900/60 text-right">
+                <span className="text-emerald-400 text-xs font-bold block mb-1">العربون المدفوع (المسدد):</span>
+                <strong className="font-mono text-xl sm:text-2xl font-black text-emerald-400 block">
+                  {data.depositPaid.toLocaleString()} <span className="text-xs text-emerald-300 font-bold">ج.م</span>
+                </strong>
               </div>
-              <div className="flex justify-between pt-1">
-                <span className="text-rose-400 font-bold">المتبقي للتحصيل عند التركيب:</span>
-                <strong className="text-lg text-rose-400 font-black">{data.remainingAmount.toLocaleString()} جنيه</strong>
+
+              <div className="bg-rose-950/40 p-3.5 rounded-xl border border-rose-900/60 text-right">
+                <span className="text-rose-400 text-xs font-bold block mb-1">المتبقي للتحصيل عند التركيب:</span>
+                <strong className="font-mono text-xl sm:text-2xl font-black text-rose-400 block">
+                  {data.remainingAmount.toLocaleString()} <span className="text-xs text-rose-300 font-bold">ج.م</span>
+                </strong>
               </div>
+            </div>
+
+            {/* Signature Section */}
+            <div className="pt-3 border-t border-slate-800/80 flex flex-wrap justify-between items-end text-[11px] text-slate-400 gap-2">
+              <div>توقيع وتعهّد العميل بالموافقة على المواصفات والمواعيد: ____________________</div>
+              <div>توقيع مسؤول المبيعات والاعتماد: ____________________</div>
             </div>
           </div>
 
