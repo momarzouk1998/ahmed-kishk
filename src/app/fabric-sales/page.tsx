@@ -45,6 +45,7 @@ export default function FabricSalesPage() {
   const [branch, setBranch] = useState('الفرع الرئيسي — القاهرة');
   const [sales, setSales] = useState(demoSales);
   const [view, setView] = useState<'pos' | 'history'>('pos');
+  const [selectedSaleForPrint, setSelectedSaleForPrint] = useState<any>(null);
 
   const addToCart = (item: typeof fabricCategories[0]['items'][0]) => {
     setCart(prev => {
@@ -79,7 +80,7 @@ export default function FabricSalesPage() {
     setSales(prev => [newSale, ...prev]);
     setCart([]);
     setCustomerName('');
-    alert(`✅ تم البيع بنجاح!\nالإجمالي: ${total.toLocaleString()} ج.م`);
+    setSelectedSaleForPrint(newSale);
   };
 
   const currentItems = fabricCategories.find(c => c.category === activeCategory)?.items || [];
@@ -217,6 +218,7 @@ export default function FabricSalesPage() {
                     <th className="p-4">العميل</th>
                     <th className="p-4">الأصناف</th>
                     <th className="p-4 text-left">الإجمالي</th>
+                    <th className="p-4 text-center">طباعة PDF</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -230,6 +232,14 @@ export default function FabricSalesPage() {
                         {s.items.map(i => `${i.name} (${i.meters}م)`).join(', ')}
                       </td>
                       <td className="p-4 text-left font-mono font-bold text-primary">{s.total.toLocaleString()} ج</td>
+                      <td className="p-4 text-center">
+                        <button
+                          onClick={() => setSelectedSaleForPrint(s)}
+                          className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-3 py-1 rounded-lg shadow-2xs"
+                        >
+                          🖨️ طباعة
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -238,6 +248,97 @@ export default function FabricSalesPage() {
             </div>
           )}
       </div>
+
+      {/* Printable Receipt Modal */}
+      {selectedSaleForPrint && (
+        <div className="modal-overlay fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <style>{`
+            @media print {
+              html, body {
+                background: white !important;
+                color: black !important;
+                overflow: visible !important;
+              }
+              .modal-overlay {
+                position: static !important;
+                background: transparent !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                display: block !important;
+              }
+              #printable-sales-receipt {
+                position: static !important;
+                display: block !important;
+                visibility: visible !important;
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 10px !important;
+                background: white !important;
+                color: black !important;
+                box-shadow: none !important;
+                border: none !important;
+              }
+              .no-print {
+                display: none !important;
+              }
+            }
+          `}</style>
+          <div id="printable-sales-receipt" className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 text-slate-900 border border-slate-200">
+            <div className="text-center pb-3 border-b-2 border-slate-900">
+              <h2 className="font-black text-lg">مؤسسة أحمد كشك للأقمشة والستائر</h2>
+              <p className="text-xs text-amber-800 font-bold">إيصال بيع أقمشة (POS)</p>
+              <div className="text-[11px] text-slate-500 font-mono mt-1 flex justify-between">
+                <span>رقم الفاتورة: {selectedSaleForPrint.id}</span>
+                <span>التاريخ: {selectedSaleForPrint.date}</span>
+              </div>
+            </div>
+
+            <div className="text-xs space-y-1">
+              <div><strong>العميل:</strong> {selectedSaleForPrint.customer}</div>
+              <div><strong>الفرع:</strong> {selectedSaleForPrint.branch}</div>
+            </div>
+
+            <table className="w-full text-right text-xs border-collapse border border-slate-300">
+              <thead className="bg-slate-100 font-bold">
+                <tr>
+                  <th className="p-2 border border-slate-300">الصنف</th>
+                  <th className="p-2 border border-slate-300 text-center font-mono">الأمتار</th>
+                  <th className="p-2 border border-slate-300 text-left font-mono">الإجمالي</th>
+                </tr>
+              </thead>
+              <tbody>
+                {selectedSaleForPrint.items.map((it: any, idx: number) => (
+                  <tr key={idx} className="border-b border-slate-200">
+                    <td className="p-2 border border-slate-300 font-bold">{it.name}</td>
+                    <td className="p-2 border border-slate-300 text-center font-mono">{it.meters}م</td>
+                    <td className="p-2 border border-slate-300 text-left font-mono font-bold">{(it.meters * it.price).toLocaleString()} ج</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            <div className="bg-slate-900 text-white p-3 rounded-xl flex justify-between items-center text-xs font-mono">
+              <span>إجمالي الفاتورة:</span>
+              <strong className="text-base text-amber-400 font-black">{selectedSaleForPrint.total.toLocaleString()} ج.م</strong>
+            </div>
+
+            <div className="flex gap-2 pt-2 no-print">
+              <button
+                onClick={() => window.print()}
+                className="flex-1 bg-slate-900 text-white font-bold py-2 rounded-xl text-xs"
+              >
+                🖨️ طباعة الإيصال (PDF)
+              </button>
+              <button
+                onClick={() => setSelectedSaleForPrint(null)}
+                className="bg-slate-100 text-slate-700 font-bold px-4 py-2 rounded-xl text-xs"
+              >
+                إغلاق
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </PageShell>
   );
 }

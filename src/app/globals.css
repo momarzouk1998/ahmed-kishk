@@ -69,7 +69,7 @@
   button,
   .no-print,
   [role="button"],
-  .fixed,
+  .fixed:not(.modal-overlay),
   .shadow-soft,
   .shadow-gold,
   .shadow-xl,
@@ -77,6 +77,15 @@
   a.no-print,
   span.material-symbols-outlined {
     display: none !important;
+  }
+
+  .modal-overlay {
+    display: block !important;
+    position: static !important;
+    background: #ffffff !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
   }
 
   /* 2. Reset Body margins & colors for printing */
