@@ -10,7 +10,7 @@ export interface PagePermission {
 
 export const ALL_SYSTEM_PAGES: PagePermission[] = [
   // مراحل الستائر (Pipeline) - الترتيب التسلسلي الجديد
-  { id: 'p_orders', name: 'سجل أوامر الستائر', shortName: 'الأوامر', category: 'مراحل الستائر', href: '/orders', icon: 'receipt_long', hasPriceControl: true },
+  { id: 'p_orders', name: 'طلبات الستائر', shortName: 'الطلبات', category: 'مراحل الستائر', href: '/orders', icon: 'receipt_long', hasPriceControl: true },
   { id: 'p_inspections', name: 'رفع المقاسات', shortName: 'المقاسات', category: 'مراحل الستائر', href: '/pipeline/inspections', icon: 'square_foot', hasPriceControl: true },
   { id: 'p_pricing', name: 'التسعير والعقد', shortName: 'التسعير', category: 'مراحل الستائر', href: '/pipeline/pricing', icon: 'request_quote', hasPriceControl: true },
   { id: 'p_cutting', name: 'قص القماش', shortName: 'قص القماش', category: 'مراحل الستائر', href: '/pipeline/cutting', icon: 'content_cut' },
