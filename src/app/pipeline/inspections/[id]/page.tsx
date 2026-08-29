@@ -26,6 +26,30 @@ const ceilingOptions = [
   'سقف عادي خرسانه',
 ];
 
+const formatScheduledDate = (str?: string) => {
+  if (!str || str === 'غير محدد') return 'غير محدد';
+  if (str.includes('T')) {
+    const parts = str.split('T');
+    const datePart = parts[0];
+    const timePart = parts[1];
+    let timeStr = '';
+    if (timePart) {
+      const [h, m] = timePart.split(':');
+      const hourNum = parseInt(h, 10);
+      if (!isNaN(hourNum)) {
+        const period = hourNum >= 12 ? 'م' : 'ص';
+        const formattedHour = hourNum % 12 === 0 ? 12 : hourNum % 12;
+        timeStr = ` • ${String(formattedHour).padStart(2, '0')}:${m || '00'} ${period}`;
+      }
+    }
+    const [y, m, d] = datePart.split('-');
+    const months = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+    const monthName = months[parseInt(m, 10) - 1] || m;
+    return `${parseInt(d, 10)} ${monthName} ${y}${timeStr}`;
+  }
+  return str;
+};
+
 export default function InspectionDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -263,7 +287,7 @@ export default function InspectionDetailPage() {
             </div>
             <div>
               <span className="text-slate-400 block mb-0.5">الموعد:</span>
-              <strong className="text-slate-800 font-mono">{data.scheduledAt}</strong>
+              <strong className="text-slate-800 font-bold">{formatScheduledDate(data.scheduledAt)}</strong>
             </div>
           </div>
         </div>
