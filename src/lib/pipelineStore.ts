@@ -1,7 +1,7 @@
 'use client';
 
 import { saveServerData } from '@/lib/syncService';
-import { getStoredQuotations, saveAllQuotations } from '@/lib/inspectionsStore';
+import { getStoredQuotations, saveAllQuotations, fetchQuotations } from '@/lib/inspectionsStore';
 
 // Master Pipeline Stage Enum/Union
 export type GlobalMasterStage =
