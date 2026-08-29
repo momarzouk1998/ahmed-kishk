@@ -17,30 +17,7 @@ interface InstallJob {
   status: 'مُجدول للتركيب' | 'تم التركيب بنجاح ومغلق';
 }
 
-const initialJobs: InstallJob[] = [
-  {
-    id: 'INS-JOB-01',
-    orderId: 'ORD-001',
-    customerName: 'محمود عبد الرحمن',
-    phone: '01012345678',
-    address: 'التجمع الخامس، فيلا 42',
-    scheduledDate: '2026-09-05 14:00',
-    technicianName: 'أحمد حسن',
-    remainingAmount: 5600,
-    status: 'مُجدول للتركيب',
-  },
-  {
-    id: 'INS-JOB-02',
-    orderId: 'ORD-003',
-    customerName: 'أسرة محمود سعيد',
-    phone: '01099887766',
-    address: 'مصر الجديدة',
-    scheduledDate: '2026-08-27 16:00',
-    technicianName: 'علي إبراهيم',
-    remainingAmount: 0,
-    status: 'تم التركيب بنجاح ومغلق',
-  }
-];
+const initialJobs: InstallJob[] = [];
 
 export default function PipelineInstallationPage() {
   const [jobs, setJobs] = useState<InstallJob[]>([]);

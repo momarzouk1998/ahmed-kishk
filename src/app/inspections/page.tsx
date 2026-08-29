@@ -45,78 +45,12 @@ interface InspectionRequest {
   notes: string;
 }
 
-const defaultRooms: Room[] = [
-  {
-    id: 'r1',
-    name: 'الصالة الرئيسية (بلكونة)',
-    type: 'بلكونة',
-    widthCm: 350,
-    heightCm: 280,
-    sides: 2,
-    installationType: 'مجرى سقف (تراك ألومنيوم)',
-    trackPricePerMeter: 85,
-    ceilingType: 'جيبسون بورد / بيت نور',
-    tapePricePerMeter: 18,
-    tailoringFeePerSide: 150,
-    installFee: 200,
-    fabrics: [
-      { layer: 'تول خفيف', code: 'T-402', fullness: 2.5, pricePerMeter: 160, meters: 8.75, tape: true, eyelet: false },
-      { layer: 'قطيفة تركي ثقيل', code: 'V-990', fullness: 1.8, pricePerMeter: 380, meters: 6.30, tape: true, eyelet: true },
-    ],
-    totalCost: 3250,
-    totalSellPrice: 5150,
-  },
-  {
-    id: 'r2',
-    name: 'غرفة النوم الرئيسية',
-    type: 'شباك',
-    widthCm: 200,
-    heightCm: 260,
-    sides: 2,
-    installationType: 'مواسير استيل مذهبة',
-    trackPricePerMeter: 160,
-    ceilingType: 'سقف عادي',
-    tapePricePerMeter: 18,
-    tailoringFeePerSide: 120,
-    installFee: 150,
-    fabrics: [
-      { layer: 'بلاك آوت عازل ضوء', code: 'BL-220', fullness: 1.3, pricePerMeter: 280, meters: 2.60, tape: true, eyelet: true },
-      { layer: 'شيفون ناعم', code: 'SH-10', fullness: 2.2, pricePerMeter: 180, meters: 4.40, tape: true, eyelet: false },
-    ],
-    totalCost: 1850,
-    totalSellPrice: 3100,
-  }
-];
+const defaultRooms: Room[] = [];
 
 export default function InspectionsPage() {
-  const [requests, setRequests] = useState<InspectionRequest[]>([
-    {
-      id: 'INS-001',
-      customerName: 'محمود عبد الرحمن',
-      phone: '01012345678',
-      address: 'التجمع الخامس، فيلا 42',
-      scheduledAt: '2026-08-26T16:00',
-      technician: 'أحمد حسن',
-      status: 'مُجدول',
-      stage: 'معاينة',
-      notes: 'شقة 3 غرف + صالة بلكونة',
-      rooms: defaultRooms,
-    },
-    {
-      id: 'INS-002',
-      customerName: 'سارة أحمد',
-      phone: '01298765432',
-      address: 'الشيخ زايد، كمبوند بيفرلي هيلز',
-      scheduledAt: '2026-08-27T12:00',
-      technician: 'محمد علي',
-      status: 'قيد الانتظار',
-      stage: 'معاينة',
-      notes: 'شقة عروسة',
-      rooms: [],
-    }
-  ]);
+  const [requests, setRequests] = useState<InspectionRequest[]>([]);
 
-  const [selectedId, setSelectedId] = useState<string>('INS-001');
+  const [selectedId, setSelectedId] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'rooms' | 'pricing' | 'info'>('rooms');
   const [filterStatus, setFilterStatus] = useState<string>('الكل');
 
@@ -360,6 +294,20 @@ export default function InspectionsPage() {
         </div>
 
         {/* Master Detail Split */}
+        {requests.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-dashed border-slate-300 p-12 text-center flex flex-col items-center justify-center">
+            <span className="material-symbols-outlined text-5xl text-slate-300 mb-3">assignment</span>
+            <h3 className="font-bold text-lg text-slate-800">لا توجد طلبات معاينة مسجلة حتى الآن</h3>
+            <p className="text-sm text-slate-500 mt-1 mb-6">ابدأ بإضافة أول طلب معاينة لربط المقاسات وتسعير الأقمشة والستائر.</p>
+            <button
+              onClick={() => setShowNewRequestModal(true)}
+              className="bg-primary text-on-primary px-5 py-2.5 rounded-xl font-bold text-sm shadow hover:bg-inverse-surface transition-colors flex items-center gap-2"
+            >
+              <span className="material-symbols-outlined text-[18px]">add_box</span>
+              طلب معاينة جديد
+            </button>
+          </div>
+        ) : (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* Left: Requests List */}
           <div className="lg:col-span-4 flex flex-col gap-3">
@@ -367,7 +315,7 @@ export default function InspectionsPage() {
               <div
                 key={req.id}
                 onClick={() => setSelectedId(req.id)}
-                className={`p-5 rounded-2xl border bg-white cursor-pointer transition-all ${req.id === selected.id ? 'border-brand-gold ring-2 ring-brand-gold/30 shadow-md' : 'border-slate-200 hover:border-slate-300'
+                className={`p-5 rounded-2xl border bg-white cursor-pointer transition-all ${req.id === selected?.id ? 'border-brand-gold ring-2 ring-brand-gold/30 shadow-md' : 'border-slate-200 hover:border-slate-300'
                   }`}
               >
                 <div className="flex justify-between items-start mb-2">
@@ -395,6 +343,7 @@ export default function InspectionsPage() {
           </div>
 
           {/* Right: Selected Request Detail */}
+          {selected && (
           <div className="lg:col-span-8 bg-white rounded-2xl border border-slate-200 shadow-soft">
             {/* Header */}
             <div className="flex flex-wrap items-center justify-between p-4 sm:p-6 border-b border-slate-100 gap-4">
@@ -601,7 +550,9 @@ export default function InspectionsPage() {
               </div>
             )}
           </div>
+          )}
         </div>
+        )}
       </div>
 
       {/* Modal: New Request */}

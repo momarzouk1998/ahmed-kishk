@@ -47,46 +47,8 @@ interface CustomerSalesReturn {
   notes?: string;
 }
 
-const defaultInvoices: SalesInvoice[] = [
-  {
-    id: 'INV-101',
-    invoiceNumber: 'INV-2026-001',
-    date: '2026-08-28',
-    customerName: 'محمود عبد الرحمن',
-    customerPhone: '01012345678',
-    branch: 'الفرع الرئيسي',
-    items: [
-      { code: 'VLV-01', name: 'قطيفة تركي ثقيل', meters: 10.8, pricePerMeter: 380, totalPrice: 4104 },
-      { code: 'TUL-01', name: 'تول خفيف مطرز', meters: 13.75, pricePerMeter: 160, totalPrice: 2200 },
-    ],
-    subtotal: 6304,
-    discountType: 'EGP',
-    discountValue: 304,
-    discountAmount: 304,
-    totalAmount: 6000,
-    paymentMethod: 'إنستاباي',
-    paidAmount: 4000,
-    remainingAmount: 2000,
-    status: 'مسدد جزئياً',
-    notes: 'عربون مبيعات أقمشة الستائر',
-  },
-];
-
-const defaultReturns: CustomerSalesReturn[] = [
-  {
-    id: 'RET-101',
-    returnNumber: 'RET-2026-001',
-    date: '2026-08-26',
-    invoiceNumber: 'INV-2026-001',
-    customerName: 'محمود عبد الرحمن',
-    customerPhone: '01012345678',
-    reason: 'زيادة 1.5 متر عن المقاس المطلوبة بالصالة',
-    itemsDetail: 'تول خفيف مطرز (1.5 متر)',
-    refundAmount: 240,
-    refundMethod: 'نقدي',
-    notes: 'تم فحص القماش وإعادته للمخزن بحالة ممتازة',
-  },
-];
+const defaultInvoices: SalesInvoice[] = [];
+const defaultReturns: CustomerSalesReturn[] = [];
 
 const SALES_INVOICES_KEY = 'ahmed_kishk_sales_invoices_v1';
 const SALES_RETURNS_KEY = 'ahmed_kishk_sales_returns_v1';

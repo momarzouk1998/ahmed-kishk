@@ -25,68 +25,7 @@ interface CuttingOrder {
   createdAt: string;
 }
 
-const initialOrders: CuttingOrder[] = [
-  {
-    id: 'CUT-101',
-    orderId: 'ORD-001',
-    customerName: 'محمود عبد الرحمن',
-    phone: '01012345678',
-    address: 'التجمع الخامس، فيلا 42',
-    branch: 'الفرع الرئيسي',
-    cutterName: 'عم مصطفى البياع',
-    status: 'بانتظار القص',
-    createdAt: '2026-08-28',
-    rooms: [
-      {
-        roomName: 'غرفة (1) - الصالة الرئيسية',
-        heavyFabric: { name: 'قطيفة تركي ثقيل', code: 'V-990', meters: 6.30 },
-        sheerFabric: { name: 'تول خفيف مطرز', code: 'T-402', meters: 8.75 },
-        blackoutFabric: { name: 'بلاك آوت عازل', code: 'BL-101', meters: 2.25 },
-      },
-      {
-        roomName: 'غرفة (2) - غرفة النوم الرئيسية',
-        heavyFabric: { name: 'قطيفة تركي ثقيل', code: 'V-990', meters: 4.50 },
-        sheerFabric: { name: 'تول خفيف مطرز', code: 'T-402', meters: 5.00 },
-        blackoutFabric: { name: 'بلاك آوت عازل', code: 'BL-101', meters: 3.00 },
-      },
-    ],
-  },
-  {
-    id: 'CUT-102',
-    orderId: 'ORD-002',
-    customerName: 'شركة المعمار لترميم الفيصلية',
-    phone: '01155556666',
-    address: 'مصر الجديدة، شارع الثورة',
-    branch: 'فرع عرابي',
-    cutterName: 'أحمد شحاتة',
-    status: 'تم القص وجاهز للخياطة',
-    createdAt: '2026-08-27',
-    rooms: [
-      {
-        roomName: 'قاعة الاجتماعات الرئيسية',
-        blackoutFabric: { name: 'بلاك آوت عازل ضوء', code: 'BL-900', meters: 16.00 },
-      },
-    ],
-  },
-  {
-    id: 'CUT-103',
-    orderId: 'ORD-004',
-    customerName: 'د. سارة أحمد',
-    phone: '01298765432',
-    address: 'الشيخ زايد، بيفرلي هيلز',
-    branch: 'الفرع الرئيسي',
-    cutterName: 'حسن إبراهيم',
-    status: 'بانتظار القص',
-    createdAt: '2026-08-28',
-    rooms: [
-      {
-        roomName: 'غرفة المعيشة',
-        heavyFabric: { name: 'كتان هازل بني', code: 'LN-77', meters: 12.00 },
-        sheerFabric: { name: 'تول ويفي أبيض', code: 'TW-10', meters: 12.00 },
-      },
-    ],
-  },
-];
+const initialOrders: CuttingOrder[] = [];
 
 export default function PipelineCuttingPage() {
   const [orders, setOrders] = useState<CuttingOrder[]>([]);

@@ -15,28 +15,7 @@ interface DeliveryJob {
   status: 'جاهز للتسليم بالمعرض' | 'تم التسليم للعميل بنجاح' | 'في التركيبات';
 }
 
-const initialDeliveryJobs: DeliveryJob[] = [
-  {
-    id: 'DEL-JOB-01',
-    orderId: 'ORD-004',
-    customerName: 'م/ طارق عبد المحسن',
-    phone: '01233445566',
-    branch: 'الفرع الرئيسي',
-    notes: 'تسليم استلام شخصي من الفرع بدون تركيب ميداني',
-    remainingAmount: 3200,
-    status: 'جاهز للتسليم بالمعرض',
-  },
-  {
-    id: 'DEL-JOB-02',
-    orderId: 'ORD-005',
-    customerName: 'أحمد فتحي',
-    phone: '01122334455',
-    branch: 'فرع الشيخ زايد',
-    notes: 'شحن عن طريق شركة النقل إلى الإسكندرية',
-    remainingAmount: 0,
-    status: 'تم التسليم للعميل بنجاح',
-  }
-];
+const initialDeliveryJobs: DeliveryJob[] = [];
 
 export default function PipelineDeliveryPage() {
   const [jobs, setJobs] = useState<DeliveryJob[]>([]);

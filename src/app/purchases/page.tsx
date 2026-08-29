@@ -47,46 +47,8 @@ interface SupplierPurchaseReturn {
   notes?: string;
 }
 
-const defaultPurchases: PurchaseInvoice[] = [
-  {
-    id: 'PUR-101',
-    invoiceNumber: 'PUR-2026-001',
-    date: '2026-08-20',
-    supplierName: 'شركة النيل للأقمشة والمنسوجات',
-    supplierPhone: '01099988877',
-    branch: 'الفرع الرئيسي',
-    items: [
-      { code: 'V-990', name: 'توب قطيفة تركي ثقيل (50م)', meters: 50, unitCost: 260, totalCost: 13000 },
-      { code: 'T-402', name: 'توب تول خفيف مطرز (100م)', meters: 100, unitCost: 95, totalCost: 9500 },
-    ],
-    subtotal: 22500,
-    discountType: 'EGP',
-    discountValue: 500,
-    discountAmount: 500,
-    totalAmount: 22000,
-    paymentMethod: 'شيكات بنكية',
-    paidAmount: 15000,
-    remainingAmount: 7000,
-    status: 'مسدد جزئياً',
-    notes: 'تم الدفع بشيك مؤجل 30 يوم',
-  },
-];
-
-const defaultReturns: SupplierPurchaseReturn[] = [
-  {
-    id: 'SRET-101',
-    returnNumber: 'PRET-2026-001',
-    date: '2026-08-22',
-    invoiceNumber: 'PUR-2026-001',
-    supplierName: 'شركة النيل للأقمشة والمنسوجات',
-    supplierPhone: '01099988877',
-    reason: 'عيوب نسجية بلفة التول',
-    itemsDetail: 'توب تول خفيف مطرز (10 متر تالف)',
-    refundAmount: 950,
-    refundMethod: 'خصم من حساب المورد',
-    notes: 'تم إرجاع التوب التالف للمورد وخصمه من الحساب الجاري',
-  },
-];
+const defaultPurchases: PurchaseInvoice[] = [];
+const defaultReturns: SupplierPurchaseReturn[] = [];
 
 const PURCHASES_KEY = 'ahmed_kishk_purchase_invoices_v1';
 const PRETURNS_KEY = 'ahmed_kishk_purchase_returns_v1';

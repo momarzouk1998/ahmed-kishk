@@ -19,17 +19,7 @@ interface InventoryItem {
   supplier: string;
 }
 
-const initialItems: InventoryItem[] = [
-  { id: 'INV-001', code: 'SAT-01', name: 'ستان سواريه ناعم', category: 'سواريه', unit: 'متر', totalQuantity: 120, reservedQuantity: 20, costPrice: 320, sellPrice: 450, branch: 'الفرع الرئيسي — القاهرة', minAlert: 30, supplier: 'شركة النيل' },
-  { id: 'INV-002', code: 'SLK-01', name: 'حرير طبيعي ممتاز', category: 'سواريه', unit: 'متر', totalQuantity: 45, reservedQuantity: 10, costPrice: 650, sellPrice: 900, branch: 'الفرع الرئيسي — القاهرة', minAlert: 15, supplier: 'شركة النيل' },
-  { id: 'INV-003', code: 'CRP-01', name: 'كريب مزدوج أسباني', category: 'سواريه', unit: 'متر', totalQuantity: 200, reservedQuantity: 0, costPrice: 200, sellPrice: 300, branch: 'فرع ثانٍ — القاهرة', minAlert: 40, supplier: 'شركة النيل' },
-  { id: 'INV-004', code: 'CHF-01', name: 'شيفون ناعم مطرز', category: 'سواريه', unit: 'متر', totalQuantity: 180, reservedQuantity: 35, costPrice: 150, sellPrice: 250, branch: 'فرع ثالث — القاهرة', minAlert: 25, supplier: 'مستورد الشرق' },
-  { id: 'INV-005', code: 'VLV-01', name: 'قطيفة ستائر تركي ثقيلة', category: 'ستائر', unit: 'متر', totalQuantity: 95, reservedQuantity: 28, costPrice: 260, sellPrice: 380, branch: 'الفرع الرئيسي — القاهرة', minAlert: 20, supplier: 'مصنع الدلتا' },
-  { id: 'INV-006', code: 'BLK-01', name: 'بلاك آوت عازل ضوء 100%', category: 'ستائر', unit: 'متر', totalQuantity: 160, reservedQuantity: 45, costPrice: 180, sellPrice: 280, branch: 'الفرع الرئيسي — القاهرة', minAlert: 50, supplier: 'مصنع الدلتا' },
-  { id: 'INV-007', code: 'TRK-01', name: 'تراك سقف ألومنيوم (مجاري)', category: 'تراكات ومواسير', unit: 'متر', totalQuantity: 300, reservedQuantity: 50, costPrice: 45, sellPrice: 85, branch: 'الفرع الرئيسي — القاهرة', minAlert: 50, supplier: 'مصنع الدلتا' },
-  { id: 'INV-008', code: 'ROD-01', name: 'مواسير استيل مذهبة', category: 'تراكات ومواسير', unit: 'متر', totalQuantity: 80, reservedQuantity: 12, costPrice: 90, sellPrice: 160, branch: 'الفرع الرئيسي — القاهرة', minAlert: 20, supplier: 'مصنع الدلتا' },
-  { id: 'INV-009', code: 'TAP-01', name: 'شريط كشكشة 3 فتلة', category: 'أشرطة وإكسسوارات', unit: 'متر', totalQuantity: 500, reservedQuantity: 90, costPrice: 8, sellPrice: 18, branch: 'الفرع الرئيسي — القاهرة', minAlert: 100, supplier: 'مستورد الشرق' },
-];
+const initialItems: InventoryItem[] = [];
 
 export default function InventoryPage() {
   const [items, setItems] = useState<InventoryItem[]>(initialItems);
