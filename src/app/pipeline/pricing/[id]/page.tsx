@@ -75,45 +75,30 @@ export default function PricingDetailPage() {
   const [fulfillmentType, setFulfillmentType] = useState<'DELIVERY' | 'INSTALLATION'>('INSTALLATION');
   const [estimator, setEstimator] = useState<string>('أحمد كشك');
 
-  const handleFulfillmentChange = (type: 'DELIVERY' | 'INSTALLATION', date: string) => {
+  const handleFulfillmentChange = async (type: 'DELIVERY' | 'INSTALLATION', date: string) => {
     setFulfillmentType(type);
     setDeliveryDate(date);
 
     if (!quotation) return;
-
-    const targetStatus = type === 'DELIVERY' ? 'في التسليمات' : 'في التركيبات';
 
     // 1. Update quotation store
     const updatedQuotations = quotations.map(q =>
       q.id === quotation.id ? { ...q, deliveryDate: date, fulfillmentType: type } : q
     );
     setQuotations(updatedQuotations);
-    saveAllQuotations(updatedQuotations);
+    await saveAllQuotations(updatedQuotations);
 
-    // 2. Sync master pipeline store
+    // 2. Sync deliveryDate with master pipeline store without altering its pipeline status
     const storedOrders = getStoredPipelineOrders();
-    const existingOrder = storedOrders.find(o => o.orderId === quotation.id || o.customerName === quotation.customerName);
+    const existingIndex = storedOrders.findIndex(o => o.orderId === quotation.id || o.id === quotation.id || (o.customerName && quotation.customerName && o.customerName === quotation.customerName));
 
-    if (existingOrder) {
-      const updated = storedOrders.map(o =>
-        o.id === existingOrder.id ? { ...o, deliveryDate: date, status: targetStatus as any } : o
-      );
-      saveStoredPipelineOrders(updated);
-    } else {
-      const newMaster: PipelineMasterOrder = {
-        id: `ORD-${String(storedOrders.length + 1).padStart(3, '0')}`,
-        orderId: quotation.id,
-        customerName: quotation.customerName,
-        phone: quotation.phone,
-        address: quotation.address,
-        branch: quotation.branch || 'الفرع الرئيسي',
+    if (existingIndex >= 0) {
+      const updated = [...storedOrders];
+      updated[existingIndex] = {
+        ...storedOrders[existingIndex],
         deliveryDate: date,
-        status: targetStatus as any,
-        createdAt: quotation.date || new Date().toISOString().split('T')[0],
-        remainingAmount: quotation.remainingAmount,
-        rooms: quotation.rooms || [],
       };
-      saveStoredPipelineOrders([newMaster, ...storedOrders]);
+      await saveStoredPipelineOrders(updated);
     }
   };
 
@@ -554,7 +539,7 @@ export default function PricingDetailPage() {
             {/* Target Tab Badge Indicator */}
             {deliveryDate && (
               <div className="text-[11px] font-bold text-slate-700 bg-white px-2.5 py-1 rounded-md border border-amber-200 shadow-3xs">
-                سيظهر في صفحة ({fulfillmentType === 'DELIVERY' ? 'التسليمات' : 'التركيبات'}) - تاب ({isTodayOrOverdue(deliveryDate) ? 'اليوم' : 'مجدول'})
+                📅 موعد ال{fulfillmentType === 'DELIVERY' ? 'تسليم' : 'تركيب'} المطلوب: {deliveryDate}
               </div>
             )}
           </div>
