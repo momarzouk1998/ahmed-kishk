@@ -181,9 +181,6 @@ export default function PipelineTailoringPage() {
       setSelectedOrderDetails(null);
     }
   };
-      setSelectedOrderDetails(null);
-    }
-  };
 
   const handleHeightChange = (orderId: string, roomIdx: number, layer: 'heavy' | 'sheer' | 'blackout', newHeight: string) => {
     const updated = orders.map(o => {
