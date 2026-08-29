@@ -66,7 +66,7 @@ export default function NewPurchaseInvoicePage() {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!supplierName.trim() || items.length === 0 || subtotal <= 0) return;
 
