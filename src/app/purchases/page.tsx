@@ -147,7 +147,6 @@ export default function PurchasesPage() {
     const updated = purchases.map(p => p.id === editingPurchase.id ? { ...editingPurchase, remainingAmount: remaining, status: statusLabel } : p);
     savePurchasesState(updated);
     setEditingPurchase(null);
-    alert('تم تعديل فاتورة الشراء بنجاح ✓');
   };
 
   const handleUpdateReturn = (e: React.FormEvent) => {
@@ -157,7 +156,6 @@ export default function PurchasesPage() {
     const updated = returns.map(r => r.id === editingReturn.id ? editingReturn : r);
     saveReturnsState(updated);
     setEditingReturn(null);
-    alert('تم تعديل إذن المرتجع للمورد بنجاح ✓');
   };
 
   // Submit Supplier Return
@@ -184,7 +182,6 @@ export default function PurchasesPage() {
     setRetSupplierName('');
     setRetItemsDetail('');
     setRetAmount(1000);
-    alert(`تم تسجيل إذن مرتجع الشراء للمورد (${retNum}) بنجاح ✓`);
   };
 
   // Filtered Purchases
@@ -203,12 +200,12 @@ export default function PurchasesPage() {
       ret.invoiceNumber.toLowerCase().includes(search.toLowerCase());
   });
 
-  // Metrics
-  const totalPurchasesCost = filteredPurchases.reduce((s, p) => s + p.totalAmount, 0);
-  const totalPurchasesPaid = filteredPurchases.reduce((s, p) => s + p.paidAmount, 0);
-  const totalPurchasesRemaining = filteredPurchases.reduce((s, p) => s + p.remainingAmount, 0);
+  // Metrics — Number() guards against undefined fields coming from server
+  const totalPurchasesCost = filteredPurchases.reduce((s, p) => s + (Number(p.totalAmount) || 0), 0);
+  const totalPurchasesPaid = filteredPurchases.reduce((s, p) => s + (Number(p.paidAmount) || 0), 0);
+  const totalPurchasesRemaining = filteredPurchases.reduce((s, p) => s + (Number(p.remainingAmount) || 0), 0);
 
-  const totalReturnsAmount = filteredReturns.reduce((s, r) => s + r.refundAmount, 0);
+  const totalReturnsAmount = filteredReturns.reduce((s, r) => s + (Number(r.refundAmount) || 0), 0);
 
   return (
     <PageShell title="فواتير المشتريات ومردودات المشتريات">
@@ -344,17 +341,17 @@ export default function PurchasesPage() {
                           </td>
 
                           <td className="p-3.5 text-center font-mono font-bold text-rose-800">
-                            {pur.discountAmount > 0 ? `-${pur.discountAmount.toLocaleString()} ج` : 'لا يوجد'}
+                            {(Number(pur.discountAmount) || 0) > 0 ? `-${(Number(pur.discountAmount) || 0).toLocaleString()} ج` : 'لا يوجد'}
                           </td>
 
                           <td className="p-3.5 text-center font-mono font-black text-sm text-slate-950">
-                            {pur.totalAmount.toLocaleString()} ج
+                            {(Number(pur.totalAmount) || 0).toLocaleString()} ج
                           </td>
 
                           <td className="p-3.5 text-center font-mono">
-                            <div className="text-emerald-700 font-bold">مسدد: {pur.paidAmount.toLocaleString()} ج</div>
-                            {pur.remainingAmount > 0 && (
-                              <div className="text-rose-700 font-bold text-[11px]">متبقي: {pur.remainingAmount.toLocaleString()} ج</div>
+                            <div className="text-emerald-700 font-bold">مسدد: {(Number(pur.paidAmount) || 0).toLocaleString()} ج</div>
+                            {(Number(pur.remainingAmount) || 0) > 0 && (
+                              <div className="text-rose-700 font-bold text-[11px]">متبقي: {(Number(pur.remainingAmount) || 0).toLocaleString()} ج</div>
                             )}
                           </td>
 
@@ -433,7 +430,7 @@ export default function PurchasesPage() {
               <div className="bg-amber-50/70 p-4 rounded-2xl border border-amber-200 text-center shadow-3xs">
                 <span className="text-amber-900 font-bold block">المخصوم من رصيد الموردين</span>
                 <strong className="text-xl font-black text-amber-950 mt-1 block font-mono">
-                  {filteredReturns.filter(r => r.refundMethod === 'خصم من حساب المورد').reduce((s, r) => s + r.refundAmount, 0).toLocaleString()} ج
+                  {filteredReturns.filter(r => r.refundMethod === 'خصم من حساب المورد').reduce((s, r) => s + (Number(r.refundAmount) || 0), 0).toLocaleString()} ج
                 </strong>
               </div>
             </div>
@@ -471,7 +468,7 @@ export default function PurchasesPage() {
                         </td>
 
                         <td className="p-3.5 text-center font-mono font-black text-sm text-emerald-700">
-                          +{ret.refundAmount.toLocaleString()} ج
+                          +{(Number(ret.refundAmount) || 0).toLocaleString()} ج
                         </td>
 
                         <td className="p-3.5 text-center">
@@ -784,26 +781,26 @@ export default function PurchasesPage() {
             <div className="space-y-1 font-mono text-xs text-right border-t border-slate-200 pt-2">
               <div className="flex justify-between">
                 <span>الإجمالي قبل الخصم:</span>
-                <span>{printablePurchase.subtotal.toLocaleString()} ج</span>
+                <span>{(Number(printablePurchase.subtotal) || 0).toLocaleString()} ج</span>
               </div>
-              {printablePurchase.discountAmount > 0 && (
+              {(Number(printablePurchase.discountAmount) || 0) > 0 && (
                 <div className="flex justify-between text-rose-700 font-bold">
                   <span>خصم المورد:</span>
-                  <span>-{printablePurchase.discountAmount.toLocaleString()} ج</span>
+                  <span>-{(Number(printablePurchase.discountAmount) || 0).toLocaleString()} ج</span>
                 </div>
               )}
               <div className="flex justify-between font-black text-sm text-slate-950 pt-1 border-t border-slate-300">
                 <span>الصافي الكلي:</span>
-                <span>{printablePurchase.totalAmount.toLocaleString()} ج</span>
+                <span>{(Number(printablePurchase.totalAmount) || 0).toLocaleString()} ج</span>
               </div>
               <div className="flex justify-between text-emerald-800 font-bold">
                 <span>المسدد:</span>
-                <span>{printablePurchase.paidAmount.toLocaleString()} ج</span>
+                <span>{(Number(printablePurchase.paidAmount) || 0).toLocaleString()} ج</span>
               </div>
-              {printablePurchase.remainingAmount > 0 && (
+              {(Number(printablePurchase.remainingAmount) || 0) > 0 && (
                 <div className="flex justify-between text-rose-800 font-bold">
                   <span>المتبقي آجل:</span>
-                  <span>{printablePurchase.remainingAmount.toLocaleString()} ج</span>
+                  <span>{(Number(printablePurchase.remainingAmount) || 0).toLocaleString()} ج</span>
                 </div>
               )}
             </div>
