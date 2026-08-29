@@ -427,7 +427,7 @@ export default function Sidebar() {
         className={`lg:hidden fixed inset-0 z-[60] transition-all duration-300 ${
           isOpen ? 'opacity-100 pointer-events-auto visible' : 'opacity-0 pointer-events-none invisible'
         }`}
-        {...(!isOpen ? { inert: '' } : {})}
+        inert={!isOpen}
       >
         <div
           onClick={close}
