@@ -29,15 +29,21 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   // ── Accordion state lives in context so Sidebar remounts never reset it ──
-  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>(() => {
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>(defaultSections);
+
+  useEffect(() => {
     if (typeof window !== 'undefined') {
       try {
         const saved = localStorage.getItem(SECTIONS_KEY);
-        if (saved) return JSON.parse(saved);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed && typeof parsed === 'object') {
+            setExpandedSections(parsed);
+          }
+        }
       } catch {}
     }
-    return defaultSections;
-  });
+  }, []);
 
   const toggleSection = useCallback((key: string) => {
     setExpandedSections(prev => {

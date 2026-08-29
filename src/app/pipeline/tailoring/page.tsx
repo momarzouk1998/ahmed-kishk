@@ -494,7 +494,7 @@ export default function PipelineTailoringPage() {
                 🧵 تفاصيل الخياطة وتعديل الارتفاعات الصافية (تُحفظ فوراً ✏️):
               </h3>
 
-              {selectedOrderDetails.rooms.map((room, rIdx) => (
+              {(selectedOrderDetails.rooms || []).map((room, rIdx) => (
                 <div key={rIdx} className="border-2 border-slate-300 rounded-2xl p-4 space-y-3 bg-slate-50/40">
                   <div className="bg-slate-900 text-white px-3.5 py-1.5 rounded-xl font-bold text-xs flex justify-between items-center">
                     <span>{room.roomName}</span>

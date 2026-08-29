@@ -178,7 +178,7 @@ export default function PricingDetailPage() {
     }
   }, [quotation]);
 
-  const editingRoom = quotation?.rooms.find(r => r.id === editingRoomId);
+  const editingRoom = quotation?.rooms?.find(r => r.id === editingRoomId);
   const editingWidthM = editingRoom ? editingRoom.widthCm / 100 : 2.5;
 
   const startPricingRoom = (room: RoomPricing) => {
@@ -590,17 +590,17 @@ export default function PricingDetailPage() {
           <div className="flex items-center justify-between border-b border-slate-200 pb-2">
             <h2 className="font-black text-base text-indigo-950 flex items-center gap-2">
               <span className="material-symbols-outlined text-amber-600">room_preferences</span>
-              تفاصيل غرف العميل والأقمشة والتسعير ({quotation.rooms.length} غرفة):
+              تفاصيل غرف العميل والأقمشة والتسعير ({(quotation.rooms || []).length} غرفة):
             </h2>
           </div>
 
-          {quotation.rooms.length === 0 ? (
+          {(quotation.rooms || []).length === 0 ? (
             <p className="text-xs text-slate-400 text-center py-8 bg-slate-50 border border-slate-200 rounded-xl">
               لا توجد غرف مسجلة بهذه المعاينة.
             </p>
           ) : (
             <div className="grid grid-cols-1 gap-4">
-              {quotation.rooms.map((room) => {
+              {(quotation.rooms || []).map((room) => {
                 const isEditing = editingRoomId === room.id;
                 const widthM = room.widthCm / 100;
 
@@ -1345,9 +1345,9 @@ export default function PricingDetailPage() {
           </div>
 
           {/* Rooms breakdown list if more than 1 room */}
-          {quotation.rooms.length > 0 && (
+          {(quotation.rooms || []).length > 0 && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 text-xs">
-              {quotation.rooms.map((rm, idx) => (
+              {(quotation.rooms || []).map((rm, idx) => (
                 <div key={rm.id} className="bg-slate-50 p-3 rounded-xl border border-slate-200 flex justify-between items-center">
                   <div>
                     <strong className="text-slate-900 block font-bold">{idx + 1}. {rm.name}</strong>

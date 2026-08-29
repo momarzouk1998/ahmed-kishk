@@ -298,7 +298,7 @@ export default function PipelineCuttingPage() {
                     {/* Breakdown Per Room */}
                     <div className="my-3 space-y-2.5">
                       <span className="text-[11px] font-black text-slate-700 block">✂️ الأقمشة والأمتار المطلوبة لكل غرفة على حدة:</span>
-                      {order.rooms.map((room, rIdx) => (
+                      {(order.rooms || []).map((room, rIdx) => (
                         <div key={rIdx} className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1.5">
                           <span className="font-bold text-xs text-slate-900 block border-b border-slate-200/80 pb-1">{room.roomName}</span>
                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 text-xs">
@@ -424,7 +424,7 @@ export default function PipelineCuttingPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {selectedOrderForPrint.rooms.map((room, rIdx) => {
+                  {(selectedOrderForPrint?.rooms || []).map((room, rIdx) => {
                     const fabrics = [
                       room.heavyFabric ? { type: 'ثقيل', ...room.heavyFabric } : null,
                       room.sheerFabric ? { type: 'تول', ...room.sheerFabric } : null,

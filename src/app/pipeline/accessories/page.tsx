@@ -296,7 +296,7 @@ export default function PipelineAccessoriesPage() {
 
                   <div className="space-y-2 text-xs my-3">
                     <span className="text-[11px] font-bold text-slate-600 block">الإكسسوارات والمجاري والمواسير المطلوبة:</span>
-                    {kit.items.map((item, i) => (
+                    {(kit.items || []).map((item, i) => (
                       <label key={i} className="flex items-center justify-between gap-2 cursor-pointer bg-slate-50 p-2.5 rounded-xl border border-slate-200 hover:bg-slate-100/70 transition-colors">
                         <div className="flex items-center gap-2">
                           <input type="checkbox" checked={item.prepared} onChange={() => toggleItem(kit.id, i)} className="w-4 h-4 rounded accent-slate-900 cursor-pointer" />
@@ -471,7 +471,7 @@ export default function PipelineAccessoriesPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {printTargetKit.items.map((item, idx) => (
+                  {(printTargetKit.items || []).map((item, idx) => (
                     <tr key={idx} className="border-b border-slate-200">
                       <td className="p-2 border border-slate-300 text-center font-bold">{idx + 1}</td>
                       <td className="p-2 border border-slate-300 font-bold">{item.name}</td>

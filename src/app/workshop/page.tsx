@@ -223,7 +223,7 @@ export default function WorkshopPage() {
                     <div className="p-3 bg-slate-50 rounded-xl">
                       <span className="text-slate-400 font-bold block mb-1">الأقمشة وقصات الورشة:</span>
                       <ul className="space-y-1 list-disc list-inside font-bold text-slate-900">
-                        {selectedTask.fabrics.map((f, i) => (
+                        {(selectedTask.fabrics || []).map((f, i) => (
                           <li key={i}>{f}</li>
                         ))}
                       </ul>

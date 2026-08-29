@@ -808,7 +808,7 @@ export default function PurchasesPage() {
                 </tr>
               </thead>
               <tbody>
-                {printablePurchase.items.map((it, idx) => (
+                {(printablePurchase.items || []).map((it, idx) => (
                   <tr key={idx} className="border-b border-slate-200">
                     <td className="p-2 border border-slate-300 font-bold">{it.name}</td>
                     <td className="p-2 border border-slate-300 text-center font-mono">{it.meters}م</td>
