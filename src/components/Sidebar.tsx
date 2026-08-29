@@ -428,7 +428,7 @@ export default function Sidebar() {
           isOpen ? 'opacity-100 pointer-events-auto visible' : 'opacity-0 pointer-events-none invisible'
         }`}
         aria-hidden={!isOpen}
-        {...(!isOpen ? { inert: '' } : {})}
+        inert={!isOpen}
       >
         <div
           onClick={close}
