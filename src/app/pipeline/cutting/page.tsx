@@ -114,10 +114,58 @@ export default function PipelineCuttingPage() {
   });
 
   const updateOrderStatus = async (id: string, newStatus: CuttingOrder['status']) => {
-    setOrders(prev => prev.map(o => o.id === id ? { ...o, status: newStatus } : o));
+    // 1. Optimistic update in UI
+    setOrders(prev => prev.map(o => {
+      if (o.id === id || (o as any).orderId === id || o.id === `ORD-${id}` || (o as any).orderId === id.replace(/^ORD-/, '')) {
+        return { ...o, status: newStatus, localStatus: 'جاري الخياطة' };
+      }
+      return o;
+    }));
+
+    // 2. Persist to server across pipeline & quotations
     await updatePipelineOrderStatus(id, 'في الورشة', 'جاري الخياطة');
-    const stored = await fetchPipelineOrders();
-    if (stored) setOrders(stored as any);
+
+    // 3. Reload latest orders
+    const [storedPipeline, quotations] = await Promise.all([
+      fetchPipelineOrders(),
+      fetchQuotations(),
+    ]);
+
+    const pipelineList = storedPipeline || [];
+    const mappedQuotations: CuttingOrder[] = (quotations || [])
+      .filter(q => q.status === 'في المقص' && !pipelineList.some(p => p.orderId === q.id || p.id === q.id || p.id === `ORD-${q.id}` || (p.customerName && q.customerName && p.customerName.trim() === q.customerName.trim())))
+      .map((q: any) => ({
+        id: `ORD-${q.id}`,
+        orderId: q.id,
+        customerName: q.customerName,
+        phone: q.phone,
+        address: q.address,
+        branch: q.branch || 'الفرع الرئيسي',
+        cutterName: '',
+        rooms: (q.rooms || []).map((r: any, idx: number) => ({
+          roomName: r.name || `غرفة ${idx + 1}`,
+          heavyFabric: (r.heavyEnabled !== false && (Number(r.heavyMeters) > 0 || r.heavyFabricName)) ? {
+            name: r.heavyFabricName || 'قماش ثقيل',
+            code: r.heavyFabricCode || 'HV-101',
+            meters: Number(r.heavyMeters) || 0,
+          } : undefined,
+          sheerFabric: (r.sheerEnabled !== false && (Number(r.sheerMeters) > 0 || r.sheerFabricName)) ? {
+            name: r.sheerFabricName || 'شيفون',
+            code: r.sheerFabricCode || 'SH-101',
+            meters: Number(r.sheerMeters) || 0,
+          } : undefined,
+          blackoutFabric: (r.blackoutEnabled && (Number(r.blackoutMeters) > 0 || r.blackoutFabricName)) ? {
+            name: r.blackoutFabricName || 'بلاك آوت',
+            code: r.blackoutFabricCode || 'BK-301',
+            meters: Number(r.blackoutMeters) || 0,
+          } : undefined,
+        })),
+        status: 'بانتظار القص',
+        createdAt: q.date || new Date().toISOString().split('T')[0],
+      }));
+
+    const combined = [...pipelineList, ...mappedQuotations];
+    setOrders(combined as any);
   };
 
   const openCount = orders.filter(o => isWaitingToCut(o)).length;

@@ -1,6 +1,7 @@
 'use client';
 
 import { saveServerData } from '@/lib/syncService';
+import { getStoredQuotations, saveAllQuotations } from '@/lib/inspectionsStore';
 
 // Master Pipeline Stage Enum/Union
 export type GlobalMasterStage =
@@ -184,11 +185,22 @@ export async function updatePipelineOrderStatus(
   newStatus: GlobalMasterStage | string,
   localStatus?: string
 ) {
-  const current = getStoredPipelineOrders();
+  const current = await fetchPipelineOrders();
   const normalized = normalizeMasterStage(newStatus);
+  const cleanId = (id || '').trim();
+  const rawId = cleanId.replace(/^ORD-/, '');
 
+  let found = false;
   const updated = current.map(o => {
-    if (o.id === id || o.orderId === id) {
+    const isMatch =
+      o.id === cleanId ||
+      o.orderId === cleanId ||
+      o.orderId === rawId ||
+      o.id === `ORD-${rawId}` ||
+      o.id.replace(/^ORD-/, '') === rawId;
+
+    if (isMatch) {
+      found = true;
       return {
         ...o,
         status: normalized,
@@ -198,20 +210,37 @@ export async function updatePipelineOrderStatus(
     return o;
   });
 
+  if (!found && cleanId) {
+    const newEntry: PipelineMasterOrder = {
+      id: cleanId.startsWith('ORD-') ? cleanId : `ORD-${cleanId}`,
+      orderId: rawId,
+      customerName: 'عميل',
+      phone: '',
+      address: '',
+      branch: 'الفرع الرئيسي',
+      deliveryDate: '',
+      status: normalized,
+      localStatus: localStatus || newStatus,
+      createdAt: new Date().toISOString().split('T')[0],
+      totalAmount: 0,
+      depositPaid: 0,
+      remainingAmount: 0,
+      rooms: [],
+    };
+    updated.unshift(newEntry);
+  }
+
   await saveStoredPipelineOrders(updated);
 
-  const targetOrder = updated.find(o => o.id === id || o.orderId === id);
-  if (targetOrder) {
-    try {
-      await fetch('/api/pipeline-orders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(targetOrder),
-      });
-    } catch (err) {
-      console.error('Error updating order on API:', err);
+  // Sync quotation status as well
+  try {
+    const quotations = getStoredQuotations();
+    const qIdx = quotations.findIndex(q => q.id === rawId || q.id === cleanId);
+    if (qIdx >= 0) {
+      quotations[qIdx].status = normalized as any;
+      await saveAllQuotations(quotations);
     }
-  }
+  } catch {}
 }
 
 export function addPipelineOrder(order: Partial<PipelineMasterOrder>): PipelineMasterOrder {
