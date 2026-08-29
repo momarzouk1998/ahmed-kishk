@@ -57,11 +57,75 @@ export default function ContractPrintModal({ isOpen, onClose, data }: ContractPr
   if (!isOpen || !data) return null;
 
   const handlePrint = () => {
-    // Add class to body so @media print CSS knows a modal is present
-    document.body.classList.add('printing-modal');
-    window.print();
-    // Remove after print dialog closes
-    setTimeout(() => document.body.classList.remove('printing-modal'), 1000);
+    // Get the printable content
+    const printableContent = document.getElementById('printable-contract-modal');
+    if (!printableContent) return;
+
+    // Create a new window for printing
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert('يرجى السماح بالنوافذ المنبثقة للطباعة');
+      return;
+    }
+
+    // Write the content to the new window
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html dir="rtl" lang="ar">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>طباعة العقد - أحمد كشك</title>
+        <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+        <style>
+          @page {
+            size: A4 portrait;
+            margin: 10mm;
+          }
+          body {
+            font-family: 'Cairo', sans-serif;
+            margin: 0;
+            padding: 10px;
+            background: white;
+            color: black;
+          }
+          table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 10px;
+          }
+          th, td {
+            border: 1px solid #000;
+            padding: 8px 10px;
+            font-size: 10pt;
+            color: #000;
+            vertical-align: middle;
+          }
+          th {
+            background-color: #f1f5f9;
+            font-weight: 800;
+          }
+          .no-print {
+            display: none !important;
+          }
+          button, input {
+            display: none !important;
+          }
+        </style>
+      </head>
+      <body>
+        ${printableContent.innerHTML}
+      </body>
+      </html>
+    `);
+
+    printWindow.document.close();
+    
+    // Wait for content to load then print
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 500);
   };
 
   return (

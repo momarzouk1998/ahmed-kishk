@@ -357,9 +357,74 @@ export default function InspectionsPage() {
                   <span className="material-symbols-outlined text-[16px]">share</span> واتساب
                 </button>
                 <button onClick={() => {
-                  document.body.classList.add('printing-inspection');
-                  window.print();
-                  setTimeout(() => document.body.classList.remove('printing-inspection'), 1000);
+                  const content = document.querySelector('main');
+                  if (!content) return;
+                  
+                  const printWindow = window.open('', '_blank');
+                  if (!printWindow) {
+                    alert('يرجى السماح بالنوافذ المنبثقة للطباعة');
+                    return;
+                  }
+                  
+                  printWindow.document.write(`
+                    <!DOCTYPE html>
+                    <html dir="rtl" lang="ar">
+                    <head>
+                      <meta charset="UTF-8">
+                      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                      <title>طباعة المقايسة - أحمد كشك</title>
+                      <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+                      <style>
+                        @page {
+                          size: A4 portrait;
+                          margin: 10mm;
+                        }
+                        body {
+                          font-family: 'Cairo', sans-serif;
+                          margin: 0;
+                          padding: 10px;
+                          background: white;
+                          color: black;
+                        }
+                        .no-print, button, input, select, .bg-slate-50 button {
+                          display: none !important;
+                        }
+                        table {
+                          border-collapse: collapse;
+                          width: 100%;
+                          margin-top: 10px;
+                        }
+                        th, td {
+                          border: 1px solid #000;
+                          padding: 8px 10px;
+                          font-size: 10pt;
+                          color: #000;
+                          vertical-align: middle;
+                        }
+                        th {
+                          background-color: #f1f5f9;
+                          font-weight: 800;
+                        }
+                        .bg-slate-50, .bg-white {
+                          background: white !important;
+                          border: 1px solid #000 !important;
+                        }
+                        .text-slate-900, .text-slate-800, .text-slate-700 {
+                          color: black !important;
+                        }
+                      </style>
+                    </head>
+                    <body>
+                      ${content.innerHTML}
+                    </body>
+                    </html>
+                  `);
+                  
+                  printWindow.document.close();
+                  setTimeout(() => {
+                    printWindow.print();
+                    printWindow.close();
+                  }, 500);
                 }} className="flex-1 sm:flex-none justify-center border border-slate-200 text-slate-700 px-3.5 py-2 rounded-xl text-xs font-bold hover:border-slate-400 flex items-center gap-1.5 shadow-xs">
                   <span className="material-symbols-outlined text-[16px]">print</span> طباعة المقايسة
                 </button>

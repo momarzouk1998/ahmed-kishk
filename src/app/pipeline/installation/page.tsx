@@ -28,13 +28,26 @@ export default function PipelineInstallationPage() {
   useEffect(() => {
     async function load() {
       const stored = await fetchPipelineOrders();
-      setJobs((stored || []) as any);
+      if (!stored) {
+        setJobs([]);
+        return;
+      }
+      const relevant = stored.filter(o => 
+        o.status === 'جاهز للتركيب' ||
+        o.status === 'في التركيبات' ||
+        o.status === 'مكتمل' ||
+        o.localStatus === 'مُجدول للتركيب' ||
+        o.localStatus === 'تم التركيب بنجاح ومغلق'
+      );
+      setJobs(relevant as any);
     }
     load();
+    const interval = setInterval(load, 8000);
+    return () => clearInterval(interval);
   }, []);
 
   const isSent = (status: InstallJob['status']) => status === 'تم التركيب بنجاح ومغلق';
-  const isTodayJob = (j: any) => isTodayOrOverdue(j.scheduledDate || j.deliveryDate);
+  const isTodayJob = (j: any) => isTodayOrOverdue(j.scheduledDate || j.deliveryDate || j.createdAt);
 
   const tabFiltered = jobs.filter(j => {
     if (activeTab === 'TODAY') {
@@ -47,17 +60,29 @@ export default function PipelineInstallationPage() {
   });
 
   const filtered = tabFiltered.filter(j => {
-    const matchesSearch = j.customerName.includes(searchQuery) || j.phone.includes(searchQuery) || j.id.includes(searchQuery);
-    const matchesBranch = selectedBranch === 'ALL' || (j as any).branch === selectedBranch;
+    const name = j.customerName || '';
+    const id = j.id || '';
+    const phone = j.phone || '';
+
+    const matchesSearch =
+      name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      phone.includes(searchQuery) ||
+      id.toLowerCase().includes(searchQuery.toLowerCase());
+
+    const matchesBranch =
+      selectedBranch === 'ALL' ||
+      ((j as any).branch && (j as any).branch.includes(selectedBranch)) ||
+      (!(j as any).branch && selectedBranch === 'الفرع الرئيسي');
+
     return matchesSearch && matchesBranch;
   });
 
-  const completeInstallation = (id: string) => {
+  const completeInstallation = async (id: string) => {
     setJobs(prev => prev.map(j => {
       if (j.id !== id) return j;
       return { ...j, status: 'تم التركيب بنجاح ومغلق' };
     }));
-    updatePipelineOrderStatus(id, 'مكتمل', 'تم التركيب بنجاح ومغلق');
+    await updatePipelineOrderStatus(id, 'مكتمل', 'تم التركيب بنجاح ومغلق');
   };
 
   const todayCount = jobs.filter(j => !isSent(j.status) && isTodayJob(j)).length;

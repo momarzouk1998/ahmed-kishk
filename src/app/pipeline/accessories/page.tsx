@@ -44,7 +44,16 @@ export default function PipelineAccessoriesPage() {
         setKits([]);
         return;
       }
-      const mapped = stored.map(o => {
+      const relevant = stored.filter(o => 
+        o.status === 'تجهيز الاكسسوارات' ||
+        o.status === 'جاهز للاستلام' ||
+        o.status === 'جاهز للتركيب' ||
+        o.status === 'مكتمل' ||
+        o.localStatus === 'تم تجهيز الإكسسوارات' ||
+        o.localStatus === 'جاري تجهيز الاكسسوار'
+      );
+
+      const mapped = relevant.map(o => {
         const defaultItems: AccessoryItemSpec[] = [];
         (o.rooms || []).forEach(r => {
           defaultItems.push({ name: `تراك / مجرى ${r.roomName || 'الغرفة'}`, detail: `تراك ألومنيوم سقف (${r.widthCm || 350} سم)`, qty: 2, prepared: false });
@@ -52,14 +61,17 @@ export default function PipelineAccessoriesPage() {
           defaultItems.push({ name: `قم جانبي / كاب ${r.roomName || 'الغرفة'}`, detail: 'أوكسيديه شيك', qty: 2, prepared: false });
         });
 
+        const isPrep = o.status === 'تجهيز الاكسسوارات' && o.localStatus !== 'تم تجهيز الإكسسوارات';
+        const isReady = o.localStatus === 'تم تجهيز الإكسسوارات' || o.status === 'جاهز للاستلام';
+
         return {
           id: o.id,
           orderId: o.orderId || o.id,
-          customerName: o.customerName,
-          phone: o.phone,
-          address: o.address,
+          customerName: o.customerName || 'عميل',
+          phone: o.phone || '',
+          address: o.address || '',
           branch: o.branch || 'الفرع الرئيسي',
-          status: (o.status === 'تجهيز الاكسسوارات' || o.status === 'جاري التجهيز' ? 'جاري التجهيز' : 'تم التجهيز') as any,
+          status: (isPrep ? 'جاري التجهيز' : isReady ? 'تم التجهيز' : 'في التركيبات') as any,
           items: defaultItems.length > 0 ? defaultItems : [
             { name: 'تراك ألومنيوم سقف', detail: 'مجرى ألومنيوم سادة (مقاس 3.50م)', qty: 2, prepared: false },
             { name: 'حامل مجوز فورجيه', detail: 'أوكسيديه مذهب', qty: 4, prepared: false },
@@ -70,6 +82,8 @@ export default function PipelineAccessoriesPage() {
       setKits(mapped);
     }
     load();
+    const interval = setInterval(load, 8000);
+    return () => clearInterval(interval);
   }, []);
 
   const tabFiltered = kits.filter(k => {
@@ -83,8 +97,22 @@ export default function PipelineAccessoriesPage() {
   });
 
   const filtered = tabFiltered.filter(k => {
-    const matchesSearch = k.customerName.includes(searchQuery) || k.id.includes(searchQuery) || k.orderId.includes(searchQuery);
-    const matchesBranch = selectedBranch === 'ALL' || (k as any).branch === selectedBranch;
+    const name = k.customerName || '';
+    const id = k.id || '';
+    const orderId = k.orderId || '';
+    const phone = k.phone || '';
+
+    const matchesSearch =
+      name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      orderId.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      phone.includes(searchQuery);
+
+    const matchesBranch =
+      selectedBranch === 'ALL' ||
+      (k.branch && k.branch.includes(selectedBranch)) ||
+      (!k.branch && selectedBranch === 'الفرع الرئيسي');
+
     return matchesSearch && matchesBranch;
   });
 

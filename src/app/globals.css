@@ -67,6 +67,11 @@
     margin: 10mm 12mm;
   }
 
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
   html, body {
     background: #ffffff !important;
     color: #000000 !important;
@@ -77,41 +82,33 @@
     line-height: 1.4 !important;
     height: auto !important;
     overflow: visible !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
   }
 
-  /* Hide everything except the Next.js root */
-  body > *:not(#__next):not(div:has(#__next)) {
-    display: none !important;
-  }
-
-  /* Show only the Next.js root */
-  body > #__next,
-  body > div#__next {
-    display: block !important;
-  }
-
-  /* Hide sidebar, header, nav, and all page chrome */
+  /* Hide everything except printable content */
   aside,
   header,
   nav,
   .no-print,
   .print\:hidden,
-  span.material-symbols-outlined {
+  span.material-symbols-outlined,
+  button,
+  input,
+  select,
+  textarea {
     display: none !important;
   }
 
-  /* If a modal-overlay is present → hide main, show only the modal.
-     If no modal-overlay (e.g. inspection print) → show main, hide .no-print. */
-  body:has(.modal-overlay) main,
-  body.printing-modal main {
-    display: none !important;
+  /* Show main content */
+  main {
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
   }
 
-  /* The modal overlay becomes the print root */
-  body.printing-modal .modal-overlay,
-  .modal-overlay {
+  /* Modal handling */
+  body.printing-modal .modal-overlay {
     display: block !important;
     position: static !important;
     inset: auto !important;
@@ -125,17 +122,14 @@
     z-index: auto !important;
   }
 
-  /* When NOT printing a modal → show main content normally */
-  body:not(.printing-modal) main {
-    display: block !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    max-width: 100% !important;
-    width: 100% !important;
+  body.printing-modal main {
+    display: none !important;
   }
 
   /* The printable card itself */
-  #printable-contract-modal {
+  #printable-contract-modal,
+  #printable-cutting-worksheet,
+  #printable-tailoring-modal {
     display: block !important;
     position: static !important;
     width: 100% !important;
@@ -148,30 +142,37 @@
     box-shadow: none !important;
     border: none !important;
     border-radius: 0 !important;
-    padding: 0 !important;
+    padding: 10px !important;
     margin: 0 auto !important;
   }
 
-  /* Hide the top control bar (buttons/close) inside the modal */
-  #printable-contract-modal > div:first-child {
+  /* Hide control bars */
+  #printable-contract-modal > div:first-child,
+  #printable-cutting-worksheet > div:first-child,
+  #printable-tailoring-modal > div:first-child,
+  .no-print {
     display: none !important;
   }
 
-  /* Hide all buttons and inputs inside the printable area */
-  button,
-  input,
-  [role="button"] {
-    display: none !important;
+  /* Ensure all content is visible */
+  .bg-slate-50,
+  .bg-white,
+  .bg-slate-900 {
+    background: #ffffff !important;
+    color: #000000 !important;
+    border: 1px solid #000 !important;
   }
 
-  a[href]::after {
-    content: none !important;
+  .text-slate-900,
+  .text-slate-800,
+  .text-slate-700,
+  .text-slate-600,
+  .text-slate-500,
+  .text-slate-400 {
+    color: #000000 !important;
   }
 
-  .print-only {
-    display: block !important;
-  }
-
+  /* Table styling */
   table {
     border-collapse: collapse !important;
     width: 100% !important;
@@ -179,7 +180,7 @@
   }
 
   th, td {
-    border: 1px solid #94a3b8 !important;
+    border: 1px solid #000 !important;
     padding: 8px 10px !important;
     font-size: 10pt !important;
     color: #000000 !important;
@@ -191,29 +192,18 @@
     font-weight: 800 !important;
   }
 
-  /* Prevent page breaks inside rows/cards */
+  /* Prevent page breaks */
   .page-break-inside-avoid, tr, .print-card {
     break-inside: avoid !important;
     page-break-inside: avoid !important;
   }
 
-  /* Specific styles for inspection printing */
+  /* Inspection specific */
   body.printing-inspection main {
     display: block !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    max-width: 100% !important;
   }
 
-  body.printing-inspection .bg-slate-50,
-  body.printing-inspection .bg-white {
-    background: #ffffff !important;
-    border: 1px solid #000 !important;
-  }
-
-  body.printing-inspection button,
-  body.printing-inspection input,
-  body.printing-inspection select {
+  body.printing-inspection .modal-overlay {
     display: none !important;
   }
 }

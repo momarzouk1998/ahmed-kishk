@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
 import { getStoredPipelineOrders, fetchPipelineOrders, updatePipelineOrderStatus, saveStoredPipelineOrders } from '@/lib/pipelineStore';
+import { fetchQuotations } from '@/lib/inspectionsStore';
 import { formatDateOnly } from '@/lib/dateUtils';
 
 interface RoomTailoringDetail {
@@ -62,19 +63,87 @@ export default function PipelineTailoringPage() {
 
   useEffect(() => {
     async function load() {
-      const stored = await fetchPipelineOrders();
-      if (stored) {
-        setOrders(stored as any);
-      }
+      const [storedPipeline, quotations] = await Promise.all([
+        fetchPipelineOrders(),
+        fetchQuotations(),
+      ]);
+
+      const pipelineList = storedPipeline || [];
+      const mappedQuotations: TailoringJobOrder[] = (quotations || [])
+        .filter(q => q.status === 'في الورشة' && !pipelineList.some(p => p.orderId === q.id || p.id === q.id || p.id === `ORD-${q.id}` || (p.customerName && q.customerName && p.customerName.trim() === q.customerName.trim())))
+        .map((q: any) => ({
+          id: `ORD-${q.id}`,
+          orderId: q.id,
+          customerName: q.customerName || 'عميل',
+          phone: q.phone || '',
+          address: q.address || '',
+          branch: q.branch || 'الفرع الرئيسي',
+          deliveryDate: q.deliveryDate || '',
+          tailorName: '',
+          rooms: (q.rooms || []).map((r: any, idx: number) => ({
+            roomName: r.name || `غرفة ${idx + 1}`,
+            heavyFabric: (r.heavyEnabled !== false && (Number(r.heavyMeters) > 0 || r.heavyFabricName)) ? {
+              name: r.heavyFabricName || 'قماش ثقيل',
+              code: r.heavyFabricCode || 'HV-101',
+              meters: Number(r.heavyMeters) || 0,
+              tapeType: r.heavyTapeType || '٣ فتلة',
+              netHeight: String(r.heightCm || 280),
+            } : undefined,
+            sheerFabric: (r.sheerEnabled !== false && (Number(r.sheerMeters) > 0 || r.sheerFabricName)) ? {
+              name: r.sheerFabricName || 'شيفون',
+              code: r.sheerFabricCode || 'SH-101',
+              meters: Number(r.sheerMeters) || 0,
+              tapeType: r.sheerTapeType || 'ويفي',
+              netHeight: String(r.heightCm || 280),
+            } : undefined,
+            blackoutFabric: (r.blackoutEnabled && (Number(r.blackoutMeters) > 0 || r.blackoutFabricName)) ? {
+              name: r.blackoutFabricName || 'بلاك آوت',
+              code: r.blackoutFabricCode || 'BK-301',
+              meters: Number(r.blackoutMeters) || 0,
+              tapeType: r.blackoutTapeType || 'جراب',
+              netHeight: String(r.heightCm || 280),
+            } : undefined,
+          })),
+          status: 'في الورشة',
+          localStatus: 'جاري الخياطة',
+          notes: '',
+          createdAt: q.date || new Date().toISOString().split('T')[0],
+        }));
+
+      const combined = [...pipelineList, ...mappedQuotations];
+      setOrders(combined as any);
     }
     load();
     const interval = setInterval(load, 8000);
     return () => clearInterval(interval);
   }, []);
 
-  const isSewing = (o: any) => o.status === 'في الورشة' && (!o.localStatus || o.localStatus === 'جاري الخياطة' || o.localStatus === 'بانتظار القص');
-  const isIroning = (o: any) => o.status === 'في الورشة' && (o.localStatus === 'جاري الكي' || o.localStatus === 'تمت الخياطة');
-  const isHistory = (o: any) => o.status !== 'في الورشة' && o.status !== 'في المقص' && o.status !== 'المعاينات' && o.status !== 'انتظار تسعير';
+  const isSewing = (o: any) => {
+    if (!o) return false;
+    const s = (o.status || '').trim();
+    const ls = (o.localStatus || '').trim();
+    return (s === 'في الورشة' || s === 'تم القص وجاهز للخياطة') && (!ls || ls === 'جاري الخياطة' || ls === 'بانتظار القص' || ls === 'بانتظار الخياطة');
+  };
+
+  const isIroning = (o: any) => {
+    if (!o) return false;
+    const s = (o.status || '').trim();
+    const ls = (o.localStatus || '').trim();
+    return ls === 'جاري الكي' || ls === 'تمت الخياطة';
+  };
+
+  const isHistory = (o: any) => {
+    if (!o) return false;
+    const s = (o.status || '').trim();
+    const ls = (o.localStatus || '').trim();
+    return (
+      s === 'تجهيز الاكسسوارات' ||
+      s === 'جاهز للاستلام' ||
+      s === 'جاهز للتركيب' ||
+      s === 'مكتمل' ||
+      ls === 'تم الكي وجاهز للاكسسوارات'
+    );
+  };
 
   const tabFiltered = orders.filter(o => {
     if (activeTab === 'SEWING') return isSewing(o);
@@ -83,16 +152,35 @@ export default function PipelineTailoringPage() {
   });
 
   const filtered = tabFiltered.filter(o => {
-    const matchesSearch = o.customerName.includes(searchQuery) || o.id.includes(searchQuery) || (o as any).orderId?.includes(searchQuery);
-    const matchesBranch = selectedBranch === 'ALL' || o.branch === selectedBranch;
+    const name = o.customerName || '';
+    const id = o.id || '';
+    const orderId = (o as any).orderId || '';
+    const phone = o.phone || '';
+    const tailor = o.tailorName || '';
+
+    const matchesSearch =
+      name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      orderId.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      phone.includes(searchQuery) ||
+      tailor.toLowerCase().includes(searchQuery.toLowerCase());
+
+    const matchesBranch =
+      selectedBranch === 'ALL' ||
+      (o.branch && o.branch.includes(selectedBranch)) ||
+      (!o.branch && selectedBranch === 'الفرع الرئيسي');
+
     return matchesSearch && matchesBranch;
   });
 
-  const updateOrderStatus = (id: string, newStatus: string, localStatus?: string) => {
+  const updateOrderStatus = async (id: string, newStatus: string, localStatus?: string) => {
     const updated = orders.map(o => o.id === id ? { ...o, status: newStatus, localStatus } : o);
     setOrders(updated);
-    updatePipelineOrderStatus(id, newStatus, localStatus);
+    await updatePipelineOrderStatus(id, newStatus, localStatus);
     if (selectedOrderDetails?.id === id) {
+      setSelectedOrderDetails(null);
+    }
+  };
       setSelectedOrderDetails(null);
     }
   };

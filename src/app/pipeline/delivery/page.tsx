@@ -26,12 +26,25 @@ export default function PipelineDeliveryPage() {
   useEffect(() => {
     async function load() {
       const stored = await fetchPipelineOrders();
-      setJobs((stored || []) as any);
+      if (!stored) {
+        setJobs([]);
+        return;
+      }
+      const relevant = stored.filter(o => 
+        o.status === 'جاهز للاستلام' ||
+        o.status === 'في التسليمات' ||
+        o.status === 'مكتمل' ||
+        o.localStatus === 'جاهز للتسليم بالمعرض' ||
+        o.localStatus === 'تم التسليم للعميل بنجاح'
+      );
+      setJobs(relevant as any);
     }
     load();
+    const interval = setInterval(load, 8000);
+    return () => clearInterval(interval);
   }, []);
 
-  const isSent = (status: any) => status === 'تم التسليم للعميل بنجاح' || status === 'في التركيبات' || status === 'تم التركيب بنجاح ومغلق';
+  const isSent = (status: any) => status === 'تم التسليم للعميل بنجاح' || status === 'في التركيبات' || status === 'تم التركيب بنجاح ومغلق' || status === 'مكتمل';
   const isTodayDelivery = (j: any) => isTodayOrOverdue(j.deliveryDate || j.createdAt);
 
   const tabFiltered = jobs.filter(j => {
@@ -45,19 +58,31 @@ export default function PipelineDeliveryPage() {
   });
 
   const filtered = tabFiltered.filter(j => {
-    const matchesSearch = j.customerName.includes(searchQuery) || j.id.includes(searchQuery) || (j as any).orderId?.includes(searchQuery);
-    const matchesBranch = selectedBranch === 'ALL' || j.branch === selectedBranch;
+    const name = j.customerName || '';
+    const id = j.id || '';
+    const orderId = (j as any).orderId || '';
+
+    const matchesSearch =
+      name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      orderId.toLowerCase().includes(searchQuery.toLowerCase());
+
+    const matchesBranch =
+      selectedBranch === 'ALL' ||
+      (j.branch && j.branch.includes(selectedBranch)) ||
+      (!j.branch && selectedBranch === 'الفرع الرئيسي');
+
     return matchesSearch && matchesBranch;
   });
 
-  const completeDelivery = (id: string) => {
+  const completeDelivery = async (id: string) => {
     setJobs(prev => prev.map(j => j.id === id ? { ...j, status: 'تم التسليم للعميل بنجاح' } : j));
-    updatePipelineOrderStatus(id, 'مكتمل', 'تم التسليم للعميل بنجاح');
+    await updatePipelineOrderStatus(id, 'مكتمل', 'تم التسليم للعميل بنجاح');
   };
 
-  const transferToInstallation = (id: string) => {
+  const transferToInstallation = async (id: string) => {
     setJobs(prev => prev.map(j => j.id === id ? { ...j, status: 'في التركيبات' } : j));
-    updatePipelineOrderStatus(id, 'جاهز للتركيب', 'في التركيبات');
+    await updatePipelineOrderStatus(id, 'جاهز للتركيب', 'في التركيبات');
   };
 
   const todayCount = jobs.filter(j => !isSent(j.status) && isTodayDelivery(j)).length;
