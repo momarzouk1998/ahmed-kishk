@@ -175,10 +175,7 @@ export default function PipelineInspectionsPage() {
 
   const handleCreate = (e: React.FormEvent, openDirectly: boolean = false) => {
     e.preventDefault();
-    if (!name.trim() || !phone.trim()) {
-      alert('يرجى كتابة اسم العميل ورقم الهاتف');
-      return;
-    }
+    if (!name.trim() || !phone.trim()) return;
 
     syncCustomerToDirectory(name, phone, address);
 

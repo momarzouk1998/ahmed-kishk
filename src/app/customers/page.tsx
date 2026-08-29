@@ -151,7 +151,6 @@ export default function CustomersPage() {
     setCustPhone('');
     setCustAddress('');
     setCustNotes('');
-    alert('تم إضافة العميل بنجاح ✓');
   };
 
   // Add Collection Submit
@@ -189,7 +188,6 @@ export default function CustomersPage() {
     setShowAddCollectionModal(false);
     setColAmount(1000);
     setColNotes('');
-    alert(`تم تسجيل تحصيل مبلغ ${colAmount.toLocaleString()} ج من العميل "${targetCustomer.name}" بنجاح ✓`);
   };
 
   const handleDeleteCustomer = (id: string, name: string) => {
@@ -268,13 +266,13 @@ export default function CustomersPage() {
     return matchSearch && matchMethod;
   });
 
-  // Financial Metrics
-  const totalDebtsLina = filteredCustomers.reduce((s, c) => s + (c.balance > 0 ? c.balance : 0), 0);
-  const totalPrepaidAleena = filteredCustomers.reduce((s, c) => s + (c.balance < 0 ? Math.abs(c.balance) : 0), 0);
-  const totalDebtorsCount = filteredCustomers.filter(c => c.balance > 0.01).length;
+  // Financial Metrics — Number() guards against undefined from server/localStorage
+  const totalDebtsLina = filteredCustomers.reduce((s, c) => s + ((Number(c.balance) || 0) > 0 ? (Number(c.balance) || 0) : 0), 0);
+  const totalPrepaidAleena = filteredCustomers.reduce((s, c) => s + ((Number(c.balance) || 0) < 0 ? Math.abs(Number(c.balance) || 0) : 0), 0);
+  const totalDebtorsCount = filteredCustomers.filter(c => (Number(c.balance) || 0) > 0.01).length;
 
-  const totalCollectionsAmount = filteredCollections.reduce((s, col) => s + col.amount, 0);
-  const cashCollectionsAmount = filteredCollections.filter(c => c.method === 'نقدي').reduce((s, c) => s + c.amount, 0);
+  const totalCollectionsAmount = filteredCollections.reduce((s, col) => s + (Number(col.amount) || 0), 0);
+  const cashCollectionsAmount = filteredCollections.filter(c => c.method === 'نقدي').reduce((s, c) => s + (Number(c.amount) || 0), 0);
 
   return (
     <PageShell title="إدارة العملاء والتحصيلات">
@@ -412,12 +410,12 @@ export default function CustomersPage() {
                           </td>
 
                           <td className="p-3.5 text-center font-mono font-black text-slate-900">
-                            {cust.totalSpent.toLocaleString()} ج
+                            {(Number(cust.totalSpent) || 0).toLocaleString()} ج
                           </td>
 
                           <td className="p-3.5 text-center font-mono font-black text-sm">
-                            <span className={cust.balance > 0 ? 'text-rose-700' : 'text-emerald-700'}>
-                              {cust.balance.toLocaleString()} ج
+                            <span className={(Number(cust.balance) || 0) > 0 ? 'text-rose-700' : 'text-emerald-700'}>
+                              {(Number(cust.balance) || 0).toLocaleString()} ج
                             </span>
                           </td>
 
@@ -505,8 +503,7 @@ export default function CustomersPage() {
 
               <div className="bg-blue-50/70 p-4 rounded-2xl border border-blue-200 text-center shadow-3xs">
                 <span className="text-blue-900 font-bold block">تحصيلات إلكترونية/بنكية</span>
-                <strong className="text-xl font-black text-blue-950 mt-1 block font-mono">{(totalCollectionsAmount - cashCollectionsAmount).toLocaleString()} ج</strong>
-              </div>
+                <strong className="text-xl font-black text-blue-950 mt-1 block font-mono">{(totalCollectionsAmount - cashCollectionsAmount).toLocaleString()} ج</strong>              </div>
             </div>
 
             {/* Search & Method Filter */}
@@ -562,7 +559,7 @@ export default function CustomersPage() {
                           <div className="text-[10px] text-slate-400 font-mono" dir="ltr">{col.phone}</div>
                         </td>
                         <td className="p-3.5 text-center font-mono font-black text-sm text-emerald-700">
-                          +{col.amount.toLocaleString()} ج
+                          +{(Number(col.amount) || 0).toLocaleString()} ج
                         </td>
                         <td className="p-3.5 text-center">
                           <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-800 border border-slate-200">
@@ -575,7 +572,7 @@ export default function CustomersPage() {
                           <div className="flex items-center justify-center gap-1.5">
                             <button
                               type="button"
-                              onClick={() => alert(`إيصال تحصيل رقم (${col.id})\nالعميل: ${col.customerName}\nالمبلغ: ${col.amount} ج`)}
+                              onClick={() => window.print()}
                               className="bg-slate-900 text-white px-2 py-1 rounded-lg text-xs font-bold cursor-pointer"
                               title="طباعة إيصال"
                             >
@@ -591,7 +588,6 @@ export default function CustomersPage() {
                                   if (newAmount > 0) {
                                     const updated = collections.map(c => c.id === col.id ? { ...c, amount: newAmount } : c);
                                     saveCollectionsState(updated);
-                                    alert('تم تعديل قيمة التحصيل بنجاح ✓');
                                   }
                                 }
                               }}
@@ -688,15 +684,15 @@ export default function CustomersPage() {
             <div className="grid grid-cols-3 gap-3 text-xs">
               <div className="bg-white p-3.5 rounded-xl border border-slate-200 text-center">
                 <span className="text-slate-500 font-bold block">الرصيد الافتتاحي</span>
-                <strong className="text-base font-black text-slate-900 font-mono">{selectedCustomer.openingBalance.toLocaleString()} ج</strong>
+                <strong className="text-base font-black text-slate-900 font-mono">{(Number(selectedCustomer.openingBalance) || 0).toLocaleString()} ج</strong>
               </div>
               <div className="bg-emerald-50 p-3.5 rounded-xl border border-emerald-200 text-center">
                 <span className="text-emerald-800 font-bold block">إجمالي المشتريات والمقايسات</span>
-                <strong className="text-base font-black text-emerald-950 font-mono">{selectedCustomer.totalSpent.toLocaleString()} ج</strong>
+                <strong className="text-base font-black text-emerald-950 font-mono">{(Number(selectedCustomer.totalSpent) || 0).toLocaleString()} ج</strong>
               </div>
               <div className="bg-rose-50 p-3.5 rounded-xl border border-rose-200 text-center">
                 <span className="text-rose-800 font-bold block">الرصيد الحالي المستحق (لينا)</span>
-                <strong className="text-base font-black text-rose-950 font-mono">{selectedCustomer.balance.toLocaleString()} ج</strong>
+                <strong className="text-base font-black text-rose-950 font-mono">{(Number(selectedCustomer.balance) || 0).toLocaleString()} ج</strong>
               </div>
             </div>
 
@@ -723,13 +719,13 @@ export default function CustomersPage() {
                       <td className="p-2 border border-slate-300 font-bold">{entry.type}</td>
                       <td className="p-2 border border-slate-300 text-slate-700">{entry.description}</td>
                       <td className="p-2 border border-slate-300 text-center font-mono font-bold text-rose-800">
-                        {entry.debit > 0 ? `${entry.debit.toLocaleString()} ج` : '—'}
+                        {entry.debit > 0 ? `${(Number(entry.debit) || 0).toLocaleString()} ج` : '—'}
                       </td>
                       <td className="p-2 border border-slate-300 text-center font-mono font-bold text-emerald-800">
-                        {entry.credit > 0 ? `${entry.credit.toLocaleString()} ج` : '—'}
+                        {entry.credit > 0 ? `${(Number(entry.credit) || 0).toLocaleString()} ج` : '—'}
                       </td>
                       <td className="p-2 border border-slate-300 text-center font-mono font-black text-slate-950">
-                        {entry.balanceAfter.toLocaleString()} ج
+                        {(Number(entry.balanceAfter) || 0).toLocaleString()} ج
                       </td>
                     </tr>
                   ))}

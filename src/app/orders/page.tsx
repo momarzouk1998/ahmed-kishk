@@ -122,7 +122,6 @@ export default function CentralOrdersLedgerPage() {
       setOrders(updated);
       saveStoredPipelineOrders(updated);
       if (activeEditingOrder?.id === id || activeEditingOrder?.customerName === name) setActiveEditingOrder(null);
-      alert('تم حذف الطلب نهائياً من النظام ولن يظهر مجدداً ✓');
     }
   };
 
@@ -157,8 +156,6 @@ export default function CentralOrdersLedgerPage() {
       } : q);
       saveAllQuotations(updatedQots);
     }
-
-    alert('تم حفظ التعديلات الشاملة على طلب العميل بنجاح ✓');
   };
 
   const filteredOrders = orders.filter(o => {
@@ -647,7 +644,7 @@ export default function CentralOrdersLedgerPage() {
                         {r.sheerFabric && <div>خلفية: {r.sheerFabric.name}</div>}
                       </td>
                       <td className="p-2 border border-slate-300 text-center font-mono font-bold text-amber-950">
-                        {((r.heavyFabric?.meters || 0) + (r.sheerFabric?.meters || 0)).toFixed(2)} متر
+                        {((Number(r.heavyFabric?.meters) || 0) + (Number(r.sheerFabric?.meters) || 0)).toFixed(2)} متر
                       </td>
                     </tr>
                   ))}

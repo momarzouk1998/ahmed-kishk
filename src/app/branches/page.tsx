@@ -175,7 +175,6 @@ export default function BranchesAndPermissionsPage() {
     } catch {}
 
     setShowPermsModal(false);
-    alert(`تم حفظ صلاحيات الموظف (${selectedEmp.name}) وإعدادات تعديل الأسعار بنجاح!`);
   };
 
   return (

@@ -55,13 +55,9 @@ export default function PipelineInstallationPage() {
   const completeInstallation = (id: string) => {
     setJobs(prev => prev.map(j => {
       if (j.id !== id) return j;
-      return {
-        ...j,
-        status: 'تم التركيب بنجاح ومغلق',
-      };
+      return { ...j, status: 'تم التركيب بنجاح ومغلق' };
     }));
     updatePipelineOrderStatus(id, 'مكتمل', 'تم التركيب بنجاح ومغلق');
-    alert('تم تسجيل إتمام التركيب وتحصيل المبلغ المتبقي وإغلاق الطلب بنجاح.');
   };
 
   const todayCount = jobs.filter(j => !isSent(j.status) && isTodayJob(j)).length;
@@ -227,7 +223,7 @@ export default function PipelineInstallationPage() {
                     <div><strong>موعد التركيب:</strong> {job.scheduledDate ? formatDate(job.scheduledDate) : 'غير محدد'}</div>
                     <div className="flex justify-between pt-1.5 border-t border-slate-200">
                       <span className="text-slate-500">المتبقي للتحصيل عند التركيب:</span>
-                      <strong className="font-mono font-black text-rose-700">{job.remainingAmount.toLocaleString()} ج.م</strong>
+                      <strong className="font-mono font-black text-rose-700">{(Number(job.remainingAmount) || 0).toLocaleString()} ج.م</strong>
                     </div>
                   </div>
                 </div>

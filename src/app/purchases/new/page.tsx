@@ -68,10 +68,7 @@ export default function NewPurchaseInvoicePage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!supplierName.trim() || items.length === 0 || subtotal <= 0) {
-      alert('يرجى إدخال اسم المورد وإضافة صنف خامات واحد على الأقل.');
-      return;
-    }
+    if (!supplierName.trim() || items.length === 0 || subtotal <= 0) return;
 
     try {
       const rawPurchases = localStorage.getItem(PURCHASES_KEY);
@@ -103,11 +100,16 @@ export default function NewPurchaseInvoicePage() {
       const updated = [newPur, ...existingPurchases];
       localStorage.setItem(PURCHASES_KEY, JSON.stringify(updated));
 
-      alert(`تم تسجيل فاتورة الشراء من المورد (${purNum}) بنجاح ✓`);
+      // Sync to server
+      await fetch('/api/system-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: PURCHASES_KEY, data: updated }),
+      }).catch(() => {});
+
       router.push('/purchases');
     } catch (e) {
       console.error(e);
-      alert('حدث خطأ أثناء حفظ فاتورة الشراء');
     }
   };
 

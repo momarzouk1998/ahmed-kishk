@@ -125,7 +125,6 @@ export default function PipelineAccessoriesPage() {
     setNewItemName('');
     setNewItemDetail('');
     setNewItemQty(1);
-    alert('تم إضافة الإكسسوار الإضافي للطلب بنجاح ✓');
   };
 
   const preparingCount = kits.filter(k => k.status === 'جاري التجهيز').length;

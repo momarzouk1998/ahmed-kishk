@@ -93,7 +93,6 @@ export default function OrderDetailPage() {
 
     if (updated) {
       setOrder(updated);
-      alert('تم حفظ والتعديل الإداري الكامل للأوردر بنجاح ✓');
       loadData();
     }
   };
@@ -101,14 +100,12 @@ export default function OrderDetailPage() {
   const handleStatusChange = (newStatus: QuotationOrder['status']) => {
     setStatus(newStatus);
     updateQuotationStageAndStatus(order.id, newStatus);
-    alert('تم تعديل مرحلة الأوردر استثنائياً إلى: ' + newStatus + ' ✓');
     loadData();
   };
 
   const handleDelete = () => {
     if (confirm('تحذير إداري: هل أنت متأكد تماماً من حذف أوردر العميل "' + customerName + '" (' + order.id + ') نهائياً من النظام؟')) {
       deleteQuotationOrder(order.id);
-      alert('تم حذف الأوردر بالكامل من السيستم ✓');
       router.push('/orders');
     }
   };

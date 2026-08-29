@@ -186,7 +186,6 @@ export default function SuppliersPage() {
     setSupAddress('');
     setSupCategories('');
     setSupNotes('');
-    alert('تم إضافة المورد بنجاح ✓');
   };
 
   // Submit Add Payment
@@ -223,7 +222,6 @@ export default function SuppliersPage() {
     setShowAddPaymentModal(false);
     setPayAmount(1000);
     setPayNotes('');
-    alert(`تم تسجيل إذن سداد بمبلغ ${payAmount.toLocaleString()} ج للمورد "${targetSup.name}" بنجاح ✓`);
   };
 
   // Submit Multiple Batch Checks
@@ -233,10 +231,7 @@ export default function SuppliersPage() {
     if (!targetSup) return;
 
     const validRows = batchCheckRows.filter(r => r.checkNumber.trim() !== '' && r.amount > 0);
-    if (validRows.length === 0) {
-      alert('يرجى ملء بيانات شيك واحد على الأقل (رقم الشيك والمبلغ)');
-      return;
-    }
+    if (validRows.length === 0) return;
 
     const createdChecks: SupplierCheck[] = validRows.map((r, idx) => ({
       id: `CHK-${Date.now()}-${idx}`,
@@ -256,7 +251,6 @@ export default function SuppliersPage() {
     setBatchCheckRows([
       { checkNumber: '', bankName: 'البنك الأهلي المصري', amount: 5000, dueDate: '2026-09-30', notes: '' },
     ]);
-    alert(`تم تسـجيل وحفظ عدد (${createdChecks.length}) شيكات بنكية للمورد "${targetSup.name}" دفعة واحدة بنجاح ✓`);
   };
 
   const handleToggleCheckStatus = (chkId: string) => {
@@ -608,7 +602,7 @@ export default function SuppliersPage() {
                           <div className="flex items-center justify-center gap-1.5">
                             <button
                               type="button"
-                              onClick={() => alert(`إذن صرف رقم (${pay.id})\nالمورد: ${pay.supplierName}\nالمبلغ: ${pay.amount} ج`)}
+                              onClick={() => window.print()}
                               className="bg-slate-900 text-white px-2 py-1 rounded-lg text-xs font-bold cursor-pointer"
                               title="طباعة إذن صرف"
                             >
@@ -624,7 +618,6 @@ export default function SuppliersPage() {
                                   if (newAmount > 0) {
                                     const updated = payments.map(p => p.id === pay.id ? { ...p, amount: newAmount } : p);
                                     savePaymentsState(updated);
-                                    alert('تم تعديل مبلغ السداد للمورد بنجاح ✓');
                                   }
                                 }
                               }}
@@ -758,7 +751,6 @@ export default function SuppliersPage() {
                                   if (newNum !== null && newNum.trim()) {
                                     const updated = checks.map(c => c.id === chk.id ? { ...c, checkNumber: newNum.trim() } : c);
                                     saveChecksState(updated);
-                                    alert('تم تعديل رقم الشيك بنجاح ✓');
                                   }
                                 }}
                                 className="bg-amber-100 text-amber-950 px-2 py-1 rounded-lg text-xs font-bold cursor-pointer"
@@ -971,10 +963,7 @@ export default function SuppliersPage() {
                     <button
                       type="button"
                       onClick={() => {
-                        if (batchCheckRows.length >= 15) {
-                          alert('عفواً، الحد الأقصى لإضافة الشيكات في المرة الواحدة هو 15 شيكاً فقط.');
-                          return;
-                        }
+                        if (batchCheckRows.length >= 15) return;
                         setBatchCheckRows([
                           ...batchCheckRows,
                           { checkNumber: '', bankName: 'البنك الأهلي المصري', amount: 5000, dueDate: '2026-10-30', notes: '' }
@@ -989,10 +978,7 @@ export default function SuppliersPage() {
                       type="button"
                       onClick={() => {
                         const needed = 15 - batchCheckRows.length;
-                        if (needed <= 0) {
-                          alert('وصلت بالفعل للحد الأقصى (15 شيكاً).');
-                          return;
-                        }
+                        if (needed <= 0) return;
                         const newRows = Array.from({ length: 15 }, (_, i) => ({
                           checkNumber: i < batchCheckRows.length ? batchCheckRows[i].checkNumber : '',
                           bankName: i < batchCheckRows.length ? batchCheckRows[i].bankName : 'البنك الأهلي المصري',

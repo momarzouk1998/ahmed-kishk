@@ -146,7 +146,6 @@ export default function FabricSalesPage() {
     const updated = invoices.map(i => i.id === editingInvoice.id ? { ...editingInvoice, remainingAmount: remaining, status: statusLabel } : i);
     saveInvoicesState(updated);
     setEditingInvoice(null);
-    alert('تم تعديل فاتورة المبيعات بنجاح ✓');
   };
 
   const handleUpdateReturn = (e: React.FormEvent) => {
@@ -156,7 +155,6 @@ export default function FabricSalesPage() {
     const updated = returns.map(r => r.id === editingReturn.id ? editingReturn : r);
     saveReturnsState(updated);
     setEditingReturn(null);
-    alert('تم تعديل إذن المرتجع بنجاح ✓');
   };
 
   // Submit Sales Return
@@ -184,7 +182,6 @@ export default function FabricSalesPage() {
     setRetCustPhone('');
     setRetItemsDetail('');
     setRetAmount(500);
-    alert(`تم تسجيل إذن مرتجع المبيعات (${retNum}) بنجاح ✓`);
   };
 
   // Filtered Invoices
@@ -203,12 +200,12 @@ export default function FabricSalesPage() {
       ret.invoiceNumber.toLowerCase().includes(search.toLowerCase());
   });
 
-  // Metrics
-  const totalSalesRevenue = filteredInvoices.reduce((s, i) => s + i.totalAmount, 0);
-  const totalSalesPaid = filteredInvoices.reduce((s, i) => s + i.paidAmount, 0);
-  const totalSalesRemaining = filteredInvoices.reduce((s, i) => s + i.remainingAmount, 0);
+  // Metrics — Number() guards against undefined from server/localStorage
+  const totalSalesRevenue = filteredInvoices.reduce((s, i) => s + (Number(i.totalAmount) || 0), 0);
+  const totalSalesPaid = filteredInvoices.reduce((s, i) => s + (Number(i.paidAmount) || 0), 0);
+  const totalSalesRemaining = filteredInvoices.reduce((s, i) => s + (Number(i.remainingAmount) || 0), 0);
 
-  const totalReturnsAmount = filteredReturns.reduce((s, r) => s + r.refundAmount, 0);
+  const totalReturnsAmount = filteredReturns.reduce((s, r) => s + (Number(r.refundAmount) || 0), 0);
 
   return (
     <PageShell title="فواتير المبيعات ومردودات المبيعات">
@@ -346,17 +343,17 @@ export default function FabricSalesPage() {
                           </td>
 
                           <td className="p-3.5 text-center font-mono font-bold text-rose-800">
-                            {inv.discountAmount > 0 ? `-${inv.discountAmount.toLocaleString()} ج` : 'لا يوجد'}
+                            {(Number(inv.discountAmount) || 0) > 0 ? `-${(Number(inv.discountAmount) || 0).toLocaleString()} ج` : 'لا يوجد'}
                           </td>
 
                           <td className="p-3.5 text-center font-mono font-black text-sm text-slate-950">
-                            {inv.totalAmount.toLocaleString()} ج
+                            {(Number(inv.totalAmount) || 0).toLocaleString()} ج
                           </td>
 
                           <td className="p-3.5 text-center font-mono">
-                            <div className="text-emerald-700 font-bold">مدفوع: {inv.paidAmount.toLocaleString()} ج</div>
-                            {inv.remainingAmount > 0 && (
-                              <div className="text-rose-700 font-bold text-[11px]">متبقي: {inv.remainingAmount.toLocaleString()} ج</div>
+                            <div className="text-emerald-700 font-bold">مدفوع: {(Number(inv.paidAmount) || 0).toLocaleString()} ج</div>
+                            {(Number(inv.remainingAmount) || 0) > 0 && (
+                              <div className="text-rose-700 font-bold text-[11px]">متبقي: {(Number(inv.remainingAmount) || 0).toLocaleString()} ج</div>
                             )}
                           </td>
 
@@ -437,7 +434,7 @@ export default function FabricSalesPage() {
               <div className="bg-amber-50/70 p-4 rounded-2xl border border-amber-200 text-center shadow-3xs">
                 <span className="text-amber-900 font-bold block">المرتجع نقداً (كاش)</span>
                 <strong className="text-xl font-black text-amber-950 mt-1 block font-mono">
-                  {filteredReturns.filter(r => r.refundMethod === 'نقدي').reduce((s, r) => s + r.refundAmount, 0).toLocaleString()} ج
+                  {filteredReturns.filter(r => r.refundMethod === 'نقدي').reduce((s, r) => s + (Number(r.refundAmount) || 0), 0).toLocaleString()} ج
                 </strong>
               </div>
             </div>
@@ -475,7 +472,7 @@ export default function FabricSalesPage() {
                         </td>
 
                         <td className="p-3.5 text-center font-mono font-black text-sm text-rose-700">
-                          -{ret.refundAmount.toLocaleString()} ج
+                          -{(Number(ret.refundAmount) || 0).toLocaleString()} ج
                         </td>
 
                         <td className="p-3.5 text-center">
@@ -488,7 +485,7 @@ export default function FabricSalesPage() {
                           <div className="flex items-center justify-center gap-1.5">
                             <button
                               type="button"
-                              onClick={() => alert(`إذن مرتجع مبيعات رقم (${ret.returnNumber})\nالعميل: ${ret.customerName}\nالمبلغ: ${ret.refundAmount} ج`)}
+                              onClick={() => window.print()}
                               className="bg-slate-900 text-white px-2 py-1 rounded-lg text-xs font-bold cursor-pointer"
                             >
                               🖨️

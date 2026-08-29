@@ -481,7 +481,7 @@ export default function PurchasesPage() {
                           <div className="flex items-center justify-center gap-1.5">
                             <button
                               type="button"
-                              onClick={() => alert(`إذن مرتجع مشتريات رقم (${ret.returnNumber})\nالمورد: ${ret.supplierName}\nالمبلغ: ${ret.refundAmount} ج`)}
+                              onClick={() => window.print()}
                               className="bg-slate-900 text-white px-2 py-1 rounded-lg text-xs font-bold cursor-pointer"
                             >
                               🖨️

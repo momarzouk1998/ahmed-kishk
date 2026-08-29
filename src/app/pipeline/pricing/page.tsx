@@ -192,17 +192,17 @@ export default function PipelinePricingPage() {
 
                       {/* Total Amount */}
                       <td className="p-3.5 text-left font-mono font-black text-slate-900 text-sm align-middle">
-                        {q.totalAmount > 0 ? `${q.totalAmount.toLocaleString()} ج` : <span className="text-amber-600 font-sans font-bold text-xs">قيد التسعير</span>}
+                        {(Number(q.totalAmount) || 0) > 0 ? `${(Number(q.totalAmount) || 0).toLocaleString()} ج` : <span className="text-amber-600 font-sans font-bold text-xs">قيد التسعير</span>}
                       </td>
 
                       {/* Deposit */}
                       <td className="p-3.5 text-left font-mono font-bold text-emerald-800 text-xs align-middle">
-                        {q.depositPaid.toLocaleString()} ج
+                        {(Number(q.depositPaid) || 0).toLocaleString()} ج
                       </td>
 
                       {/* Remaining */}
                       <td className="p-3.5 text-left font-mono font-bold text-rose-800 text-xs align-middle">
-                        {q.remainingAmount.toLocaleString()} ج
+                        {(Number(q.remainingAmount) || 0).toLocaleString()} ج
                       </td>
 
                       {/* Status */}

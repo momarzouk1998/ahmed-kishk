@@ -68,10 +68,7 @@ export default function NewSalesInvoicePage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!custName.trim() || items.length === 0 || subtotal <= 0) {
-      alert('يرجى إدخال اسم العميل وإضافة صنف واحد على الأقل.');
-      return;
-    }
+    if (!custName.trim() || items.length === 0 || subtotal <= 0) return;
 
     try {
       const rawInvoices = localStorage.getItem(SALES_INVOICES_KEY);
@@ -103,11 +100,16 @@ export default function NewSalesInvoicePage() {
       const updated = [newInv, ...existingInvoices];
       localStorage.setItem(SALES_INVOICES_KEY, JSON.stringify(updated));
 
-      alert(`تم إنشاء وتأكيد فاتورة المبيعات (${invNum}) بنجاح ✓`);
+      // Sync to server
+      await fetch('/api/system-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: SALES_INVOICES_KEY, data: updated }),
+      }).catch(() => {});
+
       router.push('/fabric-sales');
     } catch (e) {
       console.error(e);
-      alert('حدث خطأ أثناء حفظ الفاتورة');
     }
   };
 
