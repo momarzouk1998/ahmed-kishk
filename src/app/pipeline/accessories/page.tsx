@@ -163,7 +163,7 @@ export default function PipelineAccessoriesPage() {
   const historyCount = kits.filter(k => k.status === 'في التركيبات' || k.status === 'في التسليمات').length;
 
   return (
-    <PageShell title="الإكسسوارات (التراكات والمواسير)" badge="المرحلة 6">
+    <PageShell title="5. الإكسسوارات" badge="5">
       <div className="flex flex-col gap-5">
         {/* Navigation Tabs */}
         <div className="flex border-b border-slate-200 gap-2">

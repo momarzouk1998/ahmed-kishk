@@ -241,7 +241,7 @@ export default function PipelineTailoringPage() {
   const historyCount = orders.filter(isHistory).length;
 
   return (
-    <PageShell title="الورشة والتفصيل" badge="المرحلة 5">
+    <PageShell title="4. الورشة" badge="4">
       <div className="flex flex-col gap-5">
         {/* Tab Headers */}
         <div className="flex border-b border-slate-200 gap-2">

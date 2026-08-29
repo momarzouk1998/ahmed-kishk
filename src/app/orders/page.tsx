@@ -221,7 +221,7 @@ export default function CentralOrdersLedgerPage() {
   };
 
   return (
-    <PageShell title="طلبات الستائر">
+    <PageShell title="8. طلبات الستائر" badge="8">
       <div className="flex flex-col gap-5 max-w-7xl mx-auto">
         {/* Financial Stats Bar */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">

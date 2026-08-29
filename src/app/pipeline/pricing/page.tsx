@@ -55,7 +55,7 @@ export default function PipelinePricingPage() {
   const sentCount = quotations.filter(q => isSent(q.status)).length;
 
   return (
-    <PageShell title="تسعير وعقد العميل" badge="المرحلة 3">
+    <PageShell title="2. التسعير والعقد" badge="2">
       <div className="flex flex-col gap-4">
         {/* 2 Tabs Navigation */}
         <div className="flex border-b border-slate-200 gap-2">

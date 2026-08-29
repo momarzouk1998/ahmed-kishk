@@ -90,7 +90,7 @@ export default function PipelineInstallationPage() {
   const historyCount = jobs.filter(j => isSent(j.status)).length;
 
   return (
-    <PageShell title="التركيبات الميدانية" badge="المرحلة 8">
+    <PageShell title="7. التركيبات" badge="7">
       <div className="flex flex-col gap-5">
         {/* 3-Tabs Navigation */}
         <div className="flex border-b border-slate-200 gap-2">

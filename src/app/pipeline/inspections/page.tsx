@@ -111,12 +111,50 @@ export default function PipelineInspectionsPage() {
   const scheduledCount = inspections.filter(i => !isSent(i.status) && !isTodayItem(i)).length;
   const historyCount = inspections.filter(i => isSent(i.status)).length;
 
+  const syncCustomerToDirectory = (custName: string, custPhone: string, custAddress: string) => {
+    if (typeof window === 'undefined' || !custName.trim()) return;
+    try {
+      const raw = localStorage.getItem('ahmed_kishk_customers_v3');
+      let list = raw ? JSON.parse(raw) : [];
+      const idx = list.findIndex((c: any) => 
+        c.phone === custPhone.trim() || c.name.toLowerCase() === custName.trim().toLowerCase()
+      );
+
+      if (idx >= 0) {
+        list[idx].inspectionsCount = (list[idx].inspectionsCount || 0) + 1;
+        if (custAddress.trim()) list[idx].address = custAddress.trim();
+      } else {
+        const newCust = {
+          id: `CUST-${String(list.length + 1).padStart(3, '0')}`,
+          name: custName.trim(),
+          phone: custPhone.trim() || '—',
+          address: custAddress.trim() || '—',
+          city: 'القاهرة',
+          inspectionsCount: 1,
+          ordersCount: 0,
+          totalSpent: 0,
+          openingBalance: 0,
+          balance: 0,
+          notes: 'تمت إضافته تلقائياً عند تسجيل طلب معاينة',
+          createdAt: new Date().toISOString().split('T')[0],
+        };
+        list = [newCust, ...list];
+      }
+      localStorage.setItem('ahmed_kishk_customers_v3', JSON.stringify(list));
+    } catch (err) {
+      console.error('Failed to sync customer to directory:', err);
+    }
+  };
+
   const handleCreate = (e: React.FormEvent, openDirectly: boolean = false) => {
     e.preventDefault();
     if (!name.trim() || !phone.trim()) {
       alert('يرجى كتابة اسم العميل ورقم الهاتف');
       return;
     }
+
+    syncCustomerToDirectory(name, phone, address);
+
     const currentList = getStoredInspections();
     const newId = `INS-${String(currentList.length + 1).padStart(3, '0')}`;
     const newItem: InspectionData = {
@@ -136,6 +174,9 @@ export default function PipelineInspectionsPage() {
     saveOrUpdateInspection(newItem);
     setInspections([newItem, ...currentList]);
     setShowNewModal(false);
+    setName('');
+    setPhone('');
+    setAddress('');
 
     if (openDirectly) {
       router.push(`/pipeline/inspections/${newId}`);
@@ -146,7 +187,7 @@ export default function PipelineInspectionsPage() {
   };
 
   return (
-    <PageShell title="المعاينات الميدانية" badge="المرحلة 2">
+    <PageShell title="1. رفع المقاسات (المعاينات الميدانية)" badge="1">
       <div className="flex flex-col gap-4">
         {/* Tabs Bar with Action Button Beside It */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-200 pb-1 gap-2">
@@ -474,6 +515,42 @@ export default function PipelineInspectionsPage() {
           <div className="bg-white rounded-2xl shadow-2xl p-5 sm:p-6 w-full max-w-lg">
             <h2 className="font-display font-black text-lg text-slate-900 mb-3">تسجيل طلب معاينة جديد</h2>
             <form onSubmit={handleCreate} className="flex flex-col gap-3">
+              {/* Optional Existing Customer Search */}
+              <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-xs">
+                <label className="text-[11px] font-bold text-slate-600 block mb-1">🔍 اختيار عميل سابق مسجل (اختياري):</label>
+                <select
+                  onChange={(e) => {
+                    if (!e.target.value) return;
+                    try {
+                      const raw = localStorage.getItem('ahmed_kishk_customers_v3');
+                      const list = raw ? JSON.parse(raw) : [];
+                      const found = list.find((c: any) => c.id === e.target.value);
+                      if (found) {
+                        setName(found.name);
+                        setPhone(found.phone);
+                        if (found.address) setAddress(found.address);
+                      }
+                    } catch {}
+                  }}
+                  className="w-full border border-slate-200 rounded-lg p-1.5 font-bold text-slate-800 bg-white"
+                >
+                  <option value="">-- اضغط للاختيار من العملاء المسجلين --</option>
+                  {(() => {
+                    try {
+                      const raw = typeof window !== 'undefined' ? localStorage.getItem('ahmed_kishk_customers_v3') : null;
+                      const list = raw ? JSON.parse(raw) : [];
+                      return list.map((c: any) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name} ({c.phone})
+                        </option>
+                      ));
+                    } catch {
+                      return null;
+                    }
+                  })()}
+                </select>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-bold text-slate-700">اسم العميل *</label>

@@ -136,7 +136,7 @@ export default function PipelineCuttingPage() {
   };
 
   return (
-    <PageShell title="قص القماش والأثواب" badge="المرحلة 4">
+    <PageShell title="3. قص القماش" badge="3">
       <div className="flex flex-col gap-5">
         {/* 2-Tabs Navigation */}
         <div className="flex border-b border-slate-200 gap-2">

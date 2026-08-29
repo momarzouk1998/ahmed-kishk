@@ -86,7 +86,7 @@ export default function PipelineDeliveryPage() {
   const historyCount = jobs.filter(j => isSent(j.status)).length;
 
   return (
-    <PageShell title="تسليمات المعرض والشحن" badge="المرحلة 7">
+    <PageShell title="6. التسليمات" badge="6">
       <div className="flex flex-col gap-5">
         {/* 3-Tabs Navigation */}
         <div className="flex border-b border-slate-200 gap-2">
