@@ -73,6 +73,18 @@ export default function PipelineInspectionsPage() {
   const [tech, setTech] = useState('أحمد حسن');
   const [schedule, setSchedule] = useState('');
 
+  // Customer Autocomplete State
+  const [custSearchQuery, setCustSearchQuery] = useState('');
+  const [custDropdownOpen, setCustDropdownOpen] = useState(false);
+  const [registeredCustomers, setRegisteredCustomers] = useState<any[]>([]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('ahmed_kishk_customers_v3');
+      if (raw) setRegisteredCustomers(JSON.parse(raw));
+    } catch {}
+  }, [showNewModal]);
+
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 8;
@@ -515,40 +527,67 @@ export default function PipelineInspectionsPage() {
           <div className="bg-white rounded-2xl shadow-2xl p-5 sm:p-6 w-full max-w-lg">
             <h2 className="font-display font-black text-lg text-slate-900 mb-3">تسجيل طلب معاينة جديد</h2>
             <form onSubmit={handleCreate} className="flex flex-col gap-3">
-              {/* Optional Existing Customer Search */}
-              <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-xs">
-                <label className="text-[11px] font-bold text-slate-600 block mb-1">🔍 اختيار عميل سابق مسجل (اختياري):</label>
-                <select
-                  onChange={(e) => {
-                    if (!e.target.value) return;
-                    try {
-                      const raw = localStorage.getItem('ahmed_kishk_customers_v3');
-                      const list = raw ? JSON.parse(raw) : [];
-                      const found = list.find((c: any) => c.id === e.target.value);
-                      if (found) {
-                        setName(found.name);
-                        setPhone(found.phone);
-                        if (found.address) setAddress(found.address);
-                      }
-                    } catch {}
-                  }}
-                  className="w-full border border-slate-200 rounded-lg p-1.5 font-bold text-slate-800 bg-white"
-                >
-                  <option value="">-- اضغط للاختيار من العملاء المسجلين --</option>
-                  {(() => {
-                    try {
-                      const raw = typeof window !== 'undefined' ? localStorage.getItem('ahmed_kishk_customers_v3') : null;
-                      const list = raw ? JSON.parse(raw) : [];
-                      return list.map((c: any) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name} ({c.phone})
-                        </option>
-                      ));
-                    } catch {
-                      return null;
-                    }
-                  })()}
-                </select>
+              {/* Live Customer Search & Autocomplete Box */}
+              <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 text-xs space-y-1.5 relative">
+                <label className="text-[11px] font-black text-slate-700 flex items-center justify-between">
+                  <span className="flex items-center gap-1">
+                    <span className="material-symbols-outlined text-amber-600 text-sm">search</span>
+                    <span>البحث الفوري عن عميل سابق (بالاسم أو رقم الهاتف):</span>
+                  </span>
+                  {registeredCustomers.length > 0 && (
+                    <span className="text-[10px] text-slate-500 font-mono">({registeredCustomers.length} عميل مسجل)</span>
+                  )}
+                </label>
+
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="🔍 اكتب اسم العميل أو رقم الهاتف للبحث من القائمة..."
+                    value={custSearchQuery}
+                    onFocus={() => setCustDropdownOpen(true)}
+                    onChange={e => {
+                      setCustSearchQuery(e.target.value);
+                      setCustDropdownOpen(true);
+                    }}
+                    className="w-full border border-slate-300 rounded-xl px-3.5 py-2 font-bold text-slate-900 focus:outline-none focus:border-amber-500 bg-white shadow-2xs"
+                  />
+
+                  {custDropdownOpen && custSearchQuery.trim() !== '' && (
+                    <div className="absolute right-0 left-0 top-full mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl z-30 max-h-48 overflow-y-auto divide-y divide-slate-100">
+                      {registeredCustomers.filter(c => 
+                        c.name.toLowerCase().includes(custSearchQuery.toLowerCase()) || 
+                        c.phone.includes(custSearchQuery)
+                      ).length === 0 ? (
+                        <div className="p-3 text-slate-400 text-center font-bold">لا يوجد عميل ينطبق عليه هذا البحث (يمكنك إدخال بياناته أدناه كعميل جديد)</div>
+                      ) : (
+                        registeredCustomers.filter(c => 
+                          c.name.toLowerCase().includes(custSearchQuery.toLowerCase()) || 
+                          c.phone.includes(custSearchQuery)
+                        ).map(c => (
+                          <div
+                            key={c.id}
+                            onClick={() => {
+                              setName(c.name);
+                              setPhone(c.phone);
+                              if (c.address) setAddress(c.address);
+                              setCustSearchQuery('');
+                              setCustDropdownOpen(false);
+                            }}
+                            className="p-2.5 hover:bg-amber-50 cursor-pointer flex justify-between items-center transition-colors"
+                          >
+                            <div>
+                              <div className="font-bold text-slate-900">{c.name}</div>
+                              <div className="text-[11px] text-slate-500">{c.address || 'لا يوجد عنوان مسجل'}</div>
+                            </div>
+                            <div className="font-mono font-bold text-amber-900 bg-amber-100/70 px-2 py-0.5 rounded-lg text-[11px]" dir="ltr">
+                              {c.phone}
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
