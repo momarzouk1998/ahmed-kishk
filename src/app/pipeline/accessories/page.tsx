@@ -181,10 +181,15 @@ export default function PipelineAccessoriesPage() {
 
   const updateKitStatus = async (kitId: string, status: AccessoryKit['status']) => {
     setKits(prev => prev.map(k => k.id === kitId ? { ...k, status } : k));
-    if (status === 'تم التجهيز') {
-      await updatePipelineOrderStatus(kitId, 'تجهيز الاكسسوارات', 'تم تجهيز الإكسسوارات');
-    } else {
+    await updatePipelineOrderStatus(kitId, 'تجهيز الاكسسوارات', 'تم تجهيز الإكسسوارات');
+  };
+
+  const updateKitTransfer = async (kitId: string, destination: 'DELIVERY' | 'INSTALLATION') => {
+    setKits(prev => prev.map(k => k.id === kitId ? { ...k, status: destination === 'DELIVERY' ? 'في التسليمات' : 'في التركيبات' } : k));
+    if (destination === 'DELIVERY') {
       await updatePipelineOrderStatus(kitId, 'جاهز للاستلام', 'جاهز للتسليم بالمعرض');
+    } else {
+      await updatePipelineOrderStatus(kitId, 'جاهز للتركيب', 'مُجدول للتركيب');
     }
   };
 
@@ -414,12 +419,23 @@ export default function PipelineAccessoriesPage() {
                   )}
 
                   {activeTab === 'PREPARED' && (
-                    <button
-                      onClick={() => updateKitStatus(kit.id, 'في التسليمات')}
-                      className="w-full bg-slate-900 hover:bg-slate-800 text-white py-2.5 rounded-xl text-xs font-black shadow-xs cursor-pointer transition-colors"
-                    >
-                      تحويل للتسليمات / التركيبات ←
-                    </button>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <button
+                        onClick={() => updateKitTransfer(kit.id, 'DELIVERY')}
+                        className="w-full bg-blue-600 hover:bg-blue-500 text-white py-2.5 rounded-xl text-xs font-black shadow-xs cursor-pointer transition-colors flex items-center justify-center gap-1.5"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">local_shipping</span>
+                        <span>تحويل للتسليمات (بالمعرض) 📦</span>
+                      </button>
+
+                      <button
+                        onClick={() => updateKitTransfer(kit.id, 'INSTALLATION')}
+                        className="w-full bg-slate-900 hover:bg-slate-800 text-white py-2.5 rounded-xl text-xs font-black shadow-xs cursor-pointer transition-colors flex items-center justify-center gap-1.5"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">build_circle</span>
+                        <span>تحويل للتركيبات (بالمنزل) 🛠️</span>
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>
