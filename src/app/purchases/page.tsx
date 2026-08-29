@@ -3,203 +3,206 @@
 import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
 
-interface SalesInvoiceItem {
+interface PurchaseInvoiceItem {
   code: string;
   name: string;
   meters: number;
-  pricePerMeter: number;
-  totalPrice: number;
+  unitCost: number;
+  totalCost: number;
 }
 
-interface SalesInvoice {
+interface PurchaseInvoice {
   id: string;
   invoiceNumber: string;
   date: string;
-  customerName: string;
-  customerPhone: string;
+  supplierName: string;
+  supplierPhone: string;
   branch: string;
-  items: SalesInvoiceItem[];
+  items: PurchaseInvoiceItem[];
   subtotal: number;
   discountType: 'EGP' | 'PERCENT';
   discountValue: number;
   discountAmount: number;
   totalAmount: number;
-  paymentMethod: 'نقدي' | 'إنستاباي' | 'فودافون كاش' | 'فيزا / كارت' | 'بالآجل / دفعات';
+  paymentMethod: 'نقدي (كاش)' | 'شيكات بنكية' | 'على دفعات / آجل';
   paidAmount: number;
   remainingAmount: number;
-  status: 'تم السداد بالكامل' | 'مسدد جزئياً' | 'آجل / غير مسدد';
+  status: 'مسدد بالكامل' | 'مسدد جزئياً' | 'آجل / غير مسدد';
   notes?: string;
 }
 
-interface CustomerSalesReturn {
+interface SupplierPurchaseReturn {
   id: string;
   returnNumber: string;
   date: string;
   invoiceNumber: string;
-  customerName: string;
-  customerPhone: string;
+  supplierName: string;
+  supplierPhone: string;
   reason: string;
   itemsDetail: string;
   refundAmount: number;
-  refundMethod: 'نقدي' | 'إنستاباي' | 'فودافون كاش' | 'إضافة لرصيد العميل';
+  refundMethod: 'نقدي (كاش)' | 'خصم من حساب المورد' | 'إلغاء شيك';
   notes?: string;
 }
 
-const defaultInvoices: SalesInvoice[] = [
+const defaultPurchases: PurchaseInvoice[] = [
   {
-    id: 'INV-101',
-    invoiceNumber: 'INV-2026-001',
-    date: '2026-08-28',
-    customerName: 'محمود عبد الرحمن',
-    customerPhone: '01012345678',
+    id: 'PUR-101',
+    invoiceNumber: 'PUR-2026-001',
+    date: '2026-08-20',
+    supplierName: 'شركة النيل للأقمشة والمنسوجات',
+    supplierPhone: '01099988877',
     branch: 'الفرع الرئيسي',
     items: [
-      { code: 'VLV-01', name: 'قطيفة تركي ثقيل', meters: 10.8, pricePerMeter: 380, totalPrice: 4104 },
-      { code: 'TUL-01', name: 'تول خفيف مطرز', meters: 13.75, pricePerMeter: 160, totalPrice: 2200 },
+      { code: 'V-990', name: 'توب قطيفة تركي ثقيل (50م)', meters: 50, unitCost: 260, totalCost: 13000 },
+      { code: 'T-402', name: 'توب تول خفيف مطرز (100م)', meters: 100, unitCost: 95, totalCost: 9500 },
     ],
-    subtotal: 6304,
+    subtotal: 22500,
     discountType: 'EGP',
-    discountValue: 304,
-    discountAmount: 304,
-    totalAmount: 6000,
-    paymentMethod: 'إنستاباي',
-    paidAmount: 4000,
-    remainingAmount: 2000,
+    discountValue: 500,
+    discountAmount: 500,
+    totalAmount: 22000,
+    paymentMethod: 'شيكات بنكية',
+    paidAmount: 15000,
+    remainingAmount: 7000,
     status: 'مسدد جزئياً',
-    notes: 'عربون مبيعات أقمشة الستائر',
+    notes: 'تم الدفع بشيك مؤجل 30 يوم',
   },
   {
-    id: 'INV-102',
-    invoiceNumber: 'INV-2026-002',
-    date: '2026-08-27',
-    customerName: 'د. سارة أحمد',
-    customerPhone: '01298765432',
-    branch: 'فرع عرابي',
+    id: 'PUR-102',
+    invoiceNumber: 'PUR-2026-002',
+    date: '2026-08-15',
+    supplierName: 'مصنع الدلتا لإكسسوارات الستائر',
+    supplierPhone: '01011223344',
+    branch: 'الفرع الرئيسي',
     items: [
-      { code: 'LN-77', name: 'كتان هازل بني', meters: 12.0, pricePerMeter: 320, totalPrice: 3840 },
+      { code: 'TRK-01', name: 'شحنة تراكات ألومنيوم سقف (200م)', meters: 200, unitCost: 45, totalCost: 9000 },
+      { code: 'ACC-01', name: 'أطقم حوامل ومواسير فورجيه (50 طقم)', meters: 50, unitCost: 120, totalCost: 6000 },
     ],
-    subtotal: 3840,
+    subtotal: 15000,
     discountType: 'PERCENT',
-    discountValue: 10,
-    discountAmount: 384,
-    totalAmount: 3456,
-    paymentMethod: 'فيزا / كارت',
-    paidAmount: 3456,
+    discountValue: 5,
+    discountAmount: 750,
+    totalAmount: 14250,
+    paymentMethod: 'نقدي (كاش)',
+    paidAmount: 14250,
     remainingAmount: 0,
-    status: 'تم السداد بالكامل',
-    notes: 'خصم 10% بمناسبة الافتتاح',
+    status: 'مسدد بالكامل',
+    notes: 'خصم كمية للمورد 5%',
   },
 ];
 
-const defaultReturns: CustomerSalesReturn[] = [
+const defaultReturns: SupplierPurchaseReturn[] = [
   {
-    id: 'RET-101',
-    returnNumber: 'RET-2026-001',
-    date: '2026-08-26',
-    invoiceNumber: 'INV-2026-001',
-    customerName: 'محمود عبد الرحمن',
-    customerPhone: '01012345678',
-    reason: 'زيادة 1.5 متر عن المقاس المطلوبة بالصالة',
-    itemsDetail: 'تول خفيف مطرز (1.5 متر)',
-    refundAmount: 240,
-    refundMethod: 'نقدي',
-    notes: 'تم فحص القماش وإعادته للمخزن بحالة ممتازة',
+    id: 'SRET-101',
+    returnNumber: 'PRET-2026-001',
+    date: '2026-08-22',
+    invoiceNumber: 'PUR-2026-001',
+    supplierName: 'شركة النيل للأقمشة والمنسوجات',
+    supplierPhone: '01099988877',
+    reason: 'عيوب نسجية بلفة التول',
+    itemsDetail: 'توب تول خفيف مطرز (10 متر تالف)',
+    refundAmount: 950,
+    refundMethod: 'خصم من حساب المورد',
+    notes: 'تم إرجاع التوب التالف للمورد وخصمه من الحساب الجاري',
   },
 ];
 
-const SALES_INVOICES_KEY = 'ahmed_kishk_sales_invoices_v1';
-const SALES_RETURNS_KEY = 'ahmed_kishk_sales_returns_v1';
+const PURCHASES_KEY = 'ahmed_kishk_purchase_invoices_v1';
+const PRETURNS_KEY = 'ahmed_kishk_purchase_returns_v1';
 
-export default function FabricSalesPage() {
-  const [activeTab, setActiveTab] = useState<'INVOICES' | 'RETURNS'>('INVOICES');
-  const [invoices, setInvoices] = useState<SalesInvoice[]>(defaultInvoices);
-  const [returns, setReturns] = useState<CustomerSalesReturn[]>(defaultReturns);
+export default function PurchasesPage() {
+  const [activeTab, setActiveTab] = useState<'PURCHASES' | 'RETURNS'>('PURCHASES');
+
+  const [purchases, setPurchases] = useState<PurchaseInvoice[]>(defaultPurchases);
+  const [returns, setReturns] = useState<SupplierPurchaseReturn[]>(defaultReturns);
 
   // Filters
   const [search, setSearch] = useState('');
   const [paymentFilter, setPaymentFilter] = useState<string>('all');
 
   // Modals
-  const [showAddInvoiceModal, setShowAddInvoiceModal] = useState(false);
+  const [showAddPurchaseModal, setShowAddPurchaseModal] = useState(false);
   const [showAddReturnModal, setShowAddReturnModal] = useState(false);
-  const [printableInvoice, setPrintableInvoice] = useState<SalesInvoice | null>(null);
+  const [printablePurchase, setPrintablePurchase] = useState<PurchaseInvoice | null>(null);
 
-  // Create Invoice Form State
-  const [custName, setCustName] = useState('');
-  const [custPhone, setCustPhone] = useState('');
+  // Create Purchase Form State
+  const [supplierName, setSupplierName] = useState('شركة النيل للأقمشة والمنسوجات');
+  const [supplierPhone, setSupplierPhone] = useState('01099988877');
   const [branch, setBranch] = useState('الفرع الرئيسي');
-  const [fabricItemName, setFabricItemName] = useState('قطيفة تركي ثقيل');
-  const [fabricMeters, setFabricMeters] = useState<number>(5.0);
-  const [fabricPrice, setFabricPrice] = useState<number>(380);
   
-  // Discount states
+  const [fabricItemName, setFabricItemName] = useState('توب قطيفة تركي ثقيل');
+  const [fabricMeters, setFabricMeters] = useState<number>(30);
+  const [unitCost, setUnitCost] = useState<number>(260);
+
+  // Discount
   const [discountType, setDiscountType] = useState<'EGP' | 'PERCENT'>('EGP');
   const [discountValue, setDiscountValue] = useState<number>(0);
-  
-  // Payment Method & Paid state
-  const [paymentMethod, setPaymentMethod] = useState<SalesInvoice['paymentMethod']>('نقدي');
-  const [paidAmount, setPaidAmount] = useState<number>(0);
-  const [invNotes, setInvNotes] = useState('');
 
-  // Create Return Form State
-  const [retCustName, setRetCustName] = useState('');
-  const [retCustPhone, setRetCustPhone] = useState('');
+  // Payment Method for Supplier & Paid Amount
+  const [paymentMethod, setPaymentMethod] = useState<PurchaseInvoice['paymentMethod']>('نقدي (كاش)');
+  const [paidAmount, setPaidAmount] = useState<number>(0);
+  const [purNotes, setPurNotes] = useState('');
+
+  // Create Supplier Return Form State
+  const [retSupplierName, setRetSupplierName] = useState('');
+  const [retSupplierPhone, setRetSupplierPhone] = useState('');
   const [retInvNumber, setRetInvNumber] = useState('');
-  const [retReason, setRetReason] = useState('عيوب في القماش');
+  const [retReason, setRetReason] = useState('خامة غير مطابقة للمواصفات');
   const [retItemsDetail, setRetItemsDetail] = useState('');
-  const [retAmount, setRetAmount] = useState<number>(500);
-  const [retMethod, setRetMethod] = useState<CustomerSalesReturn['refundMethod']>('نقدي');
+  const [retAmount, setRetAmount] = useState<number>(1000);
+  const [retMethod, setRetMethod] = useState<SupplierPurchaseReturn['refundMethod']>('خصم من حساب المورد');
 
   useEffect(() => {
     try {
-      const rawI = localStorage.getItem(SALES_INVOICES_KEY);
-      if (rawI) setInvoices(JSON.parse(rawI));
-      const rawR = localStorage.getItem(SALES_RETURNS_KEY);
+      const rawP = localStorage.getItem(PURCHASES_KEY);
+      if (rawP) setPurchases(JSON.parse(rawP));
+      const rawR = localStorage.getItem(PRETURNS_KEY);
       if (rawR) setReturns(JSON.parse(rawR));
     } catch (e) {
       console.error(e);
     }
   }, []);
 
-  const saveInvoicesState = (list: SalesInvoice[]) => {
-    setInvoices(list);
-    localStorage.setItem(SALES_INVOICES_KEY, JSON.stringify(list));
+  const savePurchasesState = (list: PurchaseInvoice[]) => {
+    setPurchases(list);
+    localStorage.setItem(PURCHASES_KEY, JSON.stringify(list));
   };
 
-  const saveReturnsState = (list: CustomerSalesReturn[]) => {
+  const saveReturnsState = (list: SupplierPurchaseReturn[]) => {
     setReturns(list);
-    localStorage.setItem(SALES_RETURNS_KEY, JSON.stringify(list));
+    localStorage.setItem(PRETURNS_KEY, JSON.stringify(list));
   };
 
-  // Calculations for Invoice Modal
-  const subtotal = fabricMeters * fabricPrice;
+  // Calculations
+  const subtotal = fabricMeters * unitCost;
   const calculatedDiscount = discountType === 'PERCENT' ? (subtotal * discountValue) / 100 : discountValue;
   const totalAmount = Math.max(0, subtotal - calculatedDiscount);
   const remainingAmount = Math.max(0, totalAmount - paidAmount);
 
-  // Submit Invoice
-  const handleCreateInvoice = (e: React.FormEvent) => {
+  // Submit Purchase Invoice
+  const handleCreatePurchase = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!custName.trim() || fabricMeters <= 0 || fabricPrice <= 0) return;
+    if (!supplierName.trim() || fabricMeters <= 0 || unitCost <= 0) return;
 
-    const invNum = `INV-2026-${String(invoices.length + 1).padStart(3, '0')}`;
-    const statusLabel: SalesInvoice['status'] =
-      remainingAmount === 0 ? 'تم السداد بالكامل' : paidAmount > 0 ? 'مسدد جزئياً' : 'آجل / غير مسدد';
+    const purNum = `PUR-2026-${String(purchases.length + 1).padStart(3, '0')}`;
+    const statusLabel: PurchaseInvoice['status'] =
+      remainingAmount === 0 ? 'مسدد بالكامل' : paidAmount > 0 ? 'مسدد جزئياً' : 'آجل / غير مسدد';
 
-    const newInv: SalesInvoice = {
-      id: `INV-${Date.now()}`,
-      invoiceNumber: invNum,
+    const newPur: PurchaseInvoice = {
+      id: `PUR-${Date.now()}`,
+      invoiceNumber: purNum,
       date: new Date().toISOString().split('T')[0],
-      customerName: custName.trim(),
-      customerPhone: custPhone.trim() || 'غير محدد',
+      supplierName: supplierName.trim(),
+      supplierPhone: supplierPhone.trim(),
       branch,
       items: [
         {
-          code: 'FAB-01',
+          code: 'FAB-SUP-01',
           name: fabricItemName,
           meters: fabricMeters,
-          pricePerMeter: fabricPrice,
-          totalPrice: subtotal,
+          unitCost,
+          totalCost: subtotal,
         }
       ],
       subtotal,
@@ -211,87 +214,84 @@ export default function FabricSalesPage() {
       paidAmount,
       remainingAmount,
       status: statusLabel,
-      notes: invNotes.trim(),
+      notes: purNotes.trim(),
     };
 
-    saveInvoicesState([newInv, ...invoices]);
-    setShowAddInvoiceModal(false);
-    setCustName('');
-    setCustPhone('');
-    setFabricMeters(5);
+    savePurchasesState([newPur, ...purchases]);
+    setShowAddPurchaseModal(false);
+    setFabricMeters(30);
     setDiscountValue(0);
     setPaidAmount(0);
-    setInvNotes('');
+    setPurNotes('');
 
-    setPrintableInvoice(newInv);
-    alert(`تم حفظ فاتورة المبيعات (${invNum}) بنجاح ✓`);
+    setPrintablePurchase(newPur);
+    alert(`تم تسجيل فاتورة الشراء من المورد (${purNum}) بنجاح ✓`);
   };
 
-  // Submit Sales Return
+  // Submit Supplier Return
   const handleCreateReturn = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!retCustName.trim() || retAmount <= 0) return;
+    if (!retSupplierName.trim() || retAmount <= 0) return;
 
-    const retNum = `RET-2026-${String(returns.length + 1).padStart(3, '0')}`;
-    const newRet: CustomerSalesReturn = {
-      id: `RET-${Date.now()}`,
+    const retNum = `PRET-2026-${String(returns.length + 1).padStart(3, '0')}`;
+    const newRet: SupplierPurchaseReturn = {
+      id: `PRET-${Date.now()}`,
       returnNumber: retNum,
       date: new Date().toISOString().split('T')[0],
       invoiceNumber: retInvNumber.trim() || '—',
-      customerName: retCustName.trim(),
-      customerPhone: retCustPhone.trim(),
+      supplierName: retSupplierName.trim(),
+      supplierPhone: retSupplierPhone.trim(),
       reason: retReason,
-      itemsDetail: retItemsDetail.trim() || 'مرتجع قماش ستائر',
+      itemsDetail: retItemsDetail.trim() || 'مرتجع خامات قماش للمورد',
       refundAmount: retAmount,
       refundMethod: retMethod,
     };
 
     saveReturnsState([newRet, ...returns]);
     setShowAddReturnModal(false);
-    setRetCustName('');
-    setRetCustPhone('');
+    setRetSupplierName('');
     setRetItemsDetail('');
-    setRetAmount(500);
-    alert(`تم تسجيل إذن مرتجع المبيعات (${retNum}) بنجاح ✓`);
+    setRetAmount(1000);
+    alert(`تم تسجيل إذن مرتجع الشراء للمورد (${retNum}) بنجاح ✓`);
   };
 
-  // Filtered Invoices
-  const filteredInvoices = invoices.filter(inv => {
-    const matchSearch = inv.customerName.toLowerCase().includes(search.toLowerCase()) ||
-      inv.invoiceNumber.toLowerCase().includes(search.toLowerCase()) ||
-      inv.customerPhone.includes(search);
-    const matchPayment = paymentFilter === 'all' || inv.paymentMethod === paymentFilter;
+  // Filtered Purchases
+  const filteredPurchases = purchases.filter(p => {
+    const matchSearch = p.supplierName.toLowerCase().includes(search.toLowerCase()) ||
+      p.invoiceNumber.toLowerCase().includes(search.toLowerCase()) ||
+      p.supplierPhone.includes(search);
+    const matchPayment = paymentFilter === 'all' || p.paymentMethod === paymentFilter;
     return matchSearch && matchPayment;
   });
 
   // Filtered Returns
   const filteredReturns = returns.filter(ret => {
-    return ret.customerName.toLowerCase().includes(search.toLowerCase()) ||
+    return ret.supplierName.toLowerCase().includes(search.toLowerCase()) ||
       ret.returnNumber.toLowerCase().includes(search.toLowerCase()) ||
       ret.invoiceNumber.toLowerCase().includes(search.toLowerCase());
   });
 
   // Metrics
-  const totalSalesRevenue = filteredInvoices.reduce((s, i) => s + i.totalAmount, 0);
-  const totalSalesPaid = filteredInvoices.reduce((s, i) => s + i.paidAmount, 0);
-  const totalSalesRemaining = filteredInvoices.reduce((s, i) => s + i.remainingAmount, 0);
+  const totalPurchasesCost = filteredPurchases.reduce((s, p) => s + p.totalAmount, 0);
+  const totalPurchasesPaid = filteredPurchases.reduce((s, p) => s + p.paidAmount, 0);
+  const totalPurchasesRemaining = filteredPurchases.reduce((s, p) => s + p.remainingAmount, 0);
 
   const totalReturnsAmount = filteredReturns.reduce((s, r) => s + r.refundAmount, 0);
 
   return (
-    <PageShell title="فواتير المبيعات ومردودات المبيعات">
+    <PageShell title="فواتير المشتريات ومردودات المشتريات">
       <div className="flex flex-col gap-5 max-w-7xl mx-auto">
         {/* Navigation Tabs (2 Tabs) */}
         <div className="flex border-b border-slate-200 gap-2">
           <button
             type="button"
-            onClick={() => setActiveTab('INVOICES')}
+            onClick={() => setActiveTab('PURCHASES')}
             className={`pb-3 px-4 text-xs sm:text-sm font-black flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
-              activeTab === 'INVOICES' ? 'border-amber-500 text-slate-950' : 'border-transparent text-slate-400'
+              activeTab === 'PURCHASES' ? 'border-amber-500 text-slate-950' : 'border-transparent text-slate-400'
             }`}
           >
-            <span>🛒 فواتير المبيعات</span>
-            <span className="bg-amber-100 text-amber-950 px-2 rounded-full text-[11px] font-mono font-bold">{invoices.length}</span>
+            <span>📥 فواتير المشتريات</span>
+            <span className="bg-amber-100 text-amber-950 px-2 rounded-full text-[11px] font-mono font-bold">{purchases.length}</span>
           </button>
 
           <button
@@ -301,48 +301,48 @@ export default function FabricSalesPage() {
               activeTab === 'RETURNS' ? 'border-amber-500 text-slate-950' : 'border-transparent text-slate-400'
             }`}
           >
-            <span>↩️ مرتجعات العملاء (مردودات المبيعات)</span>
+            <span>↩️ مرتجعات الموردين (مردودات المشتريات)</span>
             <span className="bg-rose-100 text-rose-950 px-2 rounded-full text-[11px] font-mono font-bold">{returns.length}</span>
           </button>
         </div>
 
-        {/* TAB 1: SALES INVOICES */}
-        {activeTab === 'INVOICES' && (
+        {/* TAB 1: PURCHASES */}
+        {activeTab === 'PURCHASES' && (
           <div className="space-y-4">
             {/* Header & Button */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-              <span className="text-xs font-bold text-slate-500">إجمالي فواتير المبيعات المسجلة: {filteredInvoices.length} فاتورة</span>
+              <span className="text-xs font-bold text-slate-500">إجمالي فواتير الشراء المسجلة: {filteredPurchases.length} فاتورة</span>
 
               <button
                 type="button"
-                onClick={() => setShowAddInvoiceModal(true)}
+                onClick={() => setShowAddPurchaseModal(true)}
                 className="bg-brand-gold hover:bg-amber-400 text-slate-950 px-4 py-2.5 rounded-xl text-xs font-black shadow-gold flex items-center gap-1.5 cursor-pointer"
               >
-                <span className="material-symbols-outlined text-[18px]">add_shopping_cart</span>
-                <span>+ إنشاء فاتورة مبيعات جديدة</span>
+                <span className="material-symbols-outlined text-[18px]">add_business</span>
+                <span>+ إنشاء فاتورة شراء من مورد</span>
               </button>
             </div>
 
             {/* Metrics */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
               <div className="bg-white p-4 rounded-2xl border border-slate-200 text-center shadow-3xs">
-                <span className="text-slate-500 font-bold block">إجمالي قيمة المبيعات</span>
-                <strong className="text-xl font-black text-slate-900 mt-1 block font-mono">{totalSalesRevenue.toLocaleString()} ج</strong>
+                <span className="text-slate-500 font-bold block">إجمالي قيمة المشتريات</span>
+                <strong className="text-xl font-black text-slate-900 mt-1 block font-mono">{totalPurchasesCost.toLocaleString()} ج</strong>
               </div>
 
               <div className="bg-emerald-50/70 p-4 rounded-2xl border border-emerald-200 text-center shadow-3xs">
-                <span className="text-emerald-800 font-bold block">المحصل من العملاء</span>
-                <strong className="text-xl font-black text-emerald-950 mt-1 block font-mono">{totalSalesPaid.toLocaleString()} ج</strong>
+                <span className="text-emerald-800 font-bold block">المسدد للموردين</span>
+                <strong className="text-xl font-black text-emerald-950 mt-1 block font-mono">{totalPurchasesPaid.toLocaleString()} ج</strong>
               </div>
 
               <div className="bg-rose-50/70 p-4 rounded-2xl border border-rose-200 text-center shadow-3xs">
-                <span className="text-rose-800 font-bold block">المتبقي آجل (ديون لينا)</span>
-                <strong className="text-xl font-black text-rose-950 mt-1 block font-mono">{totalSalesRemaining.toLocaleString()} ج</strong>
+                <span className="text-rose-800 font-bold block">المتبقي بالآجل (علينا)</span>
+                <strong className="text-xl font-black text-rose-950 mt-1 block font-mono">{totalPurchasesRemaining.toLocaleString()} ج</strong>
               </div>
 
               <div className="bg-amber-50/70 p-4 rounded-2xl border border-amber-200 text-center shadow-3xs">
-                <span className="text-amber-900 font-bold block">عدد العمليات</span>
-                <strong className="text-xl font-black text-amber-950 mt-1 block font-mono">{filteredInvoices.length} فاتورة</strong>
+                <span className="text-amber-900 font-bold block">عدد عمليات الشراء</span>
+                <strong className="text-xl font-black text-amber-950 mt-1 block font-mono">{filteredPurchases.length} فاتورة</strong>
               </div>
             </div>
 
@@ -352,7 +352,7 @@ export default function FabricSalesPage() {
                 <span className="material-symbols-outlined absolute right-3.5 top-2.5 text-slate-400 text-base">search</span>
                 <input
                   type="text"
-                  placeholder="ابحث برقم الفاتورة، اسم العميل، أو رقم الهاتف..."
+                  placeholder="ابحث برقم الفاتورة، اسم المورد، أو رقم الهاتف..."
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                   className="w-full pr-10 pl-4 py-2 border border-slate-200 rounded-xl focus:border-amber-500 focus:outline-none font-bold text-slate-900 shadow-2xs"
@@ -365,82 +365,80 @@ export default function FabricSalesPage() {
                   onChange={e => setPaymentFilter(e.target.value)}
                   className="w-full border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 font-bold text-slate-800 focus:outline-none cursor-pointer"
                 >
-                  <option value="all">كل طرق الدفع للزبون</option>
-                  <option value="نقدي">نقدي (كاش)</option>
-                  <option value="إنستاباي">إنستاباي (InstaPay)</option>
-                  <option value="فودافون كاش">فودافون كاش</option>
-                  <option value="فيزا / كارت">فيزا / كارت بنكي</option>
-                  <option value="بالآجل / دفعات">بالآجل / دفعات</option>
+                  <option value="all">كل طرق الدفع للموردين</option>
+                  <option value="نقدي (كاش)">1. نقدي (كاش)</option>
+                  <option value="شيكات بنكية">2. شيكات بنكية مؤجلة</option>
+                  <option value="على دفعات / آجل">3. على دفعات / بالآجل</option>
                 </select>
               </div>
             </div>
 
-            {/* Sales Table */}
+            {/* Purchases Table */}
             <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-soft">
               <div className="overflow-x-auto">
                 <table className="w-full text-right text-xs min-w-[850px]">
                   <thead className="bg-slate-50 text-slate-500 font-mono border-b border-slate-200">
                     <tr>
                       <th className="p-3.5">رقم الفاتورة والتاريخ</th>
-                      <th className="p-3.5">اسم العميل والهاتف</th>
-                      <th className="p-3.5">طريقة الدفع للزبون</th>
-                      <th className="p-3.5 text-center font-mono">الخصم الممنوح</th>
+                      <th className="p-3.5">اسم المورد والهاتف</th>
+                      <th className="p-3.5">طريقة الدفع للمورد</th>
+                      <th className="p-3.5 text-center font-mono">خصم المورد</th>
                       <th className="p-3.5 text-center font-mono">صافي الفاتورة</th>
-                      <th className="p-3.5 text-center font-mono">المحصل / المتبقي</th>
+                      <th className="p-3.5 text-center font-mono">المسدد / المتبقي</th>
                       <th className="p-3.5 text-center">الحالة</th>
                       <th className="p-3.5 text-center">الإجراء</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredInvoices.map(inv => {
-                      const badgeClass = inv.status === 'تم السداد بالكامل' ? 'bg-emerald-100 text-emerald-900 border-emerald-200' : inv.status === 'مسدد جزئياً' ? 'bg-amber-100 text-amber-900 border-amber-200' : 'bg-rose-100 text-rose-900 border-rose-200';
+                    {filteredPurchases.map(pur => {
+                      const badgeClass = pur.status === 'مسدد بالكامل' ? 'bg-emerald-100 text-emerald-900 border-emerald-200' : pur.status === 'مسدد جزئياً' ? 'bg-amber-100 text-amber-900 border-amber-200' : 'bg-rose-100 text-rose-900 border-rose-200';
 
                       return (
-                        <tr key={inv.id} className="border-t border-slate-100 hover:bg-slate-50/70 transition-colors">
+                        <tr key={pur.id} className="border-t border-slate-100 hover:bg-slate-50/70 transition-colors">
                           <td className="p-3.5 font-bold text-slate-900">
-                            <span className="font-mono text-amber-800 text-xs block">{inv.invoiceNumber}</span>
-                            <span className="text-[10px] text-slate-400 font-mono">{inv.date} ({inv.branch})</span>
+                            <span className="font-mono text-amber-800 text-xs block">{pur.invoiceNumber}</span>
+                            <span className="text-[10px] text-slate-400 font-mono">{pur.date} ({pur.branch})</span>
                           </td>
 
                           <td className="p-3.5 text-slate-700">
-                            <div className="font-bold text-slate-900">{inv.customerName}</div>
-                            <div className="text-slate-500 font-mono text-[11px]" dir="ltr">{inv.customerPhone}</div>
+                            <div className="font-bold text-slate-900">{pur.supplierName}</div>
+                            <div className="text-slate-500 font-mono text-[11px]" dir="ltr">{pur.supplierPhone}</div>
                           </td>
 
                           <td className="p-3.5">
                             <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-950 border border-slate-200">
-                              💳 {inv.paymentMethod}
+                              🤝 {pur.paymentMethod}
                             </span>
                           </td>
 
                           <td className="p-3.5 text-center font-mono font-bold text-rose-800">
-                            {inv.discountAmount > 0 ? `-${inv.discountAmount.toLocaleString()} ج` : 'لا يوجد'}
+                            {pur.discountAmount > 0 ? `-${pur.discountAmount.toLocaleString()} ج` : 'لا يوجد'}
                           </td>
 
                           <td className="p-3.5 text-center font-mono font-black text-sm text-slate-950">
-                            {inv.totalAmount.toLocaleString()} ج
+                            {pur.totalAmount.toLocaleString()} ج
                           </td>
 
                           <td className="p-3.5 text-center font-mono">
-                            <div className="text-emerald-700 font-bold">مدفوع: {inv.paidAmount.toLocaleString()} ج</div>
-                            {inv.remainingAmount > 0 && (
-                              <div className="text-rose-700 font-bold text-[11px]">متبقي: {inv.remainingAmount.toLocaleString()} ج</div>
+                            <div className="text-emerald-700 font-bold">مسدد: {pur.paidAmount.toLocaleString()} ج</div>
+                            {pur.remainingAmount > 0 && (
+                              <div className="text-rose-700 font-bold text-[11px]">متبقي: {pur.remainingAmount.toLocaleString()} ج</div>
                             )}
                           </td>
 
                           <td className="p-3.5 text-center">
                             <span className={`px-2.5 py-0.5 rounded-full font-bold text-[11px] border ${badgeClass}`}>
-                              {inv.status}
+                              {pur.status}
                             </span>
                           </td>
 
                           <td className="p-3.5 text-center">
                             <button
                               type="button"
-                              onClick={() => setPrintableInvoice(inv)}
+                              onClick={() => setPrintablePurchase(pur)}
                               className="bg-slate-900 hover:bg-slate-800 text-white px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer transition-colors"
                             >
-                              🖨️ طباعة الفاتورة
+                              🖨️ إذن شراء
                             </button>
                           </td>
                         </tr>
@@ -453,12 +451,12 @@ export default function FabricSalesPage() {
           </div>
         )}
 
-        {/* TAB 2: SALES RETURNS */}
+        {/* TAB 2: SUPPLIER RETURNS */}
         {activeTab === 'RETURNS' && (
           <div className="space-y-4">
             {/* Header & Button */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-              <span className="text-xs font-bold text-slate-500">إجمالي عمليات مرتجعات المبيعات: {filteredReturns.length} عملية إرجاع</span>
+              <span className="text-xs font-bold text-slate-500">إجمالي عمليات مرتجعات المشتريات للموردين: {filteredReturns.length} عملية</span>
 
               <button
                 type="button"
@@ -466,26 +464,26 @@ export default function FabricSalesPage() {
                 className="bg-rose-600 hover:bg-rose-500 text-white px-4 py-2.5 rounded-xl text-xs font-black shadow-xs flex items-center gap-1.5 cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[18px]">assignment_return</span>
-                <span>+ تسجيل طلب مرتجع مبيعات</span>
+                <span>+ تسجيل مرتجع شراء لمورد</span>
               </button>
             </div>
 
             {/* Metrics */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
               <div className="bg-white p-4 rounded-2xl border border-slate-200 text-center shadow-3xs">
-                <span className="text-slate-500 font-bold block">إجمالي مبالغ المرتجعات</span>
+                <span className="text-slate-500 font-bold block">إجمالي مبالغ المرتجعات للموردين</span>
                 <strong className="text-xl font-black text-rose-950 mt-1 block font-mono">{totalReturnsAmount.toLocaleString()} ج</strong>
               </div>
 
               <div className="bg-white p-4 rounded-2xl border border-slate-200 text-center shadow-3xs">
-                <span className="text-slate-500 font-bold block">عدد عمليات الإرجاع</span>
+                <span className="text-slate-500 font-bold block">عدد العمليات</span>
                 <strong className="text-xl font-black text-slate-900 mt-1 block font-mono">{filteredReturns.length} عملية</strong>
               </div>
 
               <div className="bg-amber-50/70 p-4 rounded-2xl border border-amber-200 text-center shadow-3xs">
-                <span className="text-amber-900 font-bold block">المرتجع نقداً (كاش)</span>
+                <span className="text-amber-900 font-bold block">المخصوم من رصيد الموردين</span>
                 <strong className="text-xl font-black text-amber-950 mt-1 block font-mono">
-                  {filteredReturns.filter(r => r.refundMethod === 'نقدي').reduce((s, r) => s + r.refundAmount, 0).toLocaleString()} ج
+                  {filteredReturns.filter(r => r.refundMethod === 'خصم من حساب المورد').reduce((s, r) => s + r.refundAmount, 0).toLocaleString()} ج
                 </strong>
               </div>
             </div>
@@ -497,10 +495,10 @@ export default function FabricSalesPage() {
                   <thead className="bg-slate-50 text-slate-500 font-mono border-b border-slate-200">
                     <tr>
                       <th className="p-3.5">رقم إذن المرتجع والتاريخ</th>
-                      <th className="p-3.5">اسم العميل والفاتورة الأصلي</th>
-                      <th className="p-3.5">سبب المرتجع والخامة</th>
-                      <th className="p-3.5 font-mono text-center">المبلغ المسترد</th>
-                      <th className="p-3.5 text-center">طريقة الرد للعميل</th>
+                      <th className="p-3.5">اسم المورد والفاتورة</th>
+                      <th className="p-3.5">سبب الارجاع والتفاصيل</th>
+                      <th className="p-3.5 font-mono text-center">المبلغ المسترد / المخصوم</th>
+                      <th className="p-3.5 text-center">طريقة الرد من المورد</th>
                       <th className="p-3.5 text-center">الإجراء</th>
                     </tr>
                   </thead>
@@ -513,8 +511,8 @@ export default function FabricSalesPage() {
                         </td>
 
                         <td className="p-3.5 text-slate-700">
-                          <div className="font-bold text-slate-900">{ret.customerName}</div>
-                          <div className="text-slate-500 font-mono text-[11px]">فاتورة: {ret.invoiceNumber}</div>
+                          <div className="font-bold text-slate-900">{ret.supplierName}</div>
+                          <div className="text-slate-500 font-mono text-[11px]">فاتورة شراء: {ret.invoiceNumber}</div>
                         </td>
 
                         <td className="p-3.5 text-slate-700">
@@ -522,8 +520,8 @@ export default function FabricSalesPage() {
                           <div className="text-slate-500 text-[11px]">{ret.itemsDetail}</div>
                         </td>
 
-                        <td className="p-3.5 text-center font-mono font-black text-sm text-rose-700">
-                          -{ret.refundAmount.toLocaleString()} ج
+                        <td className="p-3.5 text-center font-mono font-black text-sm text-emerald-700">
+                          +{ret.refundAmount.toLocaleString()} ج
                         </td>
 
                         <td className="p-3.5 text-center">
@@ -535,7 +533,7 @@ export default function FabricSalesPage() {
                         <td className="p-3.5 text-center">
                           <button
                             type="button"
-                            onClick={() => alert(`إذن مرتجع مبيعات رقم (${ret.returnNumber})\nالعميل: ${ret.customerName}\nالمبلغ المسترد: ${ret.refundAmount} ج`)}
+                            onClick={() => alert(`إذن مرتجع مشتريات رقم (${ret.returnNumber})\nالمورد: ${ret.supplierName}\nالمبلغ: ${ret.refundAmount} ج`)}
                             className="bg-slate-900 text-white px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer"
                           >
                             🖨️ طباعة المرتجع
@@ -551,71 +549,67 @@ export default function FabricSalesPage() {
         )}
       </div>
 
-      {/* 🛒 Modal: Create Sales Invoice (مع اختيار طريقة الدفع للزبون والخصم) */}
-      {showAddInvoiceModal && (
+      {/* 📥 Modal: Create Purchase Invoice (طرق الدفع للموردين والخصم) */}
+      {showAddPurchaseModal && (
         <div className="modal-overlay fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl border border-slate-200 my-auto max-h-[92vh] overflow-y-auto">
             <div className="flex justify-between items-center pb-2 border-b border-slate-100">
               <h3 className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-amber-500">add_shopping_cart</span>
-                <span>إنشاء فاتورة مبيعات جديدة (اختيار طريقة الدفع والخصم)</span>
+                <span className="material-symbols-outlined text-amber-500">add_business</span>
+                <span>إنشاء فاتورة شراء جديدة من مورد (طرق الدفع والخصم)</span>
               </h3>
-              <button onClick={() => setShowAddInvoiceModal(false)} className="w-7 h-7 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-xs cursor-pointer">✕</button>
+              <button onClick={() => setShowAddPurchaseModal(false)} className="w-7 h-7 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-xs cursor-pointer">✕</button>
             </div>
 
-            <form onSubmit={handleCreateInvoice} className="space-y-3.5 text-xs">
-              {/* Customer Info */}
+            <form onSubmit={handleCreatePurchase} className="space-y-3.5 text-xs">
+              {/* Supplier Info */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50 p-3 rounded-2xl border border-slate-200">
                 <div>
-                  <label className="text-slate-700 font-bold block mb-1">اسم العميل / الزبون:</label>
+                  <label className="text-slate-700 font-bold block mb-1">اسم المورد / الشركة:</label>
                   <input
                     type="text"
                     required
-                    placeholder="مثال: أ. محمود عبد الرحمن"
-                    value={custName}
-                    onChange={e => setCustName(e.target.value)}
+                    placeholder="شركة النيل للأقمشة..."
+                    value={supplierName}
+                    onChange={e => setSupplierName(e.target.value)}
                     className="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900 focus:outline-none focus:border-amber-500 bg-white"
                   />
                 </div>
 
                 <div>
-                  <label className="text-slate-700 font-bold block mb-1">رقم الهاتف:</label>
+                  <label className="text-slate-700 font-bold block mb-1">رقم الهاتف التواصل:</label>
                   <input
                     type="text"
-                    placeholder="مثال: 01012345678"
-                    value={custPhone}
-                    onChange={e => setCustPhone(e.target.value)}
+                    placeholder="01099988877"
+                    value={supplierPhone}
+                    onChange={e => setSupplierPhone(e.target.value)}
                     className="w-full border border-slate-200 rounded-xl px-3 py-2 font-mono font-bold text-slate-900 focus:outline-none focus:border-amber-500 bg-white"
                     dir="ltr"
                   />
                 </div>
               </div>
 
-              {/* Fabric Item & Pricing */}
+              {/* Item & Cost */}
               <div className="space-y-2 bg-amber-50/50 p-3.5 rounded-2xl border border-amber-200">
-                <label className="text-slate-900 font-black block">خامة القماش وسعر المتر:</label>
+                <label className="text-slate-900 font-black block">تفاصيل الصنف وتكلفة الشراء:</label>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <div className="sm:col-span-1">
-                    <label className="text-slate-500 font-bold block mb-1">نوع القماش:</label>
-                    <select
+                    <label className="text-slate-500 font-bold block mb-1">اسم الخامات / التوب:</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="توب قطيفة تركي..."
                       value={fabricItemName}
                       onChange={e => setFabricItemName(e.target.value)}
-                      className="w-full border border-slate-200 rounded-xl px-2.5 py-1.5 font-bold text-slate-900 focus:outline-none bg-white"
-                    >
-                      <option value="قطيفة تركي ثقيل">قطيفة تركي ثقيل</option>
-                      <option value="تول خفيف مطرز">تول خفيف مطرز</option>
-                      <option value="كتان بلجيكي بني">كتان بلجيكي بني</option>
-                      <option value="بلاك آوت عازل">بلاك آوت عازل</option>
-                      <option value="حرير طبيعي سواريه">حرير طبيعي سواريه</option>
-                    </select>
+                      className="w-full border border-slate-200 rounded-xl px-3 py-1.5 font-bold text-slate-900 focus:outline-none bg-white"
+                    />
                   </div>
 
                   <div>
-                    <label className="text-slate-500 font-bold block mb-1">عدد الأمتار:</label>
+                    <label className="text-slate-500 font-bold block mb-1">الأمتار / الكمية:</label>
                     <input
                       type="number"
-                      step="0.25"
-                      min="0.5"
+                      min="1"
                       required
                       value={fabricMeters}
                       onChange={e => setFabricMeters(Number(e.target.value))}
@@ -624,13 +618,13 @@ export default function FabricSalesPage() {
                   </div>
 
                   <div>
-                    <label className="text-slate-500 font-bold block mb-1">سعر المتر (ج.م):</label>
+                    <label className="text-slate-500 font-bold block mb-1">سعر شراء المتر (ج.م):</label>
                     <input
                       type="number"
                       min="1"
                       required
-                      value={fabricPrice}
-                      onChange={e => setFabricPrice(Number(e.target.value))}
+                      value={unitCost}
+                      onChange={e => setUnitCost(Number(e.target.value))}
                       className="w-full border border-slate-200 rounded-xl px-3 py-1.5 font-mono font-bold text-slate-900 focus:outline-none bg-white"
                     />
                   </div>
@@ -641,10 +635,10 @@ export default function FabricSalesPage() {
                 </div>
               </div>
 
-              {/* Discount Section (خصم للزبون) */}
+              {/* Discount Section (خصم المورد) */}
               <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 space-y-2">
                 <div className="flex justify-between items-center">
-                  <label className="text-slate-900 font-black">نسبة / قيمة الخصم للزبون:</label>
+                  <label className="text-slate-900 font-black">خصم المورد (الكمية / التخفيض):</label>
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
@@ -673,7 +667,7 @@ export default function FabricSalesPage() {
                     min="0"
                     value={discountValue}
                     onChange={e => setDiscountValue(Number(e.target.value))}
-                    placeholder={discountType === 'PERCENT' ? 'مثال: 10%' : 'مثال: 200 ج'}
+                    placeholder={discountType === 'PERCENT' ? 'مثال: 5%' : 'مثال: 500 ج'}
                     className="w-full border border-slate-200 rounded-xl px-3 py-1.5 font-mono font-bold text-slate-900 focus:outline-none bg-white"
                   />
                   <div className="shrink-0 font-mono font-black text-rose-700 text-xs">
@@ -682,19 +676,19 @@ export default function FabricSalesPage() {
                 </div>
               </div>
 
-              {/* Payment Method Selection for Customer (طريقة الدفع للزبون) */}
-              <div className="space-y-2 bg-emerald-50/60 p-3.5 rounded-2xl border border-emerald-200">
-                <label className="text-emerald-950 font-black block">طريقة الدفع للزبون:</label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-                  {(['نقدي', 'إنستاباي', 'فودافون كاش', 'فيزا / كارت', 'بالآجل / دفعات'] as const).map(m => (
+              {/* Supplier Payment Method Picker (3 الطرق للموردين) */}
+              <div className="space-y-2 bg-blue-50/60 p-3.5 rounded-2xl border border-blue-200">
+                <label className="text-blue-950 font-black block">طريقة الدفع للمورد (3 طرق):</label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  {(['نقدي (كاش)', 'شيكات بنكية', 'على دفعات / آجل'] as const).map(m => (
                     <button
                       key={m}
                       type="button"
                       onClick={() => setPaymentMethod(m)}
                       className={`py-2 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer border text-center ${
                         paymentMethod === m
-                          ? 'bg-emerald-700 text-white border-emerald-800 shadow-2xs font-black'
-                          : 'bg-white text-slate-800 border-emerald-200 hover:bg-emerald-100/50'
+                          ? 'bg-blue-900 text-white border-blue-950 shadow-2xs font-black'
+                          : 'bg-white text-slate-800 border-blue-200 hover:bg-blue-100/50'
                       }`}
                     >
                       {m}
@@ -704,13 +698,13 @@ export default function FabricSalesPage() {
 
                 <div className="grid grid-cols-2 gap-3 pt-2">
                   <div>
-                    <label className="text-emerald-950 font-bold block mb-1">المبلغ المحصل الآن (ج.م):</label>
+                    <label className="text-blue-950 font-bold block mb-1">المبلغ المسدد للمورد (ج.م):</label>
                     <input
                       type="number"
                       min="0"
                       value={paidAmount}
                       onChange={e => setPaidAmount(Number(e.target.value))}
-                      className="w-full border border-emerald-300 rounded-xl px-3 py-1.5 font-mono font-black text-emerald-950 focus:outline-none bg-white"
+                      className="w-full border border-blue-300 rounded-xl px-3 py-1.5 font-mono font-black text-blue-950 focus:outline-none bg-white"
                     />
                   </div>
 
@@ -724,21 +718,21 @@ export default function FabricSalesPage() {
               </div>
 
               <div>
-                <label className="text-slate-700 font-bold block mb-1">ملاحظات الفاتورة:</label>
+                <label className="text-slate-700 font-bold block mb-1">ملاحظات الشراء والرصيد:</label>
                 <input
                   type="text"
-                  placeholder="ملاحظات تسليم الخامات..."
-                  value={invNotes}
-                  onChange={e => setInvNotes(e.target.value)}
+                  placeholder="ملاحظات..."
+                  value={purNotes}
+                  onChange={e => setPurNotes(e.target.value)}
                   className="w-full border border-slate-200 rounded-xl px-3 py-1.5 text-slate-900 focus:outline-none"
                 />
               </div>
 
               <div className="pt-2 flex gap-2">
                 <button type="submit" className="flex-1 bg-brand-gold hover:bg-amber-400 text-slate-950 py-3 rounded-2xl font-black text-xs shadow-gold cursor-pointer">
-                  تأكيد وتجميع الفاتورة والطباعة ✓
+                  تأكيد وتأمين فاتورة الشراء والطباعة ✓
                 </button>
-                <button type="button" onClick={() => setShowAddInvoiceModal(false)} className="flex-1 bg-slate-100 text-slate-700 py-3 rounded-2xl font-bold text-xs cursor-pointer">
+                <button type="button" onClick={() => setShowAddPurchaseModal(false)} className="flex-1 bg-slate-100 text-slate-700 py-3 rounded-2xl font-bold text-xs cursor-pointer">
                   إلغاء
                 </button>
               </div>
@@ -747,36 +741,36 @@ export default function FabricSalesPage() {
         </div>
       )}
 
-      {/* ↩️ Modal: Create Customer Return */}
+      {/* ↩️ Modal: Create Supplier Return */}
       {showAddReturnModal && (
         <div className="modal-overlay fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-200">
             <div className="flex justify-between items-center pb-2 border-b border-slate-100">
-              <h3 className="font-bold text-slate-900 text-sm">تسجيل مرتجع مبيعات لعميل</h3>
+              <h3 className="font-bold text-slate-900 text-sm">تسجيل مرتجع شراء لمورد</h3>
               <button onClick={() => setShowAddReturnModal(false)} className="w-7 h-7 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-xs cursor-pointer">✕</button>
             </div>
 
             <form onSubmit={handleCreateReturn} className="space-y-3 text-xs">
               <div>
-                <label className="text-slate-700 font-bold block mb-1">اسم العميل:</label>
+                <label className="text-slate-700 font-bold block mb-1">اسم المورد:</label>
                 <input
                   type="text"
                   required
-                  placeholder="اسم العميل..."
-                  value={retCustName}
-                  onChange={e => setRetCustName(e.target.value)}
+                  placeholder="اسم المورد..."
+                  value={retSupplierName}
+                  onChange={e => setRetSupplierName(e.target.value)}
                   className="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900 focus:outline-none focus:border-amber-500"
                 />
               </div>
 
               <div>
-                <label className="text-slate-700 font-bold block mb-1">رقم الهاتف ورقم الفاتورة الأصلية:</label>
+                <label className="text-slate-700 font-bold block mb-1">الهاتف ورقم فاتورة الشراء الأصلية:</label>
                 <div className="grid grid-cols-2 gap-2">
                   <input
                     type="text"
                     placeholder="الهاتف..."
-                    value={retCustPhone}
-                    onChange={e => setRetCustPhone(e.target.value)}
+                    value={retSupplierPhone}
+                    onChange={e => setRetSupplierPhone(e.target.value)}
                     className="border border-slate-200 rounded-xl px-3 py-2 font-mono text-slate-900 focus:outline-none"
                     dir="ltr"
                   />
@@ -791,24 +785,23 @@ export default function FabricSalesPage() {
               </div>
 
               <div>
-                <label className="text-slate-700 font-bold block mb-1">سبب المرتجع:</label>
+                <label className="text-slate-700 font-bold block mb-1">سبب المرتجع لمورد:</label>
                 <select
                   value={retReason}
                   onChange={e => setRetReason(e.target.value)}
                   className="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900 focus:outline-none"
                 >
-                  <option value="عيوب في القماش">عيوب أو دشت في القماش</option>
-                  <option value="زيادة في الأمتار">أمتار زائدة عن حاجة الشباك</option>
-                  <option value="عدم مطابقة اللون">تغير أو عدم مطابقة تونة اللون</option>
-                  <option value="تغير رأي العميل">تغير رأي العميل</option>
+                  <option value="خامة غير مطابقة للمواصفات">خامة غير مطابقة للمواصفات</option>
+                  <option value="عيوب نسجية">عيوب نسجية أو تلف بالشحن</option>
+                  <option value="أمتار زائدة">أمتار زائدة مرجعة للمورد</option>
                 </select>
               </div>
 
               <div>
-                <label className="text-slate-700 font-bold block mb-1">تفاصيل القماش المرتجع:</label>
+                <label className="text-slate-700 font-bold block mb-1">تفاصيل الخامات المرجعة:</label>
                 <input
                   type="text"
-                  placeholder="مثال: قطيفة تركي (3 متر)..."
+                  placeholder="مثال: لفة تول 10 متر..."
                   value={retItemsDetail}
                   onChange={e => setRetItemsDetail(e.target.value)}
                   className="w-full border border-slate-200 rounded-xl px-3 py-2 text-slate-900 focus:outline-none"
@@ -816,34 +809,33 @@ export default function FabricSalesPage() {
               </div>
 
               <div>
-                <label className="text-slate-700 font-bold block mb-1">المبلغ المسترد للعميل (ج.م):</label>
+                <label className="text-slate-700 font-bold block mb-1">المبلغ المسترد / المخصوم (ج.م):</label>
                 <input
                   type="number"
                   required
                   min="1"
                   value={retAmount}
                   onChange={e => setRetAmount(Number(e.target.value))}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 font-mono font-black text-rose-950 text-sm focus:outline-none"
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 font-mono font-black text-emerald-950 text-sm focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="text-slate-700 font-bold block mb-1">طريقة رد المبلغ للعميل:</label>
+                <label className="text-slate-700 font-bold block mb-1">طريقة الرد من المورد:</label>
                 <select
                   value={retMethod}
                   onChange={e => setRetMethod(e.target.value as any)}
                   className="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900 focus:outline-none"
                 >
-                  <option value="نقدي">نقدي (كاش)</option>
-                  <option value="إنستاباي">إنستاباي</option>
-                  <option value="فودافون كاش">فودافون كاش</option>
-                  <option value="إضافة لرصيد العميل">إضافة لرصيد العميل (دائن)</option>
+                  <option value="خصم من حساب المورد">خصم من حساب المورد الجاري</option>
+                  <option value="نقدي (كاش)">استرداد نقدي (كاش)</option>
+                  <option value="إلغاء شيك">إلغاء / استرداد شيك بنكي</option>
                 </select>
               </div>
 
               <div className="pt-2 flex gap-2">
                 <button type="submit" className="flex-1 bg-rose-600 hover:bg-rose-500 text-white py-2.5 rounded-xl font-black text-xs shadow-xs cursor-pointer">
-                  تسجيل إذن المرتجع ✓
+                  تسجيل إذن المرتجع للمورد ✓
                 </button>
                 <button type="button" onClick={() => setShowAddReturnModal(false)} className="flex-1 bg-slate-100 text-slate-700 py-2.5 rounded-xl font-bold text-xs cursor-pointer">
                   إلغاء
@@ -854,37 +846,37 @@ export default function FabricSalesPage() {
         </div>
       )}
 
-      {/* 🖨️ Printable Receipt Modal */}
-      {printableInvoice && (
+      {/* 🖨️ Printable Voucher Modal */}
+      {printablePurchase && (
         <div className="modal-overlay fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4">
           <style>{`
             @media print {
               body * { visibility: hidden !important; }
-              #printable-sales-invoice, #printable-sales-invoice * { visibility: visible !important; }
-              #printable-sales-invoice { position: fixed !important; left: 0 !important; top: 0 !important; width: 100% !important; margin: 0 !important; padding: 15px !important; background: #ffffff !important; color: #000000 !important; }
+              #printable-purchase-invoice, #printable-purchase-invoice * { visibility: visible !important; }
+              #printable-purchase-invoice { position: fixed !important; left: 0 !important; top: 0 !important; width: 100% !important; margin: 0 !important; padding: 15px !important; background: #ffffff !important; color: #000000 !important; }
               .no-print { display: none !important; }
             }
           `}</style>
 
-          <div id="printable-sales-invoice" className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 text-slate-900 border border-slate-200 my-auto shadow-2xl">
+          <div id="printable-purchase-invoice" className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 text-slate-900 border border-slate-200 my-auto shadow-2xl">
             <div className="no-print flex justify-between items-center pb-2 border-b border-slate-200">
-              <h3 className="font-bold text-sm">إيصال فاتورة مبيعات</h3>
+              <h3 className="font-bold text-sm">إذن فاتورة مشتريات</h3>
               <div className="flex gap-2">
                 <button type="button" onClick={() => window.print()} className="bg-slate-900 text-white px-3 py-1 rounded-xl text-xs font-bold">طباعة PDF</button>
-                <button type="button" onClick={() => setPrintableInvoice(null)} className="bg-slate-100 text-slate-700 px-3 py-1 rounded-xl text-xs font-bold">إغلاق ✕</button>
+                <button type="button" onClick={() => setPrintablePurchase(null)} className="bg-slate-100 text-slate-700 px-3 py-1 rounded-xl text-xs font-bold">إغلاق ✕</button>
               </div>
             </div>
 
             <div className="text-center pb-3 border-b-2 border-slate-900 space-y-1">
               <h2 className="font-black text-lg">مؤسسة أحمد كشك للأقمشة والستائر</h2>
-              <p className="text-xs font-mono font-bold text-amber-800">فاتورة مبيعات قماش ({printableInvoice.invoiceNumber})</p>
-              <div className="text-[11px] text-slate-500 font-mono">{printableInvoice.date} — {printableInvoice.branch}</div>
+              <p className="text-xs font-mono font-bold text-blue-900">فاتورة شراء خامات من مورد ({printablePurchase.invoiceNumber})</p>
+              <div className="text-[11px] text-slate-500 font-mono">{printablePurchase.date} — {printablePurchase.branch}</div>
             </div>
 
             <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs space-y-1">
-              <div><strong>اسم العميل:</strong> {printableInvoice.customerName}</div>
-              <div><strong>الهاتف:</strong> {printableInvoice.customerPhone}</div>
-              <div><strong>طريقة الدفع:</strong> {printableInvoice.paymentMethod}</div>
+              <div><strong>المورد:</strong> {printablePurchase.supplierName}</div>
+              <div><strong>الهاتف:</strong> {printablePurchase.supplierPhone}</div>
+              <div><strong>طريقة الدفع:</strong> {printablePurchase.paymentMethod}</div>
             </div>
 
             <table className="w-full text-right text-xs border-collapse border border-slate-300">
@@ -892,17 +884,17 @@ export default function FabricSalesPage() {
                 <tr>
                   <th className="p-2 border border-slate-300">الصنف</th>
                   <th className="p-2 border border-slate-300 text-center font-mono">الأمتار</th>
-                  <th className="p-2 border border-slate-300 text-center font-mono">سعر المتر</th>
-                  <th className="p-2 border border-slate-300 text-center font-mono">الإجمالي</th>
+                  <th className="p-2 border border-slate-300 text-center font-mono">سعر الشراء</th>
+                  <th className="p-2 border border-slate-300 text-center font-mono">التكلفة</th>
                 </tr>
               </thead>
               <tbody>
-                {printableInvoice.items.map((it, idx) => (
+                {printablePurchase.items.map((it, idx) => (
                   <tr key={idx} className="border-b border-slate-200">
                     <td className="p-2 border border-slate-300 font-bold">{it.name}</td>
                     <td className="p-2 border border-slate-300 text-center font-mono">{it.meters}م</td>
-                    <td className="p-2 border border-slate-300 text-center font-mono">{it.pricePerMeter} ج</td>
-                    <td className="p-2 border border-slate-300 text-center font-mono font-bold">{it.totalPrice} ج</td>
+                    <td className="p-2 border border-slate-300 text-center font-mono">{it.unitCost} ج</td>
+                    <td className="p-2 border border-slate-300 text-center font-mono font-bold">{it.totalCost} ج</td>
                   </tr>
                 ))}
               </tbody>
@@ -910,27 +902,27 @@ export default function FabricSalesPage() {
 
             <div className="space-y-1 font-mono text-xs text-right border-t border-slate-200 pt-2">
               <div className="flex justify-between">
-                <span>المبلغ قبل الخصم:</span>
-                <span>{printableInvoice.subtotal.toLocaleString()} ج</span>
+                <span>الإجمالي قبل الخصم:</span>
+                <span>{printablePurchase.subtotal.toLocaleString()} ج</span>
               </div>
-              {printableInvoice.discountAmount > 0 && (
+              {printablePurchase.discountAmount > 0 && (
                 <div className="flex justify-between text-rose-700 font-bold">
-                  <span>الخصم الممنوح:</span>
-                  <span>-{printableInvoice.discountAmount.toLocaleString()} ج</span>
+                  <span>خصم المورد:</span>
+                  <span>-{printablePurchase.discountAmount.toLocaleString()} ج</span>
                 </div>
               )}
               <div className="flex justify-between font-black text-sm text-slate-950 pt-1 border-t border-slate-300">
                 <span>الصافي الكلي:</span>
-                <span>{printableInvoice.totalAmount.toLocaleString()} ج</span>
+                <span>{printablePurchase.totalAmount.toLocaleString()} ج</span>
               </div>
               <div className="flex justify-between text-emerald-800 font-bold">
-                <span>المدفوع:</span>
-                <span>{printableInvoice.paidAmount.toLocaleString()} ج</span>
+                <span>المسدد:</span>
+                <span>{printablePurchase.paidAmount.toLocaleString()} ج</span>
               </div>
-              {printableInvoice.remainingAmount > 0 && (
+              {printablePurchase.remainingAmount > 0 && (
                 <div className="flex justify-between text-rose-800 font-bold">
-                  <span>المتبقي بالآجل:</span>
-                  <span>{printableInvoice.remainingAmount.toLocaleString()} ج</span>
+                  <span>المتبقي آجل:</span>
+                  <span>{printablePurchase.remainingAmount.toLocaleString()} ج</span>
                 </div>
               )}
             </div>
