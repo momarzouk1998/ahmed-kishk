@@ -157,7 +157,6 @@
     background-color: #f1f5f9 !important;
     font-weight: 800 !important;
   }
-}
 
   /* 7. Prevent page breaks inside rows/cards */
   .page-break-inside-avoid, tr, .print-card {

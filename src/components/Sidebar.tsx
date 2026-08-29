@@ -28,12 +28,19 @@ export default function Sidebar() {
   const [isIos, setIsIos] = useState<boolean>(false);
   const [showIosModal, setShowIosModal] = useState<boolean>(false);
 
-  // Accordion state
+  // Accordion state - FULLY MANUAL CONTROL (no localStorage)
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     pipeline: true,
     sales: false,
     admin: false,
   });
+
+  const toggleSection = (key: string) => {
+    setExpandedSections(prev => {
+      const newState = { ...prev, [key]: !prev[key] };
+      return newState;
+    });
+  };
 
   useEffect(() => {
     // Purge old stale permission caches to prevent old sidebar items from appearing
@@ -117,10 +124,6 @@ export default function Sidebar() {
     close();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
-
-  const toggleSection = (key: string) => {
-    setExpandedSections(prev => ({ ...prev, [key]: !prev[key] }));
-  };
 
   const handleLogout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
