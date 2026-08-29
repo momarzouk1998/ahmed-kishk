@@ -1514,12 +1514,16 @@ export default function PricingDetailPage() {
                     saveStoredPipelineOrders([finalOrder, ...storedOrders]);
                   }
 
-                  // Force-push to Postgres DB via /api/pipeline-orders directly
+                  // Sync to server via system-data API (the correct endpoint)
                   try {
-                    await fetch('/api/pipeline-orders', {
+                    const allOrders = getStoredPipelineOrders();
+                    await fetch('/api/system-data', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify(finalOrder),
+                      body: JSON.stringify({
+                        key: 'ahmed_kishk_pipeline_orders_v5',
+                        data: allOrders,
+                      }),
                     });
                   } catch (err) {
                     console.error('Failed to sync to database:', err);

@@ -65,8 +65,42 @@ export default function ContractPrintModal({ isOpen, onClose, data }: ContractPr
   };
 
   return (
-    <div className="modal-overlay fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs">
-      <div id="printable-contract-modal" className="bg-white text-slate-900 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6 sm:p-8 shadow-2xl relative border border-slate-200 print:max-h-none print:shadow-none print:border-none print:p-0">
+    <>
+      <style>{`
+        @media print {
+          @page {
+            size: A4 portrait;
+            margin: 10mm;
+          }
+          body.printing-modal * {
+            visibility: hidden !important;
+          }
+          body.printing-modal #printable-contract-modal,
+          body.printing-modal #printable-contract-modal * {
+            visibility: visible !important;
+          }
+          body.printing-modal #printable-contract-modal {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 10px !important;
+            background: #ffffff !important;
+            color: #000000 !important;
+            box-shadow: none !important;
+            border: none !important;
+            max-height: none !important;
+            overflow: visible !important;
+          }
+          body.printing-modal .no-print,
+          body.printing-modal .print\\:hidden {
+            display: none !important;
+          }
+        }
+      `}</style>
+      <div className="modal-overlay fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs">
+        <div id="printable-contract-modal" className="bg-white text-slate-900 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6 sm:p-8 shadow-2xl relative border border-slate-200 print:max-h-none print:shadow-none print:border-none print:p-0">
         
         {/* Top Control Bar (Hidden when printing) */}
         <div className="flex items-center justify-between pb-4 border-b border-slate-200 mb-6 print:hidden">
@@ -261,5 +295,6 @@ export default function ContractPrintModal({ isOpen, onClose, data }: ContractPr
         </div>
       </div>
     </div>
+    </>
   );
 }

@@ -196,6 +196,26 @@
     break-inside: avoid !important;
     page-break-inside: avoid !important;
   }
+
+  /* Specific styles for inspection printing */
+  body.printing-inspection main {
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    max-width: 100% !important;
+  }
+
+  body.printing-inspection .bg-slate-50,
+  body.printing-inspection .bg-white {
+    background: #ffffff !important;
+    border: 1px solid #000 !important;
+  }
+
+  body.printing-inspection button,
+  body.printing-inspection input,
+  body.printing-inspection select {
+    display: none !important;
+  }
 }
 
 .print-only {

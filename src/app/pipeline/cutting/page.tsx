@@ -42,7 +42,13 @@ export default function PipelineCuttingPage() {
     load();
   }, []);
 
-  const isSent = (status: any) => status !== 'بانتظار القص';
+  // Orders waiting to be cut: 'بانتظار القص' OR 'في المقص'
+  const isSent = (status: any) =>
+    status === 'تم القص وجاهز للخياطة' ||
+    status === 'في الورشة' ||
+    status === 'مكتمل' ||
+    status === 'تم التركيب بنجاح ومغلق' ||
+    status === 'تم التسليم للعميل بنجاح';
 
   const tabFiltered = orders.filter(o => activeTab === 'OPEN' ? !isSent(o.status) : isSent(o.status));
   const filtered = tabFiltered.filter(o => {

@@ -356,7 +356,11 @@ export default function InspectionsPage() {
                 <button onClick={handleShareWhatsApp} className="flex-1 sm:flex-none justify-center border border-slate-200 text-slate-700 px-3.5 py-2 rounded-xl text-xs font-bold hover:border-slate-400 flex items-center gap-1.5 shadow-xs">
                   <span className="material-symbols-outlined text-[16px]">share</span> واتساب
                 </button>
-                <button onClick={() => window.print()} className="flex-1 sm:flex-none justify-center border border-slate-200 text-slate-700 px-3.5 py-2 rounded-xl text-xs font-bold hover:border-slate-400 flex items-center gap-1.5 shadow-xs">
+                <button onClick={() => {
+                  document.body.classList.add('printing-inspection');
+                  window.print();
+                  setTimeout(() => document.body.classList.remove('printing-inspection'), 1000);
+                }} className="flex-1 sm:flex-none justify-center border border-slate-200 text-slate-700 px-3.5 py-2 rounded-xl text-xs font-bold hover:border-slate-400 flex items-center gap-1.5 shadow-xs">
                   <span className="material-symbols-outlined text-[16px]">print</span> طباعة المقايسة
                 </button>
               </div>
