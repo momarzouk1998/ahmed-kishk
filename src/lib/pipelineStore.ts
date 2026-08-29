@@ -126,7 +126,9 @@ export function getStoredPipelineOrders(): PipelineMasterOrder[] {
     const raw = localStorage.getItem(STORAGE_KEY);
     let list: PipelineMasterOrder[] = [];
     if (!raw) {
-      list = DEFAULT_PIPELINE_ORDERS;
+      // localStorage is empty — trigger background server fetch to hydrate it.
+      fetchPipelineOrders().catch(() => {});
+      return DEFAULT_PIPELINE_ORDERS;
     } else {
       list = JSON.parse(raw);
     }

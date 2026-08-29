@@ -230,7 +230,12 @@ export function getStoredInspections(): InspectionData[] {
       if (Array.isArray(parsed)) list = parsed;
     }
     const filtered = list.filter(i => !isCustomerBlacklisted(i.customerName));
-    return filtered.length > 0 ? filtered : defaultInspectionsList;
+    if (filtered.length > 0) return filtered;
+
+    // localStorage is empty — trigger a background server fetch to hydrate it,
+    // and return empty for now (PageShell's onSyncReady will trigger a remount).
+    fetchInspections().catch(() => {});
+    return defaultInspectionsList;
   } catch {
     return defaultInspectionsList;
   }
@@ -288,11 +293,14 @@ export function getStoredQuotations(): QuotationOrder[] {
   }
   try {
     const raw = localStorage.getItem(QUOTATIONS_STORAGE_KEY);
-    if (!raw) return defaultQuotationsList;
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed) && parsed.length > 0) {
-      return parsed;
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
     }
+    // localStorage is empty — trigger a background server fetch to hydrate it.
+    fetchQuotations().catch(() => {});
     return defaultQuotationsList;
   } catch {
     return defaultQuotationsList;

@@ -174,15 +174,11 @@ export default function InspectionDetailPage() {
   };
 
   const handleSendToPricing = () => {
-    if (data.rooms.length === 0) {
-      alert('يرجى رفع مقاسات غرفة واحدة على الأقل');
-      return;
-    }
+    if (data.rooms.length === 0) return;
     const updatedData: InspectionData = { ...data, status: 'قيد التسعير' };
     setData(updatedData);
     saveOrUpdateInspection(updatedData);
     syncInspectionToPricing(updatedData);
-    alert('تم إرسال المقاسات بنجاح إلى مرحلة (التسعير والعقد) لدى المبيعات.');
     router.push('/pipeline/pricing');
   };
 

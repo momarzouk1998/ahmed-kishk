@@ -9,13 +9,45 @@ interface SidebarContextType {
   toggle: () => void;
   isCollapsed: boolean;
   toggleCollapse: () => void;
+  // Accordion sections — live here so remounts never reset them
+  expandedSections: Record<string, boolean>;
+  toggleSection: (key: string) => void;
 }
 
 const SidebarContext = createContext<SidebarContextType | null>(null);
 
+const SECTIONS_KEY = 'ahmed_kishk_sidebar_sections_manual';
+
+const defaultSections: Record<string, boolean> = {
+  pipeline: true,
+  sales: false,
+  admin: false,
+};
+
 export function SidebarProvider({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
+
+  // ── Accordion state lives in context so Sidebar remounts never reset it ──
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem(SECTIONS_KEY);
+        if (saved) return JSON.parse(saved);
+      } catch {}
+    }
+    return defaultSections;
+  });
+
+  const toggleSection = useCallback((key: string) => {
+    setExpandedSections(prev => {
+      const next = { ...prev, [key]: !prev[key] };
+      try {
+        localStorage.setItem(SECTIONS_KEY, JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -61,7 +93,11 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <SidebarContext.Provider value={{ isOpen, open, close, toggle, isCollapsed, toggleCollapse }}>
+    <SidebarContext.Provider value={{
+      isOpen, open, close, toggle,
+      isCollapsed, toggleCollapse,
+      expandedSections, toggleSection,
+    }}>
       {children}
     </SidebarContext.Provider>
   );

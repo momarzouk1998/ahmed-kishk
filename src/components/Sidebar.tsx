@@ -18,7 +18,7 @@ interface CurrentUser {
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { isOpen, close, isCollapsed, toggleCollapse } = useSidebar();
+  const { isOpen, close, isCollapsed, toggleCollapse, expandedSections, toggleSection } = useSidebar();
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [allowedPageIds, setAllowedPageIds] = useState<string[] | null>(null);
 
@@ -28,32 +28,7 @@ export default function Sidebar() {
   const [isIos, setIsIos] = useState<boolean>(false);
   const [showIosModal, setShowIosModal] = useState<boolean>(false);
 
-  // Accordion state - FULLY MANUAL CONTROL with localStorage persistence
-  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem('ahmed_kishk_sidebar_sections_manual');
-        if (saved) return JSON.parse(saved);
-      } catch {}
-    }
-    return {
-      pipeline: true,
-      sales: false,
-      admin: false,
-    };
-  });
-
-  const toggleSection = (key: string) => {
-    setExpandedSections(prev => {
-      const newState = { ...prev, [key]: !prev[key] };
-      if (typeof window !== 'undefined') {
-        try {
-          localStorage.setItem('ahmed_kishk_sidebar_sections_manual', JSON.stringify(newState));
-        } catch {}
-      }
-      return newState;
-    });
-  };
+  // Accordion state now lives in SidebarContext — removed from local state
 
   useEffect(() => {
     // Purge old stale permission caches to prevent old sidebar items from appearing

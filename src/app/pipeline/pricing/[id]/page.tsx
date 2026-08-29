@@ -425,15 +425,11 @@ export default function PricingDetailPage() {
   };
 
   const handleSendToWorkshop = () => {
-    if (!quotation || quotation.totalAmount === 0) {
-      alert('الرجاء اختيار الأقمشة وتسعير غرف العميل أولاً قبل تحويل العقد للورشة');
-      return;
-    }
+    if (!quotation || quotation.totalAmount === 0) return;
     const updatedList = quotations.map(q => q.id === quotation.id ? { ...q, status: 'تم التحويل للورشة' as const } : q);
     setQuotations(updatedList);
     saveAllQuotations(updatedList);
 
-    // Sync inspection status to 'في الورشة'
     const insp = getInspectionById(quotation.inspectionId);
     if (insp) {
       insp.status = 'في الورشة';
@@ -441,7 +437,6 @@ export default function PricingDetailPage() {
       saveOrUpdateInspection(insp);
     }
 
-    alert('تم اعتماد العقد وتحويل أمر التشغيل إلى الورشة والقص والتفصيل بنجاح ✓.');
     router.push('/pipeline/pricing');
   };
 
@@ -461,23 +456,25 @@ export default function PricingDetailPage() {
   return (
     <PageShell title={`تسعير عقد العميل: ${quotation.customerName}`}>
       <div className="flex flex-col gap-6 max-w-5xl mx-auto">
-        {/* Top Navigation Bar & Action */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
-          <div className="flex items-center gap-3">
-            <Link
-              href="/pipeline/pricing"
-              className="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-sm transition-colors cursor-pointer"
-              title="العودة للقائمة"
-            >
-              ←
-            </Link>
-            <div>
-              <h1 className="font-black text-xl text-slate-900 leading-tight">{quotation.customerName}</h1>
+        {/* Section 1: Customer Details Header — includes back button + status badge */}
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
+          {/* Card top row: back arrow + title + status badge */}
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <Link
+                href="/pipeline/pricing"
+                className="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-sm transition-colors cursor-pointer shrink-0"
+                title="العودة للقائمة"
+              >
+                ←
+              </Link>
+              <div>
+                <h2 className="font-black text-sm text-slate-900 border-r-4 border-amber-500 pr-2.5">
+                  معلومات العميل والمعاينة الميدانية:
+                </h2>
+              </div>
             </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className={`text-xs px-3 py-1 rounded-full font-bold border ${
+            <span className={`text-xs px-3 py-1 rounded-full font-bold border shrink-0 ${
               quotation.status === 'معتمد ومسدد العربون' ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
               : quotation.status === 'تم إرسال المقايسة' ? 'bg-blue-50 text-blue-800 border-blue-200'
               : quotation.status === 'تم التحويل للورشة' ? 'bg-purple-50 text-purple-800 border-purple-200'
@@ -486,13 +483,6 @@ export default function PricingDetailPage() {
               {quotation.status}
             </span>
           </div>
-        </div>
-
-        {/* Section 1: Customer Details Header */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
-          <h2 className="font-black text-sm text-slate-900 border-r-4 border-amber-500 pr-2.5">
-            معلومات العميل والمعاينة الميدانية:
-          </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-xs bg-slate-50/70 p-4 rounded-xl border border-slate-100">
             <div>
               <span className="text-slate-400 font-bold block">اسم العميل:</span>

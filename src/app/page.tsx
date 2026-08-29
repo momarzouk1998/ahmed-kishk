@@ -50,8 +50,8 @@ const dataByRange = {
   }
 };
 
-import { getStoredInspections, getStoredQuotations } from '@/lib/inspectionsStore';
-import { getStoredPipelineOrders } from '@/lib/pipelineStore';
+import { fetchInspections, fetchQuotations } from '@/lib/inspectionsStore';
+import { fetchPipelineOrders } from '@/lib/pipelineStore';
 
 export default function DashboardPage() {
   const [timeRange, setTimeRange] = useState<'MONTH' | 'WEEK' | 'TODAY'>('MONTH');
