@@ -207,15 +207,7 @@ export async function fetchQuotations(): Promise<QuotationOrder[]> {
       const json = await res.json();
       if (json.success && Array.isArray(json.quotations)) {
         if (typeof window !== 'undefined') {
-          const raw = localStorage.getItem(QUOTATIONS_STORAGE_KEY);
-          const localList: QuotationOrder[] = raw ? JSON.parse(raw) : [];
-          const map = new Map<string, QuotationOrder>();
-          localList.forEach(q => { if (q && q.id) map.set(q.id, q); });
-          json.quotations.forEach((q: QuotationOrder) => { if (q && q.id) map.set(q.id, q); });
-
-          const merged = Array.from(map.values());
-          localStorage.setItem(QUOTATIONS_STORAGE_KEY, JSON.stringify(merged));
-          return merged;
+          localStorage.setItem(QUOTATIONS_STORAGE_KEY, JSON.stringify(json.quotations));
         }
         return json.quotations;
       }
