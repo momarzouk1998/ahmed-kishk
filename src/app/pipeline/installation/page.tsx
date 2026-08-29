@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
-import { getStoredPipelineOrders, updatePipelineOrderStatus, isTodayOrOverdue } from '@/lib/pipelineStore';
+import { getStoredPipelineOrders, fetchPipelineOrders, updatePipelineOrderStatus, isTodayOrOverdue } from '@/lib/pipelineStore';
 import { formatDate } from '@/lib/dateUtils';
 
 interface InstallJob {
@@ -49,8 +49,11 @@ export default function PipelineInstallationPage() {
   const [selectedBranch, setSelectedBranch] = useState<string>('ALL');
 
   useEffect(() => {
-    const stored = getStoredPipelineOrders();
-    setJobs((stored || []) as any);
+    async function load() {
+      const stored = await fetchPipelineOrders();
+      setJobs((stored || []) as any);
+    }
+    load();
   }, []);
 
   const isSent = (status: InstallJob['status']) => status === 'تم التركيب بنجاح ومغلق';

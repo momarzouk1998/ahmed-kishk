@@ -75,103 +75,108 @@ export default function DashboardPage() {
   const [totalWarehouseMeters, setTotalWarehouseMeters] = useState<number>(2180);
 
   React.useEffect(() => {
-    try {
-      const ins = getStoredInspections();
-      const qot = getStoredQuotations();
-      const orders = getStoredPipelineOrders();
+    async function loadDashboardData() {
+      try {
+        const [resIns, resQot, resOrd, resInv, resCust] = await Promise.all([
+          fetch('/api/inspections', { cache: 'no-store' }).then(r => r.ok ? r.json() : { inspections: [] }),
+          fetch('/api/pricing', { cache: 'no-store' }).then(r => r.ok ? r.json() : { quotations: [] }),
+          fetch('/api/pipeline-orders', { cache: 'no-store' }).then(r => r.ok ? r.json() : { orders: [] }),
+          fetch('/api/inventory', { cache: 'no-store' }).then(r => r.ok ? r.json() : { items: [] }),
+          fetch('/api/customers', { cache: 'no-store' }).then(r => r.ok ? r.json() : { customers: [] }),
+        ]);
 
-      const rawInvoices = localStorage.getItem('ahmed_kishk_sales_invoices_v1');
-      const invoices = rawInvoices ? JSON.parse(rawInvoices) : [];
+        const ins = (resIns.success && resIns.inspections) ? resIns.inspections : getStoredInspections();
+        const qot = (resQot.success && resQot.quotations) ? resQot.quotations : getStoredQuotations();
+        const orders = (resOrd.success && resOrd.orders) ? resOrd.orders : getStoredPipelineOrders();
+        const invItems = (resInv.success && resInv.items) ? resInv.items : [];
+        const customers = (resCust.success && resCust.customers) ? resCust.customers : [];
 
-      const rawCust = localStorage.getItem('ahmed_kishk_customers_v3');
-      const customers = rawCust ? JSON.parse(rawCust) : [];
+        const totalSales = 0;
+        const totalPaid = 0;
+        const pricingSales = qot.reduce((sum: number, q: any) => sum + (Number(q.totalAmount) || 0), 0);
+        const totalRemaining = customers.reduce((sum: number, c: any) => sum + (c.balance > 0 ? c.balance : 0), 0);
 
-      const totalSales = invoices.reduce((sum: number, inv: any) => sum + (inv.totalAmount || 0), 0);
-      const totalPaid = invoices.reduce((sum: number, inv: any) => sum + (inv.paidAmount || 0), 0);
-      const pricingSales = qot.reduce((sum: number, q: any) => sum + (q.totalAmount || 0), 0);
-      const totalRemaining = customers.reduce((sum: number, c: any) => sum + (c.balance > 0 ? c.balance : 0), 0);
+        setLiveStats({
+          inspectionsCount: ins.filter((i: any) => i.status !== 'مكتمل').length,
+          pricingCount: qot.length,
+          pricingSales,
+          cuttingCount: orders.filter((o: any) => o.status === 'في المقص' || o.status === 'قص القماش').length,
+          tailoringCount: orders.filter((o: any) => o.status === 'في الورشة').length,
+          accessoriesCount: orders.filter((o: any) => o.status === 'تجهيز الاكسسوارات').length,
+          deliveryCount: orders.filter((o: any) => o.status === 'جاهز للاستلام').length,
+          installationCount: orders.filter((o: any) => o.status === 'جاهز للتركيب').length,
+          totalSales,
+          totalPaid,
+          totalRemaining: totalRemaining > 0 ? totalRemaining : qot.reduce((sum: number, q: any) => sum + (Number(q.remainingAmount) || 0), 0),
+        });
 
-      setLiveStats({
-        inspectionsCount: ins.filter((i: any) => i.status !== 'مكتمل').length,
-        pricingCount: qot.length,
-        pricingSales,
-        cuttingCount: orders.filter((o: any) => o.status === 'في المقص' || o.status === 'قص القماش').length,
-        tailoringCount: orders.filter((o: any) => o.status === 'في الورشة').length,
-        accessoriesCount: orders.filter((o: any) => o.status === 'تجهيز الاكسسوارات').length,
-        deliveryCount: orders.filter((o: any) => o.status === 'جاهز للاستلام').length,
-        installationCount: orders.filter((o: any) => o.status === 'جاهز للتركيب').length,
-        totalSales,
-        totalPaid,
-        totalRemaining: totalRemaining > 0 ? totalRemaining : qot.reduce((sum: number, q: any) => sum + (q.remainingAmount || 0), 0),
-      });
+        // Dynamic Branch Sales Calculation
+        const branchList = [
+          { name: 'الفرع الرئيسي (73 سعد زغلول)', type: 'ستائر وأقمشة تنجيد', key: 'الرئيسي' },
+          { name: 'فرع عرابي (18 ش عدلي)', type: 'ستائر وأقمشة تنجيد', key: 'عرابي' },
+          { name: 'فرع عمر أفندي', type: 'أقمشة فقط', key: 'عمر أفندي' },
+          { name: 'فرع الثلاثيني', type: 'أقمشة فقط', key: 'الثلاثيني' },
+        ];
 
-      // Dynamic Branch Sales Calculation
-      const branchList = [
-        { name: 'الفرع الرئيسي (73 سعد زغلول)', type: 'ستائر وأقمشة تنجيد', key: 'الرئيسي' },
-        { name: 'فرع عرابي (18 ش عدلي)', type: 'ستائر وأقمشة تنجيد', key: 'عرابي' },
-        { name: 'فرع عمر أفندي', type: 'أقمشة فقط', key: 'عمر أفندي' },
-        { name: 'فرع الثلاثيني', type: 'أقمشة فقط', key: 'الثلاثيني' },
-      ];
+        const computedBranchSales = branchList.map(b => {
+          const bQot = qot.filter((q: any) => !q.branch || q.branch.includes(b.key));
+          const bSales = bQot.reduce((sum: number, q: any) => sum + (Number(q.totalAmount) || 0), 0);
+          const bOrders = bQot.length;
+          return {
+            name: b.name,
+            type: b.type,
+            sales: (bSales > 0 ? bSales : 45000).toLocaleString() + ' ج',
+            orders: bOrders > 0 ? bOrders : 1,
+            target: `${Math.min(98, Math.max(70, 75 + bOrders * 3))}%`,
+          };
+        });
 
-      const computedBranchSales = branchList.map(b => {
-        const bQot = qot.filter((q: any) => !q.branch || q.branch.includes(b.key));
-        const bInv = invoices.filter((inv: any) => !inv.branch || inv.branch.includes(b.key));
-        const bSales = bQot.reduce((sum: number, q: any) => sum + (q.totalAmount || 0), 0) +
-                       bInv.reduce((sum: number, inv: any) => sum + (inv.totalAmount || 0), 0);
-        const bOrders = bQot.length + bInv.length;
-        return {
-          name: b.name,
-          type: b.type,
-          sales: (bSales > 0 ? bSales : 45000).toLocaleString() + ' ج',
-          orders: bOrders > 0 ? bOrders : 1,
-          target: `${Math.min(98, Math.max(70, 75 + bOrders * 3))}%`,
-        };
-      });
+        // Dynamic Fabric Stock Breakdown Calculation
+        const fallbackFabrics = [
+          { category: 'أقمشة سواريه وحرير', availableMeters: 445, reservedMeters: 80, salesAmount: '78,400 ج' },
+          { category: 'قطيفة وكتان ستائر', availableMeters: 380, reservedMeters: 140, salesAmount: '112,000 ج' },
+          { category: 'تول وشيفون ناعم', availableMeters: 620, reservedMeters: 210, salesAmount: '86,200 ج' },
+          { category: 'بلاك آوت عازل ضوء', availableMeters: 290, reservedMeters: 95, salesAmount: '72,000 ج' },
+        ];
 
-      // Dynamic Fabric Stock Breakdown Calculation
-      const rawInv = localStorage.getItem('ahmed_kishk_inventory_v3');
-      const invItems = rawInv ? JSON.parse(rawInv) : [
-        { category: 'سواريه', totalQuantity: 365, reservedQuantity: 65, sellPrice: 450 },
-        { category: 'ستائر', totalQuantity: 475, reservedQuantity: 185, sellPrice: 380 },
-        { category: 'تول وشيفون', totalQuantity: 620, reservedQuantity: 210, sellPrice: 160 },
-        { category: 'بلاك آوت', totalQuantity: 290, reservedQuantity: 95, sellPrice: 250 },
-      ];
+        const computedFabrics = invItems.length > 0 ? [
+          {
+            category: 'أقمشة سواريه وحرير',
+            availableMeters: invItems.filter((i: any) => i.category?.includes('سواريه') || i.category?.includes('حرير')).reduce((s: number, i: any) => s + (Number(i.totalQuantity) || 0), 0),
+            reservedMeters: invItems.filter((i: any) => i.category?.includes('سواريه') || i.category?.includes('حرير')).reduce((s: number, i: any) => s + (Number(i.reservedQuantity) || 0), 0),
+            salesAmount: (invItems.filter((i: any) => i.category?.includes('سواريه') || i.category?.includes('حرير')).reduce((s: number, i: any) => s + ((Number(i.totalQuantity) || 0) * (Number(i.sellPrice) || 0)), 0) || 78400).toLocaleString() + ' ج',
+          },
+          {
+            category: 'قطيفة وكتان ستائر',
+            availableMeters: invItems.filter((i: any) => i.category?.includes('ستائر') || i.name?.includes('قطيفة')).reduce((s: number, i: any) => s + (Number(i.totalQuantity) || 0), 0),
+            reservedMeters: invItems.filter((i: any) => i.category?.includes('ستائر') || i.name?.includes('قطيفة')).reduce((s: number, i: any) => s + (Number(i.reservedQuantity) || 0), 0),
+            salesAmount: (invItems.filter((i: any) => i.category?.includes('ستائر') || i.name?.includes('قطيفة')).reduce((s: number, i: any) => s + ((Number(i.totalQuantity) || 0) * (Number(i.sellPrice) || 0)), 0) || 112000).toLocaleString() + ' ج',
+          },
+          {
+            category: 'تول وشيفون ناعم',
+            availableMeters: invItems.filter((i: any) => i.category?.includes('شيفون') || i.name?.includes('شيفون') || i.name?.includes('تول')).reduce((s: number, i: any) => s + (Number(i.totalQuantity) || 0), 0),
+            reservedMeters: invItems.filter((i: any) => i.category?.includes('شيفون') || i.name?.includes('شيفون') || i.name?.includes('تول')).reduce((s: number, i: any) => s + (Number(i.reservedQuantity) || 0), 0),
+            salesAmount: (invItems.filter((i: any) => i.category?.includes('شيفون') || i.name?.includes('شيفون') || i.name?.includes('تول')).reduce((s: number, i: any) => s + ((Number(i.totalQuantity) || 0) * (Number(i.sellPrice) || 0)), 0) || 86200).toLocaleString() + ' ج',
+          },
+          {
+            category: 'بلاك آوت عازل ضوء',
+            availableMeters: invItems.filter((i: any) => i.category?.includes('بلاك') || i.name?.includes('بلاك')).reduce((s: number, i: any) => s + (Number(i.totalQuantity) || 0), 0),
+            reservedMeters: invItems.filter((i: any) => i.category?.includes('بلاك') || i.name?.includes('بلاك')).reduce((s: number, i: any) => s + (Number(i.reservedQuantity) || 0), 0),
+            salesAmount: (invItems.filter((i: any) => i.category?.includes('بلاك') || i.name?.includes('بلاك')).reduce((s: number, i: any) => s + ((Number(i.totalQuantity) || 0) * (Number(i.sellPrice) || 0)), 0) || 72000).toLocaleString() + ' ج',
+          },
+        ] : fallbackFabrics;
 
-      const computedFabrics = [
-        {
-          category: 'أقمشة سواريه وحرير',
-          availableMeters: invItems.filter((i: any) => i.category?.includes('سواريه') || i.category?.includes('حرير')).reduce((s: number, i: any) => s + (i.totalQuantity || 120), 0),
-          reservedMeters: invItems.filter((i: any) => i.category?.includes('سواريه') || i.category?.includes('حرير')).reduce((s: number, i: any) => s + (i.reservedQuantity || 20), 0),
-          salesAmount: (invItems.filter((i: any) => i.category?.includes('سواريه') || i.category?.includes('حرير')).reduce((s: number, i: any) => s + ((i.totalQuantity || 120) * (i.sellPrice || 350)), 0) || 78400).toLocaleString() + ' ج',
-        },
-        {
-          category: 'قطيفة وكتان ستائر',
-          availableMeters: invItems.filter((i: any) => i.category?.includes('ستائر') || i.name?.includes('قطيفة')).reduce((s: number, i: any) => s + (i.totalQuantity || 95), 0),
-          reservedMeters: invItems.filter((i: any) => i.category?.includes('ستائر') || i.name?.includes('قطيفة')).reduce((s: number, i: any) => s + (i.reservedQuantity || 28), 0),
-          salesAmount: (invItems.filter((i: any) => i.category?.includes('ستائر') || i.name?.includes('قطيفة')).reduce((s: number, i: any) => s + ((i.totalQuantity || 95) * (i.sellPrice || 380)), 0) || 112000).toLocaleString() + ' ج',
-        },
-        {
-          category: 'تول وشيفون ناعم',
-          availableMeters: invItems.filter((i: any) => i.category?.includes('شيفون') || i.name?.includes('شيفون') || i.name?.includes('تول')).reduce((s: number, i: any) => s + (i.totalQuantity || 180), 0),
-          reservedMeters: invItems.filter((i: any) => i.category?.includes('شيفون') || i.name?.includes('شيفون') || i.name?.includes('تول')).reduce((s: number, i: any) => s + (i.reservedQuantity || 35), 0),
-          salesAmount: (invItems.filter((i: any) => i.category?.includes('شيفون') || i.name?.includes('شيفون') || i.name?.includes('تول')).reduce((s: number, i: any) => s + ((i.totalQuantity || 180) * (i.sellPrice || 160)), 0) || 86200).toLocaleString() + ' ج',
-        },
-        {
-          category: 'بلاك آوت عازل ضوء',
-          availableMeters: invItems.filter((i: any) => i.category?.includes('بلاك') || i.name?.includes('بلاك')).reduce((s: number, i: any) => s + (i.totalQuantity || 160), 0),
-          reservedMeters: invItems.filter((i: any) => i.category?.includes('بلاك') || i.name?.includes('بلاك')).reduce((s: number, i: any) => s + (i.reservedQuantity || 45), 0),
-          salesAmount: (invItems.filter((i: any) => i.category?.includes('بلاك') || i.name?.includes('بلاك')).reduce((s: number, i: any) => s + ((i.totalQuantity || 160) * (i.sellPrice || 250)), 0) || 72000).toLocaleString() + ' ج',
-        },
-      ];
+        const totalMeters = computedFabrics.reduce((sum, f) => sum + f.availableMeters + f.reservedMeters, 0);
 
-      const totalMeters = computedFabrics.reduce((sum, f) => sum + f.availableMeters + f.reservedMeters, 0);
-
-      setDynamicBranchSales(computedBranchSales);
-      setDynamicFabricStats(computedFabrics);
-      setTotalWarehouseMeters(totalMeters > 0 ? totalMeters : 2180);
-    } catch (e) {
-      console.error(e);
+        setDynamicBranchSales(computedBranchSales);
+        setDynamicFabricStats(computedFabrics);
+        setTotalWarehouseMeters(totalMeters > 0 ? totalMeters : 2180);
+      } catch (e) {
+        console.error('Error loading dashboard data:', e);
+      }
     }
+
+    loadDashboardData();
   }, []);
 
   const currentData = dataByRange[timeRange];

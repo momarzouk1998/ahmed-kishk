@@ -117,19 +117,44 @@ export default function FabricSalesPage() {
   const [retMethod, setRetMethod] = useState<CustomerSalesReturn['refundMethod']>('نقدي');
 
   useEffect(() => {
-    try {
-      const rawI = localStorage.getItem(SALES_INVOICES_KEY);
-      if (rawI) setInvoices(JSON.parse(rawI));
-      const rawR = localStorage.getItem(SALES_RETURNS_KEY);
-      if (rawR) setReturns(JSON.parse(rawR));
-    } catch (e) {
-      console.error(e);
+    async function loadSales() {
+      try {
+        const res = await fetch('/api/fabric-sales', { cache: 'no-store' });
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && Array.isArray(json.sales) && json.sales.length > 0) {
+            setInvoices(json.sales);
+            localStorage.setItem(SALES_INVOICES_KEY, JSON.stringify(json.sales));
+          } else {
+            const rawI = localStorage.getItem(SALES_INVOICES_KEY);
+            if (rawI) setInvoices(JSON.parse(rawI));
+          }
+        }
+      } catch (e) {
+        console.error(e);
+      }
+
+      try {
+        const rawR = localStorage.getItem(SALES_RETURNS_KEY);
+        if (rawR) setReturns(JSON.parse(rawR));
+      } catch {}
     }
+
+    loadSales();
   }, []);
 
-  const saveInvoicesState = (list: SalesInvoice[]) => {
+  const saveInvoicesState = async (list: SalesInvoice[]) => {
     setInvoices(list);
     localStorage.setItem(SALES_INVOICES_KEY, JSON.stringify(list));
+    try {
+      await fetch('/api/system-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: SALES_INVOICES_KEY, data: list }),
+      });
+    } catch (err) {
+      console.error('Failed to sync sales with server:', err);
+    }
   };
 
   const saveReturnsState = (list: CustomerSalesReturn[]) => {

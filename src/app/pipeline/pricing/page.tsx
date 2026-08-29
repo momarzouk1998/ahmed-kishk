@@ -5,6 +5,7 @@ import PageShell from '@/components/PageShell';
 import { useRouter } from 'next/navigation';
 import {
   getStoredQuotations,
+  fetchQuotations,
   QuotationOrder,
 } from '@/lib/inspectionsStore';
 function getBranchBadgeStyle(branchName: string) {
@@ -22,7 +23,7 @@ function getBranchBadgeStyle(branchName: string) {
 
 export default function PipelinePricingPage() {
   const router = useRouter();
-  const [quotations, setQuotations] = useState<QuotationOrder[]>([]);
+  const [quotations, setQuotations] = useState<QuotationOrder[]>(() => getStoredQuotations());
   const [activeTab, setActiveTab] = useState<'OPEN' | 'SENT'>('OPEN');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -31,8 +32,11 @@ export default function PipelinePricingPage() {
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
 
   useEffect(() => {
-    const list = getStoredQuotations();
-    setQuotations(list);
+    async function load() {
+      const list = await fetchQuotations();
+      setQuotations(list);
+    }
+    load();
   }, []);
 
   const isSent = (status: QuotationOrder['status']) => status === 'تم التحويل للورشة';

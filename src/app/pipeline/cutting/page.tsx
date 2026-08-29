@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
-import { getStoredPipelineOrders, updatePipelineOrderStatus } from '@/lib/pipelineStore';
+import { getStoredPipelineOrders, fetchPipelineOrders, updatePipelineOrderStatus } from '@/lib/pipelineStore';
 import { formatDateOnly } from '@/lib/dateUtils';
 
 interface RoomFabricItem {
@@ -96,8 +96,11 @@ export default function PipelineCuttingPage() {
   const [selectedOrderForPrint, setSelectedOrderForPrint] = useState<CuttingOrder | null>(null);
 
   useEffect(() => {
-    const stored = getStoredPipelineOrders();
-    setOrders((stored || []) as any);
+    async function load() {
+      const stored = await fetchPipelineOrders();
+      setOrders((stored || []) as any);
+    }
+    load();
   }, []);
 
   const isSent = (status: any) => status !== 'بانتظار القص';

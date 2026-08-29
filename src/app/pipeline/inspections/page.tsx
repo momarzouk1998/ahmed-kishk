@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
 import { useRouter } from 'next/navigation';
-import { getStoredInspections, saveOrUpdateInspection, InspectionData } from '@/lib/inspectionsStore';
+import { getStoredInspections, saveOrUpdateInspection, fetchInspections, InspectionData } from '@/lib/inspectionsStore';
 import { isTodayOrOverdue } from '@/lib/pipelineStore';
 
 export type InspectionSummary = InspectionData;
@@ -62,7 +62,11 @@ export default function PipelineInspectionsPage() {
   const [successToast, setSuccessToast] = useState<string | null>(null);
 
   useEffect(() => {
-    setInspections(getStoredInspections());
+    async function load() {
+      const data = await fetchInspections();
+      setInspections(data);
+    }
+    load();
   }, []);
 
   // New Request Form state
@@ -79,10 +83,21 @@ export default function PipelineInspectionsPage() {
   const [registeredCustomers, setRegisteredCustomers] = useState<any[]>([]);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem('ahmed_kishk_customers_v3');
-      if (raw) setRegisteredCustomers(JSON.parse(raw));
-    } catch {}
+    async function loadCustomers() {
+      try {
+        const res = await fetch('/api/customers', { cache: 'no-store' });
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && Array.isArray(json.customers)) {
+            setRegisteredCustomers(json.customers);
+            return;
+          }
+        }
+        const raw = localStorage.getItem('ahmed_kishk_customers_v3');
+        if (raw) setRegisteredCustomers(JSON.parse(raw));
+      } catch {}
+    }
+    loadCustomers();
   }, [showNewModal]);
 
   // Pagination

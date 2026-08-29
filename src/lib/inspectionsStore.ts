@@ -181,6 +181,43 @@ function isCustomerBlacklisted(name: string): boolean {
   return PERMANENT_BLACKLIST_CUSTOMER_NAMES.some(bn => name.includes(bn));
 }
 
+export async function fetchInspections(): Promise<InspectionData[]> {
+  try {
+    const res = await fetch('/api/inspections', { cache: 'no-store' });
+    if (res.ok) {
+      const json = await res.json();
+      if (json.success && Array.isArray(json.inspections)) {
+        const filtered = json.inspections.filter((i: any) => !isCustomerBlacklisted(i.customerName));
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(INSPECTIONS_STORAGE_KEY, JSON.stringify(filtered));
+        }
+        return filtered;
+      }
+    }
+  } catch (err) {
+    console.error('Error fetching inspections from server:', err);
+  }
+  return getStoredInspections();
+}
+
+export async function fetchQuotations(): Promise<QuotationOrder[]> {
+  try {
+    const res = await fetch('/api/pricing', { cache: 'no-store' });
+    if (res.ok) {
+      const json = await res.json();
+      if (json.success && Array.isArray(json.quotations)) {
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(QUOTATIONS_STORAGE_KEY, JSON.stringify(json.quotations));
+        }
+        return json.quotations;
+      }
+    }
+  } catch (err) {
+    console.error('Error fetching quotations from server:', err);
+  }
+  return getStoredQuotations();
+}
+
 export function getStoredInspections(): InspectionData[] {
   if (typeof window === 'undefined') {
     return defaultInspectionsList;
@@ -193,21 +230,26 @@ export function getStoredInspections(): InspectionData[] {
       if (Array.isArray(parsed)) list = parsed;
     }
     const filtered = list.filter(i => !isCustomerBlacklisted(i.customerName));
-    localStorage.setItem(INSPECTIONS_STORAGE_KEY, JSON.stringify(filtered));
-    return filtered;
+    return filtered.length > 0 ? filtered : defaultInspectionsList;
   } catch {
     return defaultInspectionsList;
   }
 }
 
-export function saveAllInspections(list: InspectionData[]): void {
-  if (typeof window === 'undefined') return;
+export async function saveAllInspections(list: InspectionData[]): Promise<void> {
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem(INSPECTIONS_STORAGE_KEY, JSON.stringify(list));
+    } catch {}
+  }
   try {
-    localStorage.setItem(INSPECTIONS_STORAGE_KEY, JSON.stringify(list));
-    // Save to central server
-    saveServerData(INSPECTIONS_STORAGE_KEY, list);
+    await fetch('/api/system-data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: INSPECTIONS_STORAGE_KEY, data: list }),
+    });
   } catch (err) {
-    console.error('Failed to save inspections to localStorage:', err);
+    console.error('Failed to save inspections to server:', err);
   }
 }
 
@@ -216,7 +258,7 @@ export function getInspectionById(id: string): InspectionData | null {
   return list.find(item => item.id.toUpperCase() === id.toUpperCase()) || null;
 }
 
-export function saveOrUpdateInspection(item: InspectionData): void {
+export async function saveOrUpdateInspection(item: InspectionData): Promise<void> {
   const list = getStoredInspections();
   const index = list.findIndex(i => i.id.toUpperCase() === item.id.toUpperCase());
   let updated: InspectionData[];
@@ -226,7 +268,18 @@ export function saveOrUpdateInspection(item: InspectionData): void {
   } else {
     updated = [item, ...list];
   }
-  saveAllInspections(updated);
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(INSPECTIONS_STORAGE_KEY, JSON.stringify(updated));
+  }
+  try {
+    await fetch('/api/inspections', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(item),
+    });
+  } catch (err) {
+    console.error('Failed to save inspection to API:', err);
+  }
 }
 
 export function getStoredQuotations(): QuotationOrder[] {
@@ -235,10 +288,7 @@ export function getStoredQuotations(): QuotationOrder[] {
   }
   try {
     const raw = localStorage.getItem(QUOTATIONS_STORAGE_KEY);
-    if (!raw) {
-      localStorage.setItem(QUOTATIONS_STORAGE_KEY, JSON.stringify(defaultQuotationsList));
-      return defaultQuotationsList;
-    }
+    if (!raw) return defaultQuotationsList;
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed) && parsed.length > 0) {
       return parsed;
@@ -249,14 +299,44 @@ export function getStoredQuotations(): QuotationOrder[] {
   }
 }
 
-export function saveAllQuotations(list: QuotationOrder[]): void {
-  if (typeof window === 'undefined') return;
+export async function saveAllQuotations(list: QuotationOrder[]): Promise<void> {
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem(QUOTATIONS_STORAGE_KEY, JSON.stringify(list));
+    } catch {}
+  }
   try {
-    localStorage.setItem(QUOTATIONS_STORAGE_KEY, JSON.stringify(list));
-    // Save to central server
-    saveServerData(QUOTATIONS_STORAGE_KEY, list);
+    await fetch('/api/system-data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: QUOTATIONS_STORAGE_KEY, data: list }),
+    });
   } catch (err) {
-    console.error('Failed to save quotations to localStorage:', err);
+    console.error('Failed to save quotations to server:', err);
+  }
+}
+
+export async function saveOrUpdateQuotation(item: QuotationOrder): Promise<void> {
+  const list = getStoredQuotations();
+  const index = list.findIndex(q => q.id.toUpperCase() === item.id.toUpperCase());
+  let updated: QuotationOrder[];
+  if (index >= 0) {
+    updated = [...list];
+    updated[index] = item;
+  } else {
+    updated = [item, ...list];
+  }
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(QUOTATIONS_STORAGE_KEY, JSON.stringify(updated));
+  }
+  try {
+    await fetch('/api/pricing', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(item),
+    });
+  } catch (err) {
+    console.error('Failed to save quotation to API:', err);
   }
 }
 

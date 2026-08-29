@@ -1,6 +1,9 @@
-const CACHE_NAME = 'ahmed-kishk-pwa-v1';
+// Cache version — bump this string on every deploy to force full cache refresh
+const CACHE_VERSION = 'v10';
+const CACHE_NAME = `ahmed-kishk-pwa-${CACHE_VERSION}`;
+
+// Only truly static, infrequently-changing assets belong here
 const STATIC_ASSETS = [
-  '/',
   '/manifest.json',
   '/logo.png',
   '/logo-192.png',
@@ -9,62 +12,66 @@ const STATIC_ASSETS = [
   '/icon-maskable.png',
 ];
 
-// Install Event - Pre-cache static core assets
+// ─── Install: pre-cache only static assets ─────────────────────────────────
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(STATIC_ASSETS);
-    }).then(() => self.skipWaiting())
+    caches.open(CACHE_NAME)
+      .then((cache) => cache.addAll(STATIC_ASSETS))
+      .then(() => self.skipWaiting())   // activate immediately
   );
 });
 
-// Activate Event - Clean up old caches & take control immediately
+// ─── Activate: delete ALL old caches so stale JS/CSS never survives ─────────
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames
-          .filter((name) => name !== CACHE_NAME)
-          .map((name) => caches.delete(name))
-      );
-    }).then(() => self.clients.claim())
+    caches.keys().then((names) =>
+      Promise.all(names.filter((n) => n !== CACHE_NAME).map((n) => caches.delete(n)))
+    ).then(() => self.clients.claim())  // take control of open tabs
   );
 });
 
-// Fetch Event - Network First strategy for API/dynamic routes, Cache First for static assets
+// ─── Fetch: Network-first for everything; cache-fallback only for pure static ─
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Skip non-GET requests or chrome-extension URLs
-  if (request.method !== 'GET' || !url.protocol.startsWith('http')) {
-    return;
-  }
+  // Skip non-GET and non-http(s) requests completely
+  if (request.method !== 'GET' || !url.protocol.startsWith('http')) return;
 
-  // Bypass API requests to ensure dynamic live data from backend/database
-  if (url.pathname.startsWith('/api/')) {
-    return;
-  }
+  // ── NEVER cache these — always hit the network ──────────────────────────
+  const bypassPatterns = [
+    url.pathname.startsWith('/api/'),          // API routes
+    url.pathname.startsWith('/_next/'),         // Next.js JS/CSS chunks (can change on every build)
+    url.pathname === '/',                       // Home/dashboard (live data)
+    url.pathname.startsWith('/pipeline/'),      // Pipeline pages (live data)
+    url.pathname.startsWith('/customers'),
+    url.pathname.startsWith('/orders'),
+    url.pathname.startsWith('/inventory'),
+    url.pathname.startsWith('/reports'),
+    url.pathname.startsWith('/purchases'),
+    url.pathname.startsWith('/suppliers'),
+    url.pathname.startsWith('/fabric-sales'),
+    url.pathname.startsWith('/settings'),
+    url.pathname.startsWith('/branches'),
+    url.pathname.startsWith('/workshop'),
+    url.pathname.startsWith('/login'),
+    url.pathname.startsWith('/profile'),
+  ];
 
-  // Static files or Next.js asset files (_next/static) -> Stale-While-Revalidate / Network First with cache fallback
+  if (bypassPatterns.some(Boolean)) return; // let browser handle it normally
+
+  // ── Static assets only: stale-while-revalidate ───────────────────────────
   event.respondWith(
-    caches.match(request).then((cachedResponse) => {
-      const fetchPromise = fetch(request)
-        .then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
-            const responseToCache = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(request, responseToCache);
-            });
-          }
-          return networkResponse;
-        })
-        .catch(() => {
-          // Return cached response if offline
-          return cachedResponse;
-        });
+    caches.match(request).then((cached) => {
+      const networkFetch = fetch(request).then((res) => {
+        if (res && res.status === 200 && res.type === 'basic') {
+          const clone = res.clone();
+          caches.open(CACHE_NAME).then((c) => c.put(request, clone));
+        }
+        return res;
+      }).catch(() => cached); // offline fallback
 
-      return cachedResponse || fetchPromise;
+      return cached || networkFetch;
     })
   );
 });

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
-import { getStoredPipelineOrders, updatePipelineOrderStatus, isTodayOrOverdue } from '@/lib/pipelineStore';
+import { getStoredPipelineOrders, fetchPipelineOrders, updatePipelineOrderStatus, isTodayOrOverdue } from '@/lib/pipelineStore';
 
 interface DeliveryJob {
   id: string;
@@ -45,8 +45,11 @@ export default function PipelineDeliveryPage() {
   const [selectedBranch, setSelectedBranch] = useState<string>('ALL');
 
   useEffect(() => {
-    const stored = getStoredPipelineOrders();
-    setJobs((stored || []) as any);
+    async function load() {
+      const stored = await fetchPipelineOrders();
+      setJobs((stored || []) as any);
+    }
+    load();
   }, []);
 
   const isSent = (status: any) => status === 'تم التسليم للعميل بنجاح' || status === 'في التركيبات' || status === 'تم التركيب بنجاح ومغلق';

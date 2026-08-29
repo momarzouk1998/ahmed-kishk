@@ -195,23 +195,47 @@ export default function SuppliersPage() {
   ]);
 
   useEffect(() => {
-    try {
-      const rawS = localStorage.getItem(SUPPLIERS_KEY);
-      if (rawS) setSuppliers(JSON.parse(rawS));
+    async function loadSuppliers() {
+      try {
+        const res = await fetch('/api/suppliers', { cache: 'no-store' });
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && Array.isArray(json.suppliers) && json.suppliers.length > 0) {
+            setSuppliers(json.suppliers);
+            localStorage.setItem(SUPPLIERS_KEY, JSON.stringify(json.suppliers));
+          } else {
+            const rawS = localStorage.getItem(SUPPLIERS_KEY);
+            if (rawS) setSuppliers(JSON.parse(rawS));
+          }
+        }
+      } catch (e) {
+        console.error(e);
+      }
 
-      const rawP = localStorage.getItem(SPAYMENTS_KEY);
-      if (rawP) setPayments(JSON.parse(rawP));
+      try {
+        const rawP = localStorage.getItem(SPAYMENTS_KEY);
+        if (rawP) setPayments(JSON.parse(rawP));
 
-      const rawC = localStorage.getItem(SCHECKS_KEY);
-      if (rawC) setChecks(JSON.parse(rawC));
-    } catch (e) {
-      console.error(e);
+        const rawC = localStorage.getItem(SCHECKS_KEY);
+        if (rawC) setChecks(JSON.parse(rawC));
+      } catch {}
     }
+
+    loadSuppliers();
   }, []);
 
-  const saveSuppliersState = (list: Supplier[]) => {
+  const saveSuppliersState = async (list: Supplier[]) => {
     setSuppliers(list);
     localStorage.setItem(SUPPLIERS_KEY, JSON.stringify(list));
+    try {
+      await fetch('/api/system-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: SUPPLIERS_KEY, data: list }),
+      });
+    } catch (err) {
+      console.error('Failed to sync suppliers with server:', err);
+    }
   };
 
   const savePaymentsState = (list: SupplierPayment[]) => {

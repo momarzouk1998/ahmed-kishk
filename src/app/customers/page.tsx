@@ -161,20 +161,44 @@ export default function CustomersPage() {
   const [colNotes, setColNotes] = useState('');
 
   useEffect(() => {
-    try {
-      const rawC = localStorage.getItem(CUSTOMERS_KEY);
-      if (rawC) setCustomers(JSON.parse(rawC));
+    async function loadCustomers() {
+      try {
+        const res = await fetch('/api/customers', { cache: 'no-store' });
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && Array.isArray(json.customers) && json.customers.length > 0) {
+            setCustomers(json.customers);
+            localStorage.setItem(CUSTOMERS_KEY, JSON.stringify(json.customers));
+          } else {
+            const rawC = localStorage.getItem(CUSTOMERS_KEY);
+            if (rawC) setCustomers(JSON.parse(rawC));
+          }
+        }
+      } catch (e) {
+        console.error(e);
+      }
 
-      const rawCol = localStorage.getItem(COLLECTIONS_KEY);
-      if (rawCol) setCollections(JSON.parse(rawCol));
-    } catch (e) {
-      console.error(e);
+      try {
+        const rawCol = localStorage.getItem(COLLECTIONS_KEY);
+        if (rawCol) setCollections(JSON.parse(rawCol));
+      } catch {}
     }
+
+    loadCustomers();
   }, []);
 
-  const saveCustomersState = (list: Customer[]) => {
+  const saveCustomersState = async (list: Customer[]) => {
     setCustomers(list);
     localStorage.setItem(CUSTOMERS_KEY, JSON.stringify(list));
+    try {
+      await fetch('/api/system-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: CUSTOMERS_KEY, data: list }),
+      });
+    } catch (err) {
+      console.error('Failed to sync customers with server:', err);
+    }
   };
 
   const saveCollectionsState = (list: CustomerCollection[]) => {

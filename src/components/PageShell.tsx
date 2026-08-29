@@ -4,7 +4,7 @@ import React from 'react';
 import Sidebar from '@/components/Sidebar';
 import Header from '@/components/Header';
 import { SidebarProvider, useSidebar } from '@/components/SidebarContext';
-import { initCentralSync } from '@/lib/syncService';
+import { initCentralSync, onSyncReady } from '@/lib/syncService';
 
 interface PageShellProps {
   title?: string;
@@ -13,19 +13,19 @@ interface PageShellProps {
   children: React.ReactNode;
 }
 
-/**
- * PageShell - Wraps every authenticated page.
- * Handles:
- *  - Responsive sidebar (drawer on mobile, fixed on desktop)
- *  - Fixed header with hamburger on mobile
- *  - Proper content offset (no pr-72 on mobile)
- *  - Sidebar context provider
- */
 function ShellContent({ title, badge, action, children }: PageShellProps) {
   const { isCollapsed } = useSidebar();
 
+  // Track whether the first server→localStorage sync has completed
+  const [syncReady, setSyncReady] = React.useState(false);
+
   React.useEffect(() => {
+    // Start sync engine (idempotent — only runs once per browser session)
     initCentralSync();
+
+    // When the initial pull from the server is done, flip the flag so
+    // child pages re-read their data from a fully-hydrated localStorage.
+    onSyncReady(() => setSyncReady(true));
   }, []);
 
   return (
@@ -34,7 +34,15 @@ function ShellContent({ title, badge, action, children }: PageShellProps) {
       <Header title={title} badge={badge} action={action} />
       <div className={`pt-16 transition-all duration-300 ${isCollapsed ? 'lg:pr-20' : 'lg:pr-64'}`}>
         <main className="px-4 sm:px-6 lg:px-8 py-6 lg:py-8 max-w-full overflow-x-hidden">
-          {children}
+          {/*
+            Pass syncReady as a key to child content so React remounts
+            the subtree once the server sync completes.  This forces
+            every page that reads from localStorage in its initial
+            useState/useEffect to re-run with the server-hydrated data.
+          */}
+          <React.Fragment key={syncReady ? 'synced' : 'local'}>
+            {children}
+          </React.Fragment>
         </main>
       </div>
     </div>

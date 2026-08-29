@@ -118,19 +118,44 @@ export default function PurchasesPage() {
   const [retMethod, setRetMethod] = useState<SupplierPurchaseReturn['refundMethod']>('خصم من حساب المورد');
 
   useEffect(() => {
-    try {
-      const rawP = localStorage.getItem(PURCHASES_KEY);
-      if (rawP) setPurchases(JSON.parse(rawP));
-      const rawR = localStorage.getItem(PRETURNS_KEY);
-      if (rawR) setReturns(JSON.parse(rawR));
-    } catch (e) {
-      console.error(e);
+    async function loadPurchases() {
+      try {
+        const res = await fetch('/api/purchases', { cache: 'no-store' });
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && Array.isArray(json.purchases) && json.purchases.length > 0) {
+            setPurchases(json.purchases);
+            localStorage.setItem(PURCHASES_KEY, JSON.stringify(json.purchases));
+          } else {
+            const rawP = localStorage.getItem(PURCHASES_KEY);
+            if (rawP) setPurchases(JSON.parse(rawP));
+          }
+        }
+      } catch (e) {
+        console.error(e);
+      }
+
+      try {
+        const rawR = localStorage.getItem(PRETURNS_KEY);
+        if (rawR) setReturns(JSON.parse(rawR));
+      } catch {}
     }
+
+    loadPurchases();
   }, []);
 
-  const savePurchasesState = (list: PurchaseInvoice[]) => {
+  const savePurchasesState = async (list: PurchaseInvoice[]) => {
     setPurchases(list);
     localStorage.setItem(PURCHASES_KEY, JSON.stringify(list));
+    try {
+      await fetch('/api/system-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: PURCHASES_KEY, data: list }),
+      });
+    } catch (err) {
+      console.error('Failed to sync purchases with server:', err);
+    }
   };
 
   const saveReturnsState = (list: SupplierPurchaseReturn[]) => {

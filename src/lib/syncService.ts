@@ -14,6 +14,24 @@ const SYNC_KEYS = [
 
 let isInitialized = false;
 
+// ─── Track whether the first server sync has completed ──────────────────────
+let serverSyncDone = false;
+const syncReadyCallbacks: Array<() => void> = [];
+
+export function onSyncReady(cb: () => void): void {
+  if (serverSyncDone) {
+    cb();
+  } else {
+    syncReadyCallbacks.push(cb);
+  }
+}
+
+function notifySyncReady() {
+  serverSyncDone = true;
+  syncReadyCallbacks.splice(0).forEach((cb) => cb());
+}
+
+// ─── Fetch a single key from the server ─────────────────────────────────────
 export async function fetchServerData(key: string): Promise<any | null> {
   try {
     const res = await fetch(`/api/system-data?key=${encodeURIComponent(key)}`, {
@@ -31,6 +49,7 @@ export async function fetchServerData(key: string): Promise<any | null> {
   }
 }
 
+// ─── Write to server (+ optimistic localStorage update) ─────────────────────
 export async function saveServerData(key: string, data: any): Promise<boolean> {
   try {
     // 1. Update localStorage immediately for instant UI responsiveness
@@ -54,6 +73,7 @@ export async function saveServerData(key: string, data: any): Promise<boolean> {
   }
 }
 
+// ─── Pull all keys from server and hydrate localStorage ─────────────────────
 export async function syncAllWithServer(): Promise<void> {
   if (typeof window === 'undefined') return;
 
@@ -66,11 +86,17 @@ export async function syncAllWithServer(): Promise<void> {
       const serverMap = json.data;
 
       for (const key of SYNC_KEYS) {
-        if (serverMap[key] !== undefined && serverMap[key] !== null) {
-          // If server has data, update localStorage
-          localStorage.setItem(key, JSON.stringify(serverMap[key]));
+        const serverVal = serverMap[key];
+        const hasServerData =
+          serverVal !== undefined &&
+          serverVal !== null &&
+          (Array.isArray(serverVal) ? serverVal.length > 0 : true);
+
+        if (hasServerData) {
+          // Server wins — overwrite local with authoritative server data
+          localStorage.setItem(key, JSON.stringify(serverVal));
         } else {
-          // If server doesn't have this key yet, push local data to seed server
+          // Server is empty — push local data to seed the server
           const localRaw = localStorage.getItem(key);
           if (localRaw) {
             try {
@@ -88,15 +114,40 @@ export async function syncAllWithServer(): Promise<void> {
   }
 }
 
+// ─── Server-first load for a specific key ───────────────────────────────────
+// Call this at the top of a page/component BEFORE reading localStorage.
+// Returns true if server data was found and written to localStorage.
+export async function loadFromServerFirst(key: string): Promise<boolean> {
+  if (typeof window === 'undefined') return false;
+  try {
+    const serverData = await fetchServerData(key);
+    const hasData =
+      serverData !== null &&
+      serverData !== undefined &&
+      (Array.isArray(serverData) ? serverData.length > 0 : true);
+
+    if (hasData) {
+      localStorage.setItem(key, JSON.stringify(serverData));
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+// ─── Bootstrap: run once per browser session ─────────────────────────────────
 export function initCentralSync(): void {
   if (typeof window === 'undefined' || isInitialized) return;
   isInitialized = true;
 
-  // Run initial sync on app boot
-  syncAllWithServer();
+  // First sync: pull server data → hydrate localStorage → notify listeners
+  syncAllWithServer().finally(() => {
+    notifySyncReady();
+  });
 
-  // Periodic background sync every 15 seconds to keep all browsers in real-time sync
+  // Periodic background sync every 15 seconds to keep all browsers in sync
   setInterval(() => {
     syncAllWithServer();
-  }, 15000);
+  }, 15_000);
 }

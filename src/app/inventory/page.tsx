@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
 import { canUserEditPrices } from '@/lib/permissions';
 
@@ -39,6 +39,27 @@ export default function InventoryPage() {
   const [search, setSearch] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
 
+  useEffect(() => {
+    async function loadInventory() {
+      try {
+        const res = await fetch('/api/inventory', { cache: 'no-store' });
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && Array.isArray(json.items) && json.items.length > 0) {
+            setItems(json.items);
+            localStorage.setItem('ahmed_kishk_inventory_v3', JSON.stringify(json.items));
+            return;
+          }
+        }
+        const raw = localStorage.getItem('ahmed_kishk_inventory_v3');
+        if (raw) setItems(JSON.parse(raw));
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    loadInventory();
+  }, []);
+
   // New Item form
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
@@ -59,7 +80,7 @@ export default function InventoryPage() {
     return matchesCat && matchesBranch && matchesSearch;
   });
 
-  const handleAddItem = (e: React.FormEvent) => {
+  const handleAddItem = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !code) return;
 
@@ -83,11 +104,23 @@ export default function InventoryPage() {
       supplier,
     };
 
-    setItems([newItem, ...items]);
+    const updated = [newItem, ...items];
+    setItems(updated);
+    localStorage.setItem('ahmed_kishk_inventory_v3', JSON.stringify(updated));
     setShowAddModal(false);
     setCode('');
     setName('');
     setNewCatInput('');
+
+    try {
+      await fetch('/api/inventory', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newItem),
+      });
+    } catch (err) {
+      console.error('Failed to save item to API:', err);
+    }
   };
 
   const totalCostValue = items.reduce((sum, i) => sum + i.totalQuantity * i.costPrice, 0);

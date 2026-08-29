@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
-import { getStoredPipelineOrders, updatePipelineOrderStatus, saveStoredPipelineOrders } from '@/lib/pipelineStore';
+import { getStoredPipelineOrders, fetchPipelineOrders, updatePipelineOrderStatus, saveStoredPipelineOrders } from '@/lib/pipelineStore';
 import { formatDateOnly } from '@/lib/dateUtils';
 
 interface RoomTailoringDetail {
@@ -159,8 +159,11 @@ export default function PipelineTailoringPage() {
   const [selectedOrderDetails, setSelectedOrderDetails] = useState<TailoringJobOrder | null>(null);
 
   useEffect(() => {
-    const stored = getStoredPipelineOrders();
-    setOrders((stored || []) as any);
+    async function load() {
+      const stored = await fetchPipelineOrders();
+      setOrders((stored || []) as any);
+    }
+    load();
   }, []);
 
   const isSewing = (o: any) => o.status === 'في الورشة' && (!o.localStatus || o.localStatus === 'جاري الخياطة' || o.localStatus === 'بانتظار القص');

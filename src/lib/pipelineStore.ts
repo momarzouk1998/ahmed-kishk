@@ -95,6 +95,30 @@ export function normalizeMasterStage(statusStr: string): GlobalMasterStage {
   return 'المعاينات';
 }
 
+export async function fetchPipelineOrders(): Promise<PipelineMasterOrder[]> {
+  try {
+    const res = await fetch('/api/pipeline-orders', { cache: 'no-store' });
+    if (res.ok) {
+      const json = await res.json();
+      if (json.success && Array.isArray(json.orders)) {
+        const deleted = getDeletedOrderIds();
+        const filtered = json.orders.filter((o: any) => {
+          const isIdDel = deleted.includes(o.id) || deleted.includes(o.orderId);
+          const isNameDel = PERMANENT_BLACKLIST_NAMES.some(bn => o.customerName?.includes(bn));
+          return !isIdDel && !isNameDel;
+        });
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+        }
+        return filtered;
+      }
+    }
+  } catch (err) {
+    console.error('Error fetching pipeline orders from server:', err);
+  }
+  return getStoredPipelineOrders();
+}
+
 export function getStoredPipelineOrders(): PipelineMasterOrder[] {
   if (typeof window === 'undefined') return DEFAULT_PIPELINE_ORDERS;
   try {
@@ -111,7 +135,6 @@ export function getStoredPipelineOrders(): PipelineMasterOrder[] {
       const isNameDel = PERMANENT_BLACKLIST_NAMES.some(bn => o.customerName.includes(bn));
       return !isIdDel && !isNameDel;
     });
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
     return filtered;
   } catch (err) {
     console.error('Error reading pipeline orders:', err);
@@ -119,24 +142,32 @@ export function getStoredPipelineOrders(): PipelineMasterOrder[] {
   }
 }
 
-export function saveStoredPipelineOrders(orders: PipelineMasterOrder[]) {
-  if (typeof window === 'undefined') return;
+export async function saveStoredPipelineOrders(orders: PipelineMasterOrder[]) {
+  const deleted = getDeletedOrderIds();
+  const filtered = orders.filter(o => {
+    const isIdDel = deleted.includes(o.id) || deleted.includes(o.orderId);
+    const isNameDel = PERMANENT_BLACKLIST_NAMES.some(bn => o.customerName.includes(bn));
+    return !isIdDel && !isNameDel;
+  });
+
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+    } catch {}
+  }
+
   try {
-    const deleted = getDeletedOrderIds();
-    const filtered = orders.filter(o => {
-      const isIdDel = deleted.includes(o.id) || deleted.includes(o.orderId);
-      const isNameDel = PERMANENT_BLACKLIST_NAMES.some(bn => o.customerName.includes(bn));
-      return !isIdDel && !isNameDel;
+    await fetch('/api/system-data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: STORAGE_KEY, data: filtered }),
     });
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
-    // Save to central server
-    saveServerData(STORAGE_KEY, filtered);
   } catch (err) {
-    console.error('Error saving pipeline orders:', err);
+    console.error('Error saving pipeline orders to server:', err);
   }
 }
 
-export function updatePipelineOrderStatus(
+export async function updatePipelineOrderStatus(
   id: string,
   newStatus: GlobalMasterStage | string,
   localStatus?: string
@@ -155,7 +186,20 @@ export function updatePipelineOrderStatus(
     return o;
   });
 
-  saveStoredPipelineOrders(updated);
+  await saveStoredPipelineOrders(updated);
+
+  const targetOrder = updated.find(o => o.id === id || o.orderId === id);
+  if (targetOrder) {
+    try {
+      await fetch('/api/pipeline-orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(targetOrder),
+      });
+    } catch (err) {
+      console.error('Error updating order on API:', err);
+    }
+  }
 }
 
 export function addPipelineOrder(order: Partial<PipelineMasterOrder>): PipelineMasterOrder {
