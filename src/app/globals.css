@@ -62,6 +62,11 @@
 
 /* 🖨️ Professional A4 Printable Template Stylesheet */
 @media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm 12mm;
+  }
+
   html, body {
     background: #ffffff !important;
     color: #000000 !important;
@@ -72,67 +77,83 @@
     line-height: 1.4 !important;
     height: auto !important;
     overflow: visible !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
-  /* When printing from modal, hide page content and show only modal */
-  body:has(.modal-overlay) main > *:not(.modal-overlay):not(:has(.modal-overlay)) {
+  /* Hide everything by default when a modal-overlay is present */
+  body > * {
     display: none !important;
   }
 
-  /* Hide UI elements, navigation, sidebar, buttons, symbols */
+  /* Show only the Next.js root */
+  body > #__next,
+  body > div#__next {
+    display: block !important;
+  }
+
+  /* Hide sidebar, header, nav, and all page chrome */
   aside,
   header,
   nav,
-  button,
-  input,
   .no-print,
   .print\:hidden,
-  [role="button"],
   span.material-symbols-outlined {
     display: none !important;
   }
 
+  /* Hide main page content, show only the modal */
+  main {
+    display: none !important;
+  }
+
+  /* The modal overlay becomes the print root */
   .modal-overlay {
     display: block !important;
     position: static !important;
     inset: auto !important;
     background: #ffffff !important;
+    backdrop-filter: none !important;
     padding: 0 !important;
     margin: 0 !important;
     width: 100% !important;
     height: auto !important;
     overflow: visible !important;
+    z-index: auto !important;
   }
 
+  /* The printable card itself */
   #printable-contract-modal {
-    position: static !important;
     display: block !important;
+    position: static !important;
     width: 100% !important;
     max-width: 100% !important;
     max-height: none !important;
+    height: auto !important;
     overflow: visible !important;
     background: #ffffff !important;
     color: #000000 !important;
     box-shadow: none !important;
     border: none !important;
+    border-radius: 0 !important;
     padding: 0 !important;
-    margin: 0 !important;
+    margin: 0 auto !important;
   }
 
-  main {
-    margin: 0 !important;
-    padding: 0 !important;
-    max-width: 100% !important;
-    width: 100% !important;
+  /* Hide the top control bar (buttons/close) inside the modal */
+  #printable-contract-modal > div:first-child {
+    display: none !important;
+  }
+
+  /* Hide all buttons and inputs inside the printable area */
+  button,
+  input,
+  [role="button"] {
+    display: none !important;
   }
 
   a[href]::after {
     content: none !important;
-  }
-
-  @page {
-    size: A4 portrait;
-    margin: 10mm 12mm !important;
   }
 
   .print-only {
@@ -158,7 +179,7 @@
     font-weight: 800 !important;
   }
 
-  /* 7. Prevent page breaks inside rows/cards */
+  /* Prevent page breaks inside rows/cards */
   .page-break-inside-avoid, tr, .print-card {
     break-inside: avoid !important;
     page-break-inside: avoid !important;

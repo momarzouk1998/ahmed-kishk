@@ -139,14 +139,14 @@ async function main() {
   });
 
   const inventoryItems = [
-    { code: 'SAT-01', name: 'ستان سواريه', category: 'سواريه', quantityMeters: 120, costPerMeter: 320, pricePerMeter: 450, branch: 'الفرع الرئيسي', supplierId: supplier1.id },
-    { code: 'SLK-01', name: 'حرير طبيعي', category: 'سواريه', quantityMeters: 45, costPerMeter: 650, pricePerMeter: 900, branch: 'فرع عرابي', supplierId: supplier1.id },
-    { code: 'CRP-01', name: 'كريب مزدوج', category: 'سواريه', quantityMeters: 200, costPerMeter: 200, pricePerMeter: 300, branch: 'فرع عمر أفندي', supplierId: supplier1.id },
-    { code: 'CHF-01', name: 'شيفون ناعم', category: 'سواريه', quantityMeters: 180, costPerMeter: 150, pricePerMeter: 250, branch: 'فرع الثلاثيني', supplierId: supplier1.id },
-    { code: 'VLV-01', name: 'قطيفة ستائر', category: 'ستائر', quantityMeters: 95, costPerMeter: 260, pricePerMeter: 380, branch: 'الفرع الرئيسي', supplierId: supplier2.id },
-    { code: 'LNN-01', name: 'كتان بلجيكي', category: 'ستائر', quantityMeters: 110, costPerMeter: 220, pricePerMeter: 320, branch: 'فرع عرابي', supplierId: supplier2.id },
-    { code: 'TUL-01', name: 'تول ناعم', category: 'ستائر', quantityMeters: 350, costPerMeter: 70, pricePerMeter: 120, branch: 'الفرع الرئيسي', supplierId: supplier2.id },
-    { code: 'BLK-01', name: 'بلاك آوت', category: 'ستائر', quantityMeters: 160, costPerMeter: 180, pricePerMeter: 280, branch: 'فرع عرابي', supplierId: supplier2.id },
+    { code: 'SAT-01', name: 'ستان سواريه', category: 'سواريه', totalQuantity: 120, costPrice: 320, sellPrice: 450, branch: 'الفرع الرئيسي', supplier: 'شركة النيل' },
+    { code: 'SLK-01', name: 'حرير طبيعي', category: 'سواريه', totalQuantity: 45, costPrice: 650, sellPrice: 900, branch: 'فرع عرابي', supplier: 'شركة النيل' },
+    { code: 'CRP-01', name: 'كريب مزدوج', category: 'سواريه', totalQuantity: 200, costPrice: 200, sellPrice: 300, branch: 'فرع عمر أفندي', supplier: 'شركة النيل' },
+    { code: 'CHF-01', name: 'شيفون ناعم', category: 'سواريه', totalQuantity: 180, costPrice: 150, sellPrice: 250, branch: 'فرع الثلاثيني', supplier: 'مستورد الشرق' },
+    { code: 'VLV-01', name: 'قطيفة ستائر', category: 'ستائر', totalQuantity: 95, costPrice: 260, sellPrice: 380, branch: 'الفرع الرئيسي', supplier: 'مصنع الدلتا' },
+    { code: 'LNN-01', name: 'كتان بلجيكي', category: 'ستائر', totalQuantity: 110, costPrice: 220, sellPrice: 320, branch: 'فرع عرابي', supplier: 'مصنع الدلتا' },
+    { code: 'TUL-01', name: 'تول ناعم', category: 'ستائر', totalQuantity: 350, costPrice: 70, sellPrice: 120, branch: 'الفرع الرئيسي', supplier: 'مصنع الدلتا' },
+    { code: 'BLK-01', name: 'بلاك آوت', category: 'ستائر', totalQuantity: 160, costPrice: 180, sellPrice: 280, branch: 'فرع عرابي', supplier: 'مصنع الدلتا' },
   ];
 
   for (const item of inventoryItems) {

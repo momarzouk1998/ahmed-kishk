@@ -49,8 +49,6 @@ model User {
   avatar    String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  InspectionRequest InspectionRequest[]
 }
 
 model Customer {
@@ -59,81 +57,87 @@ model Customer {
   phone     String   @unique
   address   String?
   city      String?
+  balance   Float    @default(0)
   notes     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   InspectionRequest InspectionRequest[]
-  Order             Order[]
-  FabricSale        FabricSale[]
 }
 
 model InspectionRequest {
-  id           String           @id @default(cuid())
-  customerId   String
-  customer     Customer         @relation(fields: [customerId], references: [id])
-  status       InspectionStatus @default(PENDING)
-  stage        String           @default("معاينة")
+  id           String    @id @default(cuid())
+  customerId   String?
+  customer     Customer? @relation(fields: [customerId], references: [id])
+  customerName String
+  phone        String
   address      String
-  scheduledAt  DateTime?
-  installAt    DateTime?
-  assignedToId String?
-  assignedTo   User?            @relation(fields: [assignedToId], references: [id])
-  totalCost    Float            @default(0)
-  branch       String           @default("الفرع الرئيسي")
+  branch       String    @default("الفرع الرئيسي")
+  scheduledAt  String
+  technician   String    @default("أحمد كشك")
+  status       String    @default("تم رفع المقاسات")
+  isLocked     Boolean   @default(false)
   notes        String?
-  createdAt    DateTime         @default(now())
-  updatedAt    DateTime         @updatedAt
-
-  rooms RoomMeasurement[]
+  rooms        Json      @default("[]")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 }
 
-model RoomMeasurement {
-  id                  String            @id @default(cuid())
-  inspectionRequestId String
-  inspectionRequest   InspectionRequest @relation(fields: [inspectionRequestId], references: [id], onDelete: Cascade)
-  roomName            String
-  roomType            RoomType          @default(WINDOW)
-  widthCm             Float
-  heightCm            Float
-  sides               Int               @default(2)
-  extraHeightCm       Float?            @default(0)
-  installationType    InstallationType  @default(CEILING_TRACK)
-  ceilingType         CeilingType       @default(STANDARD)
-  fabricMeters        Float?            @default(0)
-  avgPricePerMeter    Float?            @default(0)
-  estimatedCost       Float?            @default(0)
-  createdAt           DateTime          @default(now())
-  updatedAt           DateTime          @updatedAt
-
-  fabrics FabricDetail[]
+model QuotationOrder {
+  id              String   @id @default(cuid())
+  inspectionId    String
+  customerName    String
+  phone           String
+  address         String
+  branch          String   @default("الفرع الرئيسي")
+  status          String   @default("بانتظار التسعير")
+  totalAmount     Float    @default(0)
+  depositPaid     Float    @default(0)
+  remainingAmount Float    @default(0)
+  date            String
+  deliveryDate    String?
+  estimatorName   String   @default("أحمد كشك")
+  rooms           Json     @default("[]")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
-model FabricDetail {
-  id                String          @id @default(cuid())
-  roomMeasurementId String
-  roomMeasurement   RoomMeasurement @relation(fields: [roomMeasurementId], references: [id], onDelete: Cascade)
-  layerName         String
-  fabricCode        String?
-  hasPleatedTape    Boolean         @default(false)
-  hasEyeletRings    Boolean         @default(false)
-  notes             String?
+model PipelineOrder {
+  id              String   @id @default(cuid())
+  orderId         String
+  customerName    String
+  phone           String
+  address         String
+  branch          String   @default("الفرع الرئيسي")
+  deliveryDate    String?
+  cutterName      String?
+  tailorName      String?
+  technicianName  String?
+  status          String   @default("في المقص")
+  localStatus     String?  @default("بانتظار القص")
+  totalAmount     Float    @default(0)
+  depositPaid     Float    @default(0)
+  remainingAmount Float    @default(0)
+  rooms           Json     @default("[]")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
 model InventoryItem {
-  id             String   @id @default(cuid())
-  name           String
-  category       String
-  code           String   @unique
-  quantityMeters Float    @default(0)
-  reservedMeters Float    @default(0)
-  costPerMeter   Float    @default(0)
-  pricePerMeter  Float    @default(0)
-  branch         String   @default("الفرع الرئيسي")
-  supplierId     String?
-  supplier       Supplier? @relation(fields: [supplierId], references: [id])
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id               String   @id @default(cuid())
+  code             String   @unique
+  name             String
+  category         String
+  unit             String   @default("متر")
+  totalQuantity    Float    @default(0)
+  reservedQuantity Float    @default(0)
+  costPrice        Float    @default(0)
+  sellPrice        Float    @default(0)
+  branch           String   @default("الفرع الرئيسي — القاهرة")
+  minAlert         Float    @default(20)
+  supplier         String   @default("شركة النيل")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 }
 
 model Supplier {
@@ -145,49 +149,38 @@ model Supplier {
   notes     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  inventory InventoryItem[]
 }
 
-model FabricSale {
-  id         String   @id @default(cuid())
-  customerId String?
-  customer   Customer? @relation(fields: [customerId], references: [id])
-  branch     String   @default("الفرع الرئيسي")
-  totalAmount Float   @default(0)
-  notes      String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
-  items FabricSaleItem[]
+model SalesInvoice {
+  id              String   @id @default(cuid())
+  invoiceNumber   String   @unique
+  customerName    String
+  phone           String
+  branch          String   @default("الفرع الرئيسي")
+  totalAmount     Float    @default(0)
+  paidAmount      Float    @default(0)
+  remainingAmount Float    @default(0)
+  paymentType     String   @default("نقدي")
+  date            String
+  items           Json     @default("[]")
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
-model FabricSaleItem {
-  id            String     @id @default(cuid())
-  saleId        String
-  sale          FabricSale @relation(fields: [saleId], references: [id], onDelete: Cascade)
-  inventoryItemId String
-  fabricName    String
-  meters        Float
-  pricePerMeter Float
-  totalPrice    Float
-}
-
-model Order {
-  id          String   @id @default(cuid())
-  customerId  String
-  customer    Customer @relation(fields: [customerId], references: [id])
-  totalAmount Float
-  paidAmount  Float    @default(0)
-  stage       String   @default("اختيار قماش")
-  branch      String   @default("الفرع الرئيسي")
-  technician  String?
-  installAt   DateTime?
-  actualInstallAt DateTime?
-  delayReason String?
-  notes       String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+model PurchaseInvoice {
+  id              String   @id @default(cuid())
+  invoiceNumber   String   @unique
+  supplierName    String
+  branch          String   @default("الفرع الرئيسي")
+  totalAmount     Float    @default(0)
+  paidAmount      Float    @default(0)
+  remainingAmount Float    @default(0)
+  date            String
+  items           Json     @default("[]")
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
 model SystemStore {
@@ -195,4 +188,5 @@ model SystemStore {
   data      Json
   updatedAt DateTime @updatedAt
 }
+
 

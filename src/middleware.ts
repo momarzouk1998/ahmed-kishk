@@ -12,8 +12,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Allow API auth routes
-  if (pathname.startsWith('/api/auth')) {
+  // Allow API routes
+  if (pathname.startsWith('/api/')) {
     return NextResponse.next();
   }
 

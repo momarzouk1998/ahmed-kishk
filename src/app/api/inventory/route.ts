@@ -1,75 +1,60 @@
-import { NextResponse } from 'next/server';
+﻿import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
     const items = await prisma.inventoryItem.findMany({
-      include: {
-        supplier: true,
-      },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { updatedAt: 'desc' },
     });
-
-    const formatted = items.map(i => ({
-      ...i,
-      availableMeters: Math.max(0, i.quantityMeters - (i.reservedMeters || 0)),
-    }));
-
-    return NextResponse.json({ items: formatted });
+    return NextResponse.json({ success: true, items });
   } catch (error: any) {
-    console.error('Error fetching inventory:', error);
-    return NextResponse.json({ error: 'Failed to fetch inventory' }, { status: 500 });
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { name, category, code, quantityMeters, reservedMeters, costPerMeter, pricePerMeter, branch, supplierName } = body;
+    const { id, code, name, category, unit, totalQuantity, reservedQuantity, costPrice, sellPrice, branch, minAlert, supplier } = body;
 
-    if (!name || !code) {
-      return NextResponse.json({ error: 'اسم الصنف والكود مطلوبان' }, { status: 400 });
-    }
-
-    let supplierId = null;
-    if (supplierName) {
-      const supplier = await prisma.supplier.findFirst({
-        where: { name: supplierName.trim() },
-      });
-      if (supplier) supplierId = supplier.id;
+    if (!code || !name) {
+      return NextResponse.json({ success: false, error: 'كود الصنف والاسم مطلوبان' }, { status: 400 });
     }
 
     const item = await prisma.inventoryItem.upsert({
       where: { code: code.trim() },
+      create: {
+        id: id || `INV-${Date.now()}`,
+        code: code.trim(),
+        name: name.trim(),
+        category: category || 'ستائر',
+        unit: unit || 'متر',
+        totalQuantity: Number(totalQuantity) || 0,
+        reservedQuantity: Number(reservedQuantity) || 0,
+        costPrice: Number(costPrice) || 0,
+        sellPrice: Number(sellPrice) || 0,
+        branch: branch || 'الفرع الرئيسي — القاهرة',
+        minAlert: Number(minAlert) || 20,
+        supplier: supplier || 'شركة النيل',
+      },
       update: {
         name: name.trim(),
-        category: category || 'سواريه',
-        quantityMeters: Number(quantityMeters) || 0,
-        reservedMeters: Number(reservedMeters) || 0,
-        costPerMeter: Number(costPerMeter) || 0,
-        pricePerMeter: Number(pricePerMeter) || 0,
-        branch: branch || 'الفرع الرئيسي — القاهرة',
-        supplierId,
-      },
-      create: {
-        name: name.trim(),
-        category: category || 'سواريه',
-        code: code.trim(),
-        quantityMeters: Number(quantityMeters) || 0,
-        reservedMeters: Number(reservedMeters) || 0,
-        costPerMeter: Number(costPerMeter) || 0,
-        pricePerMeter: Number(pricePerMeter) || 0,
-        branch: branch || 'الفرع الرئيسي — القاهرة',
-        supplierId,
-      },
-      include: {
-        supplier: true,
+        category: category || undefined,
+        unit: unit || undefined,
+        totalQuantity: totalQuantity !== undefined ? Number(totalQuantity) : undefined,
+        reservedQuantity: reservedQuantity !== undefined ? Number(reservedQuantity) : undefined,
+        costPrice: costPrice !== undefined ? Number(costPrice) : undefined,
+        sellPrice: sellPrice !== undefined ? Number(sellPrice) : undefined,
+        branch: branch || undefined,
+        minAlert: minAlert !== undefined ? Number(minAlert) : undefined,
+        supplier: supplier || undefined,
       },
     });
 
-    return NextResponse.json({ item });
+    return NextResponse.json({ success: true, item });
   } catch (error: any) {
-    console.error('Error saving inventory item:', error);
-    return NextResponse.json({ error: `حدث خطأ أثناء حفظ الصنف: ${error?.message}` }, { status: 500 });
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }

@@ -1,4 +1,4 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
@@ -8,23 +8,65 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const key = searchParams.get('key');
 
-    if (key) {
-      const record = await prisma.systemStore.findUnique({
-        where: { key },
-      });
-      return NextResponse.json({ success: true, key, data: record?.data ?? null });
+    if (key === 'ahmed_kishk_inspections_data_v4') {
+      const inspections = await prisma.inspectionRequest.findMany({ orderBy: { updatedAt: 'desc' } });
+      return NextResponse.json({ success: true, key, data: inspections });
+    }
+    if (key === 'ahmed_kishk_quotations_data_v4') {
+      const quotations = await prisma.quotationOrder.findMany({ orderBy: { updatedAt: 'desc' } });
+      return NextResponse.json({ success: true, key, data: quotations });
+    }
+    if (key === 'ahmed_kishk_pipeline_orders_v5') {
+      const orders = await prisma.pipelineOrder.findMany({ orderBy: { updatedAt: 'desc' } });
+      return NextResponse.json({ success: true, key, data: orders });
+    }
+    if (key === 'ahmed_kishk_customers_v3') {
+      const customers = await prisma.customer.findMany({ orderBy: { updatedAt: 'desc' } });
+      return NextResponse.json({ success: true, key, data: customers });
+    }
+    if (key === 'ahmed_kishk_inventory_v3') {
+      const inventory = await prisma.inventoryItem.findMany({ orderBy: { updatedAt: 'desc' } });
+      return NextResponse.json({ success: true, key, data: inventory });
+    }
+    if (key === 'ahmed_kishk_suppliers_v3') {
+      const suppliers = await prisma.supplier.findMany({ orderBy: { updatedAt: 'desc' } });
+      return NextResponse.json({ success: true, key, data: suppliers });
+    }
+    if (key === 'ahmed_kishk_sales_invoices_v1') {
+      const sales = await prisma.salesInvoice.findMany({ orderBy: { updatedAt: 'desc' } });
+      return NextResponse.json({ success: true, key, data: sales });
+    }
+    if (key === 'ahmed_kishk_purchases_v3') {
+      const purchases = await prisma.purchaseInvoice.findMany({ orderBy: { updatedAt: 'desc' } });
+      return NextResponse.json({ success: true, key, data: purchases });
     }
 
-    // Return all system store items in one call
-    const allRecords = await prisma.systemStore.findMany();
-    const dataMap: Record<string, any> = {};
-    for (const r of allRecords) {
-      dataMap[r.key] = r.data;
-    }
+    // Return all relational tables
+    const [inspections, quotations, orders, customers, inventory, suppliers, sales, purchases] = await Promise.all([
+      prisma.inspectionRequest.findMany({ orderBy: { updatedAt: 'desc' } }),
+      prisma.quotationOrder.findMany({ orderBy: { updatedAt: 'desc' } }),
+      prisma.pipelineOrder.findMany({ orderBy: { updatedAt: 'desc' } }),
+      prisma.customer.findMany({ orderBy: { updatedAt: 'desc' } }),
+      prisma.inventoryItem.findMany({ orderBy: { updatedAt: 'desc' } }),
+      prisma.supplier.findMany({ orderBy: { updatedAt: 'desc' } }),
+      prisma.salesInvoice.findMany({ orderBy: { updatedAt: 'desc' } }),
+      prisma.purchaseInvoice.findMany({ orderBy: { updatedAt: 'desc' } }),
+    ]);
+
+    const dataMap: Record<string, any> = {
+      ahmed_kishk_inspections_data_v4: inspections,
+      ahmed_kishk_quotations_data_v4: quotations,
+      ahmed_kishk_pipeline_orders_v5: orders,
+      ahmed_kishk_customers_v3: customers,
+      ahmed_kishk_inventory_v3: inventory,
+      ahmed_kishk_suppliers_v3: suppliers,
+      ahmed_kishk_sales_invoices_v1: sales,
+      ahmed_kishk_purchases_v3: purchases,
+    };
 
     return NextResponse.json({ success: true, data: dataMap });
   } catch (error: any) {
-    console.error('Error fetching system data from database:', error);
+    console.error('Error fetching relational data from PostgreSQL:', error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
@@ -34,24 +76,181 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { key, data } = body;
 
-    if (!key) {
-      return NextResponse.json({ success: false, error: 'Key is required' }, { status: 400 });
+    if (!key || !Array.isArray(data)) {
+      return NextResponse.json({ success: false, error: 'Key and array data are required' }, { status: 400 });
     }
 
-    const saved = await prisma.systemStore.upsert({
-      where: { key },
-      create: {
-        key,
-        data: data ?? [],
-      },
-      update: {
-        data: data ?? [],
-      },
-    });
+    // Sync into specific relational table
+    if (key === 'ahmed_kishk_inspections_data_v4') {
+      for (const item of data) {
+        if (item && item.id) {
+          await prisma.inspectionRequest.upsert({
+            where: { id: item.id },
+            create: {
+              id: item.id,
+              customerName: item.customerName || 'عميل جديد',
+              phone: item.phone || '',
+              address: item.address || '',
+              branch: item.branch || 'الفرع الرئيسي',
+              scheduledAt: item.scheduledAt || '',
+              technician: item.technician || 'أحمد كشك',
+              status: item.status || 'تم رفع المقاسات',
+              isLocked: Boolean(item.isLocked),
+              notes: item.notes || '',
+              rooms: item.rooms || [],
+            },
+            update: {
+              customerName: item.customerName,
+              phone: item.phone,
+              address: item.address,
+              branch: item.branch,
+              scheduledAt: item.scheduledAt,
+              technician: item.technician,
+              status: item.status,
+              isLocked: item.isLocked !== undefined ? Boolean(item.isLocked) : undefined,
+              notes: item.notes,
+              rooms: item.rooms,
+            },
+          });
+        }
+      }
+    } else if (key === 'ahmed_kishk_quotations_data_v4') {
+      for (const item of data) {
+        if (item && item.id) {
+          await prisma.quotationOrder.upsert({
+            where: { id: item.id },
+            create: {
+              id: item.id,
+              inspectionId: item.inspectionId || item.id,
+              customerName: item.customerName || '',
+              phone: item.phone || '',
+              address: item.address || '',
+              branch: item.branch || 'الفرع الرئيسي',
+              status: item.status || 'بانتظار التسعير',
+              totalAmount: Number(item.totalAmount) || 0,
+              depositPaid: Number(item.depositPaid) || 0,
+              remainingAmount: Number(item.remainingAmount) || 0,
+              date: item.date || new Date().toISOString().split('T')[0],
+              deliveryDate: item.deliveryDate || null,
+              estimatorName: item.estimatorName || 'أحمد كشك',
+              rooms: item.rooms || [],
+            },
+            update: {
+              customerName: item.customerName,
+              phone: item.phone,
+              address: item.address,
+              branch: item.branch,
+              status: item.status,
+              totalAmount: Number(item.totalAmount) || 0,
+              depositPaid: Number(item.depositPaid) || 0,
+              remainingAmount: Number(item.remainingAmount) || 0,
+              deliveryDate: item.deliveryDate || null,
+              rooms: item.rooms,
+            },
+          });
+        }
+      }
+    } else if (key === 'ahmed_kishk_pipeline_orders_v5') {
+      for (const item of data) {
+        if (item && item.id) {
+          await prisma.pipelineOrder.upsert({
+            where: { id: item.id },
+            create: {
+              id: item.id,
+              orderId: item.orderId || item.id,
+              customerName: item.customerName || '',
+              phone: item.phone || '',
+              address: item.address || '',
+              branch: item.branch || 'الفرع الرئيسي',
+              deliveryDate: item.deliveryDate || null,
+              cutterName: item.cutterName || null,
+              tailorName: item.tailorName || null,
+              technicianName: item.technicianName || null,
+              status: item.status || 'في المقص',
+              localStatus: item.localStatus || 'بانتظار القص',
+              totalAmount: Number(item.totalAmount) || 0,
+              depositPaid: Number(item.depositPaid) || 0,
+              remainingAmount: Number(item.remainingAmount) || 0,
+              rooms: item.rooms || [],
+            },
+            update: {
+              status: item.status,
+              localStatus: item.localStatus,
+              cutterName: item.cutterName,
+              tailorName: item.tailorName,
+              technicianName: item.technicianName,
+              deliveryDate: item.deliveryDate,
+              depositPaid: item.depositPaid !== undefined ? Number(item.depositPaid) : undefined,
+              remainingAmount: item.remainingAmount !== undefined ? Number(item.remainingAmount) : undefined,
+              rooms: item.rooms,
+            },
+          });
+        }
+      }
+    } else if (key === 'ahmed_kishk_customers_v3') {
+      for (const item of data) {
+        if (item && (item.phone || item.id)) {
+          const p = (item.phone || `0100000000${Math.floor(Math.random()*1000)}`).trim();
+          await prisma.customer.upsert({
+            where: { phone: p },
+            create: {
+              id: item.id || undefined,
+              name: item.name || 'عميل',
+              phone: p,
+              address: item.address || '',
+              city: item.city || 'القاهرة',
+              balance: Number(item.balance) || 0,
+              notes: item.notes || '',
+            },
+            update: {
+              name: item.name,
+              address: item.address,
+              city: item.city,
+              balance: Number(item.balance) || 0,
+              notes: item.notes,
+            },
+          });
+        }
+      }
+    } else if (key === 'ahmed_kishk_inventory_v3') {
+      for (const item of data) {
+        if (item && item.code) {
+          await prisma.inventoryItem.upsert({
+            where: { code: item.code.trim() },
+            create: {
+              id: item.id || `INV-${Date.now()}-${Math.random()}`,
+              code: item.code.trim(),
+              name: item.name || '',
+              category: item.category || 'ستائر',
+              unit: item.unit || 'متر',
+              totalQuantity: Number(item.totalQuantity) || 0,
+              reservedQuantity: Number(item.reservedQuantity) || 0,
+              costPrice: Number(item.costPrice) || 0,
+              sellPrice: Number(item.sellPrice) || 0,
+              branch: item.branch || 'الفرع الرئيسي — القاهرة',
+              minAlert: Number(item.minAlert) || 20,
+              supplier: item.supplier || 'شركة النيل',
+            },
+            update: {
+              name: item.name,
+              category: item.category,
+              unit: item.unit,
+              totalQuantity: Number(item.totalQuantity) || 0,
+              reservedQuantity: Number(item.reservedQuantity) || 0,
+              costPrice: Number(item.costPrice) || 0,
+              sellPrice: Number(item.sellPrice) || 0,
+              branch: item.branch,
+              minAlert: Number(item.minAlert) || 20,
+              supplier: item.supplier,
+            },
+          });
+        }
+      }
+    }
 
-    return NextResponse.json({ success: true, key: saved.key, data: saved.data });
+    return NextResponse.json({ success: true, count: data.length });
   } catch (error: any) {
-    console.error('Error saving system data to database:', error);
+    console.error('Error persisting relational data to PostgreSQL:', error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
