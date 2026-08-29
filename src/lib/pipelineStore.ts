@@ -102,15 +102,30 @@ export async function fetchPipelineOrders(): Promise<PipelineMasterOrder[]> {
       const json = await res.json();
       if (json.success && Array.isArray(json.orders)) {
         const deleted = getDeletedOrderIds();
-        const filtered = json.orders.filter((o: any) => {
+        const serverFiltered = json.orders.filter((o: any) => {
           const isIdDel = deleted.includes(o.id) || deleted.includes(o.orderId);
           const isNameDel = PERMANENT_BLACKLIST_NAMES.some(bn => o.customerName?.includes(bn));
           return !isIdDel && !isNameDel;
         });
+
         if (typeof window !== 'undefined') {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+          const raw = localStorage.getItem(STORAGE_KEY);
+          const localList: PipelineMasterOrder[] = raw ? JSON.parse(raw) : [];
+          const localFiltered = localList.filter(o => {
+            const isIdDel = deleted.includes(o.id) || deleted.includes(o.orderId);
+            const isNameDel = PERMANENT_BLACKLIST_NAMES.some(bn => o.customerName?.includes(bn));
+            return !isIdDel && !isNameDel;
+          });
+
+          const map = new Map<string, PipelineMasterOrder>();
+          localFiltered.forEach(o => { if (o && o.id) map.set(o.id, o); });
+          serverFiltered.forEach((o: PipelineMasterOrder) => { if (o && o.id) map.set(o.id, o); });
+
+          const merged = Array.from(map.values());
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+          return merged;
         }
-        return filtered;
+        return serverFiltered;
       }
     }
   } catch (err) {
@@ -126,7 +141,6 @@ export function getStoredPipelineOrders(): PipelineMasterOrder[] {
     const raw = localStorage.getItem(STORAGE_KEY);
     let list: PipelineMasterOrder[] = [];
     if (!raw) {
-      // localStorage is empty — trigger background server fetch to hydrate it.
       fetchPipelineOrders().catch(() => {});
       return DEFAULT_PIPELINE_ORDERS;
     } else {
@@ -159,13 +173,23 @@ export async function saveStoredPipelineOrders(orders: PipelineMasterOrder[]) {
   }
 
   try {
+    await fetch('/api/pipeline-orders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ orders: filtered }),
+    });
+  } catch (err) {
+    console.error('Error saving pipeline orders to database:', err);
+  }
+
+  try {
     await fetch('/api/system-data', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ key: STORAGE_KEY, data: filtered }),
     });
   } catch (err) {
-    console.error('Error saving pipeline orders to server:', err);
+    console.error('Error saving pipeline orders to system-data:', err);
   }
 }
 

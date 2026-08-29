@@ -1493,7 +1493,7 @@ export default function PricingDetailPage() {
                       deliveryDate: quotation.deliveryDate || existingOrder.deliveryDate || '',
                     };
                     const updated = storedOrders.map(o => o.id === existingOrder.id ? finalOrder : o);
-                    saveStoredPipelineOrders(updated);
+                    await saveStoredPipelineOrders(updated);
                   } else {
                     finalOrder = {
                       id: `ORD-${Date.now()}`,
@@ -1511,22 +1511,7 @@ export default function PricingDetailPage() {
                       remainingAmount: quotation.remainingAmount,
                       rooms: mappedRooms,
                     };
-                    saveStoredPipelineOrders([finalOrder, ...storedOrders]);
-                  }
-
-                  // Sync to server via system-data API (the correct endpoint)
-                  try {
-                    const allOrders = getStoredPipelineOrders();
-                    await fetch('/api/system-data', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        key: 'ahmed_kishk_pipeline_orders_v5',
-                        data: allOrders,
-                      }),
-                    });
-                  } catch (err) {
-                    console.error('Failed to sync to database:', err);
+                    await saveStoredPipelineOrders([finalOrder, ...storedOrders]);
                   }
 
                   const insp = getInspectionById(quotation.inspectionId);

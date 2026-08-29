@@ -42,17 +42,26 @@ export default function PipelineCuttingPage() {
     load();
   }, []);
 
-  // Orders waiting to be cut: 'بانتظار القص' OR 'في المقص'
-  const isSent = (status: any) =>
-    status === 'تم القص وجاهز للخياطة' ||
-    status === 'في الورشة' ||
-    status === 'مكتمل' ||
-    status === 'تم التركيب بنجاح ومغلق' ||
-    status === 'تم التسليم للعميل بنجاح';
+  // Orders waiting to be cut: 'بانتظار القص' OR 'في المقص' OR status matching cutting
+  const isWaitingToCut = (o: any) =>
+    o.status === 'في المقص' ||
+    o.status === 'بانتظار القص' ||
+    o.localStatus === 'بانتظار القص' ||
+    o.status === 'قص القماش' ||
+    (!o.status?.includes('ورشة') && !o.status?.includes('خياطة') && !o.status?.includes('تسليم') && !o.status?.includes('تركيب') && !o.status?.includes('مكتمل') && !o.status?.includes('معاينة') && !o.status?.includes('تسعير'));
 
-  const tabFiltered = orders.filter(o => activeTab === 'OPEN' ? !isSent(o.status) : isSent(o.status));
+  const isSentFromCutting = (o: any) =>
+    o.status === 'تم القص وجاهز للخياطة' ||
+    o.localStatus === 'تم القص وجاهز للخياطة' ||
+    o.status === 'في الورشة' ||
+    o.status === 'تجهيز الاكسسوارات' ||
+    o.status === 'جاهز للاستلام' ||
+    o.status === 'جاهز للتركيب' ||
+    o.status === 'مكتمل';
+
+  const tabFiltered = orders.filter(o => activeTab === 'OPEN' ? isWaitingToCut(o) : isSentFromCutting(o));
   const filtered = tabFiltered.filter(o => {
-    const matchesSearch = o.customerName.includes(searchQuery) || o.id.includes(searchQuery) || o.orderId.includes(searchQuery);
+    const matchesSearch = (o.customerName || '').includes(searchQuery) || (o.id || '').includes(searchQuery) || (o.orderId || '').includes(searchQuery);
     const matchesBranch = selectedBranch === 'ALL' || o.branch === selectedBranch;
     return matchesSearch && matchesBranch;
   });
@@ -62,20 +71,24 @@ export default function PipelineCuttingPage() {
     updatePipelineOrderStatus(id, 'في الورشة', 'جاري الخياطة');
   };
 
-  const openCount = orders.filter(o => !isSent(o.status)).length;
-  const sentCount = orders.filter(o => isSent(o.status)).length;
+  const openCount = orders.filter(o => isWaitingToCut(o)).length;
+  const sentCount = orders.filter(o => isSentFromCutting(o)).length;
 
-  // Calculate Fabric Summary for an Order
-  const getFabricTotals = (rooms: RoomFabricItem[]) => {
+  // Calculate Fabric Summary for an Order (handles both RoomFabricItem & RoomPricing formats)
+  const getFabricTotals = (rooms: any[]) => {
     const totals: Record<string, { name: string; code: string; meters: number }> = {};
-    rooms.forEach(r => {
-      [r.heavyFabric, r.sheerFabric, r.blackoutFabric].forEach(f => {
-        if (f) {
-          const key = f.name;
+    (rooms || []).forEach(r => {
+      const heavy = r.heavyFabric || (r.heavyEnabled !== false && r.heavyFabricName && Number(r.heavyMeters) > 0 ? { name: r.heavyFabricName, code: r.heavyFabricCode || '', meters: Number(r.heavyMeters) } : null);
+      const sheer = r.sheerFabric || (r.sheerEnabled !== false && r.sheerFabricName && Number(r.sheerMeters) > 0 ? { name: r.sheerFabricName, code: r.sheerFabricCode || '', meters: Number(r.sheerMeters) } : null);
+      const blackout = r.blackoutFabric || (r.blackoutEnabled && r.blackoutFabricName && Number(r.blackoutMeters) > 0 ? { name: r.blackoutFabricName, code: r.blackoutFabricCode || '', meters: Number(r.blackoutMeters) } : null);
+
+      [heavy, sheer, blackout].forEach(f => {
+        if (f && Number(f.meters) > 0) {
+          const key = f.name || 'قماش';
           if (!totals[key]) {
-            totals[key] = { name: f.name, code: f.code, meters: 0 };
+            totals[key] = { name: key, code: f.code || '', meters: 0 };
           }
-          totals[key].meters += f.meters;
+          totals[key].meters += Number(f.meters) || 0;
         }
       });
     });
@@ -243,31 +256,37 @@ export default function PipelineCuttingPage() {
                     {/* Breakdown Per Room */}
                     <div className="my-3 space-y-2.5">
                       <span className="text-[11px] font-black text-slate-700 block">✂️ الأقمشة والأمتار المطلوبة لكل غرفة على حدة:</span>
-                      {(order.rooms || []).map((room, rIdx) => (
-                        <div key={rIdx} className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1.5">
-                          <span className="font-bold text-xs text-slate-900 block border-b border-slate-200/80 pb-1">{room.roomName}</span>
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 text-xs">
-                            {room.heavyFabric && (
-                              <div className="bg-amber-100/70 text-amber-950 p-1.5 rounded-lg border border-amber-200/60 flex justify-between items-center">
-                                <span className="font-bold">ثقيل:</span>
-                                <strong className="font-mono font-black text-sm">{room.heavyFabric.meters}م</strong>
-                              </div>
-                            )}
-                            {room.sheerFabric && (
-                              <div className="bg-blue-50 text-blue-950 p-1.5 rounded-lg border border-blue-200/60 flex justify-between items-center">
-                                <span className="font-bold">تول:</span>
-                                <strong className="font-mono font-black text-sm">{room.sheerFabric.meters}م</strong>
-                              </div>
-                            )}
-                            {room.blackoutFabric && (
-                              <div className="bg-slate-200/70 text-slate-900 p-1.5 rounded-lg border border-slate-300 flex justify-between items-center">
-                                <span className="font-bold">بلاك آوت:</span>
-                                <strong className="font-mono font-black text-sm">{room.blackoutFabric.meters}م</strong>
-                              </div>
-                            )}
+                      {(order.rooms || []).map((room: any, rIdx: number) => {
+                        const heavy = room.heavyFabric || (room.heavyEnabled !== false && room.heavyFabricName && Number(room.heavyMeters) > 0 ? { name: room.heavyFabricName, meters: Number(room.heavyMeters) } : null);
+                        const sheer = room.sheerFabric || (room.sheerEnabled !== false && room.sheerFabricName && Number(room.sheerMeters) > 0 ? { name: room.sheerFabricName, meters: Number(room.sheerMeters) } : null);
+                        const blackout = room.blackoutFabric || (room.blackoutEnabled && room.blackoutFabricName && Number(room.blackoutMeters) > 0 ? { name: room.blackoutFabricName, meters: Number(room.blackoutMeters) } : null);
+
+                        return (
+                          <div key={rIdx} className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1.5">
+                            <span className="font-bold text-xs text-slate-900 block border-b border-slate-200/80 pb-1">{room.roomName || room.name || `غرفة ${rIdx + 1}`}</span>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 text-xs">
+                              {heavy && (
+                                <div className="bg-amber-100/70 text-amber-950 p-1.5 rounded-lg border border-amber-200/60 flex justify-between items-center">
+                                  <span className="font-bold">ثقيل: {heavy.name}</span>
+                                  <strong className="font-mono font-black text-sm">{heavy.meters}م</strong>
+                                </div>
+                              )}
+                              {sheer && (
+                                <div className="bg-blue-50 text-blue-950 p-1.5 rounded-lg border border-blue-200/60 flex justify-between items-center">
+                                  <span className="font-bold">تول: {sheer.name}</span>
+                                  <strong className="font-mono font-black text-sm">{sheer.meters}م</strong>
+                                </div>
+                              )}
+                              {blackout && (
+                                <div className="bg-slate-200/70 text-slate-900 p-1.5 rounded-lg border border-slate-300 flex justify-between items-center">
+                                  <span className="font-bold">بلاك آوت: {blackout.name}</span>
+                                  <strong className="font-mono font-black text-sm">{blackout.meters}م</strong>
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
 
                     {/* Order Total Fabrics Summary */}
