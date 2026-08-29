@@ -1447,7 +1447,7 @@ export default function PricingDetailPage() {
             className="w-full sm:w-auto bg-amber-500 hover:bg-amber-400 text-slate-950 px-7 py-3 rounded-xl font-black text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer shadow-gold transition-colors"
           >
             <span className="material-symbols-outlined text-[19px]">content_cut</span>
-            تحويل لورشة القص
+            تحويل لقص القماش
           </button>
         </div>
       </div>
@@ -1460,7 +1460,7 @@ export default function PricingDetailPage() {
               <span className="material-symbols-outlined text-[28px]">content_cut</span>
               <div>
                 <h3 className="font-black text-base text-slate-900">تحويل العقد لورشة القص والتفصيل</h3>
-                <p className="text-xs text-slate-600">أمر تشغيل الورشة والمقايسة المعجبة</p>
+                <p className="text-xs text-slate-600">أمر تشغيل الورشة والمقايسة المعتمدة</p>
               </div>
             </div>
 
@@ -1483,10 +1483,6 @@ export default function PricingDetailPage() {
               </div>
             </div>
 
-            <p className="text-xs text-slate-600 text-center font-bold">
-              هل أنت أسر بالتأكيد من اعتماد هذا العقد وتحويل أمر التفصيل والقص إلى الورشة؟
-            </p>
-
             <div className="flex gap-3 pt-2">
               <button
                 type="button"
@@ -1498,9 +1494,11 @@ export default function PricingDetailPage() {
               <button
                 type="button"
                 onClick={() => {
-                  const updatedList = quotations.map(q => q.id === quotation.id ? { ...q, status: 'تم التحويل الى الورشه' as const } : q);
+                  const updatedList = quotations.map(q => q.id === quotation.id ? { ...q, status: 'معتمد ومسدد العربون' as const } : q);
                   setQuotations(updatedList);
                   saveAllQuotations(updatedList);
+
+                  updatePipelineOrderStatus(quotation.id, 'في المقص', 'بانتظار القص');
 
                   const insp = getInspectionById(quotation.inspectionId);
                   if (insp) {
@@ -1510,11 +1508,11 @@ export default function PricingDetailPage() {
                   }
 
                   setShowWorkshopModal(false);
-                  router.push('/pipeline/pricing');
+                  router.push('/pipeline/cutting');
                 }}
                 className="flex-1 bg-slate-900 hover:bg-slate-800 text-white py-3 rounded-xl text-xs font-black shadow-xs transition-colors cursor-pointer"
               >
-                تأكيد التحويل للورشة ✓
+                تأكيد التحويل للقص ✓
               </button>
             </div>
           </div>

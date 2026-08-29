@@ -111,15 +111,7 @@ export default function Sidebar() {
     }
   };
 
-  useEffect(() => {
-    if (pathname.startsWith('/pipeline') || pathname === '/orders' || pathname === '/inspections' || pathname === '/workshop') {
-      setExpandedSections(prev => ({ ...prev, pipeline: true }));
-    } else if (pathname === '/fabric-sales' || pathname === '/customers' || pathname === '/suppliers') {
-      setExpandedSections(prev => ({ ...prev, sales: true }));
-    } else if (pathname === '/inventory' || pathname === '/reports' || pathname === '/branches' || pathname === '/settings') {
-      setExpandedSections(prev => ({ ...prev, admin: true }));
-    }
-  }, [pathname]);
+
 
   useEffect(() => {
     close();

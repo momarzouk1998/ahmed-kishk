@@ -62,6 +62,7 @@ export default function InspectionDetailPage() {
   // Modal State
   const [showRoomModal, setShowRoomModal] = useState(false);
   const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
+  const [showApprovalModal, setShowApprovalModal] = useState(false);
 
   // Form State
   const [roomName, setRoomName] = useState('الصالة');
@@ -204,14 +205,6 @@ export default function InspectionDetailPage() {
             <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
             العودة لقائمة المعاينات
           </Link>
-
-          <button
-            onClick={() => window.print()}
-            className="bg-white hover:bg-slate-100 text-slate-800 border border-slate-200 px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer"
-          >
-            <span className="material-symbols-outlined text-[16px]">print</span>
-            طباعة كشف المقاسات
-          </button>
         </div>
 
         {/* Customer Info Card on Screen */}
@@ -219,9 +212,6 @@ export default function InspectionDetailPage() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-mono font-black text-brand-gold-dark bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full">
-                  {data.id}
-                </span>
                 <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold border ${
                   data.status === 'تم رفع المقاسات' ? 'bg-emerald-100 text-emerald-900 border-emerald-200'
                   : data.status === 'في الورشة' ? 'bg-purple-100 text-purple-900 border-purple-200'
@@ -240,19 +230,6 @@ export default function InspectionDetailPage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  saveOrUpdateInspection({ ...data, status: 'تم رفع المقاسات' });
-                  const qot = syncInspectionToPricing(data.id);
-                  updatePipelineOrderStatus(data.id, 'انتظار تسعير', 'في التسعير');
-                  router.push(`/pipeline/pricing/${encodeURIComponent(qot.id)}`);
-                }}
-                className="bg-amber-400 hover:bg-amber-300 text-slate-950 px-4 py-2.5 rounded-xl text-xs font-black shadow-gold flex items-center gap-1.5 cursor-pointer transition-colors"
-              >
-                <span>اعتماد ونقل لمرحلة التسعير والعقد ←</span>
-              </button>
-
               <a
                 href={`tel:${data.phone}`}
                 className="bg-slate-900 text-white px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs"
@@ -435,25 +412,77 @@ export default function InspectionDetailPage() {
           )}
         </div>
 
-        {/* Submit to Sales Button on Screen */}
-        {!isReadOnly && data.rooms.length > 0 && (
-          <div className="no-print bg-slate-900 text-white p-5 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 mt-2">
-            <div>
-              <h3 className="font-bold text-base">اعتماد المقاسات وإرسالها للمبيعات</h3>
-              <p className="text-xs text-slate-400 mt-0.5">
-                سيتم تحويل المقاسات مباشرة لمسؤول المبيعات لحساب التكاليف والعقد.
-              </p>
-            </div>
-            <button
-              onClick={handleSendToPricing}
-              className="w-full sm:w-auto bg-brand-gold hover:bg-brand-gold-hover text-slate-950 px-6 py-3 rounded-xl font-black text-sm shadow-gold flex items-center justify-center gap-2 cursor-pointer transition-all"
-            >
-              <span>إرسال للتسعير والعقد</span>
-              <span className="material-symbols-outlined text-[18px]">arrow_back</span>
-            </button>
+        {/* Submit to Sales & Print Buttons on Screen */}
+        <div className="no-print bg-slate-900 text-white p-5 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 mt-2">
+          <div>
+            <h3 className="font-bold text-base">اعتماد المقاسات وإرسالها للمبيعات</h3>
+            <p className="text-xs text-slate-400 mt-0.5">
+              سيتم تحويل المقاسات مباشرة لمسؤول المبيعات لحساب التكاليف والعقد.
+            </p>
           </div>
-        )}
+
+          <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
+            <button
+              onClick={() => window.print()}
+              className="bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 px-4 py-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-[16px]">print</span>
+              <span>طباعة كشف المقاسات</span>
+            </button>
+
+            {!isReadOnly && data.rooms.length > 0 && (
+              <button
+                onClick={() => setShowApprovalModal(true)}
+                className="bg-brand-gold hover:bg-brand-gold-hover text-slate-950 px-6 py-3 rounded-xl font-black text-sm shadow-gold flex items-center justify-center gap-2 cursor-pointer transition-all"
+              >
+                <span>إرسال للتسعير والعقد</span>
+                <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+              </button>
+            )}
+          </div>
+        </div>
       </div>
+
+      {/* Modal: Approval / Rejection Confirmation Modal */}
+      {showApprovalModal && (
+        <div className="fixed inset-0 bg-black/65 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-200 text-right">
+            <div className="flex justify-between items-center pb-3 border-b border-slate-100">
+              <h3 className="font-black text-slate-900 text-base flex items-center gap-2">
+                <span className="material-symbols-outlined text-amber-500">task_alt</span>
+                <span>اعتماد ونقل لمرحلة التسعير والعقد</span>
+              </h3>
+              <button onClick={() => setShowApprovalModal(false)} className="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-xs cursor-pointer">✕</button>
+            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed font-bold">
+              هل ترغب في اعتماد كشف مقاسات العميل <strong className="text-slate-900">({data.customerName})</strong> بعدد <strong className="text-amber-800">({data.rooms.length} غرف)</strong> وتحويل المقايسة فوراً لمسؤول المبيعات؟
+            </p>
+
+            <div className="pt-2 flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowApprovalModal(false);
+                  handleSendToPricing();
+                }}
+                className="w-full bg-brand-gold hover:bg-amber-400 text-slate-950 py-3 rounded-2xl font-black text-xs shadow-gold flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[18px]">check_circle</span>
+                <span>تأكيد واعتماد الإرسال للتسعير والعقد ✓</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowApprovalModal(false)}
+                className="w-full bg-slate-100 text-slate-700 py-3 rounded-2xl font-bold text-xs cursor-pointer hover:bg-slate-200"
+              >
+                إلغاء ومواصلة التعديل ✕
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal: Room Form (Radio Pills for Installation & Ceiling) */}
       {showRoomModal && (

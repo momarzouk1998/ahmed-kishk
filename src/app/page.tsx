@@ -50,19 +50,68 @@ const dataByRange = {
   }
 };
 
+import { getStoredInspections, getStoredQuotations } from '@/lib/inspectionsStore';
+import { getStoredPipelineOrders } from '@/lib/pipelineStore';
+
 export default function DashboardPage() {
   const [timeRange, setTimeRange] = useState<'MONTH' | 'WEEK' | 'TODAY'>('MONTH');
 
+  const [liveStats, setLiveStats] = useState({
+    inspectionsCount: 0,
+    pricingCount: 0,
+    cuttingCount: 0,
+    tailoringCount: 0,
+    accessoriesCount: 0,
+    deliveryCount: 0,
+    installationCount: 0,
+    totalSales: 0,
+    totalPaid: 0,
+    totalRemaining: 0,
+  });
+
+  React.useEffect(() => {
+    try {
+      const ins = getStoredInspections();
+      const qot = getStoredQuotations();
+      const orders = getStoredPipelineOrders();
+
+      const rawInvoices = localStorage.getItem('ahmed_kishk_sales_invoices_v1');
+      const invoices = rawInvoices ? JSON.parse(rawInvoices) : [];
+
+      const rawCust = localStorage.getItem('ahmed_kishk_customers_v3');
+      const customers = rawCust ? JSON.parse(rawCust) : [];
+
+      const totalSales = invoices.reduce((sum: number, inv: any) => sum + (inv.totalAmount || 0), 0);
+      const totalPaid = invoices.reduce((sum: number, inv: any) => sum + (inv.paidAmount || 0), 0);
+      const totalRemaining = customers.reduce((sum: number, c: any) => sum + (c.balance > 0 ? c.balance : 0), 0);
+
+      setLiveStats({
+        inspectionsCount: ins.filter((i: any) => i.status !== 'مكتمل').length,
+        pricingCount: qot.filter((q: any) => q.status !== 'تم التحويل للورشة').length,
+        cuttingCount: orders.filter((o: any) => o.status === 'في المقص' || o.status === 'قص القماش').length,
+        tailoringCount: orders.filter((o: any) => o.status === 'في الورشة').length,
+        accessoriesCount: orders.filter((o: any) => o.status === 'تجهيز الاكسسوارات').length,
+        deliveryCount: orders.filter((o: any) => o.status === 'جاهز للاستلام').length,
+        installationCount: orders.filter((o: any) => o.status === 'جاهز للتركيب').length,
+        totalSales,
+        totalPaid,
+        totalRemaining,
+      });
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
+
   const currentData = dataByRange[timeRange];
 
-  // Pipeline Stages Progress Summary
+  // Pipeline Stages Progress Summary (Live Dynamic)
   const pipelineStats = [
-    { id: 1, title: '1. رفع المقاسات', count: 5, color: 'bg-amber-500', textLight: 'text-amber-800', border: 'border-amber-200', bg: 'bg-amber-50', href: '/pipeline/inspections', desc: 'معاينات جارية' },
-    { id: 2, title: '2. التسعير والعقد', count: 3, color: 'bg-sky-500', textLight: 'text-sky-800', border: 'border-sky-200', bg: 'bg-sky-50', href: '/pipeline/pricing', desc: 'بانتظار العربون' },
-    { id: 3, title: '3. القص والتجهيز', count: 4, color: 'bg-indigo-500', textLight: 'text-indigo-800', border: 'border-indigo-200', bg: 'bg-indigo-50', href: '/pipeline/cutting', desc: 'قيد القص بالورشة' },
-    { id: 4, title: '4. الخياطة والتفصيل', count: 6, color: 'bg-purple-500', textLight: 'text-purple-800', border: 'border-purple-200', bg: 'bg-purple-50', href: '/pipeline/tailoring', desc: 'ستائر تحت التشغيل' },
-    { id: 5, title: '5. الإكسسوارات', count: 3, color: 'bg-cyan-500', textLight: 'text-cyan-800', border: 'border-cyan-200', bg: 'bg-cyan-50', href: '/pipeline/accessories', desc: 'تجهيز المواسير والتراكات' },
-    { id: 6, title: '6. التركيب والتسليم', count: 2, color: 'bg-emerald-500', textLight: 'text-emerald-800', border: 'border-emerald-200', bg: 'bg-emerald-50', href: '/pipeline/installation', desc: 'مواعيد التركيب عند العميل' },
+    { id: 1, title: '1. رفع المقاسات', count: liveStats.inspectionsCount, color: 'bg-amber-500', textLight: 'text-amber-800', border: 'border-amber-200', bg: 'bg-amber-50', href: '/pipeline/inspections', desc: 'معاينات جارية' },
+    { id: 2, title: '2. التسعير والعقد', count: liveStats.pricingCount, color: 'bg-sky-500', textLight: 'text-sky-800', border: 'border-sky-200', bg: 'bg-sky-50', href: '/pipeline/pricing', desc: 'بانتظار العربون' },
+    { id: 3, title: '3. قص القماش', count: liveStats.cuttingCount, color: 'bg-indigo-500', textLight: 'text-indigo-800', border: 'border-indigo-200', bg: 'bg-indigo-50', href: '/pipeline/cutting', desc: 'قيد القص بالورشة' },
+    { id: 4, title: '4. الورشة والتفصيل', count: liveStats.tailoringCount, color: 'bg-purple-500', textLight: 'text-purple-800', border: 'border-purple-200', bg: 'bg-purple-50', href: '/pipeline/tailoring', desc: 'ستائر تحت التشغيل' },
+    { id: 5, title: '5. الإكسسوارات', count: liveStats.accessoriesCount, color: 'bg-cyan-500', textLight: 'text-cyan-800', border: 'border-cyan-200', bg: 'bg-cyan-50', href: '/pipeline/accessories', desc: 'تجهيز المواسير والتراكات' },
+    { id: 6, title: '6. التركيب والتسليم', count: liveStats.deliveryCount + liveStats.installationCount, color: 'bg-emerald-500', textLight: 'text-emerald-800', border: 'border-emerald-200', bg: 'bg-emerald-50', href: '/pipeline/installation', desc: 'مواعيد التركيب والتسليم' },
   ];
 
   // Fabric Category Stock Distribution

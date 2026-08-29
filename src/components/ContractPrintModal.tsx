@@ -63,6 +63,10 @@ export default function ContractPrintModal({ isOpen, onClose, data }: ContractPr
     <div className="modal-overlay fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs">
       <style>{`
         @media print {
+          @page {
+            size: A4 portrait;
+            margin: 10mm;
+          }
           body * {
             visibility: hidden !important;
           }
@@ -71,23 +75,25 @@ export default function ContractPrintModal({ isOpen, onClose, data }: ContractPr
             visibility: visible !important;
           }
           #printable-contract-modal {
-            position: fixed !important;
+            position: absolute !important;
             left: 0 !important;
             top: 0 !important;
             width: 100% !important;
             margin: 0 !important;
-            padding: 15px !important;
+            padding: 10px !important;
             background: #ffffff !important;
             color: #000000 !important;
             box-shadow: none !important;
             border: none !important;
+            max-height: none !important;
+            overflow: visible !important;
           }
-          .print\\:hidden, .no-print {
+          .no-print, .print\\:hidden {
             display: none !important;
           }
         }
       `}</style>
-      <div id="printable-contract-modal" className="bg-white text-slate-900 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6 sm:p-8 shadow-2xl relative border border-slate-200 print:max-h-none print:shadow-none print:border-none print:p-4">
+      <div id="printable-contract-modal" className="bg-white text-slate-900 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6 sm:p-8 shadow-2xl relative border border-slate-200 print:max-h-none print:shadow-none print:border-none print:p-0">
         
         {/* Top Control Bar (Hidden when printing) */}
         <div className="flex items-center justify-between pb-4 border-b border-slate-200 mb-6 print:hidden">
@@ -113,7 +119,7 @@ export default function ContractPrintModal({ isOpen, onClose, data }: ContractPr
         </div>
 
         {/* Printable Contract Document Header */}
-        <div className="space-y-6">
+        <div className="space-y-6 text-right">
           {/* Header Branding */}
           <div className="flex justify-between items-start border-b-2 border-slate-900 pb-4">
             <div>
@@ -141,22 +147,22 @@ export default function ContractPrintModal({ isOpen, onClose, data }: ContractPr
               <strong className="text-slate-900">{data.address}</strong>
             </div>
             <div>
-              <span className="text-amber-800 font-bold block">نوع وموعد الاستلام:</span>
+              <span className="text-amber-800 font-bold block">تاريخ التسليم:</span>
               <strong className="text-slate-900 font-mono text-sm block mt-0.5">{data.deliveryDate || 'غير محدد'}</strong>
             </div>
           </div>
 
-          {/* Detailed Rooms Table */}
+          {/* Detailed Rooms Table with Center Alignment */}
           <div className="space-y-3">
             <h3 className="font-bold text-sm text-slate-900 border-r-4 border-brand-gold pr-2">تفاصيل غرف المقايسة والأقمشة المختارة:</h3>
-            <table className="w-full text-right text-xs border-collapse border border-slate-300">
+            <table className="w-full text-center text-xs border-collapse border border-slate-300">
               <thead className="bg-slate-100 text-slate-800 font-bold border-b border-slate-300">
                 <tr>
-                  <th className="p-2 border border-slate-300">الغرفة والمقاسات</th>
-                  <th className="p-2 border border-slate-300">الأقمشة والأصناف المختارة</th>
+                  <th className="p-2 border border-slate-300 text-center">الغرفة والمقاسات</th>
+                  <th className="p-2 border border-slate-300 text-center">الأقمشة والأصناف المختارة</th>
                   <th className="p-2 border border-slate-300 text-center font-mono">الأمتار</th>
-                  <th className="p-2 border border-slate-300 text-left font-mono">سعر المتر/الوحدة</th>
-                  <th className="p-2 border border-slate-300 text-left font-mono">الإجمالي</th>
+                  <th className="p-2 border border-slate-300 text-center font-mono">سعر المتر/الوحدة</th>
+                  <th className="p-2 border border-slate-300 text-center font-mono">الإجمالي</th>
                 </tr>
               </thead>
               <tbody>
@@ -164,7 +170,7 @@ export default function ContractPrintModal({ isOpen, onClose, data }: ContractPr
                   <React.Fragment key={room.id}>
                     {/* Room main row header */}
                     <tr className="bg-slate-50 font-bold">
-                      <td colSpan={5} className="p-2 border border-slate-300 text-slate-900 bg-amber-50/60">
+                      <td colSpan={5} className="p-2 border border-slate-300 text-slate-900 bg-amber-50/60 text-center">
                         {rIdx + 1}. {room.name} — (عرض: {room.widthCm}سم × ارتفاع: {room.heightCm}سم | {room.sides === 2 ? 'جنبين' : 'جنب واحد'})
                       </td>
                     </tr>
@@ -172,52 +178,52 @@ export default function ContractPrintModal({ isOpen, onClose, data }: ContractPr
                     {/* 1. Heavy fabric row (1st) */}
                     {room.heavyMeters > 0 && (
                       <tr className="border border-slate-200">
-                        <td className="p-2 border border-slate-200 text-slate-500 font-bold">1. قماش الجوانب (الثقيل)</td>
-                        <td className="p-2 border border-slate-200 text-slate-900 font-bold">
+                        <td className="p-2 border border-slate-200 text-slate-500 font-bold text-center">1. قماش الجوانب (الثقيل)</td>
+                        <td className="p-2 border border-slate-200 text-slate-900 font-bold text-center">
                           {room.heavyFabricName || 'قطيفة جاجوار تركيات'}
-                          <span className="text-[11px] text-slate-500 block font-normal">شريط {room.heavyTapeType || '٣ فتلة'} (معامل ×{room.heavyMultiplier ?? 2.0})</span>
+                          <span className="text-[11px] text-slate-500 block font-normal text-center">شريط {room.heavyTapeType || '٣ فتلة'} (معامل ×{room.heavyMultiplier ?? 2.0})</span>
                         </td>
                         <td className="p-2 border border-slate-200 text-center font-mono">{room.heavyMeters} م</td>
-                        <td className="p-2 border border-slate-200 text-left font-mono">{room.heavyPrice} ج</td>
-                        <td className="p-2 border border-slate-200 text-left font-mono font-bold">{(room.heavyMeters * room.heavyPrice).toLocaleString()} ج</td>
+                        <td className="p-2 border border-slate-200 text-center font-mono">{room.heavyPrice} ج</td>
+                        <td className="p-2 border border-slate-200 text-center font-mono font-bold">{(room.heavyMeters * room.heavyPrice).toLocaleString()} ج</td>
                       </tr>
                     )}
 
                     {/* 2. Sheer fabric row (2nd) */}
                     {room.sheerMeters > 0 && (
                       <tr className="border border-slate-200">
-                        <td className="p-2 border border-slate-200 text-slate-500 font-bold">2. قماش الخلفية (الشيفون)</td>
-                        <td className="p-2 border border-slate-200 text-slate-900 font-bold">
+                        <td className="p-2 border border-slate-200 text-slate-500 font-bold text-center">2. قماش الخلفية (الشيفون)</td>
+                        <td className="p-2 border border-slate-200 text-slate-900 font-bold text-center">
                           {room.sheerFabricName || 'شيفون حرير فاخر'}
-                          <span className="text-[11px] text-slate-500 block font-normal">شريط {room.sheerTapeType || 'ويفي'} (معامل ×{room.sheerMultiplier ?? 2.5})</span>
+                          <span className="text-[11px] text-slate-500 block font-normal text-center">شريط {room.sheerTapeType || 'ويفي'} (معامل ×{room.sheerMultiplier ?? 2.5})</span>
                         </td>
                         <td className="p-2 border border-slate-200 text-center font-mono">{room.sheerMeters} م</td>
-                        <td className="p-2 border border-slate-200 text-left font-mono">{room.sheerPrice} ج</td>
-                        <td className="p-2 border border-slate-200 text-left font-mono font-bold">{(room.sheerMeters * room.sheerPrice).toLocaleString()} ج</td>
+                        <td className="p-2 border border-slate-200 text-center font-mono">{room.sheerPrice} ج</td>
+                        <td className="p-2 border border-slate-200 text-center font-mono font-bold">{(room.sheerMeters * room.sheerPrice).toLocaleString()} ج</td>
                       </tr>
                     )}
 
                     {/* 3. Blackout fabric row (3rd) */}
                     {room.blackoutMeters > 0 && room.blackoutFabricName && (
                       <tr className="border border-slate-200">
-                        <td className="p-2 border border-slate-200 text-slate-500 font-bold">3. طبقة البلاك آوت العازل</td>
-                        <td className="p-2 border border-slate-200 text-slate-900 font-bold">
+                        <td className="p-2 border border-slate-200 text-slate-500 font-bold text-center">3. طبقة البلاك آوت العازل</td>
+                        <td className="p-2 border border-slate-200 text-slate-900 font-bold text-center">
                           {room.blackoutFabricName || 'بلاك آوت عازل حراري'}
-                          <span className="text-[11px] text-slate-500 block font-normal">(معامل ×{room.blackoutMultiplier ?? 1.20})</span>
+                          <span className="text-[11px] text-slate-500 block font-normal text-center">(معامل ×{room.blackoutMultiplier ?? 1.20})</span>
                         </td>
                         <td className="p-2 border border-slate-200 text-center font-mono">{room.blackoutMeters} م</td>
-                        <td className="p-2 border border-slate-200 text-left font-mono">{room.blackoutPrice} ج</td>
-                        <td className="p-2 border border-slate-200 text-left font-mono font-bold">{(room.blackoutMeters * room.blackoutPrice).toLocaleString()} ج</td>
+                        <td className="p-2 border border-slate-200 text-center font-mono">{room.blackoutPrice} ج</td>
+                        <td className="p-2 border border-slate-200 text-center font-mono font-bold">{(room.blackoutMeters * room.blackoutPrice).toLocaleString()} ج</td>
                       </tr>
                     )}
 
                     {/* Accessories & Tailoring summary row */}
                     <tr className="border border-slate-200 text-[11px] text-slate-600 bg-slate-50/30">
-                      <td className="p-2 border border-slate-200 font-bold">التجهيزات والمصنعيات</td>
-                      <td colSpan={3} className="p-2 border border-slate-200">
+                      <td className="p-2 border border-slate-200 font-bold text-center">التجهيزات والمصنعيات</td>
+                      <td colSpan={3} className="p-2 border border-slate-200 text-center">
                         مجرى/ماسورة ({room.trackMeters}م × {room.trackPrice}ج) + شريط كشكشة ({room.tapeMeters}م × {room.tapePrice}ج) + خياطة الورشة ({room.sides} جنب × {room.tailorPricePerSide}ج) + رسوم التركيب ({room.installFee}ج)
                       </td>
-                      <td className="p-2 border border-slate-200 text-left font-mono font-bold text-slate-900">
+                      <td className="p-2 border border-slate-200 text-center font-mono font-bold text-slate-900">
                         {(
                           (room.trackMeters * room.trackPrice) +
                           (room.tapeMeters * room.tapePrice) +
@@ -229,8 +235,8 @@ export default function ContractPrintModal({ isOpen, onClose, data }: ContractPr
 
                     {/* Room Total */}
                     <tr className="bg-slate-100 font-black border-b-2 border-slate-300">
-                      <td colSpan={4} className="p-2 border border-slate-300 text-left">إجمالي تكلفة {room.name}:</td>
-                      <td className="p-2 border border-slate-300 text-left font-mono text-amber-950 bg-amber-100/60">{room.totalSellPrice.toLocaleString()} ج</td>
+                      <td colSpan={4} className="p-2 border border-slate-300 text-center">إجمالي تكلفة {room.name}:</td>
+                      <td className="p-2 border border-slate-300 text-center font-mono text-amber-950 bg-amber-100/60">{room.totalSellPrice.toLocaleString()} ج</td>
                     </tr>
                   </React.Fragment>
                 ))}
@@ -238,50 +244,44 @@ export default function ContractPrintModal({ isOpen, onClose, data }: ContractPr
             </table>
           </div>
 
-          {/* Redesigned Premium Financial Breakdown Card */}
-          <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 text-white p-5 sm:p-6 rounded-2xl border-2 border-amber-500/40 shadow-xl space-y-4 print:border-slate-800">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-4 border-b border-slate-800">
+          {/* Clean White/Slate Financial Breakdown Card */}
+          <div className="bg-slate-50 text-slate-900 p-5 sm:p-6 rounded-2xl border-2 border-amber-300 shadow-soft space-y-4">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-4 border-b border-slate-200">
               <div className="space-y-1">
-                <span className="text-[11px] text-amber-400 font-bold uppercase tracking-wider block">اعتماد مقايسة وتكاليف العقد</span>
-                <h4 className="font-display font-black text-lg text-white">الملخص المالي والتحصيل</h4>
+                <span className="text-[11px] text-amber-800 font-bold uppercase tracking-wider block">اعتماد مقايسة وتكاليف العقد</span>
+                <h4 className="font-display font-black text-lg text-slate-900">الملخص المالي والتحصيل</h4>
               </div>
               <div className="flex flex-wrap items-center gap-3 text-xs">
-                <div className="bg-slate-800/80 px-3 py-1.5 rounded-xl border border-slate-700 text-slate-300">
-                  مسؤول التسعير: <strong className="text-white font-bold">{data.estimatorName}</strong>
+                <div className="bg-white px-3 py-1.5 rounded-xl border border-slate-200 text-slate-700">
+                  مسؤول التسعير: <strong className="text-slate-900 font-bold">{data.estimatorName}</strong>
                 </div>
-                <div className="bg-emerald-950/80 text-emerald-300 px-3 py-1.5 rounded-xl border border-emerald-800 font-bold">
+                <div className="bg-emerald-100 text-emerald-900 px-3 py-1.5 rounded-xl border border-emerald-300 font-bold">
                   ✓ العقد معتمد ومسدد العربون
                 </div>
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
-              <div className="bg-slate-900/90 p-3.5 rounded-xl border border-slate-800 text-right">
-                <span className="text-slate-400 text-xs font-bold block mb-1">إجمالي مقايسة العقد:</span>
-                <strong className="font-mono text-xl sm:text-2xl font-black text-white block">
-                  {data.totalAmount.toLocaleString()} <span className="text-xs text-amber-400 font-bold">ج.م</span>
+              <div className="bg-white p-3.5 rounded-xl border border-slate-200 text-center">
+                <span className="text-slate-500 text-xs font-bold block mb-1">إجمالي مقايسة العقد:</span>
+                <strong className="font-mono text-xl sm:text-2xl font-black text-slate-900 block">
+                  {data.totalAmount.toLocaleString()} <span className="text-xs text-amber-800 font-bold">ج.م</span>
                 </strong>
               </div>
 
-              <div className="bg-emerald-950/40 p-3.5 rounded-xl border border-emerald-900/60 text-right">
-                <span className="text-emerald-400 text-xs font-bold block mb-1">العربون المدفوع (المسدد):</span>
-                <strong className="font-mono text-xl sm:text-2xl font-black text-emerald-400 block">
-                  {data.depositPaid.toLocaleString()} <span className="text-xs text-emerald-300 font-bold">ج.م</span>
+              <div className="bg-emerald-50/80 p-3.5 rounded-xl border border-emerald-200 text-center">
+                <span className="text-emerald-800 text-xs font-bold block mb-1">العربون المدفوع (المسدد):</span>
+                <strong className="font-mono text-xl sm:text-2xl font-black text-emerald-950 block">
+                  {data.depositPaid.toLocaleString()} <span className="text-xs text-emerald-800 font-bold">ج.م</span>
                 </strong>
               </div>
 
-              <div className="bg-rose-950/40 p-3.5 rounded-xl border border-rose-900/60 text-right">
-                <span className="text-rose-400 text-xs font-bold block mb-1">المتبقي للتحصيل عند التركيب:</span>
-                <strong className="font-mono text-xl sm:text-2xl font-black text-rose-400 block">
-                  {data.remainingAmount.toLocaleString()} <span className="text-xs text-rose-300 font-bold">ج.م</span>
+              <div className="bg-rose-50/80 p-3.5 rounded-xl border border-rose-200 text-center">
+                <span className="text-rose-800 text-xs font-bold block mb-1">المتبقي للتحصيل عند التركيب:</span>
+                <strong className="font-mono text-xl sm:text-2xl font-black text-rose-950 block">
+                  {data.remainingAmount.toLocaleString()} <span className="text-xs text-rose-800 font-bold">ج.م</span>
                 </strong>
               </div>
-            </div>
-
-            {/* Signature Section */}
-            <div className="pt-3 border-t border-slate-800/80 flex flex-wrap justify-between items-end text-[11px] text-slate-400 gap-2">
-              <div>توقيع وتعهّد العميل بالموافقة على المواصفات والمواعيد: ____________________</div>
-              <div>توقيع مسؤول المبيعات والاعتماد: ____________________</div>
             </div>
           </div>
 
