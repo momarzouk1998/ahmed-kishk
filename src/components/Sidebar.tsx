@@ -423,7 +423,13 @@ export default function Sidebar() {
         {sidebarContent}
       </aside>
 
-      <div className={`lg:hidden fixed inset-0 z-[60] ${isOpen ? '' : 'pointer-events-none'}`} aria-hidden={!isOpen}>
+      <div
+        className={`lg:hidden fixed inset-0 z-[60] transition-all duration-300 ${
+          isOpen ? 'opacity-100 pointer-events-auto visible' : 'opacity-0 pointer-events-none invisible'
+        }`}
+        aria-hidden={!isOpen}
+        {...(!isOpen ? { inert: '' } : {})}
+      >
         <div
           onClick={close}
           className={`absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${
@@ -437,7 +443,7 @@ export default function Sidebar() {
         >
           <button
             onClick={close}
-            className="absolute top-3 left-3 w-8 h-8 rounded-lg bg-slate-800 text-white flex items-center justify-center transition-colors z-10"
+            className="absolute top-3 left-3 w-8 h-8 rounded-lg bg-slate-800 text-white flex items-center justify-center transition-colors z-10 cursor-pointer"
             aria-label="إغلاق"
           >
             <span className="material-symbols-outlined text-[18px]">close</span>
