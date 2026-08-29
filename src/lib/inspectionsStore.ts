@@ -162,204 +162,22 @@ export const ACCESSORY_PRICES = {
   defaultInstallFee: 125, // رسوم التركيب الثابتة
 };
 
-export const defaultInspectionsList: InspectionData[] = [
-  {
-    id: 'INS-001',
-    customerName: 'محمود عبد الرحمن',
-    phone: '01012345678',
-    address: 'التجمع الخامس، فيلا 42',
-    branch: 'الفرع الرئيسي',
-    scheduledAt: '2026-08-26 16:00',
-    technician: 'أحمد حسن',
-    status: 'تم رفع المقاسات',
-    isLocked: false,
-    notes: 'شقة 3 غرف + صالة بلكونة كبيرة',
-    createdAt: '2026-08-25',
-    rooms: [
-      {
-        id: 'r1',
-        name: 'الصالة الرئيسية (بلكونة)',
-        type: 'بلكونة',
-        widthCm: 350,
-        heightCm: 280,
-        sides: 2,
-        installationType: 'تراك سقف',
-        ceilingType: 'بيت نور / جبس بورد',
-        notes: 'يوجد بيت نور بعمق 15سم — ثني الذيل 12سم',
-      },
-      {
-        id: 'r2',
-        name: 'غرفة النوم الرئيسية',
-        type: 'شباك',
-        widthCm: 200,
-        heightCm: 260,
-        sides: 2,
-        installationType: 'مواسير فورجيه',
-        ceilingType: 'سقف عادي خرسانه',
-        notes: 'تثبيت الماسورة أعلى حلق الشباك بـ 15سم',
-      }
-    ],
-  },
-  {
-    id: 'INS-002',
-    customerName: 'سارة أحمد',
-    phone: '01298765432',
-    address: 'الشيخ زايد، كمبوند بيفرلي هيلز',
-    branch: 'فرع عرابي',
-    scheduledAt: '2026-08-27 12:00',
-    technician: 'محمد علي',
-    status: 'مُجدول',
-    isLocked: false,
-    notes: 'شقة عروسة — 4 غرف',
-    createdAt: '2026-08-25',
-    rooms: [],
-  },
-  {
-    id: 'INS-003',
-    customerName: 'شركة المعمار للمقاولات',
-    phone: '01155556666',
-    address: 'المهندسين، شارع البطل أحمد عبد العزيز',
-    branch: 'الفرع الرئيسي',
-    scheduledAt: '2026-08-24 11:00',
-    technician: 'محمد علي',
-    status: 'في الورشة',
-    isLocked: true,
-    notes: 'مكاتب إدارية وقاعات اجتماعات',
-    createdAt: '2026-08-24',
-    rooms: [
-      {
-        id: 'r3',
-        name: 'قاعة الاجتماعات الرئيسية',
-        type: 'شباك',
-        widthCm: 500,
-        heightCm: 300,
-        sides: 2,
-        installationType: 'تراك سقف',
-        ceilingType: 'سقف عادي خرسانه',
-        notes: '3 شبابيك متساوية',
-      }
-    ],
-  }
+export const PERMANENT_BLACKLIST_CUSTOMER_NAMES = [
+  'محمود عبد الرحمن',
+  'سارة أحمد',
+  'شركة المعمار للمقاولات',
 ];
 
-export const defaultQuotationsList: QuotationOrder[] = [
-  {
-    id: 'QOT-101',
-    inspectionId: 'INS-001',
-    customerName: 'محمود عبد الرحمن',
-    phone: '01012345678',
-    address: 'التجمع الخامس، فيلا 42',
-    branch: 'الفرع الرئيسي',
-    status: 'معتمد ومسدد العربون',
-    totalAmount: 12600,
-    depositPaid: 7000,
-    remainingAmount: 5600,
-    date: '2026-08-25',
-    deliveryDate: '2026-09-02',
-    estimatorName: 'أحمد كشك',
-    rooms: [
-      {
-        id: 'r1',
-        name: 'الصالة الرئيسية (بلكونة)',
-        type: 'بلكونة',
-        widthCm: 350,
-        heightCm: 280,
-        sides: 2,
-        installationType: 'تراك سقف',
-        ceilingType: 'بيت نور / جبس بورد',
-        heavyEnabled: true,
-        sheerEnabled: true,
-        blackoutEnabled: false,
-        sheerFabricCode: 'SH-101',
-        sheerFabricName: 'شيفون حرير فاخر (أبيض سادة)',
-        sheerTapeType: 'ويفي',
-        sheerMeters: 8.75,
-        sheerPrice: 160,
-        heavyFabricCode: 'HV-201',
-        heavyFabricName: 'قطيفة جاجوار تركيات (درجات البيج)',
-        heavyTapeType: '٣ فتلة',
-        heavyMeters: 7.0,
-        heavyPrice: 380,
-        blackoutMeters: 0,
-        blackoutPrice: 0,
-        installationCategory: 'تراك',
-        trackMeters: 7.0, // 2 tracks for 2 layers
-        trackPrice: 100,
-        tapeMeters: 15.75,
-        tapePrice: 50,
-        tailorPricePerSide: 0,
-        installFee: 125,
-        totalSellPrice: 12600,
-      }
-    ]
-  },
-  {
-    id: 'QOT-102',
-    inspectionId: 'INS-002',
-    customerName: 'سارة أحمد',
-    phone: '01298765432',
-    address: 'الشيخ زايد، بيفرلي هيلز',
-    branch: 'فرع عرابي',
-    status: 'بانتظار التسعير',
-    totalAmount: 0,
-    depositPaid: 0,
-    remainingAmount: 0,
-    date: '2026-08-25',
-    deliveryDate: '2026-09-05',
-    estimatorName: 'أحمد كشك',
-    rooms: [
-      {
-        id: 'r2',
-        name: 'غرفة النوم الرئيسية',
-        type: 'شباك',
-        widthCm: 250,
-        heightCm: 270,
-        sides: 2,
-        installationType: 'مواسير فورجيه',
-        ceilingType: 'سقف عادي خرسانه',
-        heavyEnabled: true,
-        sheerEnabled: true,
-        blackoutEnabled: true,
-        sheerFabricCode: 'SH-102',
-        sheerFabricName: 'تول مطرز كريستال تركيات',
-        sheerTapeType: 'ويفي',
-        sheerMeters: 6.25,
-        sheerPrice: 220,
-        heavyFabricCode: 'HV-202',
-        heavyFabricName: 'قطيفة شانيل كابوتونيه فاخر',
-        heavyTapeType: '٣ فتلة',
-        heavyMeters: 5.0,
-        heavyPrice: 450,
-        blackoutFabricCode: 'BK-301',
-        blackoutFabricName: 'بلاك آوت عازل حراري ومائي (ثلاثي)',
-        blackoutTapeType: 'جراب',
-        blackoutMeters: 3.75,
-        blackoutPrice: 250,
-        installationCategory: 'مواسير فورجيه',
-        pipeTypeDescription: 'سادة',
-        pipeColor: 'فضى',
-        pipePricePerMeter: 65,
-        pipeAccessories: {
-          doubleBrackets: 2,
-          singleBrackets: 0,
-          sideCaps: 2,
-          doubleRings: 20,
-          decorHangers: 0,
-        },
-        trackMeters: 0,
-        trackPrice: 0,
-        tapeMeters: 15.0,
-        tapePrice: 50,
-        tailorPricePerSide: 0,
-        installFee: 125,
-        totalSellPrice: 0,
-      }
-    ]
-  }
-];
+export const defaultInspectionsList: InspectionData[] = [];
+export const defaultQuotationsList: QuotationOrder[] = [];
 
 const INSPECTIONS_STORAGE_KEY = 'ahmed_kishk_inspections_data_v4';
 const QUOTATIONS_STORAGE_KEY = 'ahmed_kishk_quotations_data_v4';
+
+function isCustomerBlacklisted(name: string): boolean {
+  if (!name) return false;
+  return PERMANENT_BLACKLIST_CUSTOMER_NAMES.some(bn => name.includes(bn));
+}
 
 export function getStoredInspections(): InspectionData[] {
   if (typeof window === 'undefined') {
@@ -367,15 +185,14 @@ export function getStoredInspections(): InspectionData[] {
   }
   try {
     const raw = localStorage.getItem(INSPECTIONS_STORAGE_KEY);
-    if (!raw) {
-      localStorage.setItem(INSPECTIONS_STORAGE_KEY, JSON.stringify(defaultInspectionsList));
-      return defaultInspectionsList;
+    let list: InspectionData[] = [];
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) list = parsed;
     }
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed) && parsed.length > 0) {
-      return parsed;
-    }
-    return defaultInspectionsList;
+    const filtered = list.filter(i => !isCustomerBlacklisted(i.customerName));
+    localStorage.setItem(INSPECTIONS_STORAGE_KEY, JSON.stringify(filtered));
+    return filtered;
   } catch {
     return defaultInspectionsList;
   }

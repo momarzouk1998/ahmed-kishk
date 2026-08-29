@@ -37,98 +37,29 @@ export interface PipelineMasterOrder {
 const STORAGE_KEY = 'ahmed_kishk_pipeline_orders_v5';
 const DELETED_IDS_KEY = 'ahmed_kishk_deleted_order_ids_v1';
 
-export const DEFAULT_PIPELINE_ORDERS: PipelineMasterOrder[] = [
-  {
-    id: 'CUT-101',
-    orderId: 'ORD-001',
-    customerName: 'محمود عبد الرحمن',
-    phone: '01012345678',
-    address: 'التجمع الخامس، فيلا 42',
-    branch: 'الفرع الرئيسي',
-    deliveryDate: '2026-09-02',
-    cutterName: 'عم مصطفى البياع',
-    tailorName: 'أبو فهد الخياط',
-    technicianName: 'م. أحمد عبده',
-    status: 'في المقص',
-    localStatus: 'بانتظار القص',
-    createdAt: '2026-08-28',
-    totalAmount: 9400,
-    depositPaid: 5200,
-    remainingAmount: 4200,
-    rooms: [
-      {
-        roomName: 'غرفة (1) - الصالة الرئيسية',
-        heavyFabric: { name: 'قطيفة تركي ثقيل', code: 'V-990', meters: 6.3, pieces: 'جنبين', tapeType: 'شريط 3 فتلة (معامل ×2)', netHeight: '280 سم' },
-        sheerFabric: { name: 'تول خفيف مطرز', code: 'T-402', meters: 8.75, pieces: 'قطعة واحدة', tapeType: 'شريط ويفي (معامل ×2.5)', netHeight: '278 سم' },
-        blackoutFabric: { name: 'بلاك آوت عازل', code: 'BL-101', meters: 2.25, pieces: 'قطعة واحدة', tapeType: 'شريط كشكشة عريض', netHeight: '275 سم' },
-      },
-      {
-        roomName: 'غرفة (2) - غرفة النوم الرئيسية',
-        heavyFabric: { name: 'قطيفة تركي ثقيل', code: 'V-990', meters: 4.5, pieces: 'جنبين', tapeType: 'شريط 3 فتلة (معامل ×2)', netHeight: '265 سم' },
-        sheerFabric: { name: 'تول خفيف مطرز', code: 'T-402', meters: 5.0, pieces: 'قطعة واحدة', tapeType: 'شريط ويفي (معامل ×2.5)', netHeight: '263 سم' },
-        blackoutFabric: { name: 'بلاك آوت عازل', code: 'BL-101', meters: 3.0, pieces: 'قطعة واحدة', tapeType: 'شريط كشكشة عريض', netHeight: '260 سم' },
-      },
-    ],
-  },
-  {
-    id: 'CUT-102',
-    orderId: 'ORD-002',
-    customerName: 'د. سارة أحمد',
-    phone: '01298765432',
-    address: 'الشيخ زايد، بيفرلي هيلز',
-    branch: 'فرع عرابي',
-    deliveryDate: '2026-09-05',
-    cutterName: 'سيد القصاد',
-    tailorName: 'الأسطى إبراهيم',
-    technicianName: 'م. هاني سعيد',
-    status: 'في المقص',
-    localStatus: 'بانتظار القص',
-    createdAt: '2026-08-27',
-    totalAmount: 8500,
-    depositPaid: 4700,
-    remainingAmount: 3800,
-    rooms: [
-      {
-        roomName: 'غرفة المعيشة',
-        heavyFabric: { name: 'كتان هازل بني', code: 'LN-77', meters: 12.0, pieces: 'جنبين', tapeType: 'شريط ويفي (معامل ×2.5)', netHeight: '290 سم' },
-        sheerFabric: { name: 'تول ويفي أبيض', code: 'TW-10', meters: 12.0, pieces: 'قطعتين', tapeType: 'شريط ويفي (معامل ×2.5)', netHeight: '288 سم' },
-      },
-    ],
-  },
-  {
-    id: 'CUT-103',
-    orderId: 'ORD-003',
-    customerName: 'م/ طارق عبد المحسن',
-    phone: '01144556677',
-    address: 'المعادي، دجلة',
-    branch: 'الفرع الرئيسي',
-    deliveryDate: '2026-08-30',
-    cutterName: 'عم مصطفى البياع',
-    tailorName: 'أبو فهد الخياط',
-    technicianName: 'م. أحمد عبده',
-    status: 'في الورشة',
-    localStatus: 'جاري الخياطة',
-    createdAt: '2026-08-25',
-    totalAmount: 7200,
-    depositPaid: 4000,
-    remainingAmount: 3200,
-    rooms: [
-      {
-        roomName: 'صالون الضيوف',
-        heavyFabric: { name: 'شانيل تركيات بيج', code: 'CH-88', meters: 8.5, pieces: 'جنبين', tapeType: 'شريط 3 فتلة (معامل ×2)', netHeight: '280 سم' },
-        sheerFabric: { name: 'تول سادة أوف وايت', code: 'TS-01', meters: 9.0, pieces: 'قطعة واحدة', tapeType: 'شريط ويفي (معامل ×2.5)', netHeight: '278 سم' },
-      },
-    ],
-  },
+export const PERMANENT_BLACKLIST_NAMES = [
+  'محمود عبد الرحمن',
+  'سارة أحمد',
+  'شركة المعمار للمقاولات',
 ];
 
+export const DEFAULT_PIPELINE_ORDERS: PipelineMasterOrder[] = [];
+
+export function isTodayOrOverdue(dateStr?: string): boolean {
+  if (!dateStr || dateStr.trim() === '') return true;
+  const today = new Date().toISOString().split('T')[0];
+  const target = dateStr.split(' ')[0].split('T')[0];
+  return target <= today;
+}
+
 export function getDeletedOrderIds(): string[] {
-  if (typeof window === 'undefined') return [];
+  if (typeof window === 'undefined') return [...PERMANENT_BLACKLIST_NAMES];
   try {
     const raw = localStorage.getItem(DELETED_IDS_KEY);
-    return raw ? JSON.parse(raw) : [];
+    const list: string[] = raw ? JSON.parse(raw) : [];
+    return Array.from(new Set([...list, ...PERMANENT_BLACKLIST_NAMES]));
   } catch {
-    return [];
+    return [...PERMANENT_BLACKLIST_NAMES];
   }
 }
 
@@ -173,7 +104,11 @@ export function getStoredPipelineOrders(): PipelineMasterOrder[] {
     } else {
       list = JSON.parse(raw);
     }
-    const filtered = list.filter(o => !deleted.includes(o.id) && !deleted.includes(o.orderId) && !deleted.includes(o.customerName));
+    const filtered = list.filter(o => {
+      const isIdDel = deleted.includes(o.id) || deleted.includes(o.orderId);
+      const isNameDel = PERMANENT_BLACKLIST_NAMES.some(bn => o.customerName.includes(bn));
+      return !isIdDel && !isNameDel;
+    });
     localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
     return filtered;
   } catch (err) {
@@ -186,7 +121,11 @@ export function saveStoredPipelineOrders(orders: PipelineMasterOrder[]) {
   if (typeof window === 'undefined') return;
   try {
     const deleted = getDeletedOrderIds();
-    const filtered = orders.filter(o => !deleted.includes(o.id) && !deleted.includes(o.orderId) && !deleted.includes(o.customerName));
+    const filtered = orders.filter(o => {
+      const isIdDel = deleted.includes(o.id) || deleted.includes(o.orderId);
+      const isNameDel = PERMANENT_BLACKLIST_NAMES.some(bn => o.customerName.includes(bn));
+      return !isIdDel && !isNameDel;
+    });
     localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
   } catch (err) {
     console.error('Error saving pipeline orders:', err);
@@ -213,24 +152,27 @@ export function updatePipelineOrderStatus(
   });
 
   saveStoredPipelineOrders(updated);
-  return updated;
 }
 
-export function isTodayOrOverdue(dateStr?: string): boolean {
-  if (!dateStr || dateStr.trim() === '' || dateStr.includes('غير محدد') || dateStr.includes('اليوم')) {
-    return true;
-  }
+export function addPipelineOrder(order: Partial<PipelineMasterOrder>): PipelineMasterOrder {
+  const current = getStoredPipelineOrders();
+  const newOrder: PipelineMasterOrder = {
+    id: order.id || `ORD-${Date.now()}`,
+    orderId: order.orderId || `ORD-00${current.length + 1}`,
+    customerName: order.customerName || 'عميل جديد',
+    phone: order.phone || '01000000000',
+    address: order.address || 'القاهرة',
+    branch: order.branch || 'الفرع الرئيسي',
+    deliveryDate: order.deliveryDate || new Date().toISOString().split('T')[0],
+    status: normalizeMasterStage(order.status || 'المعاينات'),
+    localStatus: order.localStatus || 'جاري المتابعة',
+    createdAt: new Date().toISOString().split('T')[0],
+    remainingAmount: order.remainingAmount || 0,
+    totalAmount: order.totalAmount || 0,
+    depositPaid: order.depositPaid || 0,
+    rooms: order.rooms || [],
+  };
 
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  const todayStr = `${year}-${month}-${day}`;
-
-  const match = dateStr.match(/\d{4}-\d{2}-\d{2}/);
-  if (match) {
-    return match[0] <= todayStr;
-  }
-
-  return true;
+  saveStoredPipelineOrders([newOrder, ...current]);
+  return newOrder;
 }
