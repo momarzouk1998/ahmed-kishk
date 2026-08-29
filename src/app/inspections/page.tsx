@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
+import { formatDate } from '@/lib/dateUtils';
 
 interface FabricLayer {
   layer: string;
@@ -589,7 +590,7 @@ export default function InspectionsPage() {
                 </div>
                 <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
                   <span className="text-xs text-slate-500 font-bold block">موعد المعاينة الميدانية:</span>
-                  <span className="font-bold text-slate-900 text-sm font-mono mt-1 block">{selected.scheduledAt ? new Date(selected.scheduledAt).toLocaleString('ar-EG') : 'لم يحدد'}</span>
+                  <span className="font-bold text-slate-900 text-sm font-mono mt-1 block">{selected.scheduledAt ? formatDate(selected.scheduledAt) : 'لم يحدد'}</span>
                 </div>
                 {selected.notes && (
                   <div className="sm:col-span-2 p-4 bg-slate-50 rounded-xl border border-slate-200">

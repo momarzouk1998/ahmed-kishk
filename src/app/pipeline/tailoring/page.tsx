@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
 import { getStoredPipelineOrders, updatePipelineOrderStatus, saveStoredPipelineOrders } from '@/lib/pipelineStore';
+import { formatDateOnly } from '@/lib/dateUtils';
 
 interface RoomTailoringDetail {
   roomName: string;
@@ -469,8 +470,8 @@ export default function PipelineTailoringPage() {
                 <p className="text-xs font-bold text-amber-800">أمر ورقة الورشة والتفصيل (للخياط والورشة)</p>
               </div>
               <div className="text-left font-mono text-xs">
-                <div><strong>التاريخ:</strong> {selectedOrderDetails.createdAt}</div>
-                <div><strong>موعد الاستلام:</strong> {selectedOrderDetails.deliveryDate}</div>
+                <div><strong>التاريخ:</strong> {selectedOrderDetails.createdAt ? formatDateOnly(selectedOrderDetails.createdAt) : 'غير محدد'}</div>
+                <div><strong>موعد الاستلام:</strong> {selectedOrderDetails.deliveryDate ? formatDateOnly(selectedOrderDetails.deliveryDate) : 'غير محدد'}</div>
               </div>
             </div>
 

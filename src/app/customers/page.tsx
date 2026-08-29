@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
+import { formatDateOnly } from '@/lib/dateUtils';
 
 interface Customer {
   id: string;
@@ -612,7 +613,7 @@ export default function CustomersPage() {
                   <tbody>
                     {filteredCollections.map(col => (
                       <tr key={col.id} className="border-t border-slate-100 hover:bg-slate-50/70 transition-colors">
-                        <td className="p-3.5 font-mono text-slate-700 font-bold">{col.date}</td>
+                        <td className="p-3.5 font-mono text-slate-700 font-bold">{col.date ? formatDateOnly(col.date) : 'غير محدد'}</td>
                         <td className="p-3.5 font-bold text-slate-900">
                           <div>{col.customerName}</div>
                           <div className="text-[10px] text-slate-400 font-mono" dir="ltr">{col.phone}</div>
@@ -725,7 +726,7 @@ export default function CustomersPage() {
                 <p className="text-xs font-bold text-amber-800">كشف حساب وتاريخ التعاملات المالية للعميل</p>
               </div>
               <div className="text-left font-mono text-xs">
-                <div><strong>تاريخ التقرير:</strong> {new Date().toISOString().split('T')[0]}</div>
+                <div><strong>تاريخ التقرير:</strong> {formatDateOnly(new Date())}</div>
                 <div><strong>كود العميل:</strong> {selectedCustomer.id}</div>
               </div>
             </div>
@@ -775,7 +776,7 @@ export default function CustomersPage() {
                 <tbody>
                   {generateCustomerLedger(selectedCustomer).map((entry, idx) => (
                     <tr key={idx} className="border-b border-slate-200">
-                      <td className="p-2 border border-slate-300 font-mono">{entry.date}</td>
+                      <td className="p-2 border border-slate-300 font-mono">{entry.date ? formatDateOnly(entry.date) : 'غير محدد'}</td>
                       <td className="p-2 border border-slate-300 font-bold">{entry.type}</td>
                       <td className="p-2 border border-slate-300 text-slate-700">{entry.description}</td>
                       <td className="p-2 border border-slate-300 text-center font-mono font-bold text-rose-800">

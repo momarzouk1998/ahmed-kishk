@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
 import { useRouter } from 'next/navigation';
+import { formatDateOnly } from '@/lib/dateUtils';
 
 interface PurchaseInvoiceItem {
   code: string;
@@ -341,7 +342,7 @@ export default function PurchasesPage() {
                         <tr key={pur.id} className="border-t border-slate-100 hover:bg-slate-50/70 transition-colors">
                           <td className="p-3.5 font-bold text-slate-900">
                             <span className="font-mono text-amber-800 text-xs block">{pur.invoiceNumber}</span>
-                            <span className="text-[10px] text-slate-400 font-mono">{pur.date} ({pur.branch})</span>
+                            <span className="text-[10px] text-slate-400 font-mono">{pur.date ? formatDateOnly(pur.date) : 'غير محدد'} ({pur.branch})</span>
                           </td>
 
                           <td className="p-3.5 text-slate-700">
@@ -469,7 +470,7 @@ export default function PurchasesPage() {
                       <tr key={ret.id} className="border-t border-slate-100 hover:bg-slate-50/70 transition-colors">
                         <td className="p-3.5 font-bold text-slate-900">
                           <span className="font-mono text-rose-800 text-xs block">{ret.returnNumber}</span>
-                          <span className="text-[10px] text-slate-400 font-mono">{ret.date}</span>
+                          <span className="text-[10px] text-slate-400 font-mono">{ret.date ? formatDateOnly(ret.date) : 'غير محدد'}</span>
                         </td>
 
                         <td className="p-3.5 text-slate-700">

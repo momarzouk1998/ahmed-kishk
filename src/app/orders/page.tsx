@@ -20,6 +20,7 @@ import {
   deleteQuotationOrder,
   QuotationOrder,
 } from '@/lib/inspectionsStore';
+import { formatDate, formatDateOnly } from '@/lib/dateUtils';
 
 const GLOBAL_STAGES: { key: GlobalMasterStage | 'الكل'; label: string; badgeColor: string }[] = [
   { key: 'الكل', label: 'كل الطلبات', badgeColor: 'bg-slate-100 text-slate-800 border-slate-300' },
@@ -342,10 +343,10 @@ export default function CentralOrdersLedgerPage() {
                           </div>
                         </td>
                         <td className="p-3.5 font-mono text-slate-800 font-bold">
-                          {order.createdAt || 'غير محدد'}
+                          {order.createdAt ? formatDateOnly(order.createdAt) : 'غير محدد'}
                         </td>
                         <td className="p-3.5 font-mono font-bold text-rose-800">
-                          {order.deliveryDate || 'غير محدد'}
+                          {order.deliveryDate ? formatDateOnly(order.deliveryDate) : 'غير محدد'}
                         </td>
                         <td className="p-3.5 font-mono">
                           <div className="font-bold text-slate-900">{(order.totalAmount || 0).toLocaleString()} ج</div>
@@ -616,7 +617,7 @@ export default function CentralOrdersLedgerPage() {
                 <p className="text-xs font-bold text-amber-800">أمر ورقة قص القماش (للبياع / أمين المخزن)</p>
               </div>
               <div className="text-left font-mono text-xs">
-                <div><strong>التاريخ:</strong> {printCuttingOrder.createdAt}</div>
+                <div><strong>التاريخ:</strong> {printCuttingOrder.createdAt ? formatDateOnly(printCuttingOrder.createdAt) : 'غير محدد'}</div>
               </div>
             </div>
 
@@ -683,8 +684,8 @@ export default function CentralOrdersLedgerPage() {
                 <p className="text-xs font-bold text-purple-900">أمر ورقة التفصيل والورشة (للخياط)</p>
               </div>
               <div className="text-left font-mono text-xs">
-                <div><strong>التاريخ:</strong> {printWorksheetOrder.createdAt}</div>
-                <div><strong>موعد الاستلام:</strong> {printWorksheetOrder.deliveryDate}</div>
+                <div><strong>التاريخ:</strong> {printWorksheetOrder.createdAt ? formatDateOnly(printWorksheetOrder.createdAt) : 'غير محدد'}</div>
+                <div><strong>موعد الاستلام:</strong> {printWorksheetOrder.deliveryDate ? formatDateOnly(printWorksheetOrder.deliveryDate) : 'غير محدد'}</div>
               </div>
             </div>
 

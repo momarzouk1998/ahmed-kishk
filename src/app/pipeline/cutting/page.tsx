@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
 import { getStoredPipelineOrders, updatePipelineOrderStatus } from '@/lib/pipelineStore';
+import { formatDateOnly } from '@/lib/dateUtils';
 
 interface RoomFabricItem {
   roomName: string;
@@ -398,7 +399,7 @@ export default function PipelineCuttingPage() {
                 <p className="text-xs font-bold text-amber-800">أمر ورقة قص القماش (للبياع / أمين المخزن)</p>
               </div>
               <div className="text-left font-mono text-xs">
-                <div><strong>التاريخ:</strong> {selectedOrderForPrint.createdAt}</div>
+                <div><strong>التاريخ:</strong> {selectedOrderForPrint.createdAt ? formatDateOnly(selectedOrderForPrint.createdAt) : 'غير محدد'}</div>
               </div>
             </div>
 

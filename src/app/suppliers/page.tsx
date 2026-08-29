@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
+import { formatDateOnly } from '@/lib/dateUtils';
 
 interface Supplier {
   id: string;
@@ -650,7 +651,7 @@ export default function SuppliersPage() {
                   <tbody>
                     {filteredPayments.map(pay => (
                       <tr key={pay.id} className="border-t border-slate-100 hover:bg-slate-50/70 transition-colors">
-                        <td className="p-3.5 font-mono text-slate-700 font-bold">{pay.date}</td>
+                        <td className="p-3.5 font-mono text-slate-700 font-bold">{pay.date ? formatDateOnly(pay.date) : 'غير محدد'}</td>
                         <td className="p-3.5 font-bold text-slate-900">{pay.supplierName}</td>
                         <td className="p-3.5 text-center font-mono font-black text-sm text-rose-700">
                           -{pay.amount.toLocaleString()} ج
@@ -789,9 +790,9 @@ export default function SuppliersPage() {
                             {chk.amount.toLocaleString()} ج
                           </td>
 
-                          <td className="p-3.5 text-center font-mono text-slate-700">{chk.issueDate}</td>
+                          <td className="p-3.5 text-center font-mono text-slate-700">{chk.issueDate ? formatDateOnly(chk.issueDate) : 'غير محدد'}</td>
 
-                          <td className="p-3.5 text-center font-mono font-bold text-rose-800">{chk.dueDate}</td>
+                          <td className="p-3.5 text-center font-mono font-bold text-rose-800">{chk.dueDate ? formatDateOnly(chk.dueDate) : 'غير محدد'}</td>
 
                           <td className="p-3.5 text-center">
                             <span className={`px-2.5 py-0.5 rounded-full font-bold text-[11px] border ${statusBadgeClass}`}>
@@ -894,7 +895,7 @@ export default function SuppliersPage() {
                 <p className="text-xs font-bold text-amber-800">كشف حساب وتفاصيل المستحقات المالية للمورد</p>
               </div>
               <div className="text-left font-mono text-xs">
-                <div><strong>تاريخ التقرير:</strong> {new Date().toISOString().split('T')[0]}</div>
+                <div><strong>تاريخ التقرير:</strong> {formatDateOnly(new Date())}</div>
                 <div><strong>كود المورد:</strong> {selectedSupplier.id}</div>
               </div>
             </div>
@@ -943,7 +944,7 @@ export default function SuppliersPage() {
                 <tbody>
                   {generateSupplierLedger(selectedSupplier).map((entry, idx) => (
                     <tr key={idx} className="border-b border-slate-200">
-                      <td className="p-2 border border-slate-300 font-mono">{entry.date}</td>
+                      <td className="p-2 border border-slate-300 font-mono">{entry.date ? formatDateOnly(entry.date) : 'غير محدد'}</td>
                       <td className="p-2 border border-slate-300 font-bold">{entry.type}</td>
                       <td className="p-2 border border-slate-300 text-slate-700">{entry.description}</td>
                       <td className="p-2 border border-slate-300 text-center font-mono font-bold text-emerald-800">

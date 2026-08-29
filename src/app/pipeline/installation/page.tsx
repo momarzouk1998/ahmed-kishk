@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
 import { getStoredPipelineOrders, updatePipelineOrderStatus, isTodayOrOverdue } from '@/lib/pipelineStore';
+import { formatDate } from '@/lib/dateUtils';
 
 interface InstallJob {
   id: string;
@@ -200,7 +201,7 @@ export default function PipelineInstallationPage() {
                       <td className="p-3.5 font-bold text-slate-900">{job.customerName} ({job.phone})</td>
                       <td className="p-3.5 text-slate-700">{job.address}</td>
                       <td className="p-3.5 text-slate-800 font-bold">{job.technicianName}</td>
-                      <td className="p-3.5 font-mono text-slate-700">{job.scheduledDate}</td>
+                      <td className="p-3.5 font-mono text-slate-700">{job.scheduledDate ? formatDate(job.scheduledDate) : 'غير محدد'}</td>
                       <td className="p-3.5 text-center">
                         <a
                           href={`https://wa.me/2${job.phone}?text=${encodeURIComponent(`مرحباً ${job.customerName}، تم إتمام تركيب الستائر في موقعكم بنجاح بواسطة فني مؤسسة أحمد كشك. شكراً لثقتكم بنا!`)}`}
@@ -243,7 +244,7 @@ export default function PipelineInstallationPage() {
                   <div className="p-3 bg-slate-50 rounded-xl my-2 text-xs space-y-1 font-medium">
                     <div><strong>العنوان:</strong> {job.address}</div>
                     <div><strong>الفني المسؤول:</strong> {job.technicianName}</div>
-                    <div><strong>موعد التركيب:</strong> {job.scheduledDate}</div>
+                    <div><strong>موعد التركيب:</strong> {job.scheduledDate ? formatDate(job.scheduledDate) : 'غير محدد'}</div>
                     <div className="flex justify-between pt-1.5 border-t border-slate-200">
                       <span className="text-slate-500">المتبقي للتحصيل عند التركيب:</span>
                       <strong className="font-mono font-black text-rose-700">{job.remainingAmount.toLocaleString()} ج.م</strong>
@@ -253,7 +254,7 @@ export default function PipelineInstallationPage() {
 
                 <div className="pt-2 border-t border-slate-100 space-y-2">
                   <a
-                    href={`https://wa.me/2${job.phone}?text=${encodeURIComponent(`مرحباً ${job.customerName}، فريق التركيبات بمؤسسة أحمد كشك يود إعلامك بأن موعد تركيب الستائر المخطط هو (${job.scheduledDate}). نلتقي على خير!`)}`}
+                    href={`https://wa.me/2${job.phone}?text=${encodeURIComponent(`مرحباً ${job.customerName}، فريق التركيبات بمؤسسة أحمد كشك يود إعلامك بأن موعد تركيب الستائر المخطط هو (${job.scheduledDate ? formatDate(job.scheduledDate) : 'غير محدد'}). نلتقي على خير!`)}`}
                     target="_blank"
                     rel="noreferrer"
                     className="w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 py-1.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"

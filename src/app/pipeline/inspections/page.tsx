@@ -26,7 +26,7 @@ function format12hTime(timeStr: string) {
         '09': 'سبتمبر', '10': 'أكتوبر', '11': 'نوفمبر', '12': 'ديسمبر'
       };
       const monthName = monthsArabic[month] || month;
-      return `${parseInt(day, 10)} ${monthName} • ${formattedHour}:${m} ${ampm}`;
+      return `${parseInt(day, 10)} ${monthName} ${year} • ${formattedHour}:${m} ${ampm}`;
     }
     return timeStr;
   } catch {
