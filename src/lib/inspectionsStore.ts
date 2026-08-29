@@ -578,9 +578,28 @@ export function syncInspectionToPricing(inspectionOrId: InspectionData | string)
 }
 
 export function deleteQuotationOrder(orderId: string): void {
+  const targetQot = getStoredQuotations().find(q => q.id.toUpperCase() === orderId.toUpperCase() || q.inspectionId?.toUpperCase() === orderId.toUpperCase());
+  const customerName = targetQot?.customerName;
+  
+  if (typeof window !== 'undefined') {
+    try {
+      const raw = localStorage.getItem('ahmed_kishk_deleted_order_ids_v1');
+      const deletedArr: string[] = raw ? JSON.parse(raw) : [];
+      if (!deletedArr.includes(orderId)) deletedArr.push(orderId);
+      if (targetQot?.id && !deletedArr.includes(targetQot.id)) deletedArr.push(targetQot.id);
+      if (targetQot?.inspectionId && !deletedArr.includes(targetQot.inspectionId)) deletedArr.push(targetQot.inspectionId);
+      if (customerName && !deletedArr.includes(customerName)) deletedArr.push(customerName);
+      localStorage.setItem('ahmed_kishk_deleted_order_ids_v1', JSON.stringify(deletedArr));
+    } catch {}
+  }
+
   const quotations = getStoredQuotations();
-  const filtered = quotations.filter(q => q.id.toUpperCase() !== orderId.toUpperCase());
-  saveAllQuotations(filtered);
+  const filteredQots = quotations.filter(q => q.id.toUpperCase() !== orderId.toUpperCase() && q.inspectionId?.toUpperCase() !== orderId.toUpperCase() && q.customerName !== customerName);
+  saveAllQuotations(filteredQots);
+
+  const inspections = getStoredInspections();
+  const filteredInsps = inspections.filter(i => i.id.toUpperCase() !== orderId.toUpperCase() && i.customerName !== customerName);
+  saveAllInspections(filteredInsps);
 }
 
 export function updateQuotationStageAndStatus(orderId: string, newStatus: QuotationOrder['status']): void {

@@ -10,7 +10,8 @@ import {
   normalizeMasterStage,
   GlobalMasterStage,
   PipelineMasterOrder,
-  isTodayOrOverdue
+  isTodayOrOverdue,
+  registerDeletedOrderId
 } from '@/lib/pipelineStore';
 import {
   getStoredQuotations,
@@ -110,11 +111,17 @@ export default function CentralOrdersLedgerPage() {
   const handleDelete = (id: string, name: string) => {
     if (confirm(`هل أنت أسر بالتأكيد من حذف طلب العميل "${name}" نهائياً من النظام؟`)) {
       deleteQuotationOrder(id);
-      const updated = orders.filter(o => o.id !== id && o.orderId !== id);
+      registerDeletedOrderId(id);
+      if (name) registerDeletedOrderId(name);
+      
+      const target = orders.find(o => o.id === id || o.orderId === id || o.customerName === name);
+      if (target?.orderId) registerDeletedOrderId(target.orderId);
+
+      const updated = orders.filter(o => o.id !== id && o.orderId !== id && o.customerName !== name);
       setOrders(updated);
       saveStoredPipelineOrders(updated);
-      if (activeEditingOrder?.id === id) setActiveEditingOrder(null);
-      alert('تم حذف الطلب بنجاح ✓');
+      if (activeEditingOrder?.id === id || activeEditingOrder?.customerName === name) setActiveEditingOrder(null);
+      alert('تم حذف الطلب نهائياً من النظام ولن يظهر مجدداً ✓');
     }
   };
 

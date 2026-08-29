@@ -34,7 +34,8 @@ export interface PipelineMasterOrder {
   rooms: any[];
 }
 
-const STORAGE_KEY = 'ahmed_kishk_pipeline_orders_v4';
+const STORAGE_KEY = 'ahmed_kishk_pipeline_orders_v5';
+const DELETED_IDS_KEY = 'ahmed_kishk_deleted_order_ids_v1';
 
 export const DEFAULT_PIPELINE_ORDERS: PipelineMasterOrder[] = [
   {
@@ -121,6 +122,29 @@ export const DEFAULT_PIPELINE_ORDERS: PipelineMasterOrder[] = [
   },
 ];
 
+export function getDeletedOrderIds(): string[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(DELETED_IDS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function registerDeletedOrderId(id: string) {
+  if (typeof window === 'undefined') return;
+  try {
+    const deleted = getDeletedOrderIds();
+    if (!deleted.includes(id)) {
+      deleted.push(id);
+      localStorage.setItem(DELETED_IDS_KEY, JSON.stringify(deleted));
+    }
+  } catch (err) {
+    console.error('Error saving deleted order id:', err);
+  }
+}
+
 /**
  * Normalizes any status to official Global Master Stage
  */
@@ -141,12 +165,17 @@ export function normalizeMasterStage(statusStr: string): GlobalMasterStage {
 export function getStoredPipelineOrders(): PipelineMasterOrder[] {
   if (typeof window === 'undefined') return DEFAULT_PIPELINE_ORDERS;
   try {
+    const deleted = getDeletedOrderIds();
     const raw = localStorage.getItem(STORAGE_KEY);
+    let list: PipelineMasterOrder[] = [];
     if (!raw) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_PIPELINE_ORDERS));
-      return DEFAULT_PIPELINE_ORDERS;
+      list = DEFAULT_PIPELINE_ORDERS;
+    } else {
+      list = JSON.parse(raw);
     }
-    return JSON.parse(raw);
+    const filtered = list.filter(o => !deleted.includes(o.id) && !deleted.includes(o.orderId) && !deleted.includes(o.customerName));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+    return filtered;
   } catch (err) {
     console.error('Error reading pipeline orders:', err);
     return DEFAULT_PIPELINE_ORDERS;
@@ -156,7 +185,9 @@ export function getStoredPipelineOrders(): PipelineMasterOrder[] {
 export function saveStoredPipelineOrders(orders: PipelineMasterOrder[]) {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(orders));
+    const deleted = getDeletedOrderIds();
+    const filtered = orders.filter(o => !deleted.includes(o.id) && !deleted.includes(o.orderId) && !deleted.includes(o.customerName));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
   } catch (err) {
     console.error('Error saving pipeline orders:', err);
   }

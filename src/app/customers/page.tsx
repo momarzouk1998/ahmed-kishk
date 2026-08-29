@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
 
 interface Customer {
@@ -12,11 +12,24 @@ interface Customer {
   inspectionsCount: number;
   ordersCount: number;
   totalSpent: number;
-  balance: number; // positive = owed by customer, negative = credit
+  balance: number; // positive = owed by customer (لينا), negative = credit (علينا)
+  notes: string;
+  createdAt: string;
+}
+
+interface CustomerCollection {
+  id: string;
+  date: string;
+  customerId: string;
+  customerName: string;
+  phone: string;
+  amount: number;
+  method: 'نقدي' | 'إنستاباي' | 'فودافون كاش' | 'تحويل بنكي' | 'شيك';
+  treasury: string;
   notes: string;
 }
 
-const initialCustomers: Customer[] = [
+const defaultCustomers: Customer[] = [
   {
     id: 'CUST-001',
     name: 'محمود عبد الرحمن',
@@ -26,8 +39,9 @@ const initialCustomers: Customer[] = [
     inspectionsCount: 2,
     ordersCount: 1,
     totalSpent: 12600,
-    balance: 2600, // آجل
+    balance: 5600,
     notes: 'عميل فيلا — يفضل أقمشة السوارية الثقيلة',
+    createdAt: '2026-08-20',
   },
   {
     id: 'CUST-002',
@@ -36,10 +50,11 @@ const initialCustomers: Customer[] = [
     address: 'الشيخ زايد، كمبوند بيفرلي هيلز',
     city: '6 أكتوبر',
     inspectionsCount: 1,
-    ordersCount: 0,
-    totalSpent: 0,
-    balance: 0,
+    ordersCount: 1,
+    totalSpent: 8500,
+    balance: 3800,
     notes: 'طلب معاينة قيد المتابعة',
+    createdAt: '2026-08-22',
   },
   {
     id: 'CUST-003',
@@ -50,334 +65,679 @@ const initialCustomers: Customer[] = [
     inspectionsCount: 3,
     ordersCount: 2,
     totalSpent: 42000,
-    balance: 10000,
+    balance: 0,
     notes: 'حساب تجاري شركي — سداد بشيكات',
+    createdAt: '2026-08-15',
   },
   {
     id: 'CUST-004',
-    name: 'أسرة الدكتور سامي',
-    phone: '01022334455',
-    address: 'ميدان الحجاز',
-    city: 'مدينة نصر',
+    name: 'م/ طارق عبد المحسن',
+    phone: '01144556677',
+    address: 'المعادي، دجلة',
+    city: 'القاهرة',
     inspectionsCount: 1,
     ordersCount: 1,
-    totalSpent: 18500,
-    balance: 0,
-    notes: 'تم السداد بالكامل',
+    totalSpent: 7200,
+    balance: 3200,
+    notes: 'تم الدفع جزئياً',
+    createdAt: '2026-08-25',
   },
 ];
 
+const defaultCollections: CustomerCollection[] = [
+  {
+    id: 'COL-101',
+    date: '2026-08-28',
+    customerId: 'CUST-001',
+    customerName: 'محمود عبد الرحمن',
+    phone: '01012345678',
+    amount: 5200,
+    method: 'نقدي',
+    treasury: 'الخزينة الرئيسية',
+    notes: 'عربون مقايسة الصالة الرئيسية',
+  },
+  {
+    id: 'COL-102',
+    date: '2026-08-27',
+    customerId: 'CUST-002',
+    customerName: 'سارة أحمد',
+    phone: '01298765432',
+    amount: 4700,
+    method: 'إنستاباي',
+    treasury: 'حساب إنستاباي البنكي',
+    notes: 'عربون خياطة ستائر الشيخ زايد',
+  },
+];
+
+const CUSTOMERS_KEY = 'ahmed_kishk_customers_v2';
+const COLLECTIONS_KEY = 'ahmed_kishk_collections_v2';
+
 export default function CustomersPage() {
-  const [customers, setCustomers] = useState<Customer[]>(initialCustomers);
+  const [activeTab, setActiveTab] = useState<'CUSTOMERS' | 'COLLECTIONS'>('CUSTOMERS');
+  const [customers, setCustomers] = useState<Customer[]>(defaultCustomers);
+  const [collections, setCollections] = useState<CustomerCollection[]>(defaultCollections);
+
+  // Filters
   const [search, setSearch] = useState('');
-  const [selected, setSelected] = useState<Customer | null>(initialCustomers[0]);
-  const [showAddModal, setShowAddModal] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'unpaid' | 'overpaid' | 'cleared'>('all');
+  const [methodFilter, setMethodFilter] = useState<string>('all');
 
-  // Form states
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [address, setAddress] = useState('');
-  const [city, setCity] = useState('القاهرة');
-  const [notes, setNotes] = useState('');
+  // Modals
+  const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
+  const [showAddCollectionModal, setShowAddCollectionModal] = useState(false);
 
-  const filtered = customers.filter(
-    (c) =>
-      c.name.includes(search) ||
-      c.phone.includes(search) ||
-      c.address.includes(search) ||
-      c.id.toLowerCase().includes(search.toLowerCase())
-  );
+  // New Customer Form
+  const [custName, setCustName] = useState('');
+  const [custPhone, setCustPhone] = useState('');
+  const [custAddress, setCustAddress] = useState('');
+  const [custCity, setCustCity] = useState('القاهرة');
+  const [custNotes, setCustNotes] = useState('');
 
+  // New Collection Form
+  const [colCustomerId, setColCustomerId] = useState('');
+  const [colAmount, setColAmount] = useState<number>(1000);
+  const [colMethod, setColMethod] = useState<'نقدي' | 'إنستاباي' | 'فودافون كاش' | 'تحويل بنكي' | 'شيك'>('نقدي');
+  const [colTreasury, setColTreasury] = useState('الخزينة الرئيسية');
+  const [colNotes, setColNotes] = useState('');
+
+  useEffect(() => {
+    try {
+      const rawC = localStorage.getItem(CUSTOMERS_KEY);
+      if (rawC) setCustomers(JSON.parse(rawC));
+
+      const rawCol = localStorage.getItem(COLLECTIONS_KEY);
+      if (rawCol) setCollections(JSON.parse(rawCol));
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
+
+  const saveCustomersState = (list: Customer[]) => {
+    setCustomers(list);
+    localStorage.setItem(CUSTOMERS_KEY, JSON.stringify(list));
+  };
+
+  const saveCollectionsState = (list: CustomerCollection[]) => {
+    setCollections(list);
+    localStorage.setItem(COLLECTIONS_KEY, JSON.stringify(list));
+  };
+
+  // Add Customer Submit
   const handleAddCustomer = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !phone) return;
+    if (!custName.trim() || !custPhone.trim()) return;
 
-    const newCust: Customer = {
+    const newC: Customer = {
       id: `CUST-${String(customers.length + 1).padStart(3, '0')}`,
-      name,
-      phone,
-      address,
-      city,
+      name: custName.trim(),
+      phone: custPhone.trim(),
+      address: custAddress.trim(),
+      city: custCity,
       inspectionsCount: 0,
       ordersCount: 0,
       totalSpent: 0,
       balance: 0,
-      notes,
+      notes: custNotes.trim(),
+      createdAt: new Date().toISOString().split('T')[0],
     };
 
-    setCustomers([newCust, ...customers]);
-    setSelected(newCust);
-    setShowAddModal(false);
-    setName('');
-    setPhone('');
-    setAddress('');
-    setCity('القاهرة');
-    setNotes('');
+    saveCustomersState([newC, ...customers]);
+    setShowAddCustomerModal(false);
+    setCustName('');
+    setCustPhone('');
+    setCustAddress('');
+    setCustNotes('');
+    alert('تم إضافة العميل بنجاح ✓');
   };
 
+  // Add Collection Submit
+  const handleAddCollection = (e: React.FormEvent) => {
+    e.preventDefault();
+    const targetCustomer = customers.find(c => c.id === colCustomerId);
+    if (!targetCustomer || colAmount <= 0) return;
+
+    const newCol: CustomerCollection = {
+      id: `COL-${100 + collections.length + 1}`,
+      date: new Date().toISOString().split('T')[0],
+      customerId: targetCustomer.id,
+      customerName: targetCustomer.name,
+      phone: targetCustomer.phone,
+      amount: colAmount,
+      method: colMethod,
+      treasury: colTreasury,
+      notes: colNotes.trim(),
+    };
+
+    saveCollectionsState([newCol, ...collections]);
+
+    // Deduct balance from customer
+    const updatedCustomers = customers.map(c => {
+      if (c.id === targetCustomer.id) {
+        return {
+          ...c,
+          balance: Math.max(0, c.balance - colAmount),
+        };
+      }
+      return c;
+    });
+    saveCustomersState(updatedCustomers);
+
+    setShowAddCollectionModal(false);
+    setColAmount(1000);
+    setColNotes('');
+    alert(`تم تسجيل تحصيل مبلغ ${colAmount.toLocaleString()} ج من العميل "${targetCustomer.name}" بنجاح ✓`);
+  };
+
+  const handleDeleteCustomer = (id: string, name: string) => {
+    if (confirm(`هل أنت أسر بالتأكيد من حذف بيانات العميل "${name}"؟`)) {
+      const filteredC = customers.filter(c => c.id !== id);
+      saveCustomersState(filteredC);
+    }
+  };
+
+  // Filtered Customers
+  const filteredCustomers = customers.filter(c => {
+    const matchSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
+      c.phone.includes(search) || c.address.toLowerCase().includes(search.toLowerCase());
+    
+    let matchStatus = true;
+    if (statusFilter === 'unpaid') matchStatus = c.balance > 0.01;
+    else if (statusFilter === 'overpaid') matchStatus = c.balance < -0.01;
+    else if (statusFilter === 'cleared') matchStatus = Math.abs(c.balance) <= 0.01;
+
+    return matchSearch && matchStatus;
+  });
+
+  // Filtered Collections
+  const filteredCollections = collections.filter(col => {
+    const matchSearch = col.customerName.toLowerCase().includes(search.toLowerCase()) ||
+      col.phone.includes(search) || col.notes.toLowerCase().includes(search.toLowerCase());
+    const matchMethod = methodFilter === 'all' || col.method === methodFilter;
+    return matchSearch && matchMethod;
+  });
+
+  // Customer Financial Metrics
+  const totalDebtsLina = filteredCustomers.reduce((s, c) => s + (c.balance > 0 ? c.balance : 0), 0);
+  const totalPrepaidAleena = filteredCustomers.reduce((s, c) => s + (c.balance < 0 ? Math.abs(c.balance) : 0), 0);
+  const totalDebtorsCount = filteredCustomers.filter(c => c.balance > 0.01).length;
+
+  // Collection Metrics
+  const totalCollectionsAmount = filteredCollections.reduce((s, col) => s + col.amount, 0);
+  const cashCollectionsAmount = filteredCollections.filter(c => c.method === 'نقدي').reduce((s, c) => s + c.amount, 0);
+
   return (
-    <PageShell title="سجل العملاء والديون">
-      <div className="flex flex-col gap-6">
-          {/* Title bar */}
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <h1 className="font-display font-bold text-xl sm:text-2xl text-primary">إدارة العملاء وكشف الحساب</h1>
-              <p className="text-on-surface-variant text-xs sm:text-sm mt-1">
-                ملف موحد لكل عميل يشمل المعاينات، الطلبات، الفواتير، والمديونيات.
-              </p>
-            </div>
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="bg-primary text-on-primary px-4 sm:px-5 py-2.5 rounded-lg hover:bg-inverse-surface transition-colors flex items-center gap-2 font-bold text-xs sm:text-sm shadow w-full sm:w-auto justify-center"
-            >
-              <span className="material-symbols-outlined text-[18px]">person_add</span>
-              إضافة عميل جديد
-            </button>
-          </div>
+    <PageShell title="إدارة العملاء والتحصيلات">
+      <div className="flex flex-col gap-5 max-w-7xl mx-auto">
+        {/* Navigation Tabs (2 Tabs) */}
+        <div className="flex border-b border-slate-200 gap-2">
+          <button
+            type="button"
+            onClick={() => setActiveTab('CUSTOMERS')}
+            className={`pb-3 px-4 text-xs sm:text-sm font-black flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
+              activeTab === 'CUSTOMERS' ? 'border-amber-500 text-slate-950' : 'border-transparent text-slate-400'
+            }`}
+          >
+            <span>👥 العملاء والديون</span>
+            <span className="bg-amber-100 text-amber-950 px-2 rounded-full text-[11px] font-mono font-bold">{customers.length}</span>
+          </button>
 
-          {/* Stats Bar */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-            <div className="bg-surface-container-lowest p-5 rounded-xl border border-surface-container-highest">
-              <div className="text-xs text-on-surface-variant font-mono">إجمالي العملاء</div>
-              <div className="font-display font-bold text-2xl text-primary mt-1">{customers.length}</div>
+          <button
+            type="button"
+            onClick={() => setActiveTab('COLLECTIONS')}
+            className={`pb-3 px-4 text-xs sm:text-sm font-black flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
+              activeTab === 'COLLECTIONS' ? 'border-amber-500 text-slate-950' : 'border-transparent text-slate-400'
+            }`}
+          >
+            <span>💰 سجل التحصيلات</span>
+            <span className="bg-emerald-100 text-emerald-950 px-2 rounded-full text-[11px] font-mono font-bold">{collections.length}</span>
+          </button>
+        </div>
+
+        {/* TAB 1: CUSTOMERS */}
+        {activeTab === 'CUSTOMERS' && (
+          <div className="space-y-4">
+            {/* Header & Controls */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+              <span className="text-xs font-bold text-slate-500">إجمالي عدد العملاء المسجلين: {filteredCustomers.length} عميل</span>
+
+              <button
+                type="button"
+                onClick={() => setShowAddCustomerModal(true)}
+                className="bg-brand-gold hover:bg-amber-400 text-slate-950 px-4 py-2.5 rounded-xl text-xs font-black shadow-gold flex items-center gap-1.5 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[18px]">person_add</span>
+                <span>+ إضافة عميل جديد</span>
+              </button>
             </div>
-            <div className="bg-surface-container-lowest p-5 rounded-xl border border-surface-container-highest">
-              <div className="text-xs text-on-surface-variant font-mono">عملاء آجل (ديون)</div>
-              <div className="font-display font-bold text-2xl text-secondary mt-1">
-                {customers.filter((c) => c.balance > 0).length}
+
+            {/* Financial Summary Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+              <div className="bg-white p-4 rounded-2xl border border-slate-200 text-center shadow-3xs">
+                <span className="text-slate-500 font-bold block">عدد العملاء (بالفلتر)</span>
+                <strong className="text-xl font-black text-slate-900 mt-1 block font-mono">{filteredCustomers.length}</strong>
+              </div>
+
+              <div className="bg-rose-50/70 p-4 rounded-2xl border border-rose-200 text-center shadow-3xs">
+                <span className="text-rose-800 font-bold block">إجمالي الديون (لينا)</span>
+                <strong className="text-xl font-black text-rose-950 mt-1 block font-mono">{totalDebtsLina.toLocaleString()} ج</strong>
+              </div>
+
+              <div className="bg-amber-50/70 p-4 rounded-2xl border border-amber-200 text-center shadow-3xs">
+                <span className="text-amber-900 font-bold block">عملاء مدينين</span>
+                <strong className="text-xl font-black text-amber-950 mt-1 block font-mono">{totalDebtorsCount} عميل</strong>
+              </div>
+
+              <div className="bg-emerald-50/70 p-4 rounded-2xl border border-emerald-200 text-center shadow-3xs">
+                <span className="text-emerald-800 font-bold block">مدفوعات مقدمة (علينا)</span>
+                <strong className="text-xl font-black text-emerald-950 mt-1 block font-mono">{totalPrepaidAleena.toLocaleString()} ج</strong>
               </div>
             </div>
-            <div className="bg-surface-container-lowest p-5 rounded-xl border border-surface-container-highest">
-              <div className="text-xs text-on-surface-variant font-mono">إجمالي الديون المستحقة</div>
-              <div className="font-display font-bold text-2xl text-error mt-1">
-                {customers.reduce((sum, c) => sum + (c.balance > 0 ? c.balance : 0), 0).toLocaleString()} ج.م
+
+            {/* Search & Filter Bar */}
+            <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs grid grid-cols-1 sm:grid-cols-12 gap-3 text-xs">
+              <div className="relative sm:col-span-8">
+                <span className="material-symbols-outlined absolute right-3.5 top-2.5 text-slate-400 text-base">search</span>
+                <input
+                  type="text"
+                  placeholder="ابحث باسم العميل، رقم الهاتف، أو العنوان..."
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  className="w-full pr-10 pl-4 py-2 border border-slate-200 rounded-xl focus:border-amber-500 focus:outline-none font-bold text-slate-900 shadow-2xs"
+                />
+              </div>
+
+              <div className="sm:col-span-4">
+                <select
+                  value={statusFilter}
+                  onChange={e => setStatusFilter(e.target.value as any)}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 font-bold text-slate-800 focus:outline-none cursor-pointer"
+                >
+                  <option value="all">كل الحالات المالية</option>
+                  <option value="unpaid">لم يتم السداد (عملاء مدينين)</option>
+                  <option value="overpaid">مدفوعات زائدة (علينا)</option>
+                  <option value="cleared">حساب خالص (خالي من الديون)</option>
+                </select>
               </div>
             </div>
-            <div className="bg-surface-container-lowest p-5 rounded-xl border border-surface-container-highest">
-              <div className="text-xs text-on-surface-variant font-mono">إجمالي المبيعات</div>
-              <div className="font-display font-bold text-2xl text-primary mt-1">
-                {customers.reduce((sum, c) => sum + c.totalSpent, 0).toLocaleString()} ج.م
-              </div>
-            </div>
-          </div>
 
-          {/* Search bar */}
-          <div className="relative max-w-md">
-            <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant">
-              search
-            </span>
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="البحث باسم العميل، رقم التليفون، أو الكود..."
-              className="w-full border border-outline-variant rounded-lg py-2.5 pr-10 pl-4 text-sm focus:outline-none focus:border-primary bg-surface-container-lowest"
-            />
-          </div>
-
-          {/* Table & Details Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            {/* Customer List Table */}
-            <div className="lg:col-span-7 bg-surface-container-lowest rounded-xl border border-surface-container-highest overflow-hidden">
+            {/* Customers Table View */}
+            <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-soft">
               <div className="overflow-x-auto">
-              <table className="w-full text-right min-w-[480px]">
-                <thead className="bg-surface-container-low text-xs font-mono text-on-surface-variant border-b border-surface-container-high">
-                  <tr>
-                    <th className="p-3.5">العميل</th>
-                    <th className="p-3.5">التليفون</th>
-                    <th className="p-3.5 text-center">الطلبات</th>
-                    <th className="p-3.5 text-left">المديونية</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((c) => (
-                    <tr
-                      key={c.id}
-                      onClick={() => setSelected(c)}
-                      className={`border-b border-surface-container-low cursor-pointer transition-colors ${
-                        selected?.id === c.id ? 'bg-primary-container/20 font-semibold' : 'hover:bg-surface-container-low'
-                      }`}
-                    >
-                      <td className="p-3.5">
-                        <div className="font-bold text-sm text-primary">{c.name}</div>
-                        <div className="text-xs text-on-surface-variant font-mono">{c.id} • {c.city}</div>
-                      </td>
-                      <td className="p-3.5 text-sm font-mono text-on-surface-variant" dir="ltr">
-                        {c.phone}
-                      </td>
-                      <td className="p-3.5 text-center text-xs font-mono">
-                        {c.ordersCount} طلبات ({c.inspectionsCount} معاينة)
-                      </td>
-                      <td className="p-3.5 text-left font-mono">
-                        {c.balance > 0 ? (
-                          <span className="text-error font-bold">{c.balance.toLocaleString()} ج</span>
-                        ) : (
-                          <span className="text-primary text-xs">خالي الديون ✓</span>
-                        )}
-                      </td>
+                <table className="w-full text-right text-xs min-w-[800px]">
+                  <thead className="bg-slate-50 text-slate-500 font-mono border-b border-slate-200">
+                    <tr>
+                      <th className="p-3.5">اسم العميل</th>
+                      <th className="p-3.5">الهاتف والعنوان</th>
+                      <th className="p-3.5 text-center">المقايسات والأوامر</th>
+                      <th className="p-3.5 text-center font-mono">إجمالي المشتريات</th>
+                      <th className="p-3.5 text-center font-mono">الرصيد المتبقي</th>
+                      <th className="p-3.5 text-center">الحالة المالية</th>
+                      <th className="p-3.5 text-center">الإجراءات</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {filteredCustomers.map(cust => {
+                      const statusLabel = cust.balance > 0.01 ? 'لم يتم السداد' : cust.balance < -0.01 ? 'مدفوعات زائدة' : 'حساب خالص';
+                      const badgeClass = cust.balance > 0.01 ? 'bg-rose-100 text-rose-900 border-rose-200' : cust.balance < -0.01 ? 'bg-blue-100 text-blue-900 border-blue-200' : 'bg-emerald-100 text-emerald-900 border-emerald-200';
+
+                      return (
+                        <tr key={cust.id} className="border-t border-slate-100 hover:bg-slate-50/70 transition-colors">
+                          <td className="p-3.5 font-bold text-slate-900">
+                            <span className="text-sm font-black text-slate-950 block">{cust.name}</span>
+                            <span className="text-[10px] text-slate-400 font-mono">{cust.city}</span>
+                          </td>
+
+                          <td className="p-3.5 text-slate-700">
+                            <div className="font-mono text-slate-900 font-bold" dir="ltr">{cust.phone}</div>
+                            <div className="text-slate-500 text-[11px] truncate max-w-[220px]">{cust.address}</div>
+                          </td>
+
+                          <td className="p-3.5 text-center font-mono font-bold">
+                            {cust.ordersCount} طلبات ({cust.inspectionsCount} معاينات)
+                          </td>
+
+                          <td className="p-3.5 text-center font-mono font-black text-slate-900">
+                            {cust.totalSpent.toLocaleString()} ج
+                          </td>
+
+                          <td className="p-3.5 text-center font-mono font-black text-sm">
+                            <span className={cust.balance > 0 ? 'text-rose-700' : 'text-emerald-700'}>
+                              {cust.balance.toLocaleString()} ج
+                            </span>
+                          </td>
+
+                          <td className="p-3.5 text-center">
+                            <span className={`px-2.5 py-0.5 rounded-full font-bold text-[11px] border ${badgeClass}`}>
+                              {statusLabel}
+                            </span>
+                          </td>
+
+                          <td className="p-3.5 text-center">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setColCustomerId(cust.id);
+                                  setColAmount(cust.balance > 0 ? cust.balance : 1000);
+                                  setShowAddCollectionModal(true);
+                                }}
+                                className="bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer transition-colors"
+                              >
+                                💰 تحصيل
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteCustomer(cust.id, cust.name)}
+                                className="text-rose-600 hover:text-rose-800 p-1 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
+                                title="حذف العميل"
+                              >
+                                <span className="material-symbols-outlined text-[18px]">delete</span>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 2: COLLECTIONS */}
+        {activeTab === 'COLLECTIONS' && (
+          <div className="space-y-4">
+            {/* Header & Controls */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+              <span className="text-xs font-bold text-slate-500">إجمالي عمليات التحصيل: {filteredCollections.length} عملية</span>
+
+              <button
+                type="button"
+                onClick={() => setShowAddCollectionModal(true)}
+                className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2.5 rounded-xl text-xs font-black shadow-xs flex items-center gap-1.5 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[18px]">payments</span>
+                <span>+ تسجيل تحصيل جديد</span>
+              </button>
+            </div>
+
+            {/* Collection Metrics */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+              <div className="bg-white p-4 rounded-2xl border border-slate-200 text-center shadow-3xs">
+                <span className="text-slate-500 font-bold block">إجمالي المبالغ المحصلة</span>
+                <strong className="text-xl font-black text-emerald-950 mt-1 block font-mono">{totalCollectionsAmount.toLocaleString()} ج</strong>
+              </div>
+
+              <div className="bg-white p-4 rounded-2xl border border-slate-200 text-center shadow-3xs">
+                <span className="text-slate-500 font-bold block">عدد العمليات</span>
+                <strong className="text-xl font-black text-slate-900 mt-1 block font-mono">{filteredCollections.length} عملية</strong>
+              </div>
+
+              <div className="bg-amber-50/70 p-4 rounded-2xl border border-amber-200 text-center shadow-3xs">
+                <span className="text-amber-900 font-bold block">تحصيلات كاش (نقدي)</span>
+                <strong className="text-xl font-black text-amber-950 mt-1 block font-mono">{cashCollectionsAmount.toLocaleString()} ج</strong>
+              </div>
+
+              <div className="bg-blue-50/70 p-4 rounded-2xl border border-blue-200 text-center shadow-3xs">
+                <span className="text-blue-900 font-bold block">تحصيلات إلكترونية/بنكية</span>
+                <strong className="text-xl font-black text-blue-950 mt-1 block font-mono">{(totalCollectionsAmount - cashCollectionsAmount).toLocaleString()} ج</strong>
               </div>
             </div>
 
-            {/* Selected Customer Card / Statement */}
-            <div className="lg:col-span-5 bg-surface-container-lowest rounded-xl border border-surface-container-highest p-4 sm:p-6 lg:sticky lg:top-20">
-              {selected ? (
-                <div className="flex flex-col gap-5">
-                  <div className="flex justify-between items-start border-b border-surface-container-high pb-4">
-                    <div>
-                      <span className="text-xs font-mono text-on-surface-variant">{selected.id}</span>
-                      <h2 className="font-bold text-xl text-primary mt-0.5">{selected.name}</h2>
-                      <p className="text-xs text-on-surface-variant mt-1" dir="ltr">{selected.phone}</p>
-                    </div>
-                    <span className="px-3 py-1 bg-surface-container-high rounded-full text-xs font-mono">
-                      {selected.city}
-                    </span>
-                  </div>
+            {/* Search & Method Filter */}
+            <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs grid grid-cols-1 sm:grid-cols-12 gap-3 text-xs">
+              <div className="relative sm:col-span-8">
+                <span className="material-symbols-outlined absolute right-3.5 top-2.5 text-slate-400 text-base">search</span>
+                <input
+                  type="text"
+                  placeholder="ابحث باسم العميل، الهاتف، أو الملاحظات..."
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  className="w-full pr-10 pl-4 py-2 border border-slate-200 rounded-xl focus:border-amber-500 focus:outline-none font-bold text-slate-900 shadow-2xs"
+                />
+              </div>
 
-                  {/* Customer Info Box */}
-                  <div className="grid grid-cols-2 gap-3 text-xs">
-                    <div className="bg-surface-container-low p-3 rounded-lg">
-                      <span className="text-on-surface-variant font-mono block">العنوان</span>
-                      <span className="font-bold text-primary text-sm mt-0.5 block">{selected.address || 'غير محدد'}</span>
-                    </div>
-                    <div className="bg-surface-container-low p-3 rounded-lg">
-                      <span className="text-on-surface-variant font-mono block">الرصيد والمديونية</span>
-                      <span className={`font-bold text-sm mt-0.5 block ${selected.balance > 0 ? 'text-error' : 'text-primary'}`}>
-                        {selected.balance > 0 ? `${selected.balance.toLocaleString()} ج.م مديونية` : 'خالي الديون'}
-                      </span>
-                    </div>
-                  </div>
+              <div className="sm:col-span-4">
+                <select
+                  value={methodFilter}
+                  onChange={e => setMethodFilter(e.target.value)}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 font-bold text-slate-800 focus:outline-none cursor-pointer"
+                >
+                  <option value="all">كل طرق السداد</option>
+                  <option value="نقدي">نقدي (كاش)</option>
+                  <option value="إنستاباي">إنستاباي</option>
+                  <option value="فودافون كاش">فودافون كاش</option>
+                  <option value="تحويل بنكي">تحويل بنكي</option>
+                  <option value="شيك">شيك</option>
+                </select>
+              </div>
+            </div>
 
-                  {/* Summary Timeline */}
-                  <div className="border-t border-surface-container-high pt-4">
-                    <h3 className="font-bold text-sm text-primary mb-3">كشف الحساب والعمليات</h3>
-                    <div className="space-y-2 text-xs">
-                      <div className="flex justify-between p-2.5 bg-surface-container-low rounded-lg">
-                        <span>إجمالي المبيعات والطلبات</span>
-                        <span className="font-mono font-bold">{selected.totalSpent.toLocaleString()} ج.م</span>
-                      </div>
-                      <div className="flex justify-between p-2.5 bg-surface-container-low rounded-lg">
-                        <span>المسدد</span>
-                        <span className="font-mono font-bold text-primary">
-                          {(selected.totalSpent - selected.balance).toLocaleString()} ج.م
-                        </span>
-                      </div>
-                      <div className="flex justify-between p-2.5 bg-surface-container-low rounded-lg">
-                        <span>المتبقي غير المسدد</span>
-                        <span className="font-mono font-bold text-error">
-                          {selected.balance.toLocaleString()} ج.م
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {selected.notes && (
-                    <div className="bg-surface-container-low p-3 rounded-lg text-xs">
-                      <span className="text-on-surface-variant font-mono block mb-1">ملاحظات</span>
-                      <p className="text-primary">{selected.notes}</p>
-                    </div>
-                  )}
-
-                  {/* Actions */}
-                  <div className="flex gap-2 pt-2">
-                    <button
-                      onClick={() => alert(`طباعة كشف حساب للعميل ${selected.name}`)}
-                      className="flex-1 border border-outline-variant text-on-surface-variant py-2.5 rounded-lg text-xs font-bold hover:border-primary hover:text-primary transition-colors flex items-center justify-center gap-1"
-                    >
-                      <span className="material-symbols-outlined text-[16px]">print</span>
-                      كشف حساب PDF
-                    </button>
-                    <button
-                      onClick={() => {
-                        const newBal = prompt(`سداد دفعة من العميل ${selected.name}. أدخل المبلغ المسدد (ج.م):`, '1000');
-                        if (newBal && !isNaN(Number(newBal))) {
-                          setCustomers((prev) =>
-                            prev.map((c) => (c.id === selected.id ? { ...c, balance: Math.max(0, c.balance - Number(newBal)) } : c))
-                          );
-                          setSelected((prev) => (prev ? { ...prev, balance: Math.max(0, prev.balance - Number(newBal)) } : null));
-                        }
-                      }}
-                      className="flex-1 bg-primary text-on-primary py-2.5 rounded-lg text-xs font-bold hover:bg-inverse-surface transition-colors flex items-center justify-center gap-1"
-                    >
-                      <span className="material-symbols-outlined text-[16px]">payments</span>
-                      تسجيل دفعة
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-12 text-on-surface-variant text-sm">اختر عميلاً من القائمة لعرض ملفه الشامل.</div>
-              )}
+            {/* Collections Table View */}
+            <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-soft">
+              <div className="overflow-x-auto">
+                <table className="w-full text-right text-xs min-w-[750px]">
+                  <thead className="bg-slate-50 text-slate-500 font-mono border-b border-slate-200">
+                    <tr>
+                      <th className="p-3.5">التاريخ</th>
+                      <th className="p-3.5">اسم العميل</th>
+                      <th className="p-3.5 font-mono text-center">المبلغ المحصل</th>
+                      <th className="p-3.5 text-center">طريقة السداد</th>
+                      <th className="p-3.5">الخزينة / الحساب</th>
+                      <th className="p-3.5">الملاحظات</th>
+                      <th className="p-3.5 text-center">الإجراء</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredCollections.map(col => (
+                      <tr key={col.id} className="border-t border-slate-100 hover:bg-slate-50/70 transition-colors">
+                        <td className="p-3.5 font-mono text-slate-700 font-bold">{col.date}</td>
+                        <td className="p-3.5 font-bold text-slate-900">
+                          <div>{col.customerName}</div>
+                          <div className="text-[10px] text-slate-400 font-mono" dir="ltr">{col.phone}</div>
+                        </td>
+                        <td className="p-3.5 text-center font-mono font-black text-sm text-emerald-700">
+                          +{col.amount.toLocaleString()} ج
+                        </td>
+                        <td className="p-3.5 text-center">
+                          <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-800 border border-slate-200">
+                            {col.method}
+                          </span>
+                        </td>
+                        <td className="p-3.5 text-slate-700 font-bold">{col.treasury}</td>
+                        <td className="p-3.5 text-slate-600">{col.notes || '—'}</td>
+                        <td className="p-3.5 text-center">
+                          <button
+                            type="button"
+                            onClick={() => alert(`إيصال تحصيل رقم (${col.id})\nالعميل: ${col.customerName}\nالمبلغ: ${col.amount} ج`)}
+                            className="bg-slate-900 text-white px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer"
+                          >
+                            🖨️ طباعة إيصال
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
+        )}
       </div>
 
-      {/* Add Customer Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="bg-surface-container-lowest rounded-2xl shadow-2xl p-5 sm:p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <h2 className="font-display font-bold text-xl text-primary mb-4">إضافة عميل جديد</h2>
-            <form onSubmit={handleAddCustomer} className="flex flex-col gap-3">
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-mono text-on-surface-variant">اسم العميل *</label>
+      {/* ➕ Modal: Add Customer */}
+      {showAddCustomerModal && (
+        <div className="modal-overlay fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-200">
+            <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+              <h3 className="font-bold text-slate-900 text-sm">إضافة عميل جديد</h3>
+              <button onClick={() => setShowAddCustomerModal(false)} className="w-7 h-7 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-xs">✕</button>
+            </div>
+
+            <form onSubmit={handleAddCustomer} className="space-y-3 text-xs">
+              <div>
+                <label className="text-slate-700 font-bold block mb-1">اسم العميل بالكامل:</label>
                 <input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="border border-outline-variant rounded p-2 text-sm focus:outline-none focus:border-primary"
-                  placeholder="اسم العميل الرباعي"
+                  type="text"
                   required
+                  placeholder="مثال: أ. أحمد عبد العزيز"
+                  value={custName}
+                  onChange={e => setCustName(e.target.value)}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900 focus:outline-none focus:border-amber-500"
                 />
               </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-mono text-on-surface-variant">رقم الهاتف *</label>
+
+              <div>
+                <label className="text-slate-700 font-bold block mb-1">رقم الهاتف (واتساب):</label>
                 <input
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="border border-outline-variant rounded p-2 text-sm focus:outline-none focus:border-primary"
-                  placeholder="01xxxxxxxxx"
+                  type="text"
+                  required
+                  placeholder="مثال: 01012345678"
+                  value={custPhone}
+                  onChange={e => setCustPhone(e.target.value)}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 font-mono font-bold text-slate-900 focus:outline-none focus:border-amber-500"
                   dir="ltr"
-                  required
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-mono text-on-surface-variant">المدينة / المنطقة</label>
-                  <input
-                    value={city}
-                    onChange={(e) => setCity(e.target.value)}
-                    className="border border-outline-variant rounded p-2 text-sm focus:outline-none focus:border-primary"
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-mono text-on-surface-variant">العنوان بالتفصيل</label>
-                  <input
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                    className="border border-outline-variant rounded p-2 text-sm focus:outline-none focus:border-primary"
-                    placeholder="اسم الشارع والمبنى"
-                  />
+
+              <div>
+                <label className="text-slate-700 font-bold block mb-1">العنوان التفصيلي:</label>
+                <input
+                  type="text"
+                  placeholder="المنطقة، الشارع، رقم العمارة..."
+                  value={custAddress}
+                  onChange={e => setCustAddress(e.target.value)}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-slate-900 focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-slate-700 font-bold block mb-1">المدينة / المنطقة:</label>
+                  <select
+                    value={custCity}
+                    onChange={e => setCustCity(e.target.value)}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900 focus:outline-none"
+                  >
+                    <option value="القاهرة">القاهرة</option>
+                    <option value="التجمع الخامس">التجمع الخامس</option>
+                    <option value="6 أكتوبر">6 أكتوبر</option>
+                    <option value="الشيخ زايد">الشيخ زايد</option>
+                    <option value="المعادي">المعادي</option>
+                  </select>
                 </div>
               </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-mono text-on-surface-variant">ملاحظات العميل</label>
+
+              <div>
+                <label className="text-slate-700 font-bold block mb-1">ملاحظات العميل:</label>
                 <textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  className="border border-outline-variant rounded p-2 text-sm focus:outline-none focus:border-primary h-20 resize-none"
-                  placeholder="تفضيلات الأقمشة، طريقة السداد..."
+                  rows={2}
+                  placeholder="أي تفاصيل تفضيلية للعميل..."
+                  value={custNotes}
+                  onChange={e => setCustNotes(e.target.value)}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-slate-900 focus:outline-none"
                 />
               </div>
-              <div className="flex gap-2 mt-4">
-                <button type="submit" className="flex-1 bg-primary text-on-primary py-2.5 rounded font-bold text-sm">
-                  حفظ العميل
+
+              <div className="pt-2 flex gap-2">
+                <button type="submit" className="flex-1 bg-brand-gold hover:bg-amber-400 text-slate-950 py-2.5 rounded-xl font-black text-xs shadow-gold cursor-pointer">
+                  حفظ العميل ✓
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="flex-1 border border-outline-variant text-on-surface-variant py-2.5 rounded text-sm"
+                <button type="button" onClick={() => setShowAddCustomerModal(false)} className="flex-1 bg-slate-100 text-slate-700 py-2.5 rounded-xl font-bold text-xs cursor-pointer">
+                  إلغاء
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ➕ Modal: Add Collection */}
+      {showAddCollectionModal && (
+        <div className="modal-overlay fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-200">
+            <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+              <h3 className="font-bold text-slate-900 text-sm">تسجيل دفعة تحصيل جديدة</h3>
+              <button onClick={() => setShowAddCollectionModal(false)} className="w-7 h-7 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-xs">✕</button>
+            </div>
+
+            <form onSubmit={handleAddCollection} className="space-y-3 text-xs">
+              <div>
+                <label className="text-slate-700 font-bold block mb-1">اختر العميل:</label>
+                <select
+                  value={colCustomerId}
+                  onChange={e => {
+                    setColCustomerId(e.target.value);
+                    const target = customers.find(c => c.id === e.target.value);
+                    if (target && target.balance > 0) setColAmount(target.balance);
+                  }}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900 focus:outline-none"
+                  required
                 >
+                  <option value="">-- اختر العميل --</option>
+                  {customers.map(c => (
+                    <option key={c.id} value={c.id}>
+                      {c.name} ({c.phone}) — {c.balance > 0 ? `متبقي عليه: ${c.balance} ج` : 'حساب خالص'}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-slate-700 font-bold block mb-1">المبلغ المحصل (ج.م):</label>
+                <input
+                  type="number"
+                  required
+                  min="1"
+                  value={colAmount}
+                  onChange={e => setColAmount(Number(e.target.value))}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 font-mono font-black text-slate-900 text-sm focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-slate-700 font-bold block mb-1">طريقة السداد:</label>
+                <select
+                  value={colMethod}
+                  onChange={e => setColMethod(e.target.value as any)}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900 focus:outline-none"
+                >
+                  <option value="نقدي">نقدي (كاش)</option>
+                  <option value="إنستاباي">إنستاباي</option>
+                  <option value="فودافون كاش">فودافون كاش</option>
+                  <option value="تحويل بنكي">تحويل بنكي</option>
+                  <option value="شيك">شيك</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-slate-700 font-bold block mb-1">إيداع في خزينة / حساب:</label>
+                <input
+                  type="text"
+                  value={colTreasury}
+                  onChange={e => setColTreasury(e.target.value)}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-slate-900 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="text-slate-700 font-bold block mb-1">ملاحظات ورقم العملية:</label>
+                <input
+                  type="text"
+                  placeholder="مثال: عربون مقايسة الستائر..."
+                  value={colNotes}
+                  onChange={e => setColNotes(e.target.value)}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-slate-900 focus:outline-none"
+                />
+              </div>
+
+              <div className="pt-2 flex gap-2">
+                <button type="submit" className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 rounded-xl font-black text-xs shadow-xs cursor-pointer">
+                  تأكيد وتسجيل التحصيل ✓
+                </button>
+                <button type="button" onClick={() => setShowAddCollectionModal(false)} className="flex-1 bg-slate-100 text-slate-700 py-2.5 rounded-xl font-bold text-xs cursor-pointer">
                   إلغاء
                 </button>
               </div>
