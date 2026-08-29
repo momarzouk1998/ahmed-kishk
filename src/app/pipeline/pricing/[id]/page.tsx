@@ -926,8 +926,36 @@ export default function PricingDetailPage() {
                             {blackoutEnabled && (
                               <>
                                 <div className="flex flex-wrap items-center gap-2 text-xs pt-1 border-t border-slate-200">
+                                  <span className="text-slate-600 font-bold">نوع الشريط:</span>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {TAPE_OPTIONS.map(tape => (
+                                      <button
+                                        key={tape.name}
+                                        type="button"
+                                        onClick={() => handleBlackoutTapeSelect(tape.name)}
+                                        className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition-colors cursor-pointer ${
+                                          blackoutTapeType === tape.name
+                                            ? 'bg-slate-900 text-white border-slate-900'
+                                            : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'
+                                        }`}
+                                      >
+                                        {tape.name}
+                                      </button>
+                                    ))}
+                                  </div>
+
                                   <div className="flex items-center gap-1.5 mr-auto">
-                                    <span className="text-slate-500 text-xs font-bold">معامل:</span>
+                                    <span className="text-slate-500 text-xs font-bold">سعر الشريط:</span>
+                                    <input
+                                      type="number"
+                                      value={blackoutTapePrice}
+                                      disabled={!canEditPrices}
+                                      onChange={e => setBlackoutTapePrice(Number(e.target.value))}
+                                      className="w-16 border border-slate-300 rounded-lg px-2 py-1 text-center font-mono font-bold text-xs"
+                                    />
+                                    <span className="text-slate-500 text-xs">ج/م</span>
+
+                                    <span className="text-slate-500 text-xs">معامل:</span>
                                     <input
                                       type="number"
                                       step="0.1"
@@ -945,7 +973,7 @@ export default function PricingDetailPage() {
                                       step="0.05"
                                       value={blackoutMeters}
                                       onChange={e => setBlackoutMeters(Number(e.target.value))}
-                                      className="w-20 border border-slate-300 rounded-lg px-2 py-1 text-center font-mono font-bold text-xs bg-slate-100"
+                                      className="w-20 border border-slate-300 rounded-lg px-2 py-1 text-center font-mono font-bold text-xs bg-amber-50/50"
                                     />
                                     <span className="text-slate-500 text-xs">متر</span>
                                   </div>
@@ -1306,7 +1334,7 @@ export default function PricingDetailPage() {
                             <>
                               <strong className="text-slate-900 text-xs block">{room.blackoutFabricName}</strong>
                               <div className="text-[11px] text-slate-500 font-mono">
-                                (معامل ×{room.blackoutMultiplier ?? 1.20}) • {room.blackoutMeters}م
+                                شريط {room.blackoutTapeType || 'جراب'} (معامل ×{room.blackoutMultiplier ?? 1.20}) • {room.blackoutMeters}م
                               </div>
                               <div className="font-mono font-bold text-slate-950 text-[11px] pt-1">
                                 {(room.blackoutMeters * room.blackoutPrice).toLocaleString()} ج
