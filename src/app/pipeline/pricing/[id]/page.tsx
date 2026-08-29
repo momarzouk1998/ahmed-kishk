@@ -980,6 +980,278 @@ export default function PricingDetailPage() {
                               </>
                             )}
                           </div>
+
+                          {/* Hardware Accessories (Track vs Pipe) */}
+                          <div className="p-4 bg-amber-50/40 rounded-xl border border-amber-200 space-y-3 text-xs">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-amber-200/60 pb-2">
+                              <label className="font-black text-amber-950 text-sm flex items-center gap-1.5">
+                                <span className="material-symbols-outlined text-[18px]">build</span>
+                                طريقة التركيب والاكسسوارات (تراك أو مواسير فورجيه):
+                              </label>
+                              <div className="flex gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => setInstallationCategory('تراك')}
+                                  className={`px-3 py-1 rounded-lg font-bold text-xs border cursor-pointer ${
+                                    installationCategory === 'تراك' ? 'bg-amber-600 text-white border-amber-600' : 'bg-white text-slate-700 border-slate-300'
+                                  }`}
+                                >
+                                  تراك (مجرى ألومنيوم)
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setInstallationCategory('مواسير فورجيه')}
+                                  className={`px-3 py-1 rounded-lg font-bold text-xs border cursor-pointer ${
+                                    installationCategory === 'مواسير فورجيه' ? 'bg-amber-600 text-white border-amber-600' : 'bg-white text-slate-700 border-slate-300'
+                                  }`}
+                                >
+                                  مواسير فورجيه واكسسوارات
+                                </button>
+                              </div>
+                            </div>
+
+                            {installationCategory === 'تراك' ? (
+                              <div className="bg-white p-3.5 rounded-xl border border-amber-200 flex flex-col sm:flex-row justify-between items-center gap-3">
+                                <div>
+                                  <strong className="text-slate-900 block text-xs">تراك ألومنيوم سقف / حائط:</strong>
+                                  <p className="text-[11px] text-slate-500 mt-0.5">
+                                    يحسب أوتوماتيكياً حسب عدد الطبقات المفعلة للغرفة.
+                                  </p>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  <div className="flex items-center gap-1 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
+                                    <span className="text-slate-700 font-bold text-xs">سعر متر التراك:</span>
+                                    <input
+                                      type="number"
+                                      value={trackPricePerMeter}
+                                      disabled={!canEditPrices}
+                                      onChange={e => setTrackPricePerMeter(Number(e.target.value))}
+                                      className="w-16 border border-slate-300 rounded-lg px-2 py-0.5 text-center font-mono font-bold text-xs bg-white"
+                                    />
+                                    <span className="text-slate-600 font-bold text-xs">ج/م</span>
+                                  </div>
+                                  <div className="font-mono font-bold text-xs bg-amber-100 text-amber-950 px-3 py-1.5 rounded-lg border border-amber-300">
+                                    {editingWidthM.toFixed(2)}م × {(heavyEnabled ? 1 : 0) + (sheerEnabled ? 1 : 0) + (blackoutEnabled ? 1 : 0)} تراك × {trackPricePerMeter}ج = {(editingWidthM * ((heavyEnabled ? 1 : 0) + (sheerEnabled ? 1 : 0) + (blackoutEnabled ? 1 : 0)) * trackPricePerMeter).toLocaleString()} ج
+                                  </div>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="space-y-3 bg-white p-3.5 rounded-xl border border-amber-200">
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                  <div>
+                                    <label className="text-slate-700 font-bold block mb-1">وصف الماسورة:</label>
+                                    <select
+                                      value={pipeTypeDescription}
+                                      onChange={e => setPipeTypeDescription(e.target.value as any)}
+                                      className="w-full border border-slate-300 rounded-lg p-2 font-bold"
+                                    >
+                                      <option value="سادة">سادة</option>
+                                      <option value="مجدول">مجدول</option>
+                                    </select>
+                                  </div>
+                                  <div>
+                                    <label className="text-slate-700 font-bold block mb-1">لون الماسورة:</label>
+                                    <select
+                                      value={pipeColor}
+                                      onChange={e => setPipeColor(e.target.value as any)}
+                                      className="w-full border border-slate-300 rounded-lg p-2 font-bold"
+                                    >
+                                      <option value="فضى">فضى</option>
+                                      <option value="أوكسيديه">أوكسيديه</option>
+                                      <option value="أسود">أسود</option>
+                                      <option value="زيتى">زيتى</option>
+                                    </select>
+                                  </div>
+                                  <div>
+                                    <label className="text-slate-700 font-bold block mb-1">سعر متر الماسورة:</label>
+                                    <input
+                                      type="number"
+                                      value={pipePricePerMeter}
+                                      disabled={!canEditPrices}
+                                      onChange={e => setPipePricePerMeter(Number(e.target.value))}
+                                      className="w-full border border-slate-300 rounded-lg p-1.5 text-center font-mono font-bold"
+                                    />
+                                  </div>
+                                </div>
+
+                                <div className="pt-2 border-t border-slate-100">
+                                  <strong className="text-slate-900 block mb-2">اكسسوارات المواسير (الكمية وسعر القطعة):</strong>
+                                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center">
+                                    <div className="bg-slate-50 p-2 rounded-lg border border-slate-200 space-y-1">
+                                      <span className="text-[11px] text-slate-700 block font-bold">حامل مجوز</span>
+                                      <div className="flex items-center justify-between text-[10px]">
+                                        <span>عدد:</span>
+                                        <input
+                                          type="number"
+                                          value={pipeAccessories.doubleBrackets}
+                                          onChange={e => setPipeAccessories({ ...pipeAccessories, doubleBrackets: Number(e.target.value) })}
+                                          className="w-12 border border-slate-300 rounded p-0.5 text-center font-mono font-bold bg-white"
+                                        />
+                                      </div>
+                                      <div className="flex items-center justify-between text-[10px]">
+                                        <span>سعر:</span>
+                                        <input
+                                          type="number"
+                                          value={accessoryPrices.doubleBracket}
+                                          disabled={!canEditPrices}
+                                          onChange={e => setAccessoryPrices({ ...accessoryPrices, doubleBracket: Number(e.target.value) })}
+                                          className="w-12 border border-slate-300 rounded p-0.5 text-center font-mono font-bold bg-white"
+                                        />
+                                      </div>
+                                    </div>
+
+                                    <div className="bg-slate-50 p-2 rounded-lg border border-slate-200 space-y-1">
+                                      <span className="text-[11px] text-slate-700 block font-bold">حامل مفرد</span>
+                                      <div className="flex items-center justify-between text-[10px]">
+                                        <span>عدد:</span>
+                                        <input
+                                          type="number"
+                                          value={pipeAccessories.singleBrackets}
+                                          onChange={e => setPipeAccessories({ ...pipeAccessories, singleBrackets: Number(e.target.value) })}
+                                          className="w-12 border border-slate-300 rounded p-0.5 text-center font-mono font-bold bg-white"
+                                        />
+                                      </div>
+                                      <div className="flex items-center justify-between text-[10px]">
+                                        <span>سعر:</span>
+                                        <input
+                                          type="number"
+                                          value={accessoryPrices.singleBracket}
+                                          disabled={!canEditPrices}
+                                          onChange={e => setAccessoryPrices({ ...accessoryPrices, singleBracket: Number(e.target.value) })}
+                                          className="w-12 border border-slate-300 rounded p-0.5 text-center font-mono font-bold bg-white"
+                                        />
+                                      </div>
+                                    </div>
+
+                                    <div className="bg-slate-50 p-2 rounded-lg border border-slate-200 space-y-1">
+                                      <span className="text-[11px] text-slate-700 block font-bold">قم جانبي</span>
+                                      <div className="flex items-center justify-between text-[10px]">
+                                        <span>عدد:</span>
+                                        <input
+                                          type="number"
+                                          value={pipeAccessories.sideCaps}
+                                          onChange={e => setPipeAccessories({ ...pipeAccessories, sideCaps: Number(e.target.value) })}
+                                          className="w-12 border border-slate-300 rounded p-0.5 text-center font-mono font-bold bg-white"
+                                        />
+                                      </div>
+                                      <div className="flex items-center justify-between text-[10px]">
+                                        <span>سعر:</span>
+                                        <input
+                                          type="number"
+                                          value={accessoryPrices.sideCap}
+                                          disabled={!canEditPrices}
+                                          onChange={e => setAccessoryPrices({ ...accessoryPrices, sideCap: Number(e.target.value) })}
+                                          className="w-12 border border-slate-300 rounded p-0.5 text-center font-mono font-bold bg-white"
+                                        />
+                                      </div>
+                                    </div>
+
+                                    <div className="bg-slate-50 p-2 rounded-lg border border-slate-200 space-y-1">
+                                      <span className="text-[11px] text-slate-700 block font-bold">حلقات دبل</span>
+                                      <div className="flex items-center justify-between text-[10px]">
+                                        <span>عدد:</span>
+                                        <input
+                                          type="number"
+                                          value={pipeAccessories.doubleRings}
+                                          onChange={e => setPipeAccessories({ ...pipeAccessories, doubleRings: Number(e.target.value) })}
+                                          className="w-12 border border-slate-300 rounded p-0.5 text-center font-mono font-bold bg-white"
+                                        />
+                                      </div>
+                                      <div className="flex items-center justify-between text-[10px]">
+                                        <span>سعر:</span>
+                                        <input
+                                          type="number"
+                                          value={accessoryPrices.doubleRing}
+                                          disabled={!canEditPrices}
+                                          onChange={e => setAccessoryPrices({ ...accessoryPrices, doubleRing: Number(e.target.value) })}
+                                          className="w-12 border border-slate-300 rounded p-0.5 text-center font-mono font-bold bg-white"
+                                        />
+                                      </div>
+                                    </div>
+
+                                    <div className="bg-slate-50 p-2 rounded-lg border border-slate-200 space-y-1">
+                                      <span className="text-[11px] text-slate-700 block font-bold">شماعة ديكور</span>
+                                      <div className="flex items-center justify-between text-[10px]">
+                                        <span>عدد:</span>
+                                        <input
+                                          type="number"
+                                          value={pipeAccessories.decorHangers}
+                                          onChange={e => setPipeAccessories({ ...pipeAccessories, decorHangers: Number(e.target.value) })}
+                                          className="w-12 border border-slate-300 rounded p-0.5 text-center font-mono font-bold bg-white"
+                                        />
+                                      </div>
+                                      <div className="flex items-center justify-between text-[10px]">
+                                        <span>سعر:</span>
+                                        <input
+                                          type="number"
+                                          value={accessoryPrices.decorHanger}
+                                          disabled={!canEditPrices}
+                                          onChange={e => setAccessoryPrices({ ...accessoryPrices, decorHanger: Number(e.target.value) })}
+                                          className="w-12 border border-slate-300 rounded p-0.5 text-center font-mono font-bold bg-white"
+                                        />
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Installation Fee (Optional) & Transport Fee (Optional) */}
+                          <div className="space-y-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200 text-xs">
+                            {/* 1. Installation Fee Toggle */}
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200/80 pb-2">
+                              <label className="font-bold text-slate-800 flex items-center gap-2 cursor-pointer select-none">
+                                <input
+                                  type="checkbox"
+                                  checked={installFeeEnabled}
+                                  onChange={e => setInstallFeeEnabled(e.target.checked)}
+                                  className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
+                                />
+                                <span>إضافة رسوم تركيب الستارة للغرفة (اختياري عند طلب التركيب):</span>
+                              </label>
+                              {installFeeEnabled ? (
+                                <div className="flex items-center gap-1">
+                                  <input
+                                    type="number"
+                                    value={installFee}
+                                    onChange={e => setInstallFee(Number(e.target.value))}
+                                    className="w-24 text-center font-mono font-bold text-slate-900 bg-white border border-slate-300 rounded-lg py-1 text-xs"
+                                  />
+                                  <span className="font-bold text-slate-700">جنيه</span>
+                                </div>
+                              ) : (
+                                <span className="text-[11px] text-slate-400 font-bold italic">بدون رسوم تركيب (0ج)</span>
+                              )}
+                            </div>
+
+                            {/* 2. Transport/Shipping Fee Toggle */}
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1">
+                              <label className="font-bold text-slate-800 flex items-center gap-2 cursor-pointer select-none">
+                                <input
+                                  type="checkbox"
+                                  checked={transportFeeEnabled}
+                                  onChange={e => setTransportFeeEnabled(e.target.checked)}
+                                  className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
+                                />
+                                <span>إضافة رسوم نقل وتوصيل (اختياري عند النقل لمحافظة أخرى):</span>
+                              </label>
+                              {transportFeeEnabled ? (
+                                <div className="flex items-center gap-1">
+                                  <input
+                                    type="number"
+                                    placeholder="السعر"
+                                    value={transportFee || ''}
+                                    onChange={e => setTransportFee(Number(e.target.value))}
+                                    className="w-24 text-center font-mono font-bold text-slate-900 bg-white border border-slate-300 rounded-lg py-1 text-xs"
+                                  />
+                                  <span className="font-bold text-slate-700">جنيه</span>
+                                </div>
+                              ) : (
+                                <span className="text-[11px] text-slate-400 font-bold italic">بدون رسوم نقل (0ج)</span>
+                              )}
+                            </div>
+                          </div>
                         </div>
 
                         {/* Form Actions inside card */}
