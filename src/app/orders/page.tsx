@@ -5,6 +5,7 @@ import PageShell from '@/components/PageShell';
 import ContractPrintModal, { PrintContractData } from '@/components/ContractPrintModal';
 import {
   getStoredPipelineOrders,
+  fetchPipelineOrders,
   saveStoredPipelineOrders,
   updatePipelineOrderStatus,
   normalizeMasterStage,
@@ -15,8 +16,10 @@ import {
 } from '@/lib/pipelineStore';
 import {
   getStoredQuotations,
+  fetchQuotations,
   saveAllQuotations,
   getStoredInspections,
+  fetchInspections,
   deleteQuotationOrder,
   QuotationOrder,
 } from '@/lib/inspectionsStore';
@@ -49,14 +52,16 @@ export default function CentralOrdersLedgerPage() {
   const [printWorksheetOrder, setPrintWorksheetOrder] = useState<PipelineMasterOrder | null>(null);
   const [printCuttingOrder, setPrintCuttingOrder] = useState<PipelineMasterOrder | null>(null);
 
-  const loadData = () => {
-    const pipelineOrders = getStoredPipelineOrders();
-    const quotations = getStoredQuotations();
-    const inspections = getStoredInspections();
+  const loadData = async () => {
+    const [pipelineOrders, quotations, inspections] = await Promise.all([
+      fetchPipelineOrders(),
+      fetchQuotations(),
+      fetchInspections(),
+    ]);
 
     // Map quotations into master list if missing
-    const quotationMasterItems: PipelineMasterOrder[] = quotations
-      .filter(q => !pipelineOrders.some(p => p.orderId === q.id || p.id === q.id))
+    const quotationMasterItems: PipelineMasterOrder[] = (quotations || [])
+      .filter(q => !pipelineOrders.some(p => p.orderId === q.id || p.id === q.id || (p.customerName && q.customerName && p.customerName === q.customerName)))
       .map(q => ({
         id: q.id,
         orderId: q.id,
@@ -74,8 +79,11 @@ export default function CentralOrdersLedgerPage() {
       }));
 
     // Map un-quoted inspections
-    const inspectionMasterItems: PipelineMasterOrder[] = inspections
-      .filter(insp => !pipelineOrders.some(p => p.id === insp.id || p.orderId === insp.id) && !quotations.some(q => q.inspectionId === insp.id))
+    const inspectionMasterItems: PipelineMasterOrder[] = (inspections || [])
+      .filter(insp => 
+        !pipelineOrders.some(p => p.id === insp.id || p.orderId === insp.id || (p.customerName && insp.customerName && p.customerName === insp.customerName)) && 
+        !quotations.some(q => q.inspectionId === insp.id || (q.customerName && insp.customerName && q.customerName === insp.customerName))
+      )
       .map(insp => ({
         id: insp.id,
         orderId: insp.id,
