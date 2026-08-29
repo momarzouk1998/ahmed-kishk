@@ -39,7 +39,20 @@ export default function PipelinePricingPage() {
     load();
   }, []);
 
-  const isSent = (status: any) => status !== 'انتظار تسعير' && status !== 'بانتظار التسعير';
+  const isSent = (status: any) => {
+    if (!status) return false;
+    const s = String(status).trim();
+    return (
+      s === 'في المقص' ||
+      s === 'في الورشة' ||
+      s === 'تم التحويل للورشة' ||
+      s === 'تجهيز الاكسسوارات' ||
+      s === 'جاهز للاستلام' ||
+      s === 'جاهز للتركيب' ||
+      s === 'مكتمل' ||
+      s === 'تم القص وجاهز للخياطة'
+    );
+  };
 
   const tabFiltered = quotations.filter(q => activeTab === 'OPEN' ? !isSent(q.status) : isSent(q.status));
   const filtered = tabFiltered.filter(q => {
@@ -72,7 +85,7 @@ export default function PipelinePricingPage() {
             }`}
           >
             <span className="material-symbols-outlined text-[18px]">request_quote</span>
-            <span>التسعير</span>
+            <span>بانتظار التسعير</span>
             <span className={`text-[11px] px-2 py-0.2 rounded-full font-mono font-bold ${
               activeTab === 'OPEN' ? 'bg-amber-100 text-amber-950' : 'bg-slate-100 text-slate-500'
             }`}>
@@ -88,8 +101,8 @@ export default function PipelinePricingPage() {
                 : 'border-transparent text-slate-400 hover:text-slate-700'
             }`}
           >
-            <span className="material-symbols-outlined text-[18px]">history</span>
-            <span>السجل</span>
+            <span className="material-symbols-outlined text-[18px]">verified</span>
+            <span>تم التحويل للورشة</span>
             <span className={`text-[11px] px-2 py-0.2 rounded-full font-mono font-bold ${
               activeTab === 'SENT' ? 'bg-amber-100 text-amber-950' : 'bg-slate-100 text-slate-500'
             }`}>

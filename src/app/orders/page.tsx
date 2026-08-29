@@ -59,9 +59,14 @@ export default function CentralOrdersLedgerPage() {
       fetchInspections(),
     ]);
 
-    // Map quotations into master list if missing
+    // Map quotations into master list if missing from pipeline
     const quotationMasterItems: PipelineMasterOrder[] = (quotations || [])
-      .filter(q => !pipelineOrders.some(p => p.orderId === q.id || p.id === q.id || (p.customerName && q.customerName && p.customerName === q.customerName)))
+      .filter(q => !pipelineOrders.some(p => 
+        p.orderId === q.id || 
+        p.id === q.id || 
+        p.id === `ORD-${q.id}` || 
+        (p.customerName && q.customerName && p.customerName.trim().toLowerCase() === q.customerName.trim().toLowerCase())
+      ))
       .map(q => ({
         id: q.id,
         orderId: q.id,
@@ -78,11 +83,19 @@ export default function CentralOrdersLedgerPage() {
         rooms: q.rooms || [],
       }));
 
-    // Map un-quoted inspections
+    // Map un-quoted inspections only (not yet in pipeline and not yet quoted)
     const inspectionMasterItems: PipelineMasterOrder[] = (inspections || [])
       .filter(insp => 
-        !pipelineOrders.some(p => p.id === insp.id || p.orderId === insp.id || (p.customerName && insp.customerName && p.customerName === insp.customerName)) && 
-        !quotations.some(q => q.inspectionId === insp.id || (q.customerName && insp.customerName && q.customerName === insp.customerName))
+        !pipelineOrders.some(p => 
+          p.id === insp.id || 
+          p.orderId === insp.id || 
+          (p.customerName && insp.customerName && p.customerName.trim().toLowerCase() === insp.customerName.trim().toLowerCase())
+        ) && 
+        !quotations.some(q => 
+          q.inspectionId === insp.id || 
+          q.id === insp.id || 
+          (q.customerName && insp.customerName && q.customerName.trim().toLowerCase() === insp.customerName.trim().toLowerCase())
+        )
       )
       .map(insp => ({
         id: insp.id,
@@ -102,7 +115,6 @@ export default function CentralOrdersLedgerPage() {
 
     const combined = [...pipelineOrders, ...quotationMasterItems, ...inspectionMasterItems];
     setOrders(combined);
-    saveStoredPipelineOrders(combined);
   };
 
   useEffect(() => {

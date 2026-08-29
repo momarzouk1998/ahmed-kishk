@@ -84,14 +84,14 @@ export function registerDeletedOrderId(id: string) {
 export function normalizeMasterStage(statusStr: string): GlobalMasterStage {
   if (!statusStr) return 'المعاينات';
   const s = statusStr.trim();
-  if (s === 'المعاينات' || s.includes('معاينة') || s === 'مُجدول' || s === 'تم رفع المقاسات') return 'المعاينات';
-  if (s === 'انتظار تسعير' || s.includes('تسعير') || s === 'بانتظار التسعير' || s === 'تم إرسال المقايسة') return 'انتظار تسعير';
-  if (s === 'في المقص' || s.includes('قص') || s === 'بانتظار القص') return 'في المقص';
-  if (s === 'في الورشة' || s.includes('خياطة') || s.includes('كي') || s.includes('ورشة')) return 'في الورشة';
-  if (s === 'تجهيز الاكسسوارات' || s.includes('اكسسوار')) return 'تجهيز الاكسسوارات';
-  if (s === 'جاهز للاستلام' || s.includes('تسليم') || s === 'في التسليمات') return 'جاهز للاستلام';
-  if (s === 'جاهز للتركيب' || s.includes('تركيب') || s === 'في التركيبات') return 'جاهز للتركيب';
   if (s === 'مكتمل' || s.includes('مكتمل') || s.includes('مغلق')) return 'مكتمل';
+  if (s === 'جاهز للتركيب' || s.includes('تركيب') || s === 'في التركيبات') return 'جاهز للتركيب';
+  if (s === 'جاهز للاستلام' || s.includes('تسليم') || s === 'في التسليمات') return 'جاهز للاستلام';
+  if (s === 'تجهيز الاكسسوارات' || s.includes('اكسسوار')) return 'تجهيز الاكسسوارات';
+  if (s === 'في الورشة' || s.includes('خياطة') || s.includes('كي') || s.includes('ورشة') || s === 'تم القص وجاهز للخياطة') return 'في الورشة';
+  if (s === 'في المقص' || s.includes('قص') || s === 'بانتظار القص' || s === 'قص القماش') return 'في المقص';
+  if (s === 'انتظار تسعير' || s.includes('تسعير') || s === 'بانتظار التسعير' || s === 'تم إرسال المقايسة') return 'انتظار تسعير';
+  if (s === 'المعاينات' || s.includes('معاينة') || s === 'مُجدول' || s === 'تم رفع المقاسات' || s === 'قيد الانتظار') return 'المعاينات';
   return 'المعاينات';
 }
 

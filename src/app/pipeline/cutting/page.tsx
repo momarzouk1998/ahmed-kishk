@@ -41,7 +41,7 @@ export default function PipelineCuttingPage() {
         setOrders(local as any);
       }
       const stored = await fetchPipelineOrders();
-      if (stored && stored.length > 0) {
+      if (stored) {
         setOrders(stored as any);
       }
     }
@@ -53,7 +53,7 @@ export default function PipelineCuttingPage() {
     if (!o) return false;
     const s = (o.status || '').trim();
     const ls = (o.localStatus || '').trim();
-    return s === 'في المقص' || s === 'بانتظار القص' || s === 'قص القماش' || ls === 'بانتظار القص' || (!s.includes('ورشة') && !s.includes('خياطة') && !s.includes('تسليم') && !s.includes('تركيب') && !s.includes('مكتمل') && !s.includes('معاينة') && !s.includes('تسعير'));
+    return s === 'في المقص' || s === 'بانتظار القص' || s === 'قص القماش' || ls === 'بانتظار القص';
   };
 
   const isSentFromCutting = (o: any) => {
@@ -78,9 +78,11 @@ export default function PipelineCuttingPage() {
     return matchesSearch && matchesBranch;
   });
 
-  const updateOrderStatus = (id: string, newStatus: CuttingOrder['status']) => {
+  const updateOrderStatus = async (id: string, newStatus: CuttingOrder['status']) => {
     setOrders(prev => prev.map(o => o.id === id ? { ...o, status: newStatus } : o));
-    updatePipelineOrderStatus(id, 'في الورشة', 'جاري الخياطة');
+    await updatePipelineOrderStatus(id, 'في الورشة', 'جاري الخياطة');
+    const stored = await fetchPipelineOrders();
+    if (stored) setOrders(stored as any);
   };
 
   const openCount = orders.filter(o => isWaitingToCut(o)).length;

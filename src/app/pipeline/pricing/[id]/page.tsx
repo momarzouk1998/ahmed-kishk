@@ -1439,9 +1439,9 @@ export default function PricingDetailPage() {
                 onClick={async () => {
                   if (!quotation) return;
 
+                  // 1. Update Quotation status to 'في المقص'
                   const updatedList = quotations.map(q => q.id === quotation.id ? { ...q, status: 'في المقص' as any } : q);
                   setQuotations(updatedList);
-                  await saveAllQuotations(updatedList);
 
                   // Map rooms to RoomFabricItem[] format which cutting/tailoring expects
                   const mappedRooms = (quotation.rooms || []).map((r: any, idx: number) => ({
@@ -1449,35 +1449,35 @@ export default function PricingDetailPage() {
                     heavyFabric: (r.heavyEnabled !== false && (Number(r.heavyMeters) > 0 || r.heavyFabricName)) ? {
                       name: r.heavyFabricName || 'قماش ثقيل',
                       code: r.heavyFabricCode || 'HV-101',
-                      meters: Number(r.heavyMeters) || 5,
+                      meters: Number(r.heavyMeters) || 0,
                       tapeType: r.heavyTapeType || '٣ فتلة',
                       netHeight: String(r.heightCm || 280),
                     } : undefined,
                     sheerFabric: (r.sheerEnabled !== false && (Number(r.sheerMeters) > 0 || r.sheerFabricName)) ? {
                       name: r.sheerFabricName || 'شيفون',
                       code: r.sheerFabricCode || 'SH-101',
-                      meters: Number(r.sheerMeters) || 6,
+                      meters: Number(r.sheerMeters) || 0,
                       tapeType: r.sheerTapeType || 'ويفي',
                       netHeight: String(r.heightCm || 280),
                     } : undefined,
                     blackoutFabric: (r.blackoutEnabled && (Number(r.blackoutMeters) > 0 || r.blackoutFabricName)) ? {
                       name: r.blackoutFabricName || 'بلاك آوت',
                       code: r.blackoutFabricCode || 'BK-301',
-                      meters: Number(r.blackoutMeters) || 3,
+                      meters: Number(r.blackoutMeters) || 0,
                       tapeType: r.blackoutTapeType || 'جراب',
                       netHeight: String(r.heightCm || 280),
                     } : undefined,
                   }));
 
-                  // Check if order exists in pipeline store, if not create new
-                  const storedOrders = getStoredPipelineOrders();
-                  const existingIndex = storedOrders.findIndex(o => o.orderId === quotation.id || o.id === quotation.id || (o.customerName && quotation.customerName && o.customerName === quotation.customerName));
+                  // 2. Fetch latest pipeline orders and upsert
+                  const storedOrders = await fetchPipelineOrders();
+                  const existingIndex = storedOrders.findIndex(o => o.orderId === quotation.id || o.id === quotation.id || o.id === `ORD-${quotation.id}` || (o.customerName && quotation.customerName && o.customerName === quotation.customerName));
 
                   const orderIdToUse = quotation.id || `ORD-${Date.now()}`;
                   const orderPayload: PipelineMasterOrder = {
-                    id: existingIndex >= 0 ? storedOrders[existingIndex].id : `ORD-${Date.now()}`,
+                    id: existingIndex >= 0 ? storedOrders[existingIndex].id : `ORD-${quotation.id}`,
                     orderId: orderIdToUse,
-                    customerName: quotation.customerName || 'عميل تجربة',
+                    customerName: quotation.customerName || 'عميل',
                     phone: quotation.phone || '',
                     address: quotation.address || '',
                     branch: quotation.branch || 'الفرع الرئيسي',
@@ -1499,16 +1499,22 @@ export default function PricingDetailPage() {
                     updatedOrdersList = [orderPayload, ...storedOrders];
                   }
 
-                  await saveStoredPipelineOrders(updatedOrdersList);
+                  // 3. Save all in parallel and wait
+                  const promises: Promise<any>[] = [
+                    saveAllQuotations(updatedList),
+                    saveStoredPipelineOrders(updatedOrdersList),
+                  ];
 
                   if (quotation.inspectionId) {
                     const insp = getInspectionById(quotation.inspectionId);
                     if (insp) {
                       insp.status = 'في الورشة';
                       insp.isLocked = true;
-                      await saveOrUpdateInspection(insp);
+                      promises.push(saveOrUpdateInspection(insp));
                     }
                   }
+
+                  await Promise.all(promises);
 
                   setShowWorkshopModal(false);
                   router.push('/pipeline/cutting');
