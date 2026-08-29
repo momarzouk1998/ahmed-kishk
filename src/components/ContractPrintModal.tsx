@@ -57,7 +57,11 @@ export default function ContractPrintModal({ isOpen, onClose, data }: ContractPr
   if (!isOpen || !data) return null;
 
   const handlePrint = () => {
+    // Add class to body so @media print CSS knows a modal is present
+    document.body.classList.add('printing-modal');
     window.print();
+    // Remove after print dialog closes
+    setTimeout(() => document.body.classList.remove('printing-modal'), 1000);
   };
 
   return (

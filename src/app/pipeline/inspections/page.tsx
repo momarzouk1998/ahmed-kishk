@@ -5,34 +5,9 @@ import PageShell from '@/components/PageShell';
 import { useRouter } from 'next/navigation';
 import { getStoredInspections, saveOrUpdateInspection, fetchInspections, InspectionData } from '@/lib/inspectionsStore';
 import { isTodayOrOverdue } from '@/lib/pipelineStore';
+import { formatDate } from '@/lib/dateUtils';
 
 export type InspectionSummary = InspectionData;
-
-function format12hTime(timeStr: string) {
-  if (!timeStr || timeStr === 'غير محدد') return 'غير محدد';
-  try {
-    const parts = timeStr.trim().split(' ');
-    if (parts.length === 2 && parts[0].includes('-') && parts[1].includes(':')) {
-      const [year, month, day] = parts[0].split('-');
-      const [h, m] = parts[1].split(':');
-      let hourNum = parseInt(h, 10);
-      const ampm = hourNum >= 12 ? 'م' : 'ص';
-      hourNum = hourNum % 12 || 12;
-      const formattedHour = String(hourNum).padStart(2, '0');
-      
-      const monthsArabic: Record<string, string> = {
-        '01': 'يناير', '02': 'فبراير', '03': 'مارس', '04': 'أبريل',
-        '05': 'مايو', '06': 'يونيو', '07': 'يوليو', '08': 'أغسطس',
-        '09': 'سبتمبر', '10': 'أكتوبر', '11': 'نوفمبر', '12': 'ديسمبر'
-      };
-      const monthName = monthsArabic[month] || month;
-      return `${parseInt(day, 10)} ${monthName} ${year} • ${formattedHour}:${m} ${ampm}`;
-    }
-    return timeStr;
-  } catch {
-    return timeStr;
-  }
-}
 
 function getBranchBadgeStyle(branchName: string) {
   switch (branchName) {
@@ -402,7 +377,7 @@ export default function PipelineInspectionsPage() {
 
                       {/* 12-Hour Formatted Time Column */}
                       <td className="p-3.5 font-mono text-slate-700 font-bold align-middle">
-                        {format12hTime(item.scheduledAt)}
+                        {formatDate(item.scheduledAt)}
                       </td>
 
                       {/* Rooms Column: Number Only */}
@@ -472,7 +447,7 @@ export default function PipelineInspectionsPage() {
                   </div>
 
                   <div className="text-xs text-slate-500 font-mono flex items-center gap-2 flex-wrap">
-                    <span>{format12hTime(item.scheduledAt)}</span>
+                    <span>{formatDate(item.scheduledAt)}</span>
                     <span>•</span>
                     <span>{item.technician}</span>
                     <span>•</span>

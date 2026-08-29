@@ -81,8 +81,8 @@
     print-color-adjust: exact !important;
   }
 
-  /* Hide everything by default when a modal-overlay is present */
-  body > * {
+  /* Hide everything except the Next.js root */
+  body > *:not(#__next):not(div:has(#__next)) {
     display: none !important;
   }
 
@@ -102,12 +102,15 @@
     display: none !important;
   }
 
-  /* Hide main page content, show only the modal */
-  main {
+  /* If a modal-overlay is present → hide main, show only the modal.
+     If no modal-overlay (e.g. inspection print) → show main, hide .no-print. */
+  body:has(.modal-overlay) main,
+  body.printing-modal main {
     display: none !important;
   }
 
   /* The modal overlay becomes the print root */
+  body.printing-modal .modal-overlay,
   .modal-overlay {
     display: block !important;
     position: static !important;
@@ -120,6 +123,15 @@
     height: auto !important;
     overflow: visible !important;
     z-index: auto !important;
+  }
+
+  /* When NOT printing a modal → show main content normally */
+  body:not(.printing-modal) main {
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
   }
 
   /* The printable card itself */

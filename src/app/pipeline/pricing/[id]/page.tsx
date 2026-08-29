@@ -1445,12 +1445,85 @@ export default function PricingDetailPage() {
               </button>
               <button
                 type="button"
-                onClick={() => {
+                onClick={async () => {
                   const updatedList = quotations.map(q => q.id === quotation.id ? { ...q, status: 'معتمد ومسدد العربون' as const } : q);
                   setQuotations(updatedList);
                   saveAllQuotations(updatedList);
 
-                  updatePipelineOrderStatus(quotation.id, 'في المقص', 'بانتظار القص');
+                  // Map rooms to RoomFabricItem[] format which cutting/tailoring expects
+                  const mappedRooms = (quotation.rooms || []).map((r: any) => ({
+                    roomName: r.name,
+                    heavyFabric: r.heavyEnabled !== false && r.heavyFabricName && r.heavyMeters > 0 ? {
+                      name: r.heavyFabricName,
+                      code: r.heavyFabricCode || '',
+                      meters: r.heavyMeters,
+                      tapeType: r.heavyTapeType,
+                      netHeight: r.heightCm,
+                    } : undefined,
+                    sheerFabric: r.sheerEnabled !== false && r.sheerFabricName && r.sheerMeters > 0 ? {
+                      name: r.sheerFabricName,
+                      code: r.sheerFabricCode || '',
+                      meters: r.sheerMeters,
+                      tapeType: r.sheerTapeType,
+                      netHeight: r.heightCm,
+                    } : undefined,
+                    blackoutFabric: r.blackoutEnabled && r.blackoutFabricName && r.blackoutMeters > 0 ? {
+                      name: r.blackoutFabricName,
+                      code: r.blackoutFabricCode || '',
+                      meters: r.blackoutMeters,
+                      tapeType: r.blackoutTapeType,
+                      netHeight: r.heightCm,
+                    } : undefined,
+                  }));
+
+                  // Check if order exists in pipeline store, if not create new
+                  const storedOrders = getStoredPipelineOrders();
+                  const existingOrder = storedOrders.find(o => o.orderId === quotation.id || o.id === quotation.id);
+
+                  let finalOrder: PipelineMasterOrder;
+                  if (existingOrder) {
+                    finalOrder = {
+                      ...existingOrder,
+                      status: 'في المقص',
+                      localStatus: 'بانتظار القص',
+                      rooms: mappedRooms,
+                      totalAmount: quotation.totalAmount,
+                      depositPaid: quotation.depositPaid,
+                      remainingAmount: quotation.remainingAmount,
+                      deliveryDate: quotation.deliveryDate || existingOrder.deliveryDate || '',
+                    };
+                    const updated = storedOrders.map(o => o.id === existingOrder.id ? finalOrder : o);
+                    saveStoredPipelineOrders(updated);
+                  } else {
+                    finalOrder = {
+                      id: `ORD-${Date.now()}`,
+                      orderId: quotation.id,
+                      customerName: quotation.customerName,
+                      phone: quotation.phone,
+                      address: quotation.address,
+                      branch: quotation.branch || 'الفرع الرئيسي',
+                      deliveryDate: quotation.deliveryDate || '',
+                      status: 'في المقص',
+                      localStatus: 'بانتظار القص',
+                      createdAt: quotation.date || new Date().toISOString().split('T')[0],
+                      totalAmount: quotation.totalAmount,
+                      depositPaid: quotation.depositPaid,
+                      remainingAmount: quotation.remainingAmount,
+                      rooms: mappedRooms,
+                    };
+                    saveStoredPipelineOrders([finalOrder, ...storedOrders]);
+                  }
+
+                  // Force-push to Postgres DB via /api/pipeline-orders directly
+                  try {
+                    await fetch('/api/pipeline-orders', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify(finalOrder),
+                    });
+                  } catch (err) {
+                    console.error('Failed to sync to database:', err);
+                  }
 
                   const insp = getInspectionById(quotation.inspectionId);
                   if (insp) {
