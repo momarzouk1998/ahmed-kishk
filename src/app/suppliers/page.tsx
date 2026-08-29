@@ -11,6 +11,7 @@ interface Supplier {
   categoriesSupplied: string[];
   totalPurchases: number;
   paidAmount: number;
+  openingBalance: number;
   balanceOwed: number; // positive = we owe supplier (علينا للمورد)
   notes: string;
   createdAt: string;
@@ -40,6 +41,16 @@ interface SupplierCheck {
   notes: string;
 }
 
+interface SupplierLedgerEntry {
+  id: string;
+  date: string;
+  type: 'فاتورة شراء' | 'سداد للمورد' | 'شيك بنكي' | 'مرتجع مشتريات';
+  description: string;
+  debit: number;  // مدين (-من المورد)
+  credit: number; // دائن (+مستحق للمورد)
+  balanceAfter: number;
+}
+
 const defaultSuppliers: Supplier[] = [
   {
     id: 'SUP-001',
@@ -49,6 +60,7 @@ const defaultSuppliers: Supplier[] = [
     categoriesSupplied: ['قطيفة تركي', 'حرير سواريه', 'كريب ممتاز'],
     totalPurchases: 85000,
     paidAmount: 79800,
+    openingBalance: 0,
     balanceOwed: 5200,
     notes: 'مورد رئيسي لخامات السوارية. التوريد بشيك 30 يوم.',
     createdAt: '2026-08-01',
@@ -61,6 +73,7 @@ const defaultSuppliers: Supplier[] = [
     categoriesSupplied: ['بلاك آوت', 'تول', 'مواسير فورجيه', 'تراكات سقف'],
     totalPurchases: 42000,
     paidAmount: 40200,
+    openingBalance: 0,
     balanceOwed: 1800,
     notes: 'مورد مواسير وإكسسوارات التراك.',
     createdAt: '2026-08-10',
@@ -73,6 +86,7 @@ const defaultSuppliers: Supplier[] = [
     categoriesSupplied: ['شيفون ناعم', 'أشرطة كشكشة 3 فتلة', 'شريط ويفي'],
     totalPurchases: 28000,
     paidAmount: 28000,
+    openingBalance: 0,
     balanceOwed: 0,
     notes: 'مسدد بالكامل.',
     createdAt: '2026-08-15',
@@ -129,9 +143,9 @@ const defaultChecks: SupplierCheck[] = [
   },
 ];
 
-const SUPPLIERS_KEY = 'ahmed_kishk_suppliers_v2';
-const SPAYMENTS_KEY = 'ahmed_kishk_spayments_v2';
-const SCHECKS_KEY = 'ahmed_kishk_schecks_v2';
+const SUPPLIERS_KEY = 'ahmed_kishk_suppliers_v3';
+const SPAYMENTS_KEY = 'ahmed_kishk_spayments_v3';
+const SCHECKS_KEY = 'ahmed_kishk_schecks_v3';
 
 export default function SuppliersPage() {
   const [activeTab, setActiveTab] = useState<'SUPPLIERS' | 'PAYMENTS' | 'CHECKS'>('SUPPLIERS');
@@ -140,6 +154,9 @@ export default function SuppliersPage() {
   const [payments, setPayments] = useState<SupplierPayment[]>(defaultPayments);
   const [checks, setChecks] = useState<SupplierCheck[]>(defaultChecks);
 
+  // Selected Supplier for Detail View & Statement Modal
+  const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
+
   // Filters
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -147,7 +164,7 @@ export default function SuppliersPage() {
   // Modals
   const [showAddSupplierModal, setShowAddSupplierModal] = useState(false);
   const [showAddPaymentModal, setShowAddPaymentModal] = useState(false);
-  const [showAddCheckModal, setShowAddCheckModal] = useState(false);
+  const [showBatchChecksModal, setShowBatchChecksModal] = useState(false);
 
   // New Supplier Form
   const [supName, setSupName] = useState('');
@@ -163,13 +180,18 @@ export default function SuppliersPage() {
   const [payTreasury, setPayTreasury] = useState('الخزينة الرئيسية');
   const [payNotes, setPayNotes] = useState('');
 
-  // New Check Form
-  const [chkNumber, setChkNumber] = useState('');
-  const [chkBank, setChkBank] = useState('البنك الأهلي المصري');
-  const [chkSupplierId, setChkSupplierId] = useState('');
-  const [chkAmount, setChkAmount] = useState<number>(5000);
-  const [chkDueDate, setChkDueDate] = useState('2026-09-30');
-  const [chkNotes, setChkNotes] = useState('');
+  // Batch / Multiple Checks Entry State
+  const [batchSupplierId, setBatchSupplierId] = useState('');
+  const [batchCheckRows, setBatchCheckRows] = useState<{
+    checkNumber: string;
+    bankName: string;
+    amount: number;
+    dueDate: string;
+    notes: string;
+  }[]>([
+    { checkNumber: '', bankName: 'البنك الأهلي المصري', amount: 5000, dueDate: '2026-09-30', notes: '' },
+    { checkNumber: '', bankName: 'بنك مصر', amount: 3000, dueDate: '2026-10-15', notes: '' },
+  ]);
 
   useEffect(() => {
     try {
@@ -214,6 +236,7 @@ export default function SuppliersPage() {
       categoriesSupplied: supCategories ? supCategories.split(',').map(c => c.trim()) : ['أقمشة'],
       totalPurchases: 0,
       paidAmount: 0,
+      openingBalance: 0,
       balanceOwed: 0,
       notes: supNotes.trim(),
       createdAt: new Date().toISOString().split('T')[0],
@@ -251,11 +274,10 @@ export default function SuppliersPage() {
     // Deduct balance owed
     const updatedSuppliers = suppliers.map(s => {
       if (s.id === targetSup.id) {
-        return {
-          ...s,
-          paidAmount: s.paidAmount + payAmount,
-          balanceOwed: Math.max(0, s.balanceOwed - payAmount),
-        };
+        const updatedB = Math.max(0, s.balanceOwed - payAmount);
+        const updatedObj = { ...s, paidAmount: s.paidAmount + payAmount, balanceOwed: updatedB };
+        if (selectedSupplier?.id === s.id) setSelectedSupplier(updatedObj);
+        return updatedObj;
       }
       return s;
     });
@@ -267,31 +289,37 @@ export default function SuppliersPage() {
     alert(`تم تسجيل إذن سداد بمبلغ ${payAmount.toLocaleString()} ج للمورد "${targetSup.name}" بنجاح ✓`);
   };
 
-  // Submit Add Check
-  const handleAddCheck = (e: React.FormEvent) => {
+  // Submit Multiple Batch Checks
+  const handleAddBatchChecksSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const targetSup = suppliers.find(s => s.id === chkSupplierId);
-    if (!targetSup || !chkNumber.trim() || chkAmount <= 0) return;
+    const targetSup = suppliers.find(s => s.id === batchSupplierId);
+    if (!targetSup) return;
 
-    const newCheck: SupplierCheck = {
-      id: `CHK-${500 + checks.length + 1}`,
-      checkNumber: chkNumber.trim(),
-      bankName: chkBank,
+    const validRows = batchCheckRows.filter(r => r.checkNumber.trim() !== '' && r.amount > 0);
+    if (validRows.length === 0) {
+      alert('يرجى ملء بيانات شيك واحد على الأقل (رقم الشيك والمبلغ)');
+      return;
+    }
+
+    const createdChecks: SupplierCheck[] = validRows.map((r, idx) => ({
+      id: `CHK-${Date.now()}-${idx}`,
+      checkNumber: r.checkNumber.trim(),
+      bankName: r.bankName,
       supplierId: targetSup.id,
       supplierName: targetSup.name,
-      amount: chkAmount,
+      amount: r.amount,
       issueDate: new Date().toISOString().split('T')[0],
-      dueDate: chkDueDate,
+      dueDate: r.dueDate,
       status: 'قيد الانتظار',
-      notes: chkNotes.trim(),
-    };
+      notes: r.notes.trim() || 'شيك متعدد مجمع',
+    }));
 
-    saveChecksState([newCheck, ...checks]);
-    setShowAddCheckModal(false);
-    setChkNumber('');
-    setChkAmount(5000);
-    setChkNotes('');
-    alert('تم تسجيل الشيك المؤجل بنجاح ✓');
+    saveChecksState([...createdChecks, ...checks]);
+    setShowBatchChecksModal(false);
+    setBatchCheckRows([
+      { checkNumber: '', bankName: 'البنك الأهلي المصري', amount: 5000, dueDate: '2026-09-30', notes: '' },
+    ]);
+    alert(`تم تسـجيل وحفظ عدد (${createdChecks.length}) شيكات بنكية للمورد "${targetSup.name}" دفعة واحدة بنجاح ✓`);
   };
 
   const handleToggleCheckStatus = (chkId: string) => {
@@ -308,7 +336,56 @@ export default function SuppliersPage() {
   const handleDeleteSupplier = (id: string, name: string) => {
     if (confirm(`هل أنت أسر بالتأكيد من حذف المورد "${name}"؟`)) {
       saveSuppliersState(suppliers.filter(s => s.id !== id));
+      if (selectedSupplier?.id === id) setSelectedSupplier(null);
     }
+  };
+
+  // Generate Dynamic Ledger Transactions for Selected Supplier
+  const generateSupplierLedger = (sup: Supplier): SupplierLedgerEntry[] => {
+    const entries: SupplierLedgerEntry[] = [];
+    let runningBalance = sup.openingBalance || 0;
+
+    if (sup.totalPurchases > 0) {
+      runningBalance += sup.totalPurchases;
+      entries.push({
+        id: 'PUR-TOTAL',
+        date: sup.createdAt,
+        type: 'فاتورة شراء',
+        description: `إجمالي فواتير ومشتريات الأقمشة والإكسسوارات من المورد`,
+        debit: 0,
+        credit: sup.totalPurchases,
+        balanceAfter: runningBalance,
+      });
+    }
+
+    const supPays = payments.filter(p => p.supplierId === sup.id || p.supplierName === sup.name);
+    supPays.forEach(p => {
+      runningBalance -= p.amount;
+      entries.push({
+        id: p.id,
+        date: p.date,
+        type: 'سداد للمورد',
+        description: `إذن صرف مسدد (${p.method}) - ${p.notes || 'إذن سداد'}`,
+        debit: p.amount,
+        credit: 0,
+        balanceAfter: runningBalance,
+      });
+    });
+
+    const supChks = checks.filter(c => c.supplierId === sup.id || c.supplierName === sup.name);
+    supChks.forEach(c => {
+      entries.push({
+        id: c.id,
+        date: c.issueDate,
+        type: 'شيك بنكي',
+        description: `شيك مؤجل #${c.checkNumber} (${c.bankName}) - استحقاق: ${c.dueDate} - (${c.status})`,
+        debit: c.status === 'تم الصرف' ? c.amount : 0,
+        credit: 0,
+        balanceAfter: c.status === 'تم الصرف' ? runningBalance - c.amount : runningBalance,
+      });
+    });
+
+    return entries;
   };
 
   // Filtered Suppliers
@@ -382,7 +459,7 @@ export default function SuppliersPage() {
           <div className="space-y-4">
             {/* Header & Controls */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-              <span className="text-xs font-bold text-slate-500">إجمالي عدد الموردين: {filteredSuppliers.length} مورد</span>
+              <span className="text-xs font-bold text-slate-500">إجمالي عدد الموردين: {filteredSuppliers.length} مورد (اضغط على السطر لفتح التقرير وكشف الحساب)</span>
 
               <button
                 type="button"
@@ -426,7 +503,7 @@ export default function SuppliersPage() {
               </div>
             </div>
 
-            {/* Suppliers Table */}
+            {/* Suppliers Table (Interactive Row Click) */}
             <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-soft">
               <div className="overflow-x-auto">
                 <table className="w-full text-right text-xs min-w-[800px]">
@@ -442,10 +519,14 @@ export default function SuppliersPage() {
                   </thead>
                   <tbody>
                     {filteredSuppliers.map(sup => (
-                      <tr key={sup.id} className="border-t border-slate-100 hover:bg-slate-50/70 transition-colors">
+                      <tr
+                        key={sup.id}
+                        onClick={() => setSelectedSupplier(sup)}
+                        className="border-t border-slate-100 hover:bg-amber-50/40 cursor-pointer transition-colors"
+                      >
                         <td className="p-3.5 font-bold text-slate-900">
-                          <span className="text-sm font-black text-slate-950 block">{sup.name}</span>
-                          <span className="text-[10px] text-slate-400 font-mono">{sup.id}</span>
+                          <span className="text-sm font-black text-indigo-950 block">{sup.name}</span>
+                          <span className="text-[10px] text-amber-700 font-mono">اضغط لفتح كشف الحساب والتفاصيل 📋</span>
                         </td>
 
                         <td className="p-3.5 text-slate-700">
@@ -473,8 +554,16 @@ export default function SuppliersPage() {
                           </span>
                         </td>
 
-                        <td className="p-3.5 text-center">
+                        <td className="p-3.5 text-center" onClick={e => e.stopPropagation()}>
                           <div className="flex items-center justify-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedSupplier(sup)}
+                              className="bg-slate-900 hover:bg-slate-800 text-white px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer"
+                            >
+                              📋 تفاصيل
+                            </button>
+
                             <button
                               type="button"
                               onClick={() => {
@@ -484,7 +573,7 @@ export default function SuppliersPage() {
                               }}
                               className="bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer transition-colors"
                             >
-                              💸 تسجيل سداد
+                              💸 سداد
                             </button>
 
                             <button
@@ -598,14 +687,19 @@ export default function SuppliersPage() {
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
               <span className="text-xs font-bold text-slate-500">متابعة الشيكات البنكية والمؤجلة للموردين</span>
 
-              <button
-                type="button"
-                onClick={() => setShowAddCheckModal(true)}
-                className="bg-purple-900 hover:bg-purple-800 text-white px-4 py-2.5 rounded-xl text-xs font-black shadow-xs flex items-center gap-1.5 cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-[18px]">news</span>
-                <span>+ تسجيل شيك بنكي جديد</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (suppliers.length > 0) setBatchSupplierId(suppliers[0].id);
+                    setShowBatchChecksModal(true);
+                  }}
+                  className="bg-purple-900 hover:bg-purple-800 text-white px-4 py-2.5 rounded-xl text-xs font-black shadow-xs flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-[18px]">library_add</span>
+                  <span>+ إضافة شيكات متعددة (دفعة واحدة)</span>
+                </button>
+              </div>
             </div>
 
             {/* Metrics */}
@@ -690,13 +784,292 @@ export default function SuppliersPage() {
         )}
       </div>
 
+      {/* 🔍 Interactive Full Supplier Details & Printable Statement Modal */}
+      {selectedSupplier && (
+        <div className="modal-overlay fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
+          <style>{`
+            @media print {
+              body * { visibility: hidden !important; }
+              #printable-supplier-statement, #printable-supplier-statement * { visibility: visible !important; }
+              #printable-supplier-statement { position: fixed !important; left: 0 !important; top: 0 !important; width: 100% !important; margin: 0 !important; padding: 15px !important; background: #ffffff !important; color: #000000 !important; }
+              .no-print { display: none !important; }
+            }
+          `}</style>
+          <div id="printable-supplier-statement" className="bg-white rounded-3xl max-w-4xl w-full p-6 space-y-5 text-slate-900 border border-slate-200 my-auto shadow-2xl max-h-[92vh] overflow-y-auto">
+            {/* Modal Control Header */}
+            <div className="no-print flex justify-between items-center pb-3 border-b border-slate-200">
+              <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
+                <span className="material-symbols-outlined text-amber-500">store</span>
+                <span>كشف حساب وتفاصيل المورد: {selectedSupplier.name}</span>
+              </h3>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="bg-brand-gold hover:bg-amber-400 text-slate-950 px-3.5 py-2 rounded-xl text-xs font-black shadow-gold flex items-center gap-1 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-[16px]">print</span>
+                  🖨️ طباعة كشف حساب المورد (PDF)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedSupplier(null)}
+                  className="w-8 h-8 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center font-bold text-sm cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            {/* Document Header */}
+            <div className="flex justify-between items-center pb-4 border-b-2 border-slate-900">
+              <div>
+                <h2 className="font-display font-black text-xl text-slate-950">مؤسسة أحمد كشك للأقمشة والستائر</h2>
+                <p className="text-xs font-bold text-amber-800">كشف حساب وتفاصيل المستحقات المالية للمورد</p>
+              </div>
+              <div className="text-left font-mono text-xs">
+                <div><strong>تاريخ التقرير:</strong> {new Date().toISOString().split('T')[0]}</div>
+                <div><strong>كود المورد:</strong> {selectedSupplier.id}</div>
+              </div>
+            </div>
+
+            {/* Supplier Information Cards */}
+            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+              <div><strong>اسم المورد:</strong> {selectedSupplier.name}</div>
+              <div><strong>رقم الهاتف:</strong> {selectedSupplier.phone}</div>
+              <div><strong>العنوان:</strong> {selectedSupplier.address}</div>
+              <div><strong>الخامات الموردة:</strong> {selectedSupplier.categoriesSupplied.join(', ')}</div>
+              <div><strong>ملاحظات وشروط التوريد:</strong> {selectedSupplier.notes || '—'}</div>
+            </div>
+
+            {/* Financial Status Summary */}
+            <div className="grid grid-cols-3 gap-3 text-xs">
+              <div className="bg-white p-3.5 rounded-xl border border-slate-200 text-center">
+                <span className="text-slate-500 font-bold block">الرصيد الافتتاحي</span>
+                <strong className="text-base font-black text-slate-900 font-mono">{selectedSupplier.openingBalance.toLocaleString()} ج</strong>
+              </div>
+              <div className="bg-emerald-50 p-3.5 rounded-xl border border-emerald-200 text-center">
+                <span className="text-emerald-800 font-bold block">إجمالي المشتريات التوريدية</span>
+                <strong className="text-base font-black text-emerald-950 font-mono">{selectedSupplier.totalPurchases.toLocaleString()} ج</strong>
+              </div>
+              <div className="bg-rose-50 p-3.5 rounded-xl border border-rose-200 text-center">
+                <span className="text-rose-800 font-bold block">الرصيد المستحق (علينا للمورد)</span>
+                <strong className="text-base font-black text-rose-950 font-mono">{selectedSupplier.balanceOwed.toLocaleString()} ج</strong>
+              </div>
+            </div>
+
+            {/* Transactions Ledger Table */}
+            <div className="space-y-2">
+              <h4 className="font-black text-xs text-slate-950 border-r-4 border-amber-500 pr-2">
+                سجل التعاملات وحركات كشف حساب المورد:
+              </h4>
+              <table className="w-full text-right text-xs border-collapse border border-slate-300">
+                <thead className="bg-slate-200 text-slate-900 font-bold border-b border-slate-300">
+                  <tr>
+                    <th className="p-2 border border-slate-300">التاريخ</th>
+                    <th className="p-2 border border-slate-300">نوع الحركة</th>
+                    <th className="p-2 border border-slate-300">التفاصيل والبيان</th>
+                    <th className="p-2 border border-slate-300 text-center font-mono text-emerald-900">مدين (-مسدد للمورد)</th>
+                    <th className="p-2 border border-slate-300 text-center font-mono text-rose-900">دائن (+مستحق للمورد)</th>
+                    <th className="p-2 border border-slate-300 text-center font-mono">الرصيد المستحق</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {generateSupplierLedger(selectedSupplier).map((entry, idx) => (
+                    <tr key={idx} className="border-b border-slate-200">
+                      <td className="p-2 border border-slate-300 font-mono">{entry.date}</td>
+                      <td className="p-2 border border-slate-300 font-bold">{entry.type}</td>
+                      <td className="p-2 border border-slate-300 text-slate-700">{entry.description}</td>
+                      <td className="p-2 border border-slate-300 text-center font-mono font-bold text-emerald-800">
+                        {entry.debit > 0 ? `${entry.debit.toLocaleString()} ج` : '—'}
+                      </td>
+                      <td className="p-2 border border-slate-300 text-center font-mono font-bold text-rose-800">
+                        {entry.credit > 0 ? `${entry.credit.toLocaleString()} ج` : '—'}
+                      </td>
+                      <td className="p-2 border border-slate-300 text-center font-mono font-black text-slate-950">
+                        {entry.balanceAfter.toLocaleString()} ج
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Quick Action Footer in Modal */}
+            <div className="no-print pt-3 border-t border-slate-200 flex justify-between items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setPaySupplierId(selectedSupplier.id);
+                  setPayAmount(selectedSupplier.balanceOwed > 0 ? selectedSupplier.balanceOwed : 1000);
+                  setShowAddPaymentModal(true);
+                }}
+                className="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-xl text-xs font-black shadow-xs cursor-pointer"
+              >
+                💸 تسجيل سداد للمورد الآن
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSelectedSupplier(null)}
+                className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-xl text-xs font-bold cursor-pointer"
+              >
+                إغلاق
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🧾 Modal: Add Batch / Multiple Checks */}
+      {showBatchChecksModal && (
+        <div className="modal-overlay fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 space-y-4 shadow-2xl border border-slate-200 my-auto max-h-[92vh] overflow-y-auto">
+            <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+              <h3 className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-purple-600">library_add</span>
+                <span>إضافة شيكات متعددة للمورد (تسجيل دفعة شيكات دفعة واحدة)</span>
+              </h3>
+              <button onClick={() => setShowBatchChecksModal(false)} className="w-7 h-7 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-xs cursor-pointer">✕</button>
+            </div>
+
+            <form onSubmit={handleAddBatchChecksSubmit} className="space-y-4 text-xs">
+              <div>
+                <label className="text-slate-700 font-bold block mb-1">اختر المورد المستفيد للشيكات:</label>
+                <select
+                  value={batchSupplierId}
+                  onChange={e => setBatchSupplierId(e.target.value)}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900 focus:outline-none"
+                  required
+                >
+                  <option value="">-- اختر المورد المستفيد --</option>
+                  {suppliers.map(s => (
+                    <option key={s.id} value={s.id}>{s.name} ({s.phone})</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Dynamic Check Rows */}
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <label className="text-slate-900 font-black text-xs">جدول الشيكات المطلوب تسجيلها:</label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBatchCheckRows([
+                        ...batchCheckRows,
+                        { checkNumber: '', bankName: 'البنك الأهلي المصري', amount: 5000, dueDate: '2026-10-30', notes: '' }
+                      ]);
+                    }}
+                    className="bg-purple-100 text-purple-900 hover:bg-purple-200 px-3 py-1 rounded-xl text-xs font-bold border border-purple-300 flex items-center gap-1 cursor-pointer"
+                  >
+                    <span>+ إضافة شيك آخر</span>
+                  </button>
+                </div>
+
+                {batchCheckRows.map((row, idx) => (
+                  <div key={idx} className="bg-slate-50 p-3 rounded-2xl border border-slate-200 grid grid-cols-1 sm:grid-cols-12 gap-2 text-xs relative">
+                    <div className="sm:col-span-3">
+                      <label className="text-slate-500 font-bold block mb-1">رقم الشيك #{idx + 1}:</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="رقم الشيك..."
+                        value={row.checkNumber}
+                        onChange={e => {
+                          const updated = [...batchCheckRows];
+                          updated[idx].checkNumber = e.target.value;
+                          setBatchCheckRows(updated);
+                        }}
+                        className="w-full border border-slate-200 rounded-xl px-2.5 py-1.5 font-mono font-bold text-slate-900 focus:outline-none bg-white"
+                      />
+                    </div>
+
+                    <div className="sm:col-span-3">
+                      <label className="text-slate-500 font-bold block mb-1">البنك:</label>
+                      <select
+                        value={row.bankName}
+                        onChange={e => {
+                          const updated = [...batchCheckRows];
+                          updated[idx].bankName = e.target.value;
+                          setBatchCheckRows(updated);
+                        }}
+                        className="w-full border border-slate-200 rounded-xl px-2.5 py-1.5 font-bold text-slate-900 focus:outline-none bg-white"
+                      >
+                        <option value="البنك الأهلي المصري">البنك الأهلي المصري</option>
+                        <option value="بنك مصر">بنك مصر</option>
+                        <option value="CIB">البنك التجاري الدولي CIB</option>
+                        <option value="بنك القاهرة">بنك القاهرة</option>
+                      </select>
+                    </div>
+
+                    <div className="sm:col-span-2">
+                      <label className="text-slate-500 font-bold block mb-1">المبلغ (ج.م):</label>
+                      <input
+                        type="number"
+                        min="1"
+                        required
+                        value={row.amount}
+                        onChange={e => {
+                          const updated = [...batchCheckRows];
+                          updated[idx].amount = Number(e.target.value);
+                          setBatchCheckRows(updated);
+                        }}
+                        className="w-full border border-slate-200 rounded-xl px-2.5 py-1.5 font-mono font-bold text-slate-900 focus:outline-none bg-white"
+                      />
+                    </div>
+
+                    <div className="sm:col-span-3">
+                      <label className="text-slate-500 font-bold block mb-1">تاريخ الاستحقاق:</label>
+                      <input
+                        type="date"
+                        required
+                        value={row.dueDate}
+                        onChange={e => {
+                          const updated = [...batchCheckRows];
+                          updated[idx].dueDate = e.target.value;
+                          setBatchCheckRows(updated);
+                        }}
+                        className="w-full border border-slate-200 rounded-xl px-2.5 py-1.5 font-mono font-bold text-slate-900 focus:outline-none bg-white"
+                      />
+                    </div>
+
+                    <div className="sm:col-span-1 flex items-end justify-center">
+                      {batchCheckRows.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => setBatchCheckRows(batchCheckRows.filter((_, i) => i !== idx))}
+                          className="w-7 h-7 rounded-lg bg-rose-100 text-rose-700 hover:bg-rose-200 flex items-center justify-center font-bold text-xs mb-0.5 cursor-pointer"
+                          title="حذف الشيك"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="pt-2 flex gap-2">
+                <button type="submit" className="flex-1 bg-purple-900 hover:bg-purple-800 text-white py-3 rounded-2xl font-black text-xs shadow-xs cursor-pointer">
+                  تأكيد وتجميع كافة الشيكات ({batchCheckRows.length}) دفعة واحدة ✓
+                </button>
+                <button type="button" onClick={() => setShowBatchChecksModal(false)} className="flex-1 bg-slate-100 text-slate-700 py-3 rounded-2xl font-bold text-xs cursor-pointer">
+                  إلغاء
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* ➕ Modal: Add Supplier */}
       {showAddSupplierModal && (
         <div className="modal-overlay fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-200">
             <div className="flex justify-between items-center pb-2 border-b border-slate-100">
               <h3 className="font-bold text-slate-900 text-sm">إضافة مورد جديد</h3>
-              <button onClick={() => setShowAddSupplierModal(false)} className="w-7 h-7 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-xs">✕</button>
+              <button onClick={() => setShowAddSupplierModal(false)} className="w-7 h-7 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-xs cursor-pointer">✕</button>
             </div>
 
             <form onSubmit={handleAddSupplier} className="space-y-3 text-xs">
@@ -776,7 +1149,7 @@ export default function SuppliersPage() {
           <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-200">
             <div className="flex justify-between items-center pb-2 border-b border-slate-100">
               <h3 className="font-bold text-slate-900 text-sm">تسجيل سداد للمورد</h3>
-              <button onClick={() => setShowAddPaymentModal(false)} className="w-7 h-7 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-xs">✕</button>
+              <button onClick={() => setShowAddPaymentModal(false)} className="w-7 h-7 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-xs cursor-pointer">✕</button>
             </div>
 
             <form onSubmit={handleAddPayment} className="space-y-3 text-xs">
@@ -854,104 +1227,6 @@ export default function SuppliersPage() {
                   تأكيد وتسجيل السداد ✓
                 </button>
                 <button type="button" onClick={() => setShowAddPaymentModal(false)} className="flex-1 bg-slate-100 text-slate-700 py-2.5 rounded-xl font-bold text-xs cursor-pointer">
-                  إلغاء
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ➕ Modal: Add Check */}
-      {showAddCheckModal && (
-        <div className="modal-overlay fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-200">
-            <div className="flex justify-between items-center pb-2 border-b border-slate-100">
-              <h3 className="font-bold text-slate-900 text-sm">تسجيل شيك بنكي جديد للمورد</h3>
-              <button onClick={() => setShowAddCheckModal(false)} className="w-7 h-7 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-xs">✕</button>
-            </div>
-
-            <form onSubmit={handleAddCheck} className="space-y-3 text-xs">
-              <div>
-                <label className="text-slate-700 font-bold block mb-1">رقم الشيك:</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="مثال: 8879401"
-                  value={chkNumber}
-                  onChange={e => setChkNumber(e.target.value)}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 font-mono font-bold text-slate-900 focus:outline-none focus:border-amber-500"
-                />
-              </div>
-
-              <div>
-                <label className="text-slate-700 font-bold block mb-1">اسم البنك المسحوب عليه:</label>
-                <select
-                  value={chkBank}
-                  onChange={e => setChkBank(e.target.value)}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900 focus:outline-none"
-                >
-                  <option value="البنك الأهلي المصري">البنك الأهلي المصري</option>
-                  <option value="بنك مصر">بنك مصر</option>
-                  <option value="البنك تجاري الدولي (CIB)">البنك التجاري الدولي (CIB)</option>
-                  <option value="بنك القاهرة">بنك القاهرة</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="text-slate-700 font-bold block mb-1">المورد المستفيد:</label>
-                <select
-                  value={chkSupplierId}
-                  onChange={e => setChkSupplierId(e.target.value)}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900 focus:outline-none"
-                  required
-                >
-                  <option value="">-- اختر المورد --</option>
-                  {suppliers.map(s => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="text-slate-700 font-bold block mb-1">مبلغ الشيك (ج.م):</label>
-                <input
-                  type="number"
-                  required
-                  min="1"
-                  value={chkAmount}
-                  onChange={e => setChkAmount(Number(e.target.value))}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 font-mono font-black text-slate-900 text-sm focus:outline-none focus:border-purple-500"
-                />
-              </div>
-
-              <div>
-                <label className="text-slate-700 font-bold block mb-1">تاريخ الاستحقاق:</label>
-                <input
-                  type="date"
-                  required
-                  value={chkDueDate}
-                  onChange={e => setChkDueDate(e.target.value)}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 font-mono font-bold text-slate-900 focus:outline-none focus:border-purple-500"
-                />
-              </div>
-
-              <div>
-                <label className="text-slate-700 font-bold block mb-1">ملاحظات الشيك:</label>
-                <input
-                  type="text"
-                  placeholder="ملاحظات..."
-                  value={chkNotes}
-                  onChange={e => setChkNotes(e.target.value)}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-slate-900 focus:outline-none"
-                />
-              </div>
-
-              <div className="pt-2 flex gap-2">
-                <button type="submit" className="flex-1 bg-purple-900 hover:bg-purple-800 text-white py-2.5 rounded-xl font-black text-xs shadow-xs cursor-pointer">
-                  تأكيد وتجميع الشيك ✓
-                </button>
-                <button type="button" onClick={() => setShowAddCheckModal(false)} className="flex-1 bg-slate-100 text-slate-700 py-2.5 rounded-xl font-bold text-xs cursor-pointer">
                   إلغاء
                 </button>
               </div>

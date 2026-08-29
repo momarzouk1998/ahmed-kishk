@@ -12,6 +12,7 @@ interface Customer {
   inspectionsCount: number;
   ordersCount: number;
   totalSpent: number;
+  openingBalance: number;
   balance: number; // positive = owed by customer (لينا), negative = credit (علينا)
   notes: string;
   createdAt: string;
@@ -29,6 +30,16 @@ interface CustomerCollection {
   notes: string;
 }
 
+interface CustomerLedgerEntry {
+  id: string;
+  date: string;
+  type: 'مقايسة ستائر' | 'فاتورة مبيعات' | 'سداد / تحصيل' | 'مرتجع مبيعات';
+  description: string;
+  debit: number;  // مدين (علي العميل)
+  credit: number; // دائن (من العميل)
+  balanceAfter: number;
+}
+
 const defaultCustomers: Customer[] = [
   {
     id: 'CUST-001',
@@ -39,6 +50,7 @@ const defaultCustomers: Customer[] = [
     inspectionsCount: 2,
     ordersCount: 1,
     totalSpent: 12600,
+    openingBalance: 0,
     balance: 5600,
     notes: 'عميل فيلا — يفضل أقمشة السوارية الثقيلة',
     createdAt: '2026-08-20',
@@ -52,6 +64,7 @@ const defaultCustomers: Customer[] = [
     inspectionsCount: 1,
     ordersCount: 1,
     totalSpent: 8500,
+    openingBalance: 0,
     balance: 3800,
     notes: 'طلب معاينة قيد المتابعة',
     createdAt: '2026-08-22',
@@ -65,6 +78,7 @@ const defaultCustomers: Customer[] = [
     inspectionsCount: 3,
     ordersCount: 2,
     totalSpent: 42000,
+    openingBalance: 0,
     balance: 0,
     notes: 'حساب تجاري شركي — سداد بشيكات',
     createdAt: '2026-08-15',
@@ -78,6 +92,7 @@ const defaultCustomers: Customer[] = [
     inspectionsCount: 1,
     ordersCount: 1,
     totalSpent: 7200,
+    openingBalance: 0,
     balance: 3200,
     notes: 'تم الدفع جزئياً',
     createdAt: '2026-08-25',
@@ -91,7 +106,7 @@ const defaultCollections: CustomerCollection[] = [
     customerId: 'CUST-001',
     customerName: 'محمود عبد الرحمن',
     phone: '01012345678',
-    amount: 5200,
+    amount: 7000,
     method: 'نقدي',
     treasury: 'الخزينة الرئيسية',
     notes: 'عربون مقايسة الصالة الرئيسية',
@@ -109,13 +124,17 @@ const defaultCollections: CustomerCollection[] = [
   },
 ];
 
-const CUSTOMERS_KEY = 'ahmed_kishk_customers_v2';
-const COLLECTIONS_KEY = 'ahmed_kishk_collections_v2';
+const CUSTOMERS_KEY = 'ahmed_kishk_customers_v3';
+const COLLECTIONS_KEY = 'ahmed_kishk_collections_v3';
 
 export default function CustomersPage() {
   const [activeTab, setActiveTab] = useState<'CUSTOMERS' | 'COLLECTIONS'>('CUSTOMERS');
   const [customers, setCustomers] = useState<Customer[]>(defaultCustomers);
   const [collections, setCollections] = useState<CustomerCollection[]>(defaultCollections);
+
+  // Selected Customer for Full Details & Statement Modal
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [printableStatement, setPrintableStatement] = useState<Customer | null>(null);
 
   // Filters
   const [search, setSearch] = useState('');
@@ -176,6 +195,7 @@ export default function CustomersPage() {
       inspectionsCount: 0,
       ordersCount: 0,
       totalSpent: 0,
+      openingBalance: 0,
       balance: 0,
       notes: custNotes.trim(),
       createdAt: new Date().toISOString().split('T')[0],
@@ -213,10 +233,10 @@ export default function CustomersPage() {
     // Deduct balance from customer
     const updatedCustomers = customers.map(c => {
       if (c.id === targetCustomer.id) {
-        return {
-          ...c,
-          balance: Math.max(0, c.balance - colAmount),
-        };
+        const updatedB = Math.max(0, c.balance - colAmount);
+        const updatedObj = { ...c, balance: updatedB };
+        if (selectedCustomer?.id === c.id) setSelectedCustomer(updatedObj);
+        return updatedObj;
       }
       return c;
     });
@@ -232,7 +252,55 @@ export default function CustomersPage() {
     if (confirm(`هل أنت أسر بالتأكيد من حذف بيانات العميل "${name}"؟`)) {
       const filteredC = customers.filter(c => c.id !== id);
       saveCustomersState(filteredC);
+      if (selectedCustomer?.id === id) setSelectedCustomer(null);
     }
+  };
+
+  // Generate Dynamic Ledger Transactions for Selected Customer
+  const generateCustomerLedger = (cust: Customer): CustomerLedgerEntry[] => {
+    const entries: CustomerLedgerEntry[] = [];
+    let runningBalance = cust.openingBalance || 0;
+
+    if (cust.openingBalance > 0) {
+      entries.push({
+        id: 'INIT-1',
+        date: cust.createdAt,
+        type: 'مقايسة ستائر',
+        description: 'رصيد افتتاحي سابق',
+        debit: cust.openingBalance,
+        credit: 0,
+        balanceAfter: runningBalance,
+      });
+    }
+
+    if (cust.totalSpent > 0) {
+      runningBalance += cust.totalSpent;
+      entries.push({
+        id: 'INV-TOTAL',
+        date: cust.createdAt,
+        type: 'مقايسة ستائر',
+        description: `إجمالي مقايسة وتوريد أقمشة ستائر (${cust.ordersCount} أوردر)`,
+        debit: cust.totalSpent,
+        credit: 0,
+        balanceAfter: runningBalance,
+      });
+    }
+
+    const custCols = collections.filter(c => c.customerId === cust.id || c.customerName === cust.name);
+    custCols.forEach(col => {
+      runningBalance -= col.amount;
+      entries.push({
+        id: col.id,
+        date: col.date,
+        type: 'سداد / تحصيل',
+        description: `دفعة سداد تحصيل (${col.method}) - ${col.notes || 'إيصال استلام'}`,
+        debit: 0,
+        credit: col.amount,
+        balanceAfter: runningBalance,
+      });
+    });
+
+    return entries;
   };
 
   // Filtered Customers
@@ -256,12 +324,11 @@ export default function CustomersPage() {
     return matchSearch && matchMethod;
   });
 
-  // Customer Financial Metrics
+  // Financial Metrics
   const totalDebtsLina = filteredCustomers.reduce((s, c) => s + (c.balance > 0 ? c.balance : 0), 0);
   const totalPrepaidAleena = filteredCustomers.reduce((s, c) => s + (c.balance < 0 ? Math.abs(c.balance) : 0), 0);
   const totalDebtorsCount = filteredCustomers.filter(c => c.balance > 0.01).length;
 
-  // Collection Metrics
   const totalCollectionsAmount = filteredCollections.reduce((s, col) => s + col.amount, 0);
   const cashCollectionsAmount = filteredCollections.filter(c => c.method === 'نقدي').reduce((s, c) => s + c.amount, 0);
 
@@ -298,7 +365,7 @@ export default function CustomersPage() {
           <div className="space-y-4">
             {/* Header & Controls */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-              <span className="text-xs font-bold text-slate-500">إجمالي عدد العملاء المسجلين: {filteredCustomers.length} عميل</span>
+              <span className="text-xs font-bold text-slate-500">إجمالي عدد العملاء المسجلين: {filteredCustomers.length} عميل (اضغط على السطر لفتح التقرير وكشف الحساب)</span>
 
               <button
                 type="button"
@@ -313,7 +380,7 @@ export default function CustomersPage() {
             {/* Financial Summary Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
               <div className="bg-white p-4 rounded-2xl border border-slate-200 text-center shadow-3xs">
-                <span className="text-slate-500 font-bold block">عدد العملاء (بالفلتر)</span>
+                <span className="text-slate-500 font-bold block">عدد العملاء</span>
                 <strong className="text-xl font-black text-slate-900 mt-1 block font-mono">{filteredCustomers.length}</strong>
               </div>
 
@@ -360,7 +427,7 @@ export default function CustomersPage() {
               </div>
             </div>
 
-            {/* Customers Table View */}
+            {/* Customers Table View (Interactive Row Click) */}
             <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-soft">
               <div className="overflow-x-auto">
                 <table className="w-full text-right text-xs min-w-[800px]">
@@ -381,10 +448,14 @@ export default function CustomersPage() {
                       const badgeClass = cust.balance > 0.01 ? 'bg-rose-100 text-rose-900 border-rose-200' : cust.balance < -0.01 ? 'bg-blue-100 text-blue-900 border-blue-200' : 'bg-emerald-100 text-emerald-900 border-emerald-200';
 
                       return (
-                        <tr key={cust.id} className="border-t border-slate-100 hover:bg-slate-50/70 transition-colors">
+                        <tr
+                          key={cust.id}
+                          onClick={() => setSelectedCustomer(cust)}
+                          className="border-t border-slate-100 hover:bg-amber-50/40 cursor-pointer transition-colors"
+                        >
                           <td className="p-3.5 font-bold text-slate-900">
-                            <span className="text-sm font-black text-slate-950 block">{cust.name}</span>
-                            <span className="text-[10px] text-slate-400 font-mono">{cust.city}</span>
+                            <span className="text-sm font-black text-indigo-950 block">{cust.name}</span>
+                            <span className="text-[10px] text-amber-700 font-mono">اضغط لفتح كشف الحساب والتفاصيل 📋</span>
                           </td>
 
                           <td className="p-3.5 text-slate-700">
@@ -412,8 +483,16 @@ export default function CustomersPage() {
                             </span>
                           </td>
 
-                          <td className="p-3.5 text-center">
+                          <td className="p-3.5 text-center" onClick={e => e.stopPropagation()}>
                             <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedCustomer(cust)}
+                                className="bg-slate-900 hover:bg-slate-800 text-white px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer"
+                              >
+                                📋 تفاصيل
+                              </button>
+
                               <button
                                 type="button"
                                 onClick={() => {
@@ -567,13 +646,151 @@ export default function CustomersPage() {
         )}
       </div>
 
+      {/* 🔍 Interactive Full Customer Details & Printable Statement Modal */}
+      {selectedCustomer && (
+        <div className="modal-overlay fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
+          <style>{`
+            @media print {
+              body * { visibility: hidden !important; }
+              #printable-customer-statement, #printable-customer-statement * { visibility: visible !important; }
+              #printable-customer-statement { position: fixed !important; left: 0 !important; top: 0 !important; width: 100% !important; margin: 0 !important; padding: 15px !important; background: #ffffff !important; color: #000000 !important; }
+              .no-print { display: none !important; }
+            }
+          `}</style>
+          <div id="printable-customer-statement" className="bg-white rounded-3xl max-w-4xl w-full p-6 space-y-5 text-slate-900 border border-slate-200 my-auto shadow-2xl max-h-[92vh] overflow-y-auto">
+            {/* Modal Control Header */}
+            <div className="no-print flex justify-between items-center pb-3 border-b border-slate-200">
+              <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
+                <span className="material-symbols-outlined text-amber-500">account_balance_wallet</span>
+                <span>كشف حساب وتفاصيل العميل: {selectedCustomer.name}</span>
+              </h3>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="bg-brand-gold hover:bg-amber-400 text-slate-950 px-3.5 py-2 rounded-xl text-xs font-black shadow-gold flex items-center gap-1 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-[16px]">print</span>
+                  🖨️ طباعة كشف الحساب (PDF)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedCustomer(null)}
+                  className="w-8 h-8 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center font-bold text-sm cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            {/* Document Header */}
+            <div className="flex justify-between items-center pb-4 border-b-2 border-slate-900">
+              <div>
+                <h2 className="font-display font-black text-xl text-slate-950">مؤسسة أحمد كشك للأقمشة والستائر</h2>
+                <p className="text-xs font-bold text-amber-800">كشف حساب وتاريخ التعاملات المالية للعميل</p>
+              </div>
+              <div className="text-left font-mono text-xs">
+                <div><strong>تاريخ التقرير:</strong> {new Date().toISOString().split('T')[0]}</div>
+                <div><strong>كود العميل:</strong> {selectedCustomer.id}</div>
+              </div>
+            </div>
+
+            {/* Customer Information Cards */}
+            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+              <div><strong>اسم العميل:</strong> {selectedCustomer.name}</div>
+              <div><strong>رقم الهاتف:</strong> {selectedCustomer.phone}</div>
+              <div><strong>العنوان:</strong> {selectedCustomer.address}</div>
+              <div><strong>المدينة / الفرع:</strong> {selectedCustomer.city}</div>
+              <div><strong>عدد المقايسات والطلبات:</strong> {selectedCustomer.ordersCount} طلبات</div>
+              <div><strong>ملاحظات العميل:</strong> {selectedCustomer.notes || '—'}</div>
+            </div>
+
+            {/* Financial Status Summary */}
+            <div className="grid grid-cols-3 gap-3 text-xs">
+              <div className="bg-white p-3.5 rounded-xl border border-slate-200 text-center">
+                <span className="text-slate-500 font-bold block">الرصيد الافتتاحي</span>
+                <strong className="text-base font-black text-slate-900 font-mono">{selectedCustomer.openingBalance.toLocaleString()} ج</strong>
+              </div>
+              <div className="bg-emerald-50 p-3.5 rounded-xl border border-emerald-200 text-center">
+                <span className="text-emerald-800 font-bold block">إجمالي المشتريات والمقايسات</span>
+                <strong className="text-base font-black text-emerald-950 font-mono">{selectedCustomer.totalSpent.toLocaleString()} ج</strong>
+              </div>
+              <div className="bg-rose-50 p-3.5 rounded-xl border border-rose-200 text-center">
+                <span className="text-rose-800 font-bold block">الرصيد الحالي المستحق (لينا)</span>
+                <strong className="text-base font-black text-rose-950 font-mono">{selectedCustomer.balance.toLocaleString()} ج</strong>
+              </div>
+            </div>
+
+            {/* Transactions Ledger Table */}
+            <div className="space-y-2">
+              <h4 className="font-black text-xs text-slate-950 border-r-4 border-amber-500 pr-2">
+                سجل التعاملات وحركات كشف الحساب التفصيلي:
+              </h4>
+              <table className="w-full text-right text-xs border-collapse border border-slate-300">
+                <thead className="bg-slate-200 text-slate-900 font-bold border-b border-slate-300">
+                  <tr>
+                    <th className="p-2 border border-slate-300">التاريخ</th>
+                    <th className="p-2 border border-slate-300">نوع الحركة</th>
+                    <th className="p-2 border border-slate-300">التفاصيل والبيان</th>
+                    <th className="p-2 border border-slate-300 text-center font-mono text-rose-900">مدين (+علي العميل)</th>
+                    <th className="p-2 border border-slate-300 text-center font-mono text-emerald-900">دائن (-مسدد)</th>
+                    <th className="p-2 border border-slate-300 text-center font-mono">الرصيد بعد الحركة</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {generateCustomerLedger(selectedCustomer).map((entry, idx) => (
+                    <tr key={idx} className="border-b border-slate-200">
+                      <td className="p-2 border border-slate-300 font-mono">{entry.date}</td>
+                      <td className="p-2 border border-slate-300 font-bold">{entry.type}</td>
+                      <td className="p-2 border border-slate-300 text-slate-700">{entry.description}</td>
+                      <td className="p-2 border border-slate-300 text-center font-mono font-bold text-rose-800">
+                        {entry.debit > 0 ? `${entry.debit.toLocaleString()} ج` : '—'}
+                      </td>
+                      <td className="p-2 border border-slate-300 text-center font-mono font-bold text-emerald-800">
+                        {entry.credit > 0 ? `${entry.credit.toLocaleString()} ج` : '—'}
+                      </td>
+                      <td className="p-2 border border-slate-300 text-center font-mono font-black text-slate-950">
+                        {entry.balanceAfter.toLocaleString()} ج
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Quick Action Footer in Modal */}
+            <div className="no-print pt-3 border-t border-slate-200 flex justify-between items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setColCustomerId(selectedCustomer.id);
+                  setColAmount(selectedCustomer.balance > 0 ? selectedCustomer.balance : 1000);
+                  setShowAddCollectionModal(true);
+                }}
+                className="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-xl text-xs font-black shadow-xs cursor-pointer"
+              >
+                💰 تسجيل دفعة تحصيل الآن
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSelectedCustomer(null)}
+                className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-xl text-xs font-bold cursor-pointer"
+              >
+                إغلاق
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ➕ Modal: Add Customer */}
       {showAddCustomerModal && (
         <div className="modal-overlay fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-200">
             <div className="flex justify-between items-center pb-2 border-b border-slate-100">
               <h3 className="font-bold text-slate-900 text-sm">إضافة عميل جديد</h3>
-              <button onClick={() => setShowAddCustomerModal(false)} className="w-7 h-7 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-xs">✕</button>
+              <button onClick={() => setShowAddCustomerModal(false)} className="w-7 h-7 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-xs cursor-pointer">✕</button>
             </div>
 
             <form onSubmit={handleAddCustomer} className="space-y-3 text-xs">
@@ -613,21 +830,19 @@ export default function CustomersPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-slate-700 font-bold block mb-1">المدينة / المنطقة:</label>
-                  <select
-                    value={custCity}
-                    onChange={e => setCustCity(e.target.value)}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900 focus:outline-none"
-                  >
-                    <option value="القاهرة">القاهرة</option>
-                    <option value="التجمع الخامس">التجمع الخامس</option>
-                    <option value="6 أكتوبر">6 أكتوبر</option>
-                    <option value="الشيخ زايد">الشيخ زايد</option>
-                    <option value="المعادي">المعادي</option>
-                  </select>
-                </div>
+              <div>
+                <label className="text-slate-700 font-bold block mb-1">المدينة / المنطقة:</label>
+                <select
+                  value={custCity}
+                  onChange={e => setCustCity(e.target.value)}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900 focus:outline-none"
+                >
+                  <option value="القاهرة">القاهرة</option>
+                  <option value="التجمع الخامس">التجمع الخامس</option>
+                  <option value="6 أكتوبر">6 أكتوبر</option>
+                  <option value="الشيخ زايد">الشيخ زايد</option>
+                  <option value="المعادي">المعادي</option>
+                </select>
               </div>
 
               <div>
@@ -660,7 +875,7 @@ export default function CustomersPage() {
           <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-200">
             <div className="flex justify-between items-center pb-2 border-b border-slate-100">
               <h3 className="font-bold text-slate-900 text-sm">تسجيل دفعة تحصيل جديدة</h3>
-              <button onClick={() => setShowAddCollectionModal(false)} className="w-7 h-7 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-xs">✕</button>
+              <button onClick={() => setShowAddCollectionModal(false)} className="w-7 h-7 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-xs cursor-pointer">✕</button>
             </div>
 
             <form onSubmit={handleAddCollection} className="space-y-3 text-xs">
