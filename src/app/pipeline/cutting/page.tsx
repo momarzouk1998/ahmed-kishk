@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
 import { getStoredPipelineOrders, fetchPipelineOrders, updatePipelineOrderStatus } from '@/lib/pipelineStore';
+import { fetchQuotations } from '@/lib/inspectionsStore';
 import { formatDateOnly } from '@/lib/dateUtils';
 
 interface RoomFabricItem {
@@ -36,16 +37,50 @@ export default function PipelineCuttingPage() {
 
   useEffect(() => {
     async function load() {
-      const local = getStoredPipelineOrders();
-      if (local && local.length > 0) {
-        setOrders(local as any);
-      }
-      const stored = await fetchPipelineOrders();
-      if (stored) {
-        setOrders(stored as any);
-      }
+      const [storedPipeline, quotations] = await Promise.all([
+        fetchPipelineOrders(),
+        fetchQuotations(),
+      ]);
+
+      const pipelineList = storedPipeline || [];
+      const mappedQuotations: CuttingOrder[] = (quotations || [])
+        .filter(q => q.status === 'في المقص' && !pipelineList.some(p => p.orderId === q.id || p.id === q.id || p.id === `ORD-${q.id}` || (p.customerName && q.customerName && p.customerName.trim() === q.customerName.trim())))
+        .map((q: any) => ({
+          id: `ORD-${q.id}`,
+          orderId: q.id,
+          customerName: q.customerName,
+          phone: q.phone,
+          address: q.address,
+          branch: q.branch || 'الفرع الرئيسي',
+          cutterName: '',
+          rooms: (q.rooms || []).map((r: any, idx: number) => ({
+            roomName: r.name || `غرفة ${idx + 1}`,
+            heavyFabric: (r.heavyEnabled !== false && (Number(r.heavyMeters) > 0 || r.heavyFabricName)) ? {
+              name: r.heavyFabricName || 'قماش ثقيل',
+              code: r.heavyFabricCode || 'HV-101',
+              meters: Number(r.heavyMeters) || 0,
+            } : undefined,
+            sheerFabric: (r.sheerEnabled !== false && (Number(r.sheerMeters) > 0 || r.sheerFabricName)) ? {
+              name: r.sheerFabricName || 'شيفون',
+              code: r.sheerFabricCode || 'SH-101',
+              meters: Number(r.sheerMeters) || 0,
+            } : undefined,
+            blackoutFabric: (r.blackoutEnabled && (Number(r.blackoutMeters) > 0 || r.blackoutFabricName)) ? {
+              name: r.blackoutFabricName || 'بلاك آوت',
+              code: r.blackoutFabricCode || 'BK-301',
+              meters: Number(r.blackoutMeters) || 0,
+            } : undefined,
+          })),
+          status: 'بانتظار القص',
+          createdAt: q.date || new Date().toISOString().split('T')[0],
+        }));
+
+      const combined = [...pipelineList, ...mappedQuotations];
+      setOrders(combined as any);
     }
     load();
+    const interval = setInterval(load, 8000);
+    return () => clearInterval(interval);
   }, []);
 
   // Orders waiting to be cut: 'بانتظار القص' OR 'في المقص' OR status matching cutting

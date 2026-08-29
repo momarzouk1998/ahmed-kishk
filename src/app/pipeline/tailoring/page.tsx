@@ -63,9 +63,13 @@ export default function PipelineTailoringPage() {
   useEffect(() => {
     async function load() {
       const stored = await fetchPipelineOrders();
-      setOrders((stored || []) as any);
+      if (stored) {
+        setOrders(stored as any);
+      }
     }
     load();
+    const interval = setInterval(load, 8000);
+    return () => clearInterval(interval);
   }, []);
 
   const isSewing = (o: any) => o.status === 'في الورشة' && (!o.localStatus || o.localStatus === 'جاري الخياطة' || o.localStatus === 'بانتظار القص');
