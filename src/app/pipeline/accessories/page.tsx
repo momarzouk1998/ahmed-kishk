@@ -55,7 +55,7 @@ const initialKits: AccessoryKit[] = [
 ];
 
 export default function PipelineAccessoriesPage() {
-  const [kits, setKits] = useState<AccessoryKit[]>(initialKits);
+  const [kits, setKits] = useState<AccessoryKit[]>([]);
   const [activeTab, setActiveTab] = useState<'PREPARING' | 'PREPARED' | 'HISTORY'>('PREPARING');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -71,35 +71,34 @@ export default function PipelineAccessoriesPage() {
 
   useEffect(() => {
     const stored = getStoredPipelineOrders();
-    if (stored && stored.length > 0) {
-      const mapped = stored.map(o => {
-        const existing = kits.find(k => k.id === o.id || k.orderId === o.orderId);
-        if (existing) return existing;
-
-        const defaultItems: AccessoryItemSpec[] = [];
-        (o.rooms || []).forEach(r => {
-          defaultItems.push({ name: `تراك / مجرى ${r.roomName || 'الغرفة'}`, detail: `تراك ألومنيوم سقف (${r.widthCm || 350} سم)`, qty: 2, prepared: false });
-          defaultItems.push({ name: `حامل مجوز ${r.roomName || 'الغرفة'}`, detail: 'أوكسيديه مذهب فاخر', qty: 4, prepared: false });
-          defaultItems.push({ name: `قم جانبي / كاب ${r.roomName || 'الغرفة'}`, detail: 'أوكسيديه شيك', qty: 2, prepared: false });
-        });
-
-        return {
-          id: o.id,
-          orderId: o.orderId || o.id,
-          customerName: o.customerName,
-          phone: o.phone,
-          address: o.address,
-          branch: o.branch || 'الفرع الرئيسي',
-          status: (o.status === 'تجهيز الاكسسوارات' || o.status === 'جاري التجهيز' ? 'جاري التجهيز' : 'تم التجهيز') as any,
-          items: defaultItems.length > 0 ? defaultItems : [
-            { name: 'تراك ألومنيوم سقف', detail: 'مجرى ألومنيوم سادة (مقاس 3.50م)', qty: 2, prepared: false },
-            { name: 'حامل مجوز فورجيه', detail: 'أوكسيديه مذهب', qty: 4, prepared: false },
-            { name: 'قم جانبي / كاب', detail: 'أوكسيديه شيك', qty: 2, prepared: false },
-          ],
-        };
-      });
-      setKits(mapped);
+    if (!stored || stored.length === 0) {
+      setKits([]);
+      return;
     }
+    const mapped = stored.map(o => {
+      const defaultItems: AccessoryItemSpec[] = [];
+      (o.rooms || []).forEach(r => {
+        defaultItems.push({ name: `تراك / مجرى ${r.roomName || 'الغرفة'}`, detail: `تراك ألومنيوم سقف (${r.widthCm || 350} سم)`, qty: 2, prepared: false });
+        defaultItems.push({ name: `حامل مجوز ${r.roomName || 'الغرفة'}`, detail: 'أوكسيديه مذهب فاخر', qty: 4, prepared: false });
+        defaultItems.push({ name: `قم جانبي / كاب ${r.roomName || 'الغرفة'}`, detail: 'أوكسيديه شيك', qty: 2, prepared: false });
+      });
+
+      return {
+        id: o.id,
+        orderId: o.orderId || o.id,
+        customerName: o.customerName,
+        phone: o.phone,
+        address: o.address,
+        branch: o.branch || 'الفرع الرئيسي',
+        status: (o.status === 'تجهيز الاكسسوارات' || o.status === 'جاري التجهيز' ? 'جاري التجهيز' : 'تم التجهيز') as any,
+        items: defaultItems.length > 0 ? defaultItems : [
+          { name: 'تراك ألومنيوم سقف', detail: 'مجرى ألومنيوم سادة (مقاس 3.50م)', qty: 2, prepared: false },
+          { name: 'حامل مجوز فورجيه', detail: 'أوكسيديه مذهب', qty: 4, prepared: false },
+          { name: 'قم جانبي / كاب', detail: 'أوكسيديه شيك', qty: 2, prepared: false },
+        ],
+      };
+    });
+    setKits(mapped);
   }, []);
 
   const tabFiltered = kits.filter(k => {

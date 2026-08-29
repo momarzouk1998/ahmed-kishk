@@ -88,7 +88,7 @@ const initialOrders: CuttingOrder[] = [
 ];
 
 export default function PipelineCuttingPage() {
-  const [orders, setOrders] = useState<CuttingOrder[]>(initialOrders);
+  const [orders, setOrders] = useState<CuttingOrder[]>([]);
   const [activeTab, setActiveTab] = useState<'OPEN' | 'SENT'>('OPEN');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBranch, setSelectedBranch] = useState<string>('ALL');
@@ -96,9 +96,7 @@ export default function PipelineCuttingPage() {
 
   useEffect(() => {
     const stored = getStoredPipelineOrders();
-    if (stored && stored.length > 0) {
-      setOrders(stored as any);
-    }
+    setOrders((stored || []) as any);
   }, []);
 
   const isSent = (status: any) => status !== 'بانتظار القص';

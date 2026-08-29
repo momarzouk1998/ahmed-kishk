@@ -39,16 +39,14 @@ const initialDeliveryJobs: DeliveryJob[] = [
 ];
 
 export default function PipelineDeliveryPage() {
-  const [jobs, setJobs] = useState<DeliveryJob[]>(initialDeliveryJobs);
+  const [jobs, setJobs] = useState<DeliveryJob[]>([]);
   const [activeTab, setActiveTab] = useState<'TODAY' | 'SCHEDULED' | 'SENT'>('TODAY');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBranch, setSelectedBranch] = useState<string>('ALL');
 
   useEffect(() => {
     const stored = getStoredPipelineOrders();
-    if (stored && stored.length > 0) {
-      setJobs(stored as any);
-    }
+    setJobs((stored || []) as any);
   }, []);
 
   const isSent = (status: any) => status === 'تم التسليم للعميل بنجاح' || status === 'في التركيبات' || status === 'تم التركيب بنجاح ومغلق';

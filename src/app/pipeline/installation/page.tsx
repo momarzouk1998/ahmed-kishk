@@ -42,16 +42,14 @@ const initialJobs: InstallJob[] = [
 ];
 
 export default function PipelineInstallationPage() {
-  const [jobs, setJobs] = useState<InstallJob[]>(initialJobs);
+  const [jobs, setJobs] = useState<InstallJob[]>([]);
   const [activeTab, setActiveTab] = useState<'TODAY' | 'SCHEDULED' | 'SENT'>('TODAY');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBranch, setSelectedBranch] = useState<string>('ALL');
 
   useEffect(() => {
     const stored = getStoredPipelineOrders();
-    if (stored && stored.length > 0) {
-      setJobs(stored as any);
-    }
+    setJobs((stored || []) as any);
   }, []);
 
   const isSent = (status: InstallJob['status']) => status === 'تم التركيب بنجاح ومغلق';

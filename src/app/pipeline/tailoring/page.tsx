@@ -149,7 +149,7 @@ const initialTailoringOrders: TailoringJobOrder[] = [
 ];
 
 export default function PipelineTailoringPage() {
-  const [orders, setOrders] = useState<TailoringJobOrder[]>(initialTailoringOrders);
+  const [orders, setOrders] = useState<TailoringJobOrder[]>([]);
   const [activeTab, setActiveTab] = useState<'SEWING' | 'IRONING' | 'HISTORY'>('SEWING');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBranch, setSelectedBranch] = useState<string>('ALL');
@@ -159,9 +159,7 @@ export default function PipelineTailoringPage() {
 
   useEffect(() => {
     const stored = getStoredPipelineOrders();
-    if (stored && stored.length > 0) {
-      setOrders(stored as any);
-    }
+    setOrders((stored || []) as any);
   }, []);
 
   const isSewing = (o: any) => o.status === 'في الورشة' && (!o.localStatus || o.localStatus === 'جاري الخياطة' || o.localStatus === 'بانتظار القص');
