@@ -41,47 +41,78 @@ export async function POST(request: Request) {
 
     const results = [];
     for (const item of rawList) {
-      if (!item || !item.id) continue;
-      const { id, orderId, customerName, phone, address, branch, deliveryDate, cutterName, tailorName, technicianName, status, localStatus, totalAmount, depositPaid, remainingAmount, rooms } = item;
+      if (!item) continue;
+      const cleanOrderId = item.orderId || item.id || `ORD-${Date.now()}`;
+      const targetId = item.id || `ORD-${cleanOrderId.replace(/^ORD-/, '')}`;
+
+      // Check if existing record exists by id, orderId or customerName
+      const existing = await prisma.pipelineOrder.findFirst({
+        where: {
+          OR: [
+            { id: targetId },
+            { orderId: cleanOrderId },
+            { orderId: cleanOrderId.replace(/^ORD-/, '') },
+            { id: cleanOrderId },
+            ...(item.customerName ? [{ customerName: item.customerName }] : [])
+          ]
+        }
+      });
+
+      const orderKey = existing ? existing.id : targetId;
 
       const order = await prisma.pipelineOrder.upsert({
-        where: { id },
+        where: { id: orderKey },
         create: {
-          id,
-          orderId: orderId || id,
-          customerName: customerName || '',
-          phone: phone || '',
-          address: address || '',
-          branch: branch || 'الفرع الرئيسي',
-          deliveryDate: deliveryDate ? String(deliveryDate) : null,
-          cutterName: cutterName || null,
-          tailorName: tailorName || null,
-          technicianName: technicianName || null,
-          status: status || 'في المقص',
-          localStatus: localStatus || 'بانتظار القص',
-          totalAmount: Number(totalAmount) || 0,
-          depositPaid: Number(depositPaid) || 0,
-          remainingAmount: Number(remainingAmount) || 0,
-          rooms: rooms || [],
+          id: orderKey,
+          orderId: cleanOrderId,
+          customerName: item.customerName || '',
+          phone: item.phone || '',
+          address: item.address || '',
+          branch: item.branch || 'الفرع الرئيسي',
+          deliveryDate: item.deliveryDate ? String(item.deliveryDate) : null,
+          cutterName: item.cutterName || null,
+          tailorName: item.tailorName || null,
+          technicianName: item.technicianName || null,
+          status: item.status || 'في المقص',
+          localStatus: item.localStatus || 'بانتظار القص',
+          totalAmount: Number(item.totalAmount) || 0,
+          depositPaid: Number(item.depositPaid) || 0,
+          remainingAmount: Number(item.remainingAmount) || 0,
+          rooms: item.rooms || [],
         },
         update: {
-          orderId: orderId || undefined,
-          customerName: customerName || undefined,
-          phone: phone || undefined,
-          address: address || undefined,
-          branch: branch || undefined,
-          status: status || undefined,
-          localStatus: localStatus || undefined,
-          cutterName: cutterName !== undefined ? cutterName : undefined,
-          tailorName: tailorName !== undefined ? tailorName : undefined,
-          technicianName: technicianName !== undefined ? technicianName : undefined,
-          deliveryDate: deliveryDate !== undefined ? (deliveryDate ? String(deliveryDate) : null) : undefined,
-          totalAmount: totalAmount !== undefined ? Number(totalAmount) : undefined,
-          depositPaid: depositPaid !== undefined ? Number(depositPaid) : undefined,
-          remainingAmount: remainingAmount !== undefined ? Number(remainingAmount) : undefined,
-          rooms: rooms !== undefined ? rooms : undefined,
+          orderId: cleanOrderId,
+          customerName: item.customerName || undefined,
+          phone: item.phone || undefined,
+          address: item.address || undefined,
+          branch: item.branch || undefined,
+          status: item.status || undefined,
+          localStatus: item.localStatus || undefined,
+          cutterName: item.cutterName !== undefined ? item.cutterName : undefined,
+          tailorName: item.tailorName !== undefined ? item.tailorName : undefined,
+          technicianName: item.technicianName !== undefined ? item.technicianName : undefined,
+          deliveryDate: item.deliveryDate !== undefined ? (item.deliveryDate ? String(item.deliveryDate) : null) : undefined,
+          totalAmount: item.totalAmount !== undefined ? Number(item.totalAmount) : undefined,
+          depositPaid: item.depositPaid !== undefined ? Number(item.depositPaid) : undefined,
+          remainingAmount: item.remainingAmount !== undefined ? Number(item.remainingAmount) : undefined,
+          rooms: item.rooms !== undefined ? item.rooms : undefined,
         },
       });
+
+      // Cleanup any other duplicate rows with same orderId or customerName
+      if (existing) {
+        await prisma.pipelineOrder.deleteMany({
+          where: {
+            id: { not: order.id },
+            OR: [
+              { orderId: cleanOrderId },
+              { orderId: cleanOrderId.replace(/^ORD-/, '') },
+              ...(item.customerName ? [{ customerName: item.customerName }] : [])
+            ]
+          }
+        });
+      }
+
       results.push(order);
     }
 

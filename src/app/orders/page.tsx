@@ -59,9 +59,37 @@ export default function CentralOrdersLedgerPage() {
       fetchInspections(),
     ]);
 
+    // Deduplicate pipeline orders by orderId or customerName (keep highest stage / latest)
+    const stageRank: Record<string, number> = {
+      'المعاينات': 1,
+      'انتظار تسعير': 2,
+      'في المقص': 3,
+      'في الورشة': 4,
+      'تجهيز الاكسسوارات': 5,
+      'جاهز للاستلام': 6,
+      'جاهز للتركيب': 7,
+      'مكتمل': 8,
+    };
+
+    const uniquePipelineMap = new Map<string, PipelineMasterOrder>();
+    for (const po of (pipelineOrders || [])) {
+      const key = (po.orderId || po.id || po.customerName || '').trim().toLowerCase();
+      const existing = uniquePipelineMap.get(key);
+      if (!existing) {
+        uniquePipelineMap.set(key, po);
+      } else {
+        const rankExisting = stageRank[existing.status] || 0;
+        const rankNew = stageRank[po.status] || 0;
+        if (rankNew >= rankExisting) {
+          uniquePipelineMap.set(key, po);
+        }
+      }
+    }
+    const dedupedPipelineOrders = Array.from(uniquePipelineMap.values());
+
     // Map quotations into master list if missing from pipeline
     const quotationMasterItems: PipelineMasterOrder[] = (quotations || [])
-      .filter(q => !pipelineOrders.some(p => 
+      .filter(q => !dedupedPipelineOrders.some(p => 
         p.orderId === q.id || 
         p.id === q.id || 
         p.id === `ORD-${q.id}` || 
@@ -86,7 +114,7 @@ export default function CentralOrdersLedgerPage() {
     // Map un-quoted inspections only (not yet in pipeline and not yet quoted)
     const inspectionMasterItems: PipelineMasterOrder[] = (inspections || [])
       .filter(insp => 
-        !pipelineOrders.some(p => 
+        !dedupedPipelineOrders.some(p => 
           p.id === insp.id || 
           p.orderId === insp.id || 
           (p.customerName && insp.customerName && p.customerName.trim().toLowerCase() === insp.customerName.trim().toLowerCase())
@@ -113,7 +141,7 @@ export default function CentralOrdersLedgerPage() {
         rooms: insp.rooms || [],
       }));
 
-    const combined = [...pipelineOrders, ...quotationMasterItems, ...inspectionMasterItems];
+    const combined = [...dedupedPipelineOrders, ...quotationMasterItems, ...inspectionMasterItems];
     setOrders(combined);
   };
 
