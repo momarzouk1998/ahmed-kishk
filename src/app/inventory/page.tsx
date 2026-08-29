@@ -28,6 +28,9 @@ export default function InventoryPage() {
   const [selectedBranch, setSelectedBranch] = useState('الكل');
   const [search, setSearch] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
+  const [suppliersList, setSuppliersList] = useState<any[]>([]);
 
   useEffect(() => {
     async function loadInventory() {
@@ -38,20 +41,38 @@ export default function InventoryPage() {
           if (json.success && Array.isArray(json.items) && json.items.length > 0) {
             setItems(json.items);
             localStorage.setItem('ahmed_kishk_inventory_v3', JSON.stringify(json.items));
-            return;
+          } else {
+            const raw = localStorage.getItem('ahmed_kishk_inventory_v3');
+            if (raw) setItems(JSON.parse(raw));
           }
         }
-        const raw = localStorage.getItem('ahmed_kishk_inventory_v3');
-        if (raw) setItems(JSON.parse(raw));
       } catch (e) {
         console.error(e);
       }
     }
+    async function loadSuppliers() {
+      try {
+        const res = await fetch('/api/suppliers', { cache: 'no-store' });
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && Array.isArray(json.suppliers)) {
+            setSuppliersList(json.suppliers);
+            return;
+          }
+        }
+      } catch (e) {
+        console.error(e);
+      }
+      try {
+        const raw = localStorage.getItem('ahmed_kishk_suppliers_v3');
+        if (raw) setSuppliersList(JSON.parse(raw));
+      } catch {}
+    }
     loadInventory();
+    loadSuppliers();
   }, []);
 
-  // New Item form
-  const [code, setCode] = useState('');
+  // Form states (shared by Add & Edit)
   const [name, setName] = useState('');
   const [category, setCategory] = useState('سواريه');
   const [newCatInput, setNewCatInput] = useState('');
@@ -61,27 +82,36 @@ export default function InventoryPage() {
   const [costPrice, setCostPrice] = useState<number>(100);
   const [sellPrice, setSellPrice] = useState<number>(150);
   const [branch, setBranch] = useState('الفرع الرئيسي — القاهرة');
-  const [supplier, setSupplier] = useState('شركة النيل');
+  const [supplier, setSupplier] = useState('');
+
+  // Dynamically set default supplier once suppliers list is loaded
+  useEffect(() => {
+    if (suppliersList.length > 0 && !supplier) {
+      setSupplier(suppliersList[0].name);
+    }
+  }, [suppliersList]);
 
   const filtered = items.filter((item) => {
     const matchesCat = activeCategory === 'الكل' || item.category === activeCategory;
     const matchesBranch = selectedBranch === 'الكل' || item.branch === selectedBranch;
-    const matchesSearch = item.name.includes(search) || item.code.toLowerCase().includes(search.toLowerCase());
+    const matchesSearch = item.name.includes(search) || (item.code && item.code.toLowerCase().includes(search.toLowerCase()));
     return matchesCat && matchesBranch && matchesSearch;
   });
 
   const handleAddItem = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !code) return;
+    if (!name) return;
 
-    const catToUse = newCatInput ? newCatInput : category;
-    if (newCatInput && !categories.includes(newCatInput)) {
+    const catToUse = category === 'NEW' ? newCatInput : category;
+    if (category === 'NEW' && newCatInput && !categories.includes(newCatInput)) {
       setCategories([...categories, newCatInput]);
     }
 
+    const generatedCode = 'SAT-' + Math.floor(1000 + Math.random() * 9000);
+
     const newItem: InventoryItem = {
-      id: `INV-${String(items.length + 1).padStart(3, '0')}`,
-      code,
+      id: `INV-${Date.now()}`,
+      code: generatedCode,
       name,
       category: catToUse,
       unit,
@@ -91,16 +121,19 @@ export default function InventoryPage() {
       sellPrice,
       branch,
       minAlert: 20,
-      supplier,
+      supplier: supplier || 'مورد عام',
     };
 
     const updated = [newItem, ...items];
     setItems(updated);
     localStorage.setItem('ahmed_kishk_inventory_v3', JSON.stringify(updated));
     setShowAddModal(false);
-    setCode('');
     setName('');
     setNewCatInput('');
+    setCategory('سواريه');
+    setTotalQuantity(100);
+    setCostPrice(100);
+    setSellPrice(150);
 
     try {
       await fetch('/api/inventory', {
@@ -113,7 +146,82 @@ export default function InventoryPage() {
     }
   };
 
+  const handleEditItem = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingItem || !name) return;
+
+    const catToUse = category === 'NEW' ? newCatInput : category;
+    if (category === 'NEW' && newCatInput && !categories.includes(newCatInput)) {
+      setCategories([...categories, newCatInput]);
+    }
+
+    const updatedItem: InventoryItem = {
+      ...editingItem,
+      name,
+      category: catToUse,
+      unit,
+      totalQuantity,
+      reservedQuantity,
+      costPrice,
+      sellPrice,
+      branch,
+      supplier: supplier || 'مورد عام',
+    };
+
+    const updated = items.map(it => it.id === editingItem.id ? updatedItem : it);
+    setItems(updated);
+    localStorage.setItem('ahmed_kishk_inventory_v3', JSON.stringify(updated));
+    setShowEditModal(false);
+    setEditingItem(null);
+
+    try {
+      await fetch('/api/inventory', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedItem),
+      });
+    } catch (err) {
+      console.error('Failed to update item:', err);
+    }
+  };
+
+  const handleDeleteItem = async (id: string, itemName: string) => {
+    if (confirm(`هل أنت متأكد من حذف الصنف "${itemName}" من المخزن نهائياً؟`)) {
+      const updated = items.filter(it => it.id !== id);
+      setItems(updated);
+      localStorage.setItem('ahmed_kishk_inventory_v3', JSON.stringify(updated));
+
+      try {
+        await fetch(`/api/inventory?id=${id}`, {
+          method: 'DELETE',
+        });
+      } catch (err) {
+        console.error('Failed to delete item:', err);
+      }
+    }
+  };
+
+  const openEditModal = (item: InventoryItem) => {
+    setEditingItem(item);
+    setName(item.name);
+    setCategory(categories.includes(item.category) ? item.category : 'NEW');
+    if (!categories.includes(item.category)) {
+      setNewCatInput(item.category);
+    } else {
+      setNewCatInput('');
+    }
+    setUnit(item.unit);
+    setTotalQuantity(item.totalQuantity);
+    setReservedQuantity(item.reservedQuantity);
+    setCostPrice(item.costPrice);
+    setSellPrice(item.sellPrice);
+    setBranch(item.branch);
+    setSupplier(item.supplier);
+    setShowEditModal(true);
+  };
+
   const totalCostValue = items.reduce((sum, i) => sum + i.totalQuantity * i.costPrice, 0);
+  const totalExpectedProfit = items.reduce((sum, i) => sum + (i.totalQuantity * (i.sellPrice - i.costPrice)), 0);
   const totalReservedMeters = items.reduce((sum, i) => sum + i.reservedQuantity, 0);
   const totalAvailableMeters = items.reduce((sum, i) => sum + (i.totalQuantity - i.reservedQuantity), 0);
 
@@ -137,27 +245,33 @@ export default function InventoryPage() {
           </div>
 
           {/* Stats Bar */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-soft">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4">
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-soft">
               <div className="text-xs text-slate-500 font-bold">إجمالي الأصناف</div>
-              <div className="font-display font-black text-2xl text-slate-900 mt-1">{items.length} صنف</div>
+              <div className="font-display font-black text-xl text-slate-900 mt-1">{items.length} صنف</div>
             </div>
-            <div className="bg-white p-5 rounded-2xl border border-amber-200 bg-amber-50/40 shadow-soft">
-              <div className="text-xs text-amber-800 font-bold">المحجوز للورشة (Reserved)</div>
-              <div className="font-display font-black text-2xl text-amber-900 mt-1 font-mono">
+            <div className="bg-white p-4 rounded-2xl border border-amber-200 bg-amber-50/40 shadow-soft">
+              <div className="text-xs text-amber-800 font-bold">المحجوز للورشة</div>
+              <div className="font-display font-black text-xl text-amber-900 mt-1 font-mono">
                 {totalReservedMeters.toLocaleString()} متر
               </div>
             </div>
-            <div className="bg-white p-5 rounded-2xl border border-emerald-200 bg-emerald-50/40 shadow-soft">
-              <div className="text-xs text-emerald-800 font-bold">المتاح الحر للبيع (Available)</div>
-              <div className="font-display font-black text-2xl text-emerald-900 mt-1 font-mono">
+            <div className="bg-white p-4 rounded-2xl border border-emerald-200 bg-emerald-50/40 shadow-soft">
+              <div className="text-xs text-emerald-800 font-bold">المتاح للبيع</div>
+              <div className="font-display font-black text-xl text-emerald-900 mt-1 font-mono">
                 {totalAvailableMeters.toLocaleString()} متر
               </div>
             </div>
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-soft">
-              <div className="text-xs text-slate-500 font-bold">قيمة المخزون الإجمالية</div>
-              <div className="font-display font-black text-2xl text-slate-900 mt-1 font-mono">
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-soft">
+              <div className="text-xs text-slate-500 font-bold">قيمة المخزون (تكلفة)</div>
+              <div className="font-display font-black text-xl text-slate-900 mt-1 font-mono">
                 {totalCostValue.toLocaleString()} ج.م
+              </div>
+            </div>
+            <div className="bg-white p-4 rounded-2xl border border-purple-200 bg-purple-50/40 shadow-soft">
+              <div className="text-xs text-purple-800 font-bold">توقع الأرباح الكلية</div>
+              <div className="font-display font-black text-xl text-purple-900 mt-1 font-mono">
+                {totalExpectedProfit.toLocaleString()} ج.م
               </div>
             </div>
           </div>
@@ -206,27 +320,27 @@ export default function InventoryPage() {
             <table className="w-full text-right min-w-[700px]">
               <thead className="bg-slate-50 text-xs font-mono text-slate-500 border-b border-slate-200">
                 <tr>
-                  <th className="p-3.5">الكود</th>
                   <th className="p-3.5">الصنف / الخامة</th>
                   <th className="p-3.5 text-center">الرصيد الكلي</th>
                   <th className="p-3.5 text-center text-amber-700">المحجوز للورشة</th>
                   <th className="p-3.5 text-center text-emerald-700">المتاح للبيع</th>
                   <th className="p-3.5 text-left">التكلفة</th>
                   <th className="p-3.5 text-left">سعر البيع</th>
-                  <th className="p-3.5 text-left">الربح المتوقع / م</th>
+                  <th className="p-3.5 text-left">توقع الربح الكلي</th>
                   <th className="p-3.5">الفرع</th>
                   <th className="p-3.5 text-center">الحالة</th>
+                  <th className="p-3.5 text-center">الإجراءات</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((item) => {
                   const available = item.totalQuantity - item.reservedQuantity;
                   const profitPerUnit = item.sellPrice - item.costPrice;
+                  const totalProfit = profitPerUnit * item.totalQuantity;
                   const isLow = available <= item.minAlert;
 
                   return (
                     <tr key={item.id} className="border-b border-slate-100 hover:bg-slate-50/80 transition-colors">
-                      <td className="p-3.5 font-mono text-xs font-bold text-slate-400">{item.code}</td>
                       <td className="p-3.5">
                         <div className="font-bold text-sm text-slate-900">{item.name}</div>
                         <div className="text-xs text-slate-400">{item.supplier} • {item.category}</div>
@@ -242,8 +356,11 @@ export default function InventoryPage() {
                       </td>
                       <td className="p-3.5 text-left font-mono text-xs text-slate-500">{item.costPrice} ج</td>
                       <td className="p-3.5 text-left font-mono font-bold text-slate-900 text-sm">{item.sellPrice} ج</td>
-                      <td className="p-3.5 text-left font-mono font-bold text-amber-600 text-xs">
-                        +{profitPerUnit} ج ({Math.round((profitPerUnit / item.costPrice) * 100)}%)
+                      <td className="p-3.5 text-left">
+                        <div className="font-mono font-black text-purple-700 text-sm">+{totalProfit.toLocaleString()} ج</div>
+                        <div className="text-[10px] text-slate-400 font-bold font-mono">
+                          ({profitPerUnit} ج / {item.unit}) • {item.costPrice > 0 ? Math.round((profitPerUnit / item.costPrice) * 100) : 0}%
+                        </div>
                       </td>
                       <td className="p-3.5 text-xs text-slate-600 font-medium">{item.branch}</td>
                       <td className="p-3.5 text-center">
@@ -256,6 +373,26 @@ export default function InventoryPage() {
                             متوفر
                           </span>
                         )}
+                      </td>
+                      <td className="p-3.5 text-center">
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => openEditModal(item)}
+                            className="bg-amber-100 text-amber-950 px-2 py-1 rounded-lg text-xs font-bold cursor-pointer hover:bg-amber-200 transition-colors"
+                            title="تعديل الصنف"
+                          >
+                            ✏️ تعديل
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteItem(item.id, item.name)}
+                            className="bg-rose-100 text-rose-800 px-2 py-1 rounded-lg text-xs font-bold cursor-pointer hover:bg-rose-200 transition-colors"
+                            title="حذف الصنف"
+                          >
+                            🗑️ حذف
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -272,27 +409,32 @@ export default function InventoryPage() {
           <div className="bg-white rounded-2xl shadow-2xl p-5 sm:p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <h2 className="font-display font-bold text-xl text-slate-900 mb-4">إضافة صنف جديد للمخزن</h2>
             <form onSubmit={handleAddItem} className="flex flex-col gap-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-bold text-slate-700">كود الصنف *</label>
-                  <input value={code} onChange={e => setCode(e.target.value)} className="border border-slate-200 rounded-xl p-2 text-sm" placeholder="مثال: SAT-02" required />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-bold text-slate-700">اسم الصنف *</label>
-                  <input value={name} onChange={e => setName(e.target.value)} className="border border-slate-200 rounded-xl p-2 text-sm" placeholder="مثال: ستان إيطالي" required />
-                </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-bold text-slate-700">اسم الصنف *</label>
+                <input value={name} onChange={e => setName(e.target.value)} className="border border-slate-200 rounded-xl p-2 text-sm text-slate-900" placeholder="مثال: ستان إيطالي" required />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-bold text-slate-700">التصنيف</label>
-                  <select value={category} onChange={e => setCategory(e.target.value)} className="border border-slate-200 rounded-xl p-2 text-sm">
+                  <select value={category} onChange={e => setCategory(e.target.value)} className="border border-slate-200 rounded-xl p-2 text-sm text-slate-900">
                     {categories.filter(c => c !== 'الكل').map(c => <option key={c} value={c}>{c}</option>)}
+                    <option value="NEW">+ إضافة تصنيف جديد...</option>
                   </select>
+                  {category === 'NEW' && (
+                    <input
+                      type="text"
+                      value={newCatInput}
+                      onChange={e => setNewCatInput(e.target.value)}
+                      placeholder="اكتب اسم التصنيف الجديد..."
+                      className="border border-slate-200 rounded-xl p-2 text-sm mt-1 text-slate-900"
+                      required
+                    />
+                  )}
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-bold text-slate-700">الفرع</label>
-                  <select value={branch} onChange={e => setBranch(e.target.value)} className="border border-slate-200 rounded-xl p-2 text-sm">
+                  <select value={branch} onChange={e => setBranch(e.target.value)} className="border border-slate-200 rounded-xl p-2 text-sm text-slate-900">
                     <option value="الفرع الرئيسي — القاهرة">الفرع الرئيسي — القاهرة</option>
                     <option value="فرع ثانٍ — القاهرة">فرع ثانٍ — القاهرة</option>
                     <option value="فرع ثالث — القاهرة">فرع ثالث — القاهرة</option>
@@ -303,7 +445,7 @@ export default function InventoryPage() {
               <div className="grid grid-cols-3 gap-3">
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-bold text-slate-700">الكمية الكلية</label>
-                  <input type="number" value={totalQuantity} onChange={e => setTotalQuantity(Number(e.target.value))} className="border border-slate-200 rounded-xl p-2 text-sm font-mono" />
+                  <input type="number" value={totalQuantity} onChange={e => setTotalQuantity(Number(e.target.value))} className="border border-slate-200 rounded-xl p-2 text-sm font-mono text-slate-900" />
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-bold text-slate-700">سعر التكلفة (ج)</label>
@@ -312,7 +454,7 @@ export default function InventoryPage() {
                     value={costPrice}
                     disabled={!canUserEditPrices('p_inventory')}
                     onChange={e => setCostPrice(Number(e.target.value))}
-                    className="border border-slate-200 rounded-xl p-2 text-sm font-mono disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed"
+                    className="border border-slate-200 rounded-xl p-2 text-sm font-mono disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed text-slate-900"
                     title={!canUserEditPrices('p_inventory') ? 'تعديل الأسعار مغلق للصلاحيات' : ''}
                   />
                 </div>
@@ -323,7 +465,7 @@ export default function InventoryPage() {
                     value={sellPrice}
                     disabled={!canUserEditPrices('p_inventory')}
                     onChange={e => setSellPrice(Number(e.target.value))}
-                    className="border border-slate-200 rounded-xl p-2 text-sm font-mono disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed"
+                    className="border border-slate-200 rounded-xl p-2 text-sm font-mono disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed text-slate-900"
                     title={!canUserEditPrices('p_inventory') ? 'تعديل الأسعار مغلق للصلاحيات' : ''}
                   />
                 </div>
@@ -331,14 +473,110 @@ export default function InventoryPage() {
 
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-bold text-slate-700">المورد</label>
-                <input value={supplier} onChange={e => setSupplier(e.target.value)} className="border border-slate-200 rounded-xl p-2 text-sm" />
+                <select value={supplier} onChange={e => setSupplier(e.target.value)} className="border border-slate-200 rounded-xl p-2 text-sm text-slate-900">
+                  <option value="مورد عام">مورد عام</option>
+                  {suppliersList.map(s => (
+                    <option key={s.id} value={s.name}>{s.name}</option>
+                  ))}
+                </select>
               </div>
 
               <div className="flex gap-2 mt-4">
-                <button type="submit" className="flex-1 bg-brand-gold hover:bg-brand-gold-hover text-slate-950 py-2.5 rounded-xl font-bold text-sm shadow-gold">
+                <button type="submit" className="flex-1 bg-brand-gold hover:bg-brand-gold-hover text-slate-950 py-2.5 rounded-xl font-bold text-sm shadow-gold cursor-pointer">
                   حفظ الصنف
                 </button>
-                <button type="button" onClick={() => setShowAddModal(false)} className="flex-1 border border-slate-200 text-slate-600 py-2.5 rounded-xl text-sm">
+                <button type="button" onClick={() => setShowAddModal(false)} className="flex-1 border border-slate-200 text-slate-600 py-2.5 rounded-xl text-sm cursor-pointer">
+                  إلغاء
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Item Modal */}
+      {showEditModal && editingItem && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl p-5 sm:p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <h2 className="font-display font-bold text-xl text-slate-900 mb-4">تعديل بيانات الصنف</h2>
+            <form onSubmit={handleEditItem} className="flex flex-col gap-3">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-bold text-slate-700">اسم الصنف *</label>
+                <input value={name} onChange={e => setName(e.target.value)} className="border border-slate-200 rounded-xl p-2 text-sm text-slate-900" placeholder="مثال: ستان إيطالي" required />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-bold text-slate-700">التصنيف</label>
+                  <select value={category} onChange={e => setCategory(e.target.value)} className="border border-slate-200 rounded-xl p-2 text-sm text-slate-900">
+                    {categories.filter(c => c !== 'الكل').map(c => <option key={c} value={c}>{c}</option>)}
+                    <option value="NEW">+ إضافة تصنيف جديد...</option>
+                  </select>
+                  {category === 'NEW' && (
+                    <input
+                      type="text"
+                      value={newCatInput}
+                      onChange={e => setNewCatInput(e.target.value)}
+                      placeholder="اكتب اسم التصنيف الجديد..."
+                      className="border border-slate-200 rounded-xl p-2 text-sm mt-1 text-slate-900"
+                      required
+                    />
+                  )}
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-bold text-slate-700">الفرع</label>
+                  <select value={branch} onChange={e => setBranch(e.target.value)} className="border border-slate-200 rounded-xl p-2 text-sm text-slate-900">
+                    <option value="الفرع الرئيسي — القاهرة">الفرع الرئيسي — القاهرة</option>
+                    <option value="فرع ثانٍ — القاهرة">فرع ثانٍ — القاهرة</option>
+                    <option value="فرع ثالث — القاهرة">فرع ثالث — القاهرة</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-bold text-slate-700">الكمية الكلية</label>
+                  <input type="number" value={totalQuantity} onChange={e => setTotalQuantity(Number(e.target.value))} className="border border-slate-200 rounded-xl p-2 text-sm font-mono text-slate-900" />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-bold text-slate-700">سعر التكلفة (ج)</label>
+                  <input
+                    type="number"
+                    value={costPrice}
+                    disabled={!canUserEditPrices('p_inventory')}
+                    onChange={e => setCostPrice(Number(e.target.value))}
+                    className="border border-slate-200 rounded-xl p-2 text-sm font-mono disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed text-slate-900"
+                    title={!canUserEditPrices('p_inventory') ? 'تعديل الأسعار مغلق للصلاحيات' : ''}
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-bold text-slate-700">سعر البيع (ج)</label>
+                  <input
+                    type="number"
+                    value={sellPrice}
+                    disabled={!canUserEditPrices('p_inventory')}
+                    onChange={e => setSellPrice(Number(e.target.value))}
+                    className="border border-slate-200 rounded-xl p-2 text-sm font-mono disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed text-slate-900"
+                    title={!canUserEditPrices('p_inventory') ? 'تعديل الأسعار مغلق للصلاحيات' : ''}
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-bold text-slate-700">المورد</label>
+                <select value={supplier} onChange={e => setSupplier(e.target.value)} className="border border-slate-200 rounded-xl p-2 text-sm text-slate-900">
+                  <option value="مورد عام">مورد عام</option>
+                  {suppliersList.map(s => (
+                    <option key={s.id} value={s.name}>{s.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex gap-2 mt-4">
+                <button type="submit" className="flex-1 bg-brand-gold hover:bg-brand-gold-hover text-slate-950 py-2.5 rounded-xl font-bold text-sm shadow-gold cursor-pointer">
+                  تعديل الصنف
+                </button>
+                <button type="button" onClick={() => setShowEditModal(false)} className="flex-1 border border-slate-200 text-slate-600 py-2.5 rounded-xl text-sm cursor-pointer">
                   إلغاء
                 </button>
               </div>
