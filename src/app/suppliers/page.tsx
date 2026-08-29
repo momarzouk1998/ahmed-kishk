@@ -951,20 +951,54 @@ export default function SuppliersPage() {
 
               {/* Dynamic Check Rows */}
               <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <label className="text-slate-900 font-black text-xs">جدول الشيكات المطلوب تسجيلها:</label>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setBatchCheckRows([
-                        ...batchCheckRows,
-                        { checkNumber: '', bankName: 'البنك الأهلي المصري', amount: 5000, dueDate: '2026-10-30', notes: '' }
-                      ]);
-                    }}
-                    className="bg-purple-100 text-purple-900 hover:bg-purple-200 px-3 py-1 rounded-xl text-xs font-bold border border-purple-300 flex items-center gap-1 cursor-pointer"
-                  >
-                    <span>+ إضافة شيك آخر</span>
-                  </button>
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 bg-purple-50/70 p-3 rounded-2xl border border-purple-200">
+                  <div>
+                    <label className="text-purple-950 font-black text-xs block">
+                      جدول الشيكات المطلوب تسجيلها ({batchCheckRows.length} من أصل 15 كحد أقصى):
+                    </label>
+                    <span className="text-[10px] text-slate-500 font-bold block">يمكنك إضافة حتى 15 شيكاً بنكياً في المرة الواحدة</span>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (batchCheckRows.length >= 15) {
+                          alert('عفواً، الحد الأقصى لإضافة الشيكات في المرة الواحدة هو 15 شيكاً فقط.');
+                          return;
+                        }
+                        setBatchCheckRows([
+                          ...batchCheckRows,
+                          { checkNumber: '', bankName: 'البنك الأهلي المصري', amount: 5000, dueDate: '2026-10-30', notes: '' }
+                        ]);
+                      }}
+                      className="bg-purple-900 text-white hover:bg-purple-800 px-3 py-1 rounded-xl text-xs font-bold shadow-xs flex items-center gap-1 cursor-pointer"
+                    >
+                      <span>+ إضافة شيك آخر</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const needed = 15 - batchCheckRows.length;
+                        if (needed <= 0) {
+                          alert('وصلت بالفعل للحد الأقصى (15 شيكاً).');
+                          return;
+                        }
+                        const newRows = Array.from({ length: 15 }, (_, i) => ({
+                          checkNumber: i < batchCheckRows.length ? batchCheckRows[i].checkNumber : '',
+                          bankName: i < batchCheckRows.length ? batchCheckRows[i].bankName : 'البنك الأهلي المصري',
+                          amount: i < batchCheckRows.length ? batchCheckRows[i].amount : 5000,
+                          dueDate: i < batchCheckRows.length ? batchCheckRows[i].dueDate : `2026-${String(Math.min(12, 9 + Math.floor(i / 3))).padStart(2, '0')}-30`,
+                          notes: i < batchCheckRows.length ? batchCheckRows[i].notes : `شيك رقم ${i + 1}`,
+                        }));
+                        setBatchCheckRows(newRows);
+                      }}
+                      className="bg-amber-400 text-slate-950 hover:bg-amber-300 px-2.5 py-1 rounded-xl text-xs font-black shadow-2xs cursor-pointer"
+                    >
+                      مُؤشر 15 شيكاً كاملة 🔥
+                    </button>
+                  </div>
                 </div>
 
                 {batchCheckRows.map((row, idx) => (
