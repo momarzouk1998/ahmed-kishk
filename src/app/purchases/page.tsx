@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
+import { useRouter } from 'next/navigation';
 
 interface PurchaseInvoiceItem {
   code: string;
@@ -68,28 +69,6 @@ const defaultPurchases: PurchaseInvoice[] = [
     status: 'مسدد جزئياً',
     notes: 'تم الدفع بشيك مؤجل 30 يوم',
   },
-  {
-    id: 'PUR-102',
-    invoiceNumber: 'PUR-2026-002',
-    date: '2026-08-15',
-    supplierName: 'مصنع الدلتا لإكسسوارات الستائر',
-    supplierPhone: '01011223344',
-    branch: 'الفرع الرئيسي',
-    items: [
-      { code: 'TRK-01', name: 'شحنة تراكات ألومنيوم سقف (200م)', meters: 200, unitCost: 45, totalCost: 9000 },
-      { code: 'ACC-01', name: 'أطقم حوامل ومواسير فورجيه (50 طقم)', meters: 50, unitCost: 120, totalCost: 6000 },
-    ],
-    subtotal: 15000,
-    discountType: 'PERCENT',
-    discountValue: 5,
-    discountAmount: 750,
-    totalAmount: 14250,
-    paymentMethod: 'نقدي (كاش)',
-    paidAmount: 14250,
-    remainingAmount: 0,
-    status: 'مسدد بالكامل',
-    notes: 'خصم كمية للمورد 5%',
-  },
 ];
 
 const defaultReturns: SupplierPurchaseReturn[] = [
@@ -112,6 +91,7 @@ const PURCHASES_KEY = 'ahmed_kishk_purchase_invoices_v1';
 const PRETURNS_KEY = 'ahmed_kishk_purchase_returns_v1';
 
 export default function PurchasesPage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<'PURCHASES' | 'RETURNS'>('PURCHASES');
 
   const [purchases, setPurchases] = useState<PurchaseInvoice[]>(defaultPurchases);
@@ -121,28 +101,11 @@ export default function PurchasesPage() {
   const [search, setSearch] = useState('');
   const [paymentFilter, setPaymentFilter] = useState<string>('all');
 
-  // Modals
-  const [showAddPurchaseModal, setShowAddPurchaseModal] = useState(false);
+  // Modals & Edit States
   const [showAddReturnModal, setShowAddReturnModal] = useState(false);
+  const [editingPurchase, setEditingPurchase] = useState<PurchaseInvoice | null>(null);
+  const [editingReturn, setEditingReturn] = useState<SupplierPurchaseReturn | null>(null);
   const [printablePurchase, setPrintablePurchase] = useState<PurchaseInvoice | null>(null);
-
-  // Create Purchase Form State
-  const [supplierName, setSupplierName] = useState('شركة النيل للأقمشة والمنسوجات');
-  const [supplierPhone, setSupplierPhone] = useState('01099988877');
-  const [branch, setBranch] = useState('الفرع الرئيسي');
-  
-  const [fabricItemName, setFabricItemName] = useState('توب قطيفة تركي ثقيل');
-  const [fabricMeters, setFabricMeters] = useState<number>(30);
-  const [unitCost, setUnitCost] = useState<number>(260);
-
-  // Discount
-  const [discountType, setDiscountType] = useState<'EGP' | 'PERCENT'>('EGP');
-  const [discountValue, setDiscountValue] = useState<number>(0);
-
-  // Payment Method for Supplier & Paid Amount
-  const [paymentMethod, setPaymentMethod] = useState<PurchaseInvoice['paymentMethod']>('نقدي (كاش)');
-  const [paidAmount, setPaidAmount] = useState<number>(0);
-  const [purNotes, setPurNotes] = useState('');
 
   // Create Supplier Return Form State
   const [retSupplierName, setRetSupplierName] = useState('');
@@ -174,58 +137,39 @@ export default function PurchasesPage() {
     localStorage.setItem(PRETURNS_KEY, JSON.stringify(list));
   };
 
-  // Calculations
-  const subtotal = fabricMeters * unitCost;
-  const calculatedDiscount = discountType === 'PERCENT' ? (subtotal * discountValue) / 100 : discountValue;
-  const totalAmount = Math.max(0, subtotal - calculatedDiscount);
-  const remainingAmount = Math.max(0, totalAmount - paidAmount);
+  const handleDeletePurchase = (id: string, num: string) => {
+    if (confirm(`هل أنت أسر بالتأكيد من حذف فاتورة الشراء (${num})؟`)) {
+      savePurchasesState(purchases.filter(p => p.id !== id));
+    }
+  };
 
-  // Submit Purchase Invoice
-  const handleCreatePurchase = (e: React.FormEvent) => {
+  const handleDeleteReturn = (id: string, num: string) => {
+    if (confirm(`هل أنت أسر بالتأكيد من حذف إذن مرتجع المشتريات (${num})؟`)) {
+      saveReturnsState(returns.filter(r => r.id !== id));
+    }
+  };
+
+  const handleUpdatePurchase = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!supplierName.trim() || fabricMeters <= 0 || unitCost <= 0) return;
+    if (!editingPurchase) return;
 
-    const purNum = `PUR-2026-${String(purchases.length + 1).padStart(3, '0')}`;
-    const statusLabel: PurchaseInvoice['status'] =
-      remainingAmount === 0 ? 'مسدد بالكامل' : paidAmount > 0 ? 'مسدد جزئياً' : 'آجل / غير مسدد';
+    const remaining = Math.max(0, editingPurchase.totalAmount - editingPurchase.paidAmount);
+    const statusLabel: PurchaseInvoice['status'] = remaining === 0 ? 'مسدد بالكامل' : editingPurchase.paidAmount > 0 ? 'مسدد جزئياً' : 'آجل / غير مسدد';
 
-    const newPur: PurchaseInvoice = {
-      id: `PUR-${Date.now()}`,
-      invoiceNumber: purNum,
-      date: new Date().toISOString().split('T')[0],
-      supplierName: supplierName.trim(),
-      supplierPhone: supplierPhone.trim(),
-      branch,
-      items: [
-        {
-          code: 'FAB-SUP-01',
-          name: fabricItemName,
-          meters: fabricMeters,
-          unitCost,
-          totalCost: subtotal,
-        }
-      ],
-      subtotal,
-      discountType,
-      discountValue,
-      discountAmount: calculatedDiscount,
-      totalAmount,
-      paymentMethod,
-      paidAmount,
-      remainingAmount,
-      status: statusLabel,
-      notes: purNotes.trim(),
-    };
+    const updated = purchases.map(p => p.id === editingPurchase.id ? { ...editingPurchase, remainingAmount: remaining, status: statusLabel } : p);
+    savePurchasesState(updated);
+    setEditingPurchase(null);
+    alert('تم تعديل فاتورة الشراء بنجاح ✓');
+  };
 
-    savePurchasesState([newPur, ...purchases]);
-    setShowAddPurchaseModal(false);
-    setFabricMeters(30);
-    setDiscountValue(0);
-    setPaidAmount(0);
-    setPurNotes('');
+  const handleUpdateReturn = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingReturn) return;
 
-    setPrintablePurchase(newPur);
-    alert(`تم تسجيل فاتورة الشراء من المورد (${purNum}) بنجاح ✓`);
+    const updated = returns.map(r => r.id === editingReturn.id ? editingReturn : r);
+    saveReturnsState(updated);
+    setEditingReturn(null);
+    alert('تم تعديل إذن المرتجع للمورد بنجاح ✓');
   };
 
   // Submit Supplier Return
@@ -309,17 +253,17 @@ export default function PurchasesPage() {
         {/* TAB 1: PURCHASES */}
         {activeTab === 'PURCHASES' && (
           <div className="space-y-4">
-            {/* Header & Button */}
+            {/* Header & Full Page Creation Button */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
               <span className="text-xs font-bold text-slate-500">إجمالي فواتير الشراء المسجلة: {filteredPurchases.length} فاتورة</span>
 
               <button
                 type="button"
-                onClick={() => setShowAddPurchaseModal(true)}
-                className="bg-brand-gold hover:bg-amber-400 text-slate-950 px-4 py-2.5 rounded-xl text-xs font-black shadow-gold flex items-center gap-1.5 cursor-pointer"
+                onClick={() => router.push('/purchases/new')}
+                className="bg-brand-gold hover:bg-amber-400 text-slate-950 px-5 py-2.5 rounded-xl text-xs font-black shadow-gold flex items-center gap-1.5 cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[18px]">add_business</span>
-                <span>+ إنشاء فاتورة شراء من مورد</span>
+                <span>+ إنشاء فاتورة شراء من مورد (صفحة كاملة)</span>
               </button>
             </div>
 
@@ -386,7 +330,7 @@ export default function PurchasesPage() {
                       <th className="p-3.5 text-center font-mono">صافي الفاتورة</th>
                       <th className="p-3.5 text-center font-mono">المسدد / المتبقي</th>
                       <th className="p-3.5 text-center">الحالة</th>
-                      <th className="p-3.5 text-center">الإجراء</th>
+                      <th className="p-3.5 text-center">الإجراءات</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -433,13 +377,31 @@ export default function PurchasesPage() {
                           </td>
 
                           <td className="p-3.5 text-center">
-                            <button
-                              type="button"
-                              onClick={() => setPrintablePurchase(pur)}
-                              className="bg-slate-900 hover:bg-slate-800 text-white px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer transition-colors"
-                            >
-                              🖨️ إذن شراء
-                            </button>
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => setPrintablePurchase(pur)}
+                                className="bg-slate-900 hover:bg-slate-800 text-white px-2 py-1 rounded-lg text-xs font-bold cursor-pointer"
+                              >
+                                🖨️
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => setEditingPurchase(pur)}
+                                className="bg-amber-100 text-amber-950 px-2 py-1 rounded-lg text-xs font-bold cursor-pointer"
+                              >
+                                ✏️
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleDeletePurchase(pur.id, pur.invoiceNumber)}
+                                className="bg-rose-100 text-rose-800 px-2 py-1 rounded-lg text-xs font-bold cursor-pointer"
+                              >
+                                🗑️
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -499,7 +461,7 @@ export default function PurchasesPage() {
                       <th className="p-3.5">سبب الارجاع والتفاصيل</th>
                       <th className="p-3.5 font-mono text-center">المبلغ المسترد / المخصوم</th>
                       <th className="p-3.5 text-center">طريقة الرد من المورد</th>
-                      <th className="p-3.5 text-center">الإجراء</th>
+                      <th className="p-3.5 text-center">الإجراءات</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -531,13 +493,31 @@ export default function PurchasesPage() {
                         </td>
 
                         <td className="p-3.5 text-center">
-                          <button
-                            type="button"
-                            onClick={() => alert(`إذن مرتجع مشتريات رقم (${ret.returnNumber})\nالمورد: ${ret.supplierName}\nالمبلغ: ${ret.refundAmount} ج`)}
-                            className="bg-slate-900 text-white px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer"
-                          >
-                            🖨️ طباعة المرتجع
-                          </button>
+                          <div className="flex items-center justify-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => alert(`إذن مرتجع مشتريات رقم (${ret.returnNumber})\nالمورد: ${ret.supplierName}\nالمبلغ: ${ret.refundAmount} ج`)}
+                              className="bg-slate-900 text-white px-2 py-1 rounded-lg text-xs font-bold cursor-pointer"
+                            >
+                              🖨️
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => setEditingReturn(ret)}
+                              className="bg-amber-100 text-amber-950 px-2 py-1 rounded-lg text-xs font-bold cursor-pointer"
+                            >
+                              ✏️
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteReturn(ret.id, ret.returnNumber)}
+                              className="bg-rose-100 text-rose-800 px-2 py-1 rounded-lg text-xs font-bold cursor-pointer"
+                            >
+                              🗑️
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -549,190 +529,103 @@ export default function PurchasesPage() {
         )}
       </div>
 
-      {/* 📥 Modal: Create Purchase Invoice (طرق الدفع للموردين والخصم) */}
-      {showAddPurchaseModal && (
-        <div className="modal-overlay fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl border border-slate-200 my-auto max-h-[92vh] overflow-y-auto">
+      {/* ✏️ Modal: Edit Purchase Invoice */}
+      {editingPurchase && (
+        <div className="modal-overlay fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-200">
             <div className="flex justify-between items-center pb-2 border-b border-slate-100">
-              <h3 className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-amber-500">add_business</span>
-                <span>إنشاء فاتورة شراء جديدة من مورد (طرق الدفع والخصم)</span>
-              </h3>
-              <button onClick={() => setShowAddPurchaseModal(false)} className="w-7 h-7 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-xs cursor-pointer">✕</button>
+              <h3 className="font-bold text-slate-900 text-sm">تعديل فاتورة الشراء #{editingPurchase.invoiceNumber}</h3>
+              <button onClick={() => setEditingPurchase(null)} className="w-7 h-7 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-xs cursor-pointer">✕</button>
             </div>
 
-            <form onSubmit={handleCreatePurchase} className="space-y-3.5 text-xs">
-              {/* Supplier Info */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50 p-3 rounded-2xl border border-slate-200">
-                <div>
-                  <label className="text-slate-700 font-bold block mb-1">اسم المورد / الشركة:</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="شركة النيل للأقمشة..."
-                    value={supplierName}
-                    onChange={e => setSupplierName(e.target.value)}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900 focus:outline-none focus:border-amber-500 bg-white"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-slate-700 font-bold block mb-1">رقم الهاتف التواصل:</label>
-                  <input
-                    type="text"
-                    placeholder="01099988877"
-                    value={supplierPhone}
-                    onChange={e => setSupplierPhone(e.target.value)}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 font-mono font-bold text-slate-900 focus:outline-none focus:border-amber-500 bg-white"
-                    dir="ltr"
-                  />
-                </div>
-              </div>
-
-              {/* Item & Cost */}
-              <div className="space-y-2 bg-amber-50/50 p-3.5 rounded-2xl border border-amber-200">
-                <label className="text-slate-900 font-black block">تفاصيل الصنف وتكلفة الشراء:</label>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  <div className="sm:col-span-1">
-                    <label className="text-slate-500 font-bold block mb-1">اسم الخامات / التوب:</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="توب قطيفة تركي..."
-                      value={fabricItemName}
-                      onChange={e => setFabricItemName(e.target.value)}
-                      className="w-full border border-slate-200 rounded-xl px-3 py-1.5 font-bold text-slate-900 focus:outline-none bg-white"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-slate-500 font-bold block mb-1">الأمتار / الكمية:</label>
-                    <input
-                      type="number"
-                      min="1"
-                      required
-                      value={fabricMeters}
-                      onChange={e => setFabricMeters(Number(e.target.value))}
-                      className="w-full border border-slate-200 rounded-xl px-3 py-1.5 font-mono font-bold text-slate-900 focus:outline-none bg-white"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-slate-500 font-bold block mb-1">سعر شراء المتر (ج.م):</label>
-                    <input
-                      type="number"
-                      min="1"
-                      required
-                      value={unitCost}
-                      onChange={e => setUnitCost(Number(e.target.value))}
-                      className="w-full border border-slate-200 rounded-xl px-3 py-1.5 font-mono font-bold text-slate-900 focus:outline-none bg-white"
-                    />
-                  </div>
-                </div>
-
-                <div className="text-left font-mono font-bold text-slate-900 text-xs pt-1">
-                  الإجمالي قبل الخصم: {subtotal.toLocaleString()} ج
-                </div>
-              </div>
-
-              {/* Discount Section (خصم المورد) */}
-              <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 space-y-2">
-                <div className="flex justify-between items-center">
-                  <label className="text-slate-900 font-black">خصم المورد (الكمية / التخفيض):</label>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setDiscountType('EGP')}
-                      className={`px-2.5 py-1 rounded-lg font-bold text-[11px] cursor-pointer ${
-                        discountType === 'EGP' ? 'bg-amber-400 text-slate-950 shadow-2xs font-black' : 'bg-slate-200 text-slate-700'
-                      }`}
-                    >
-                      خصم بالمبلغ (ج.م)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setDiscountType('PERCENT')}
-                      className={`px-2.5 py-1 rounded-lg font-bold text-[11px] cursor-pointer ${
-                        discountType === 'PERCENT' ? 'bg-amber-400 text-slate-950 shadow-2xs font-black' : 'bg-slate-200 text-slate-700'
-                      }`}
-                    >
-                      خصم بالنسبة (%)
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <input
-                    type="number"
-                    min="0"
-                    value={discountValue}
-                    onChange={e => setDiscountValue(Number(e.target.value))}
-                    placeholder={discountType === 'PERCENT' ? 'مثال: 5%' : 'مثال: 500 ج'}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-1.5 font-mono font-bold text-slate-900 focus:outline-none bg-white"
-                  />
-                  <div className="shrink-0 font-mono font-black text-rose-700 text-xs">
-                    مبلغ الخصم: {calculatedDiscount.toLocaleString()} ج
-                  </div>
-                </div>
-              </div>
-
-              {/* Supplier Payment Method Picker (3 الطرق للموردين) */}
-              <div className="space-y-2 bg-blue-50/60 p-3.5 rounded-2xl border border-blue-200">
-                <label className="text-blue-950 font-black block">طريقة الدفع للمورد (3 طرق):</label>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  {(['نقدي (كاش)', 'شيكات بنكية', 'على دفعات / آجل'] as const).map(m => (
-                    <button
-                      key={m}
-                      type="button"
-                      onClick={() => setPaymentMethod(m)}
-                      className={`py-2 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer border text-center ${
-                        paymentMethod === m
-                          ? 'bg-blue-900 text-white border-blue-950 shadow-2xs font-black'
-                          : 'bg-white text-slate-800 border-blue-200 hover:bg-blue-100/50'
-                      }`}
-                    >
-                      {m}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 pt-2">
-                  <div>
-                    <label className="text-blue-950 font-bold block mb-1">المبلغ المسدد للمورد (ج.م):</label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={paidAmount}
-                      onChange={e => setPaidAmount(Number(e.target.value))}
-                      className="w-full border border-blue-300 rounded-xl px-3 py-1.5 font-mono font-black text-blue-950 focus:outline-none bg-white"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-rose-950 font-bold block mb-1">المتبقي بالآجل:</label>
-                    <div className="bg-rose-50 border border-rose-200 rounded-xl px-3 py-1.5 font-mono font-black text-rose-950 text-xs">
-                      {remainingAmount.toLocaleString()} ج
-                    </div>
-                  </div>
-                </div>
+            <form onSubmit={handleUpdatePurchase} className="space-y-3 text-xs">
+              <div>
+                <label className="text-slate-700 font-bold block mb-1">اسم المورد:</label>
+                <input
+                  type="text"
+                  required
+                  value={editingPurchase.supplierName}
+                  onChange={e => setEditingPurchase({ ...editingPurchase, supplierName: e.target.value })}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900"
+                />
               </div>
 
               <div>
-                <label className="text-slate-700 font-bold block mb-1">ملاحظات الشراء والرصيد:</label>
+                <label className="text-slate-700 font-bold block mb-1">المبلغ المسدد (ج.م):</label>
+                <input
+                  type="number"
+                  required
+                  min="0"
+                  value={editingPurchase.paidAmount}
+                  onChange={e => setEditingPurchase({ ...editingPurchase, paidAmount: Number(e.target.value) })}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 font-mono font-bold text-slate-900"
+                />
+              </div>
+
+              <div>
+                <label className="text-slate-700 font-bold block mb-1">طريقة الدفع للمورد:</label>
+                <select
+                  value={editingPurchase.paymentMethod}
+                  onChange={e => setEditingPurchase({ ...editingPurchase, paymentMethod: e.target.value as any })}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900"
+                >
+                  <option value="نقدي (كاش)">1. نقدي (كاش)</option>
+                  <option value="شيكات بنكية">2. شيكات بنكية مؤجلة</option>
+                  <option value="على دفعات / آجل">3. على دفعات / بالآجل</option>
+                </select>
+              </div>
+
+              <div className="pt-2 flex gap-2">
+                <button type="submit" className="flex-1 bg-brand-gold hover:bg-amber-400 text-slate-950 py-2.5 rounded-xl font-black text-xs shadow-gold cursor-pointer">
+                  حفظ التعديلات ✓
+                </button>
+                <button type="button" onClick={() => setEditingPurchase(null)} className="flex-1 bg-slate-100 text-slate-700 py-2.5 rounded-xl font-bold text-xs cursor-pointer">
+                  إلغاء
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ✏️ Modal: Edit Supplier Return */}
+      {editingReturn && (
+        <div className="modal-overlay fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-200">
+            <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+              <h3 className="font-bold text-slate-900 text-sm">تعديل إذن المرتجع للمورد #{editingReturn.returnNumber}</h3>
+              <button onClick={() => setEditingReturn(null)} className="w-7 h-7 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-xs cursor-pointer">✕</button>
+            </div>
+
+            <form onSubmit={handleUpdateReturn} className="space-y-3 text-xs">
+              <div>
+                <label className="text-slate-700 font-bold block mb-1">اسم المورد:</label>
                 <input
                   type="text"
-                  placeholder="ملاحظات..."
-                  value={purNotes}
-                  onChange={e => setPurNotes(e.target.value)}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-1.5 text-slate-900 focus:outline-none"
+                  required
+                  value={editingReturn.supplierName}
+                  onChange={e => setEditingReturn({ ...editingReturn, supplierName: e.target.value })}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900"
+                />
+              </div>
+
+              <div>
+                <label className="text-slate-700 font-bold block mb-1">المبلغ المسترد (ج.م):</label>
+                <input
+                  type="number"
+                  required
+                  min="1"
+                  value={editingReturn.refundAmount}
+                  onChange={e => setEditingReturn({ ...editingReturn, refundAmount: Number(e.target.value) })}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 font-mono font-bold text-slate-900"
                 />
               </div>
 
               <div className="pt-2 flex gap-2">
-                <button type="submit" className="flex-1 bg-brand-gold hover:bg-amber-400 text-slate-950 py-3 rounded-2xl font-black text-xs shadow-gold cursor-pointer">
-                  تأكيد وتأمين فاتورة الشراء والطباعة ✓
+                <button type="submit" className="flex-1 bg-rose-600 hover:bg-rose-500 text-white py-2.5 rounded-xl font-black text-xs cursor-pointer">
+                  حفظ التعديلات ✓
                 </button>
-                <button type="button" onClick={() => setShowAddPurchaseModal(false)} className="flex-1 bg-slate-100 text-slate-700 py-3 rounded-2xl font-bold text-xs cursor-pointer">
+                <button type="button" onClick={() => setEditingReturn(null)} className="flex-1 bg-slate-100 text-slate-700 py-2.5 rounded-xl font-bold text-xs cursor-pointer">
                   إلغاء
                 </button>
               </div>

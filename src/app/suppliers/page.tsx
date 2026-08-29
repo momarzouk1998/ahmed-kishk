@@ -663,13 +663,48 @@ export default function SuppliersPage() {
                         <td className="p-3.5 text-slate-700 font-bold">{pay.treasury}</td>
                         <td className="p-3.5 text-slate-600">{pay.notes || '—'}</td>
                         <td className="p-3.5 text-center">
-                          <button
-                            type="button"
-                            onClick={() => alert(`إذن صرف رقم (${pay.id})\nالمورد: ${pay.supplierName}\nالمبلغ: ${pay.amount} ج`)}
-                            className="bg-slate-900 text-white px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer"
-                          >
-                            🖨️ إذن صرف
-                          </button>
+                          <div className="flex items-center justify-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => alert(`إذن صرف رقم (${pay.id})\nالمورد: ${pay.supplierName}\nالمبلغ: ${pay.amount} ج`)}
+                              className="bg-slate-900 text-white px-2 py-1 rounded-lg text-xs font-bold cursor-pointer"
+                              title="طباعة إذن صرف"
+                            >
+                              🖨️
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newAmountStr = prompt(`تعديل مبلغ السداد للمورد "${pay.supplierName}":`, pay.amount.toString());
+                                if (newAmountStr !== null) {
+                                  const newAmount = Number(newAmountStr);
+                                  if (newAmount > 0) {
+                                    const updated = payments.map(p => p.id === pay.id ? { ...p, amount: newAmount } : p);
+                                    savePaymentsState(updated);
+                                    alert('تم تعديل مبلغ السداد للمورد بنجاح ✓');
+                                  }
+                                }
+                              }}
+                              className="bg-amber-100 text-amber-950 px-2 py-1 rounded-lg text-xs font-bold cursor-pointer"
+                              title="تعديل السداد"
+                            >
+                              ✏️
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (confirm(`هل أنت أسر بالتأكيد من حذف إذن سداد بمبلغ ${pay.amount} ج للمورد "${pay.supplierName}"؟`)) {
+                                  savePaymentsState(payments.filter(p => p.id !== pay.id));
+                                }
+                              }}
+                              className="bg-rose-100 text-rose-800 px-2 py-1 rounded-lg text-xs font-bold cursor-pointer"
+                              title="حذف السداد"
+                            >
+                              🗑️
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -765,13 +800,44 @@ export default function SuppliersPage() {
                           </td>
 
                           <td className="p-3.5 text-center">
-                            <button
-                              type="button"
-                              onClick={() => handleToggleCheckStatus(chk.id)}
-                              className="bg-slate-900 hover:bg-slate-800 text-white px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer transition-colors"
-                            >
-                              {chk.status === 'تم الصرف' ? 'إعادة لقيد الانتظار ↩' : 'تأكيد الصرف ✓'}
-                            </button>
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => handleToggleCheckStatus(chk.id)}
+                                className="bg-slate-900 hover:bg-slate-800 text-white px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer transition-colors"
+                              >
+                                {chk.status === 'تم الصرف' ? 'إعادة لقيد الانتظار ↩' : 'تأكيد الصرف ✓'}
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const newNum = prompt(`تعديل رقم الشيك للمورد "${chk.supplierName}":`, chk.checkNumber);
+                                  if (newNum !== null && newNum.trim()) {
+                                    const updated = checks.map(c => c.id === chk.id ? { ...c, checkNumber: newNum.trim() } : c);
+                                    saveChecksState(updated);
+                                    alert('تم تعديل رقم الشيك بنجاح ✓');
+                                  }
+                                }}
+                                className="bg-amber-100 text-amber-950 px-2 py-1 rounded-lg text-xs font-bold cursor-pointer"
+                                title="تعديل الشيك"
+                              >
+                                ✏️
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (confirm(`هل أنت أسر بالتأكيد من حذف الشيك رقم #${chk.checkNumber} للمورد "${chk.supplierName}"؟`)) {
+                                    saveChecksState(checks.filter(c => c.id !== chk.id));
+                                  }
+                                }}
+                                className="bg-rose-100 text-rose-800 px-2 py-1 rounded-lg text-xs font-bold cursor-pointer"
+                                title="حذف الشيك"
+                              >
+                                🗑️
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );

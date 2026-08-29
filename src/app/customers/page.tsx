@@ -628,13 +628,48 @@ export default function CustomersPage() {
                         <td className="p-3.5 text-slate-700 font-bold">{col.treasury}</td>
                         <td className="p-3.5 text-slate-600">{col.notes || '—'}</td>
                         <td className="p-3.5 text-center">
-                          <button
-                            type="button"
-                            onClick={() => alert(`إيصال تحصيل رقم (${col.id})\nالعميل: ${col.customerName}\nالمبلغ: ${col.amount} ج`)}
-                            className="bg-slate-900 text-white px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer"
-                          >
-                            🖨️ طباعة إيصال
-                          </button>
+                          <div className="flex items-center justify-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => alert(`إيصال تحصيل رقم (${col.id})\nالعميل: ${col.customerName}\nالمبلغ: ${col.amount} ج`)}
+                              className="bg-slate-900 text-white px-2 py-1 rounded-lg text-xs font-bold cursor-pointer"
+                              title="طباعة إيصال"
+                            >
+                              🖨️
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newAmountStr = prompt(`تعديل مبلغ التحصيل للعميل "${col.customerName}":`, col.amount.toString());
+                                if (newAmountStr !== null) {
+                                  const newAmount = Number(newAmountStr);
+                                  if (newAmount > 0) {
+                                    const updated = collections.map(c => c.id === col.id ? { ...c, amount: newAmount } : c);
+                                    saveCollectionsState(updated);
+                                    alert('تم تعديل قيمة التحصيل بنجاح ✓');
+                                  }
+                                }
+                              }}
+                              className="bg-amber-100 text-amber-950 px-2 py-1 rounded-lg text-xs font-bold cursor-pointer"
+                              title="تعديل التحصيل"
+                            >
+                              ✏️
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (confirm(`هل أنت أسر بالتأكيد من حذف سداد التحصيل بمبلغ ${col.amount} ج للعميل "${col.customerName}"؟`)) {
+                                  saveCollectionsState(collections.filter(c => c.id !== col.id));
+                                }
+                              }}
+                              className="bg-rose-100 text-rose-800 px-2 py-1 rounded-lg text-xs font-bold cursor-pointer"
+                              title="حذف التحصيل"
+                            >
+                              🗑️
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}

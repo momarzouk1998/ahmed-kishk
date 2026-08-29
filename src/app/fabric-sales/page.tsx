@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
+import { useRouter } from 'next/navigation';
 
 interface SalesInvoiceItem {
   code: string;
@@ -68,27 +69,6 @@ const defaultInvoices: SalesInvoice[] = [
     status: 'مسدد جزئياً',
     notes: 'عربون مبيعات أقمشة الستائر',
   },
-  {
-    id: 'INV-102',
-    invoiceNumber: 'INV-2026-002',
-    date: '2026-08-27',
-    customerName: 'د. سارة أحمد',
-    customerPhone: '01298765432',
-    branch: 'فرع عرابي',
-    items: [
-      { code: 'LN-77', name: 'كتان هازل بني', meters: 12.0, pricePerMeter: 320, totalPrice: 3840 },
-    ],
-    subtotal: 3840,
-    discountType: 'PERCENT',
-    discountValue: 10,
-    discountAmount: 384,
-    totalAmount: 3456,
-    paymentMethod: 'فيزا / كارت',
-    paidAmount: 3456,
-    remainingAmount: 0,
-    status: 'تم السداد بالكامل',
-    notes: 'خصم 10% بمناسبة الافتتاح',
-  },
 ];
 
 const defaultReturns: CustomerSalesReturn[] = [
@@ -111,6 +91,7 @@ const SALES_INVOICES_KEY = 'ahmed_kishk_sales_invoices_v1';
 const SALES_RETURNS_KEY = 'ahmed_kishk_sales_returns_v1';
 
 export default function FabricSalesPage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<'INVOICES' | 'RETURNS'>('INVOICES');
   const [invoices, setInvoices] = useState<SalesInvoice[]>(defaultInvoices);
   const [returns, setReturns] = useState<CustomerSalesReturn[]>(defaultReturns);
@@ -119,27 +100,11 @@ export default function FabricSalesPage() {
   const [search, setSearch] = useState('');
   const [paymentFilter, setPaymentFilter] = useState<string>('all');
 
-  // Modals
-  const [showAddInvoiceModal, setShowAddInvoiceModal] = useState(false);
+  // Modals & Edit States
   const [showAddReturnModal, setShowAddReturnModal] = useState(false);
+  const [editingInvoice, setEditingInvoice] = useState<SalesInvoice | null>(null);
+  const [editingReturn, setEditingReturn] = useState<CustomerSalesReturn | null>(null);
   const [printableInvoice, setPrintableInvoice] = useState<SalesInvoice | null>(null);
-
-  // Create Invoice Form State
-  const [custName, setCustName] = useState('');
-  const [custPhone, setCustPhone] = useState('');
-  const [branch, setBranch] = useState('الفرع الرئيسي');
-  const [fabricItemName, setFabricItemName] = useState('قطيفة تركي ثقيل');
-  const [fabricMeters, setFabricMeters] = useState<number>(5.0);
-  const [fabricPrice, setFabricPrice] = useState<number>(380);
-  
-  // Discount states
-  const [discountType, setDiscountType] = useState<'EGP' | 'PERCENT'>('EGP');
-  const [discountValue, setDiscountValue] = useState<number>(0);
-  
-  // Payment Method & Paid state
-  const [paymentMethod, setPaymentMethod] = useState<SalesInvoice['paymentMethod']>('نقدي');
-  const [paidAmount, setPaidAmount] = useState<number>(0);
-  const [invNotes, setInvNotes] = useState('');
 
   // Create Return Form State
   const [retCustName, setRetCustName] = useState('');
@@ -171,60 +136,39 @@ export default function FabricSalesPage() {
     localStorage.setItem(SALES_RETURNS_KEY, JSON.stringify(list));
   };
 
-  // Calculations for Invoice Modal
-  const subtotal = fabricMeters * fabricPrice;
-  const calculatedDiscount = discountType === 'PERCENT' ? (subtotal * discountValue) / 100 : discountValue;
-  const totalAmount = Math.max(0, subtotal - calculatedDiscount);
-  const remainingAmount = Math.max(0, totalAmount - paidAmount);
+  const handleDeleteInvoice = (id: string, num: string) => {
+    if (confirm(`هل أنت أسر بالتأكيد من حذف فاتورة المبيعات (${num})؟`)) {
+      saveInvoicesState(invoices.filter(i => i.id !== id));
+    }
+  };
 
-  // Submit Invoice
-  const handleCreateInvoice = (e: React.FormEvent) => {
+  const handleDeleteReturn = (id: string, num: string) => {
+    if (confirm(`هل أنت أسر بالتأكيد من حذف إذن مرتجع المبيعات (${num})؟`)) {
+      saveReturnsState(returns.filter(r => r.id !== id));
+    }
+  };
+
+  const handleUpdateInvoice = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!custName.trim() || fabricMeters <= 0 || fabricPrice <= 0) return;
+    if (!editingInvoice) return;
 
-    const invNum = `INV-2026-${String(invoices.length + 1).padStart(3, '0')}`;
-    const statusLabel: SalesInvoice['status'] =
-      remainingAmount === 0 ? 'تم السداد بالكامل' : paidAmount > 0 ? 'مسدد جزئياً' : 'آجل / غير مسدد';
+    const remaining = Math.max(0, editingInvoice.totalAmount - editingInvoice.paidAmount);
+    const statusLabel: SalesInvoice['status'] = remaining === 0 ? 'تم السداد بالكامل' : editingInvoice.paidAmount > 0 ? 'مسدد جزئياً' : 'آجل / غير مسدد';
 
-    const newInv: SalesInvoice = {
-      id: `INV-${Date.now()}`,
-      invoiceNumber: invNum,
-      date: new Date().toISOString().split('T')[0],
-      customerName: custName.trim(),
-      customerPhone: custPhone.trim() || 'غير محدد',
-      branch,
-      items: [
-        {
-          code: 'FAB-01',
-          name: fabricItemName,
-          meters: fabricMeters,
-          pricePerMeter: fabricPrice,
-          totalPrice: subtotal,
-        }
-      ],
-      subtotal,
-      discountType,
-      discountValue,
-      discountAmount: calculatedDiscount,
-      totalAmount,
-      paymentMethod,
-      paidAmount,
-      remainingAmount,
-      status: statusLabel,
-      notes: invNotes.trim(),
-    };
+    const updated = invoices.map(i => i.id === editingInvoice.id ? { ...editingInvoice, remainingAmount: remaining, status: statusLabel } : i);
+    saveInvoicesState(updated);
+    setEditingInvoice(null);
+    alert('تم تعديل فاتورة المبيعات بنجاح ✓');
+  };
 
-    saveInvoicesState([newInv, ...invoices]);
-    setShowAddInvoiceModal(false);
-    setCustName('');
-    setCustPhone('');
-    setFabricMeters(5);
-    setDiscountValue(0);
-    setPaidAmount(0);
-    setInvNotes('');
+  const handleUpdateReturn = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingReturn) return;
 
-    setPrintableInvoice(newInv);
-    alert(`تم حفظ فاتورة المبيعات (${invNum}) بنجاح ✓`);
+    const updated = returns.map(r => r.id === editingReturn.id ? editingReturn : r);
+    saveReturnsState(updated);
+    setEditingReturn(null);
+    alert('تم تعديل إذن المرتجع بنجاح ✓');
   };
 
   // Submit Sales Return
@@ -309,17 +253,17 @@ export default function FabricSalesPage() {
         {/* TAB 1: SALES INVOICES */}
         {activeTab === 'INVOICES' && (
           <div className="space-y-4">
-            {/* Header & Button */}
+            {/* Header & Full Page Creation Button */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
               <span className="text-xs font-bold text-slate-500">إجمالي فواتير المبيعات المسجلة: {filteredInvoices.length} فاتورة</span>
 
               <button
                 type="button"
-                onClick={() => setShowAddInvoiceModal(true)}
-                className="bg-brand-gold hover:bg-amber-400 text-slate-950 px-4 py-2.5 rounded-xl text-xs font-black shadow-gold flex items-center gap-1.5 cursor-pointer"
+                onClick={() => router.push('/fabric-sales/new')}
+                className="bg-brand-gold hover:bg-amber-400 text-slate-950 px-5 py-2.5 rounded-xl text-xs font-black shadow-gold flex items-center gap-1.5 cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[18px]">add_shopping_cart</span>
-                <span>+ إنشاء فاتورة مبيعات جديدة</span>
+                <span>+ إنشاء فاتورة مبيعات جديدة (صفحة كاملة)</span>
               </button>
             </div>
 
@@ -388,7 +332,7 @@ export default function FabricSalesPage() {
                       <th className="p-3.5 text-center font-mono">صافي الفاتورة</th>
                       <th className="p-3.5 text-center font-mono">المحصل / المتبقي</th>
                       <th className="p-3.5 text-center">الحالة</th>
-                      <th className="p-3.5 text-center">الإجراء</th>
+                      <th className="p-3.5 text-center">الإجراءات</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -435,13 +379,33 @@ export default function FabricSalesPage() {
                           </td>
 
                           <td className="p-3.5 text-center">
-                            <button
-                              type="button"
-                              onClick={() => setPrintableInvoice(inv)}
-                              className="bg-slate-900 hover:bg-slate-800 text-white px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer transition-colors"
-                            >
-                              🖨️ طباعة الفاتورة
-                            </button>
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => setPrintableInvoice(inv)}
+                                className="bg-slate-900 hover:bg-slate-800 text-white px-2 py-1 rounded-lg text-xs font-bold cursor-pointer"
+                              >
+                                🖨️
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => setEditingInvoice(inv)}
+                                className="bg-amber-100 hover:bg-amber-200 text-amber-950 px-2 py-1 rounded-lg text-xs font-bold cursor-pointer"
+                                title="تعديل الفاتورة"
+                              >
+                                ✏️
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteInvoice(inv.id, inv.invoiceNumber)}
+                                className="bg-rose-100 hover:bg-rose-200 text-rose-800 px-2 py-1 rounded-lg text-xs font-bold cursor-pointer"
+                                title="حذف الفاتورة"
+                              >
+                                🗑️
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -501,7 +465,7 @@ export default function FabricSalesPage() {
                       <th className="p-3.5">سبب المرتجع والخامة</th>
                       <th className="p-3.5 font-mono text-center">المبلغ المسترد</th>
                       <th className="p-3.5 text-center">طريقة الرد للعميل</th>
-                      <th className="p-3.5 text-center">الإجراء</th>
+                      <th className="p-3.5 text-center">الإجراءات</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -533,13 +497,31 @@ export default function FabricSalesPage() {
                         </td>
 
                         <td className="p-3.5 text-center">
-                          <button
-                            type="button"
-                            onClick={() => alert(`إذن مرتجع مبيعات رقم (${ret.returnNumber})\nالعميل: ${ret.customerName}\nالمبلغ المسترد: ${ret.refundAmount} ج`)}
-                            className="bg-slate-900 text-white px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer"
-                          >
-                            🖨️ طباعة المرتجع
-                          </button>
+                          <div className="flex items-center justify-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => alert(`إذن مرتجع مبيعات رقم (${ret.returnNumber})\nالعميل: ${ret.customerName}\nالمبلغ: ${ret.refundAmount} ج`)}
+                              className="bg-slate-900 text-white px-2 py-1 rounded-lg text-xs font-bold cursor-pointer"
+                            >
+                              🖨️
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => setEditingReturn(ret)}
+                              className="bg-amber-100 text-amber-950 px-2 py-1 rounded-lg text-xs font-bold cursor-pointer"
+                            >
+                              ✏️
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteReturn(ret.id, ret.returnNumber)}
+                              className="bg-rose-100 text-rose-800 px-2 py-1 rounded-lg text-xs font-bold cursor-pointer"
+                            >
+                              🗑️
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -551,194 +533,105 @@ export default function FabricSalesPage() {
         )}
       </div>
 
-      {/* 🛒 Modal: Create Sales Invoice (مع اختيار طريقة الدفع للزبون والخصم) */}
-      {showAddInvoiceModal && (
-        <div className="modal-overlay fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl border border-slate-200 my-auto max-h-[92vh] overflow-y-auto">
+      {/* ✏️ Modal: Edit Sales Invoice */}
+      {editingInvoice && (
+        <div className="modal-overlay fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-200">
             <div className="flex justify-between items-center pb-2 border-b border-slate-100">
-              <h3 className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-amber-500">add_shopping_cart</span>
-                <span>إنشاء فاتورة مبيعات جديدة (اختيار طريقة الدفع والخصم)</span>
-              </h3>
-              <button onClick={() => setShowAddInvoiceModal(false)} className="w-7 h-7 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-xs cursor-pointer">✕</button>
+              <h3 className="font-bold text-slate-900 text-sm">تعديل فاتورة المبيعات #{editingInvoice.invoiceNumber}</h3>
+              <button onClick={() => setEditingInvoice(null)} className="w-7 h-7 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-xs cursor-pointer">✕</button>
             </div>
 
-            <form onSubmit={handleCreateInvoice} className="space-y-3.5 text-xs">
-              {/* Customer Info */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50 p-3 rounded-2xl border border-slate-200">
-                <div>
-                  <label className="text-slate-700 font-bold block mb-1">اسم العميل / الزبون:</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="مثال: أ. محمود عبد الرحمن"
-                    value={custName}
-                    onChange={e => setCustName(e.target.value)}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900 focus:outline-none focus:border-amber-500 bg-white"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-slate-700 font-bold block mb-1">رقم الهاتف:</label>
-                  <input
-                    type="text"
-                    placeholder="مثال: 01012345678"
-                    value={custPhone}
-                    onChange={e => setCustPhone(e.target.value)}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 font-mono font-bold text-slate-900 focus:outline-none focus:border-amber-500 bg-white"
-                    dir="ltr"
-                  />
-                </div>
-              </div>
-
-              {/* Fabric Item & Pricing */}
-              <div className="space-y-2 bg-amber-50/50 p-3.5 rounded-2xl border border-amber-200">
-                <label className="text-slate-900 font-black block">خامة القماش وسعر المتر:</label>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  <div className="sm:col-span-1">
-                    <label className="text-slate-500 font-bold block mb-1">نوع القماش:</label>
-                    <select
-                      value={fabricItemName}
-                      onChange={e => setFabricItemName(e.target.value)}
-                      className="w-full border border-slate-200 rounded-xl px-2.5 py-1.5 font-bold text-slate-900 focus:outline-none bg-white"
-                    >
-                      <option value="قطيفة تركي ثقيل">قطيفة تركي ثقيل</option>
-                      <option value="تول خفيف مطرز">تول خفيف مطرز</option>
-                      <option value="كتان بلجيكي بني">كتان بلجيكي بني</option>
-                      <option value="بلاك آوت عازل">بلاك آوت عازل</option>
-                      <option value="حرير طبيعي سواريه">حرير طبيعي سواريه</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="text-slate-500 font-bold block mb-1">عدد الأمتار:</label>
-                    <input
-                      type="number"
-                      step="0.25"
-                      min="0.5"
-                      required
-                      value={fabricMeters}
-                      onChange={e => setFabricMeters(Number(e.target.value))}
-                      className="w-full border border-slate-200 rounded-xl px-3 py-1.5 font-mono font-bold text-slate-900 focus:outline-none bg-white"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-slate-500 font-bold block mb-1">سعر المتر (ج.م):</label>
-                    <input
-                      type="number"
-                      min="1"
-                      required
-                      value={fabricPrice}
-                      onChange={e => setFabricPrice(Number(e.target.value))}
-                      className="w-full border border-slate-200 rounded-xl px-3 py-1.5 font-mono font-bold text-slate-900 focus:outline-none bg-white"
-                    />
-                  </div>
-                </div>
-
-                <div className="text-left font-mono font-bold text-slate-900 text-xs pt-1">
-                  الإجمالي قبل الخصم: {subtotal.toLocaleString()} ج
-                </div>
-              </div>
-
-              {/* Discount Section (خصم للزبون) */}
-              <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 space-y-2">
-                <div className="flex justify-between items-center">
-                  <label className="text-slate-900 font-black">نسبة / قيمة الخصم للزبون:</label>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setDiscountType('EGP')}
-                      className={`px-2.5 py-1 rounded-lg font-bold text-[11px] cursor-pointer ${
-                        discountType === 'EGP' ? 'bg-amber-400 text-slate-950 shadow-2xs font-black' : 'bg-slate-200 text-slate-700'
-                      }`}
-                    >
-                      خصم بالمبلغ (ج.م)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setDiscountType('PERCENT')}
-                      className={`px-2.5 py-1 rounded-lg font-bold text-[11px] cursor-pointer ${
-                        discountType === 'PERCENT' ? 'bg-amber-400 text-slate-950 shadow-2xs font-black' : 'bg-slate-200 text-slate-700'
-                      }`}
-                    >
-                      خصم بالنسبة (%)
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <input
-                    type="number"
-                    min="0"
-                    value={discountValue}
-                    onChange={e => setDiscountValue(Number(e.target.value))}
-                    placeholder={discountType === 'PERCENT' ? 'مثال: 10%' : 'مثال: 200 ج'}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-1.5 font-mono font-bold text-slate-900 focus:outline-none bg-white"
-                  />
-                  <div className="shrink-0 font-mono font-black text-rose-700 text-xs">
-                    مبلغ الخصم: {calculatedDiscount.toLocaleString()} ج
-                  </div>
-                </div>
-              </div>
-
-              {/* Payment Method Selection for Customer (طريقة الدفع للزبون) */}
-              <div className="space-y-2 bg-emerald-50/60 p-3.5 rounded-2xl border border-emerald-200">
-                <label className="text-emerald-950 font-black block">طريقة الدفع للزبون:</label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-                  {(['نقدي', 'إنستاباي', 'فودافون كاش', 'فيزا / كارت', 'بالآجل / دفعات'] as const).map(m => (
-                    <button
-                      key={m}
-                      type="button"
-                      onClick={() => setPaymentMethod(m)}
-                      className={`py-2 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer border text-center ${
-                        paymentMethod === m
-                          ? 'bg-emerald-700 text-white border-emerald-800 shadow-2xs font-black'
-                          : 'bg-white text-slate-800 border-emerald-200 hover:bg-emerald-100/50'
-                      }`}
-                    >
-                      {m}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 pt-2">
-                  <div>
-                    <label className="text-emerald-950 font-bold block mb-1">المبلغ المحصل الآن (ج.م):</label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={paidAmount}
-                      onChange={e => setPaidAmount(Number(e.target.value))}
-                      className="w-full border border-emerald-300 rounded-xl px-3 py-1.5 font-mono font-black text-emerald-950 focus:outline-none bg-white"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-rose-950 font-bold block mb-1">المتبقي بالآجل:</label>
-                    <div className="bg-rose-50 border border-rose-200 rounded-xl px-3 py-1.5 font-mono font-black text-rose-950 text-xs">
-                      {remainingAmount.toLocaleString()} ج
-                    </div>
-                  </div>
-                </div>
+            <form onSubmit={handleUpdateInvoice} className="space-y-3 text-xs">
+              <div>
+                <label className="text-slate-700 font-bold block mb-1">اسم العميل:</label>
+                <input
+                  type="text"
+                  required
+                  value={editingInvoice.customerName}
+                  onChange={e => setEditingInvoice({ ...editingInvoice, customerName: e.target.value })}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900"
+                />
               </div>
 
               <div>
-                <label className="text-slate-700 font-bold block mb-1">ملاحظات الفاتورة:</label>
+                <label className="text-slate-700 font-bold block mb-1">المبلغ المحصل (ج.م):</label>
+                <input
+                  type="number"
+                  required
+                  min="0"
+                  value={editingInvoice.paidAmount}
+                  onChange={e => setEditingInvoice({ ...editingInvoice, paidAmount: Number(e.target.value) })}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 font-mono font-bold text-slate-900"
+                />
+              </div>
+
+              <div>
+                <label className="text-slate-700 font-bold block mb-1">طريقة الدفع:</label>
+                <select
+                  value={editingInvoice.paymentMethod}
+                  onChange={e => setEditingInvoice({ ...editingInvoice, paymentMethod: e.target.value as any })}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900"
+                >
+                  <option value="نقدي">نقدي (كاش)</option>
+                  <option value="إنستاباي">إنستاباي</option>
+                  <option value="فودافون كاش">فودافون كاش</option>
+                  <option value="فيزا / كارت">فيزا / كارت</option>
+                  <option value="بالآجل / دفعات">بالآجل / دفعات</option>
+                </select>
+              </div>
+
+              <div className="pt-2 flex gap-2">
+                <button type="submit" className="flex-1 bg-brand-gold hover:bg-amber-400 text-slate-950 py-2.5 rounded-xl font-black text-xs shadow-gold cursor-pointer">
+                  حفظ التعديلات ✓
+                </button>
+                <button type="button" onClick={() => setEditingInvoice(null)} className="flex-1 bg-slate-100 text-slate-700 py-2.5 rounded-xl font-bold text-xs cursor-pointer">
+                  إلغاء
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ✏️ Modal: Edit Customer Return */}
+      {editingReturn && (
+        <div className="modal-overlay fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-200">
+            <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+              <h3 className="font-bold text-slate-900 text-sm">تعديل إذن المرتجع #{editingReturn.returnNumber}</h3>
+              <button onClick={() => setEditingReturn(null)} className="w-7 h-7 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-xs cursor-pointer">✕</button>
+            </div>
+
+            <form onSubmit={handleUpdateReturn} className="space-y-3 text-xs">
+              <div>
+                <label className="text-slate-700 font-bold block mb-1">اسم العميل:</label>
                 <input
                   type="text"
-                  placeholder="ملاحظات تسليم الخامات..."
-                  value={invNotes}
-                  onChange={e => setInvNotes(e.target.value)}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-1.5 text-slate-900 focus:outline-none"
+                  required
+                  value={editingReturn.customerName}
+                  onChange={e => setEditingReturn({ ...editingReturn, customerName: e.target.value })}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900"
+                />
+              </div>
+
+              <div>
+                <label className="text-slate-700 font-bold block mb-1">المبلغ المسترد (ج.م):</label>
+                <input
+                  type="number"
+                  required
+                  min="1"
+                  value={editingReturn.refundAmount}
+                  onChange={e => setEditingReturn({ ...editingReturn, refundAmount: Number(e.target.value) })}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 font-mono font-bold text-slate-900"
                 />
               </div>
 
               <div className="pt-2 flex gap-2">
-                <button type="submit" className="flex-1 bg-brand-gold hover:bg-amber-400 text-slate-950 py-3 rounded-2xl font-black text-xs shadow-gold cursor-pointer">
-                  تأكيد وتجميع الفاتورة والطباعة ✓
+                <button type="submit" className="flex-1 bg-rose-600 hover:bg-rose-500 text-white py-2.5 rounded-xl font-black text-xs cursor-pointer">
+                  حفظ التعديلات ✓
                 </button>
-                <button type="button" onClick={() => setShowAddInvoiceModal(false)} className="flex-1 bg-slate-100 text-slate-700 py-3 rounded-2xl font-bold text-xs cursor-pointer">
+                <button type="button" onClick={() => setEditingReturn(null)} className="flex-1 bg-slate-100 text-slate-700 py-2.5 rounded-xl font-bold text-xs cursor-pointer">
                   إلغاء
                 </button>
               </div>
