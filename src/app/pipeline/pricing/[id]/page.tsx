@@ -1446,9 +1446,9 @@ export default function PricingDetailPage() {
               <button
                 type="button"
                 onClick={async () => {
-                  const updatedList = quotations.map(q => q.id === quotation.id ? { ...q, status: 'معتمد ومسدد العربون' as const } : q);
+                  const updatedList = quotations.map(q => q.id === quotation.id ? { ...q, status: 'تم التحويل للورشة' as const } : q);
                   setQuotations(updatedList);
-                  saveAllQuotations(updatedList);
+                  await saveAllQuotations(updatedList);
 
                   // Map rooms to RoomFabricItem[] format which cutting/tailoring expects
                   const mappedRooms = (quotation.rooms || []).map((r: any) => ({

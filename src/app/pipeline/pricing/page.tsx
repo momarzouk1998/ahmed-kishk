@@ -39,7 +39,21 @@ export default function PipelinePricingPage() {
     load();
   }, []);
 
-  const isSent = (status: QuotationOrder['status']) => status === 'تم التحويل للورشة';
+  const isSent = (status: any) =>
+    status === 'تم التحويل للورشة' ||
+    status === 'تم التحويل الى الورشه' ||
+    status === 'معتمد ومسدد العربون' ||
+    status === 'معتمد و مسدد العربون' ||
+    status === 'قص القماش' ||
+    status === 'تم القص' ||
+    status === 'في المقص' ||
+    status === 'في الورشة' ||
+    status === 'تمت الخياطة' ||
+    status === 'في التركيبات' ||
+    status === 'في التسليمات' ||
+    status === 'مكتمل ومسلم' ||
+    status === 'تم التركيب بنجاح' ||
+    status === 'تم التسليم بنجاح';
 
   const tabFiltered = quotations.filter(q => activeTab === 'OPEN' ? !isSent(q.status) : isSent(q.status));
   const filtered = tabFiltered.filter(q => {

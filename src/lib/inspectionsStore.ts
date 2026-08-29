@@ -207,7 +207,15 @@ export async function fetchQuotations(): Promise<QuotationOrder[]> {
       const json = await res.json();
       if (json.success && Array.isArray(json.quotations)) {
         if (typeof window !== 'undefined') {
-          localStorage.setItem(QUOTATIONS_STORAGE_KEY, JSON.stringify(json.quotations));
+          const raw = localStorage.getItem(QUOTATIONS_STORAGE_KEY);
+          const localList: QuotationOrder[] = raw ? JSON.parse(raw) : [];
+          const map = new Map<string, QuotationOrder>();
+          localList.forEach(q => { if (q && q.id) map.set(q.id, q); });
+          json.quotations.forEach((q: QuotationOrder) => { if (q && q.id) map.set(q.id, q); });
+
+          const merged = Array.from(map.values());
+          localStorage.setItem(QUOTATIONS_STORAGE_KEY, JSON.stringify(merged));
+          return merged;
         }
         return json.quotations;
       }
@@ -313,6 +321,17 @@ export async function saveAllQuotations(list: QuotationOrder[]): Promise<void> {
       localStorage.setItem(QUOTATIONS_STORAGE_KEY, JSON.stringify(list));
     } catch {}
   }
+
+  try {
+    await fetch('/api/pricing', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ quotations: list }),
+    });
+  } catch (err) {
+    console.error('Failed to save quotations to database:', err);
+  }
+
   try {
     await fetch('/api/system-data', {
       method: 'POST',
