@@ -346,11 +346,11 @@ export default function SuppliersPage() {
   });
 
   // Metrics
-  const totalBalanceOwed = filteredSuppliers.reduce((s, c) => s + c.balanceOwed, 0);
-  const suppliersOwedCount = filteredSuppliers.filter(s => s.balanceOwed > 0).length;
+  const totalBalanceOwed = filteredSuppliers.reduce((s, c) => s + (Number(c.balanceOwed) || 0), 0);
+  const suppliersOwedCount = filteredSuppliers.filter(s => (Number(s.balanceOwed) || 0) > 0).length;
 
-  const totalPaymentsAmount = filteredPayments.reduce((s, p) => s + p.amount, 0);
-  const pendingChecksTotal = filteredChecks.filter(c => c.status === 'قيد الانتظار').reduce((s, c) => s + c.amount, 0);
+  const totalPaymentsAmount = filteredPayments.reduce((s, p) => s + (Number(p.amount) || 0), 0);
+  const pendingChecksTotal = filteredChecks.filter(c => c.status === 'قيد الانتظار').reduce((s, c) => s + (Number(c.amount) || 0), 0);
 
   return (
     <PageShell title="إدارة الموردين والحسابات">
@@ -487,12 +487,12 @@ export default function SuppliersPage() {
                         </td>
 
                         <td className="p-3.5 text-center font-mono font-black text-slate-900">
-                          {sup.totalPurchases.toLocaleString()} ج
+                          {(Number(sup.totalPurchases) || 0).toLocaleString()} ج
                         </td>
 
                         <td className="p-3.5 text-center font-mono font-black text-sm">
-                          <span className={sup.balanceOwed > 0 ? 'text-rose-700' : 'text-emerald-700'}>
-                            {sup.balanceOwed.toLocaleString()} ج
+                          <span className={(Number(sup.balanceOwed) || 0) > 0 ? 'text-rose-700' : 'text-emerald-700'}>
+                            {(Number(sup.balanceOwed) || 0).toLocaleString()} ج
                           </span>
                         </td>
 
@@ -595,7 +595,7 @@ export default function SuppliersPage() {
                         <td className="p-3.5 font-mono text-slate-700 font-bold">{pay.date ? formatDateOnly(pay.date) : 'غير محدد'}</td>
                         <td className="p-3.5 font-bold text-slate-900">{pay.supplierName}</td>
                         <td className="p-3.5 text-center font-mono font-black text-sm text-rose-700">
-                          -{pay.amount.toLocaleString()} ج
+                          -{(Number(pay.amount) || 0).toLocaleString()} ج
                         </td>
                         <td className="p-3.5 text-center">
                           <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-800 border border-slate-200">
@@ -683,7 +683,7 @@ export default function SuppliersPage() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
               <div className="bg-white p-4 rounded-2xl border border-slate-200 text-center shadow-3xs">
                 <span className="text-slate-500 font-bold block">إجمالي الشيكات الصادرة</span>
-                <strong className="text-xl font-black text-slate-900 mt-1 block font-mono">{filteredChecks.reduce((s, c) => s + c.amount, 0).toLocaleString()} ج</strong>
+                <strong className="text-xl font-black text-slate-900 mt-1 block font-mono">{filteredChecks.reduce((s, c) => s + (Number(c.amount) || 0), 0).toLocaleString()} ج</strong>
               </div>
 
               <div className="bg-amber-50/70 p-4 rounded-2xl border border-amber-200 text-center shadow-3xs">
@@ -694,7 +694,7 @@ export default function SuppliersPage() {
               <div className="bg-emerald-50/70 p-4 rounded-2xl border border-emerald-200 text-center shadow-3xs">
                 <span className="text-emerald-800 font-bold block">شيكات تم صرفها بالكامل</span>
                 <strong className="text-xl font-black text-emerald-950 mt-1 block font-mono">
-                  {filteredChecks.filter(c => c.status === 'تم الصرف').reduce((s, c) => s + c.amount, 0).toLocaleString()} ج
+                  {filteredChecks.filter(c => c.status === 'تم الصرف').reduce((s, c) => s + (Number(c.amount) || 0), 0).toLocaleString()} ج
                 </strong>
               </div>
             </div>
@@ -728,7 +728,7 @@ export default function SuppliersPage() {
                           <td className="p-3.5 font-bold text-slate-900">{chk.supplierName}</td>
 
                           <td className="p-3.5 text-center font-mono font-black text-sm text-purple-950">
-                            {chk.amount.toLocaleString()} ج
+                            {(Number(chk.amount) || 0).toLocaleString()} ج
                           </td>
 
                           <td className="p-3.5 text-center font-mono text-slate-700">{chk.issueDate ? formatDateOnly(chk.issueDate) : 'غير محدد'}</td>
@@ -854,15 +854,15 @@ export default function SuppliersPage() {
             <div className="grid grid-cols-3 gap-3 text-xs">
               <div className="bg-white p-3.5 rounded-xl border border-slate-200 text-center">
                 <span className="text-slate-500 font-bold block">الرصيد الافتتاحي</span>
-                <strong className="text-base font-black text-slate-900 font-mono">{selectedSupplier.openingBalance.toLocaleString()} ج</strong>
+                <strong className="text-base font-black text-slate-900 font-mono">{(Number(selectedSupplier.openingBalance) || 0).toLocaleString()} ج</strong>
               </div>
               <div className="bg-emerald-50 p-3.5 rounded-xl border border-emerald-200 text-center">
                 <span className="text-emerald-800 font-bold block">إجمالي المشتريات التوريدية</span>
-                <strong className="text-base font-black text-emerald-950 font-mono">{selectedSupplier.totalPurchases.toLocaleString()} ج</strong>
+                <strong className="text-base font-black text-emerald-950 font-mono">{(Number(selectedSupplier.totalPurchases) || 0).toLocaleString()} ج</strong>
               </div>
               <div className="bg-rose-50 p-3.5 rounded-xl border border-rose-200 text-center">
                 <span className="text-rose-800 font-bold block">الرصيد المستحق (علينا للمورد)</span>
-                <strong className="text-base font-black text-rose-950 font-mono">{selectedSupplier.balanceOwed.toLocaleString()} ج</strong>
+                <strong className="text-base font-black text-rose-950 font-mono">{(Number(selectedSupplier.balanceOwed) || 0).toLocaleString()} ج</strong>
               </div>
             </div>
 
@@ -889,13 +889,13 @@ export default function SuppliersPage() {
                       <td className="p-2 border border-slate-300 font-bold">{entry.type}</td>
                       <td className="p-2 border border-slate-300 text-slate-700">{entry.description}</td>
                       <td className="p-2 border border-slate-300 text-center font-mono font-bold text-emerald-800">
-                        {entry.debit > 0 ? `${entry.debit.toLocaleString()} ج` : '—'}
+                        {entry.debit > 0 ? `${(Number(entry.debit) || 0).toLocaleString()} ج` : '—'}
                       </td>
                       <td className="p-2 border border-slate-300 text-center font-mono font-bold text-rose-800">
-                        {entry.credit > 0 ? `${entry.credit.toLocaleString()} ج` : '—'}
+                        {entry.credit > 0 ? `${(Number(entry.credit) || 0).toLocaleString()} ج` : '—'}
                       </td>
                       <td className="p-2 border border-slate-300 text-center font-mono font-black text-slate-950">
-                        {entry.balanceAfter.toLocaleString()} ج
+                        {(Number(entry.balanceAfter) || 0).toLocaleString()} ج
                       </td>
                     </tr>
                   ))}
