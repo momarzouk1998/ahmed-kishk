@@ -473,7 +473,12 @@ export default function SuppliersPage() {
 
                         <td className="p-3.5">
                           <div className="flex flex-wrap gap-1">
-                            {sup.categoriesSupplied.map((cat, i) => (
+                            {(Array.isArray(sup.categoriesSupplied)
+                              ? sup.categoriesSupplied
+                              : typeof sup.categoriesSupplied === 'string'
+                              ? (sup.categoriesSupplied as string).split(',').map(s => s.trim()).filter(Boolean)
+                              : []
+                            ).map((cat, i) => (
                               <span key={i} className="bg-slate-100 text-slate-800 text-[10px] px-2 py-0.5 rounded-md font-bold">
                                 {cat}
                               </span>
@@ -841,7 +846,7 @@ export default function SuppliersPage() {
               <div><strong>اسم المورد:</strong> {selectedSupplier.name}</div>
               <div><strong>رقم الهاتف:</strong> {selectedSupplier.phone}</div>
               <div><strong>العنوان:</strong> {selectedSupplier.address}</div>
-              <div><strong>الخامات الموردة:</strong> {selectedSupplier.categoriesSupplied.join(', ')}</div>
+              <div><strong>الخامات الموردة:</strong> {Array.isArray(selectedSupplier.categoriesSupplied) ? selectedSupplier.categoriesSupplied.join(', ') : selectedSupplier.categoriesSupplied || '—'}</div>
               <div><strong>ملاحظات وشروط التوريد:</strong> {selectedSupplier.notes || '—'}</div>
             </div>
 
