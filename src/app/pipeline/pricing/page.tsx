@@ -39,21 +39,7 @@ export default function PipelinePricingPage() {
     load();
   }, []);
 
-  const isSent = (status: any) =>
-    status === 'تم التحويل للورشة' ||
-    status === 'تم التحويل الى الورشه' ||
-    status === 'معتمد ومسدد العربون' ||
-    status === 'معتمد و مسدد العربون' ||
-    status === 'قص القماش' ||
-    status === 'تم القص' ||
-    status === 'في المقص' ||
-    status === 'في الورشة' ||
-    status === 'تمت الخياطة' ||
-    status === 'في التركيبات' ||
-    status === 'في التسليمات' ||
-    status === 'مكتمل ومسلم' ||
-    status === 'تم التركيب بنجاح' ||
-    status === 'تم التسليم بنجاح';
+  const isSent = (status: any) => status !== 'انتظار تسعير' && status !== 'بانتظار التسعير';
 
   const tabFiltered = quotations.filter(q => activeTab === 'OPEN' ? !isSent(q.status) : isSent(q.status));
   const filtered = tabFiltered.filter(q => {
@@ -146,13 +132,13 @@ export default function PipelinePricingPage() {
             <select
               value={selectedStatus}
               onChange={(e) => setSelectedStatus(e.target.value)}
-              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-brand-gold shadow-2xs"
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-brand-gold shadow-2xs cursor-pointer"
             >
               <option value="ALL">جميع الحالات</option>
-              <option value="بانتظار التسعير">بانتظار التسعير</option>
-              <option value="تم إرسال المقايسة">تم إرسال المقايسة</option>
-              <option value="معتمد ومسدد العربون">معتمد ومسدد العربون</option>
-              <option value="تم التحويل للورشة">تم التحويل للورشة</option>
+              <option value="انتظار تسعير">انتظار تسعير</option>
+              <option value="في المقص">في المقص</option>
+              <option value="في الورشة">في الورشة</option>
+              <option value="مكتمل">مكتمل</option>
             </select>
           </div>
         </div>

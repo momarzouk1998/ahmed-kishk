@@ -1446,7 +1446,7 @@ export default function PricingDetailPage() {
               <button
                 type="button"
                 onClick={async () => {
-                  const updatedList = quotations.map(q => q.id === quotation.id ? { ...q, status: 'تم التحويل للورشة' as const } : q);
+                  const updatedList = quotations.map(q => q.id === quotation.id ? { ...q, status: 'في المقص' as any } : q);
                   setQuotations(updatedList);
                   await saveAllQuotations(updatedList);
 
