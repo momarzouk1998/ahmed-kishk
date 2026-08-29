@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { formatDateOnly } from '@/lib/dateUtils';
 
 export interface PrintRoomItem {
   id: string;
@@ -61,38 +62,6 @@ export default function ContractPrintModal({ isOpen, onClose, data }: ContractPr
 
   return (
     <div className="modal-overlay fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs">
-      <style>{`
-        @media print {
-          @page {
-            size: A4 portrait;
-            margin: 10mm;
-          }
-          body * {
-            visibility: hidden !important;
-          }
-          #printable-contract-modal,
-          #printable-contract-modal * {
-            visibility: visible !important;
-          }
-          #printable-contract-modal {
-            position: absolute !important;
-            left: 0 !important;
-            top: 0 !important;
-            width: 100% !important;
-            margin: 0 !important;
-            padding: 10px !important;
-            background: #ffffff !important;
-            color: #000000 !important;
-            box-shadow: none !important;
-            border: none !important;
-            max-height: none !important;
-            overflow: visible !important;
-          }
-          .no-print, .print\\:hidden {
-            display: none !important;
-          }
-        }
-      `}</style>
       <div id="printable-contract-modal" className="bg-white text-slate-900 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6 sm:p-8 shadow-2xl relative border border-slate-200 print:max-h-none print:shadow-none print:border-none print:p-0">
         
         {/* Top Control Bar (Hidden when printing) */}
@@ -128,7 +97,7 @@ export default function ContractPrintModal({ isOpen, onClose, data }: ContractPr
               <p className="text-[11px] text-slate-500 mt-1">الفرع الرئيسي | القاهرة، مصر</p>
             </div>
             <div className="text-left font-mono">
-              <p className="text-xs text-slate-700 font-bold">تاريخ التعاقد: {data.date}</p>
+              <p className="text-xs text-slate-700 font-bold">تاريخ التعاقد: {data.date ? formatDateOnly(data.date) : 'غير محدد'}</p>
             </div>
           </div>
 
@@ -148,7 +117,7 @@ export default function ContractPrintModal({ isOpen, onClose, data }: ContractPr
             </div>
             <div>
               <span className="text-amber-800 font-bold block">تاريخ التسليم:</span>
-              <strong className="text-slate-900 font-mono text-sm block mt-0.5">{data.deliveryDate || 'غير محدد'}</strong>
+              <strong className="text-slate-900 font-mono text-sm block mt-0.5">{data.deliveryDate ? formatDateOnly(data.deliveryDate) : 'غير محدد'}</strong>
             </div>
           </div>
 

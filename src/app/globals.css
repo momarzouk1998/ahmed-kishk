@@ -62,26 +62,32 @@
 
 /* 🖨️ Professional A4 Printable Template Stylesheet */
 @media print {
-  /* 1. When a modal is open, hide all page content outside the modal overlay */
-  body:has(.modal-overlay) > *:not(.modal-overlay),
-  body:has(.modal-overlay) main {
+  html, body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-family: 'Cairo', sans-serif !important;
+    font-size: 11pt !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    line-height: 1.4 !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* When printing from modal, hide page content and show only modal */
+  body:has(.modal-overlay) main > *:not(.modal-overlay):not(:has(.modal-overlay)) {
     display: none !important;
   }
 
-  /* 2. Hide UI, menus, headers, search bars, inputs, sidebars, buttons, backdrop shadows */
+  /* Hide UI elements, navigation, sidebar, buttons, symbols */
   aside,
   header,
   nav,
   button,
   input,
   .no-print,
+  .print\:hidden,
   [role="button"],
-  .fixed:not(.modal-overlay),
-  .shadow-soft,
-  .shadow-gold,
-  .shadow-xl,
-  .shadow-2xl,
-  a.no-print,
   span.material-symbols-outlined {
     display: none !important;
   }
@@ -89,21 +95,28 @@
   .modal-overlay {
     display: block !important;
     position: static !important;
+    inset: auto !important;
     background: #ffffff !important;
     padding: 0 !important;
     margin: 0 !important;
+    width: 100% !important;
+    height: auto !important;
     overflow: visible !important;
   }
 
-  /* 2. Reset Body margins & colors for printing */
-  body {
+  #printable-contract-modal {
+    position: static !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: none !important;
+    overflow: visible !important;
     background: #ffffff !important;
     color: #000000 !important;
-    font-family: 'Cairo', sans-serif !important;
-    font-size: 13pt !important;
-    margin: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
     padding: 0 !important;
-    line-height: 1.4 !important;
+    margin: 0 !important;
   }
 
   main {
@@ -113,33 +126,29 @@
     width: 100% !important;
   }
 
-  /* 3. Hide printed URL links next to anchors (CRITICAL - removes kishk.openappo.com url from bottom) */
   a[href]::after {
     content: none !important;
   }
 
-  /* 4. Disable browser default headers and footers (date, title, URL at bottom) */
   @page {
     size: A4 portrait;
-    margin: 0.8cm 1cm !important; /* Maximizes printable space on A4 */
+    margin: 10mm 12mm !important;
   }
 
-  /* 5. Force printable elements to show */
   .print-only {
     display: block !important;
   }
 
-  /* 6. Expand table to full A4 page width, bold headers, clean borders */
   table {
     border-collapse: collapse !important;
     width: 100% !important;
-    margin-top: 15px !important;
+    margin-top: 10px !important;
   }
 
   th, td {
-    border: 1px solid #1e293b !important;
-    padding: 10px 12px !important;
-    font-size: 11pt !important;
+    border: 1px solid #94a3b8 !important;
+    padding: 8px 10px !important;
+    font-size: 10pt !important;
     color: #000000 !important;
     vertical-align: middle !important;
   }
@@ -148,6 +157,7 @@
     background-color: #f1f5f9 !important;
     font-weight: 800 !important;
   }
+}
 
   /* 7. Prevent page breaks inside rows/cards */
   .page-break-inside-avoid, tr, .print-card {
