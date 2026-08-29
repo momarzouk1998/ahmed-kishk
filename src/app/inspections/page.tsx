@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
 import { formatDate } from '@/lib/dateUtils';
-import { formatDate } from '@/lib/dateUtils';
 
 interface FabricLayer {
   layer: string;
