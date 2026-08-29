@@ -47,7 +47,7 @@ export default function PipelineAccessoriesPage() {
 
       const pipelineList = storedPipeline || [];
       const mappedQuotations: PipelineMasterOrder[] = (quotations || [])
-        .filter(q => (q.status === 'تجهيز الاكسسوارات' || (q.status as string).includes('اكسسوار')) && !pipelineList.some(p => p.orderId === q.id || p.id === q.id || p.id === `ORD-${q.id}` || (p.customerName && q.customerName && p.customerName.trim() === q.customerName.trim())))
+        .filter(q => (q.status === 'تجهيز الاكسسوارات' || (q.status as string).includes('اكسسوار')) && !pipelineList.some(p => p.orderId === q.id || p.id === q.id || p.id === `ORD-${q.id}` || p.orderId === q.id.replace(/^ORD-/, '') || (p.customerName && q.customerName && p.customerName.trim().toLowerCase() === q.customerName.trim().toLowerCase())))
         .map((q: any) => ({
           id: `ORD-${q.id}`,
           orderId: q.id,
@@ -115,8 +115,8 @@ export default function PipelineAccessoriesPage() {
 
         const s = (o.status || '').trim();
         const ls = (o.localStatus || '').trim();
-        const isPrep = (s === 'تجهيز الاكسسوارات' || s.includes('اكسسوار')) && ls !== 'تم تجهيز الإكسسوارات' && ls !== 'تم التجهيز' && s !== 'جاهز للاستلام' && s !== 'جاهز للتركيب' && s !== 'مكتمل';
-        const isReady = ls === 'تم تجهيز الإكسسوارات' || ls === 'تم التجهيز';
+        const isReady = ls.includes('تم تجهيز') || ls === 'تم التجهيز' || s === 'جاهز للاستلام' || s === 'جاهز للتركيب';
+        const isPrep = (s === 'تجهيز الاكسسوارات' || s.includes('اكسسوار')) && !isReady && s !== 'جاهز للاستلام' && s !== 'جاهز للتركيب' && s !== 'مكتمل';
 
         return {
           id: o.id,
@@ -181,6 +181,9 @@ export default function PipelineAccessoriesPage() {
 
   const updateKitStatus = async (kitId: string, status: AccessoryKit['status']) => {
     setKits(prev => prev.map(k => k.id === kitId ? { ...k, status } : k));
+    if (status === 'تم التجهيز') {
+      setActiveTab('PREPARED');
+    }
     await updatePipelineOrderStatus(kitId, 'تجهيز الاكسسوارات', 'تم تجهيز الإكسسوارات');
   };
 

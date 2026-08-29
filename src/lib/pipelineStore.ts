@@ -197,7 +197,8 @@ export async function updatePipelineOrderStatus(
       o.orderId === cleanId ||
       o.orderId === rawId ||
       o.id === `ORD-${rawId}` ||
-      o.id.replace(/^ORD-/, '') === rawId;
+      o.id.replace(/^ORD-/, '') === rawId ||
+      (o.customerName && cleanId.includes(o.customerName));
 
     if (isMatch) {
       found = true;
@@ -234,8 +235,12 @@ export async function updatePipelineOrderStatus(
 
   // Sync quotation status as well
   try {
-    const quotations = getStoredQuotations();
-    const qIdx = quotations.findIndex(q => q.id === rawId || q.id === cleanId);
+    const quotations = await fetchQuotations();
+    const qIdx = quotations.findIndex(q => 
+      q.id === rawId || 
+      q.id === cleanId || 
+      (q.customerName && cleanId.includes(q.customerName))
+    );
     if (qIdx >= 0) {
       quotations[qIdx].status = normalized as any;
       await saveAllQuotations(quotations);
