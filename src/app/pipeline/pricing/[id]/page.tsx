@@ -7,6 +7,7 @@ import { useParams, useRouter } from 'next/navigation';
 import ContractPrintModal, { PrintContractData } from '@/components/ContractPrintModal';
 import {
   getStoredQuotations,
+  fetchQuotations,
   saveAllQuotations,
   saveOrUpdateInspection,
   getInspectionById,
@@ -17,7 +18,7 @@ import {
   ACCESSORY_PRICES,
   PipeAccessories
 } from '@/lib/inspectionsStore';
-import { getStoredPipelineOrders, saveStoredPipelineOrders, updatePipelineOrderStatus, PipelineMasterOrder, isTodayOrOverdue } from '@/lib/pipelineStore';
+import { getStoredPipelineOrders, fetchPipelineOrders, saveStoredPipelineOrders, updatePipelineOrderStatus, PipelineMasterOrder, isTodayOrOverdue } from '@/lib/pipelineStore';
 import { canUserEditPrices } from '@/lib/permissions';
 
 interface InventoryFabric {
@@ -52,16 +53,21 @@ export default function PricingDetailPage() {
   const rawId = (params?.id as string) || 'QOT-101';
   const orderId = decodeURIComponent(rawId);
 
-  const [quotations, setQuotations] = useState<QuotationOrder[]>([]);
+  const [quotations, setQuotations] = useState<QuotationOrder[]>(() => getStoredQuotations());
   const [inventory] = useState<InventoryFabric[]>(mockFabricsInventory);
   const [showPrintModal, setShowPrintModal] = useState(false);
 
   useEffect(() => {
-    const list = getStoredQuotations();
-    setQuotations(list);
+    async function load() {
+      const list = await fetchQuotations();
+      if (list && list.length > 0) {
+        setQuotations(list);
+      }
+    }
+    load();
   }, []);
 
-  const quotation = quotations.find(q => q.id === orderId) || quotations[0];
+  const quotation = quotations.find(q => q.id === orderId || q.inspectionId === orderId) || quotations[0];
   const canEditPrices = canUserEditPrices('p_pricing');
 
   const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
@@ -1446,79 +1452,77 @@ export default function PricingDetailPage() {
               <button
                 type="button"
                 onClick={async () => {
+                  if (!quotation) return;
+
                   const updatedList = quotations.map(q => q.id === quotation.id ? { ...q, status: 'في المقص' as any } : q);
                   setQuotations(updatedList);
                   await saveAllQuotations(updatedList);
 
                   // Map rooms to RoomFabricItem[] format which cutting/tailoring expects
-                  const mappedRooms = (quotation.rooms || []).map((r: any) => ({
-                    roomName: r.name,
-                    heavyFabric: r.heavyEnabled !== false && r.heavyFabricName && r.heavyMeters > 0 ? {
-                      name: r.heavyFabricName,
-                      code: r.heavyFabricCode || '',
-                      meters: r.heavyMeters,
-                      tapeType: r.heavyTapeType,
-                      netHeight: r.heightCm,
+                  const mappedRooms = (quotation.rooms || []).map((r: any, idx: number) => ({
+                    roomName: r.name || `غرفة ${idx + 1}`,
+                    heavyFabric: (r.heavyEnabled !== false && (Number(r.heavyMeters) > 0 || r.heavyFabricName)) ? {
+                      name: r.heavyFabricName || 'قماش ثقيل',
+                      code: r.heavyFabricCode || 'HV-101',
+                      meters: Number(r.heavyMeters) || 5,
+                      tapeType: r.heavyTapeType || '٣ فتلة',
+                      netHeight: String(r.heightCm || 280),
                     } : undefined,
-                    sheerFabric: r.sheerEnabled !== false && r.sheerFabricName && r.sheerMeters > 0 ? {
-                      name: r.sheerFabricName,
-                      code: r.sheerFabricCode || '',
-                      meters: r.sheerMeters,
-                      tapeType: r.sheerTapeType,
-                      netHeight: r.heightCm,
+                    sheerFabric: (r.sheerEnabled !== false && (Number(r.sheerMeters) > 0 || r.sheerFabricName)) ? {
+                      name: r.sheerFabricName || 'شيفون',
+                      code: r.sheerFabricCode || 'SH-101',
+                      meters: Number(r.sheerMeters) || 6,
+                      tapeType: r.sheerTapeType || 'ويفي',
+                      netHeight: String(r.heightCm || 280),
                     } : undefined,
-                    blackoutFabric: r.blackoutEnabled && r.blackoutFabricName && r.blackoutMeters > 0 ? {
-                      name: r.blackoutFabricName,
-                      code: r.blackoutFabricCode || '',
-                      meters: r.blackoutMeters,
-                      tapeType: r.blackoutTapeType,
-                      netHeight: r.heightCm,
+                    blackoutFabric: (r.blackoutEnabled && (Number(r.blackoutMeters) > 0 || r.blackoutFabricName)) ? {
+                      name: r.blackoutFabricName || 'بلاك آوت',
+                      code: r.blackoutFabricCode || 'BK-301',
+                      meters: Number(r.blackoutMeters) || 3,
+                      tapeType: r.blackoutTapeType || 'جراب',
+                      netHeight: String(r.heightCm || 280),
                     } : undefined,
                   }));
 
                   // Check if order exists in pipeline store, if not create new
                   const storedOrders = getStoredPipelineOrders();
-                  const existingOrder = storedOrders.find(o => o.orderId === quotation.id || o.id === quotation.id);
+                  const existingIndex = storedOrders.findIndex(o => o.orderId === quotation.id || o.id === quotation.id || (o.customerName && quotation.customerName && o.customerName === quotation.customerName));
 
-                  let finalOrder: PipelineMasterOrder;
-                  if (existingOrder) {
-                    finalOrder = {
-                      ...existingOrder,
-                      status: 'في المقص',
-                      localStatus: 'بانتظار القص',
-                      rooms: mappedRooms,
-                      totalAmount: quotation.totalAmount,
-                      depositPaid: quotation.depositPaid,
-                      remainingAmount: quotation.remainingAmount,
-                      deliveryDate: quotation.deliveryDate || existingOrder.deliveryDate || '',
-                    };
-                    const updated = storedOrders.map(o => o.id === existingOrder.id ? finalOrder : o);
-                    await saveStoredPipelineOrders(updated);
+                  const orderIdToUse = quotation.id || `ORD-${Date.now()}`;
+                  const orderPayload: PipelineMasterOrder = {
+                    id: existingIndex >= 0 ? storedOrders[existingIndex].id : `ORD-${Date.now()}`,
+                    orderId: orderIdToUse,
+                    customerName: quotation.customerName || 'عميل تجربة',
+                    phone: quotation.phone || '',
+                    address: quotation.address || '',
+                    branch: quotation.branch || 'الفرع الرئيسي',
+                    deliveryDate: quotation.deliveryDate || '',
+                    status: 'في المقص',
+                    localStatus: 'بانتظار القص',
+                    createdAt: quotation.date || new Date().toISOString().split('T')[0],
+                    totalAmount: Number(quotation.totalAmount) || 0,
+                    depositPaid: Number(quotation.depositPaid) || 0,
+                    remainingAmount: Number(quotation.remainingAmount) || 0,
+                    rooms: mappedRooms.length > 0 ? mappedRooms : quotation.rooms || [],
+                  };
+
+                  let updatedOrdersList: PipelineMasterOrder[];
+                  if (existingIndex >= 0) {
+                    updatedOrdersList = [...storedOrders];
+                    updatedOrdersList[existingIndex] = { ...storedOrders[existingIndex], ...orderPayload };
                   } else {
-                    finalOrder = {
-                      id: `ORD-${Date.now()}`,
-                      orderId: quotation.id,
-                      customerName: quotation.customerName,
-                      phone: quotation.phone,
-                      address: quotation.address,
-                      branch: quotation.branch || 'الفرع الرئيسي',
-                      deliveryDate: quotation.deliveryDate || '',
-                      status: 'في المقص',
-                      localStatus: 'بانتظار القص',
-                      createdAt: quotation.date || new Date().toISOString().split('T')[0],
-                      totalAmount: quotation.totalAmount,
-                      depositPaid: quotation.depositPaid,
-                      remainingAmount: quotation.remainingAmount,
-                      rooms: mappedRooms,
-                    };
-                    await saveStoredPipelineOrders([finalOrder, ...storedOrders]);
+                    updatedOrdersList = [orderPayload, ...storedOrders];
                   }
 
-                  const insp = getInspectionById(quotation.inspectionId);
-                  if (insp) {
-                    insp.status = 'في الورشة';
-                    insp.isLocked = true;
-                    saveOrUpdateInspection(insp);
+                  await saveStoredPipelineOrders(updatedOrdersList);
+
+                  if (quotation.inspectionId) {
+                    const insp = getInspectionById(quotation.inspectionId);
+                    if (insp) {
+                      insp.status = 'في الورشة';
+                      insp.isLocked = true;
+                      await saveOrUpdateInspection(insp);
+                    }
                   }
 
                   setShowWorkshopModal(false);

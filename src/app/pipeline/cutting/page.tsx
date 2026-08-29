@@ -28,7 +28,7 @@ interface CuttingOrder {
 const initialOrders: CuttingOrder[] = [];
 
 export default function PipelineCuttingPage() {
-  const [orders, setOrders] = useState<CuttingOrder[]>([]);
+  const [orders, setOrders] = useState<CuttingOrder[]>(() => getStoredPipelineOrders() as any);
   const [activeTab, setActiveTab] = useState<'OPEN' | 'SENT'>('OPEN');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBranch, setSelectedBranch] = useState<string>('ALL');
@@ -36,33 +36,45 @@ export default function PipelineCuttingPage() {
 
   useEffect(() => {
     async function load() {
+      const local = getStoredPipelineOrders();
+      if (local && local.length > 0) {
+        setOrders(local as any);
+      }
       const stored = await fetchPipelineOrders();
-      setOrders((stored || []) as any);
+      if (stored && stored.length > 0) {
+        setOrders(stored as any);
+      }
     }
     load();
   }, []);
 
   // Orders waiting to be cut: 'بانتظار القص' OR 'في المقص' OR status matching cutting
-  const isWaitingToCut = (o: any) =>
-    o.status === 'في المقص' ||
-    o.status === 'بانتظار القص' ||
-    o.localStatus === 'بانتظار القص' ||
-    o.status === 'قص القماش' ||
-    (!o.status?.includes('ورشة') && !o.status?.includes('خياطة') && !o.status?.includes('تسليم') && !o.status?.includes('تركيب') && !o.status?.includes('مكتمل') && !o.status?.includes('معاينة') && !o.status?.includes('تسعير'));
+  const isWaitingToCut = (o: any) => {
+    if (!o) return false;
+    const s = (o.status || '').trim();
+    const ls = (o.localStatus || '').trim();
+    return s === 'في المقص' || s === 'بانتظار القص' || s === 'قص القماش' || ls === 'بانتظار القص' || (!s.includes('ورشة') && !s.includes('خياطة') && !s.includes('تسليم') && !s.includes('تركيب') && !s.includes('مكتمل') && !s.includes('معاينة') && !s.includes('تسعير'));
+  };
 
-  const isSentFromCutting = (o: any) =>
-    o.status === 'تم القص وجاهز للخياطة' ||
-    o.localStatus === 'تم القص وجاهز للخياطة' ||
-    o.status === 'في الورشة' ||
-    o.status === 'تجهيز الاكسسوارات' ||
-    o.status === 'جاهز للاستلام' ||
-    o.status === 'جاهز للتركيب' ||
-    o.status === 'مكتمل';
+  const isSentFromCutting = (o: any) => {
+    if (!o) return false;
+    const s = (o.status || '').trim();
+    const ls = (o.localStatus || '').trim();
+    return (
+      s === 'تم القص وجاهز للخياطة' ||
+      ls === 'تم القص وجاهز للخياطة' ||
+      s === 'في الورشة' ||
+      s === 'تجهيز الاكسسوارات' ||
+      s === 'جاهز للاستلام' ||
+      s === 'جاهز للتركيب' ||
+      s === 'مكتمل'
+    );
+  };
 
   const tabFiltered = orders.filter(o => activeTab === 'OPEN' ? isWaitingToCut(o) : isSentFromCutting(o));
   const filtered = tabFiltered.filter(o => {
-    const matchesSearch = (o.customerName || '').includes(searchQuery) || (o.id || '').includes(searchQuery) || (o.orderId || '').includes(searchQuery);
-    const matchesBranch = selectedBranch === 'ALL' || o.branch === selectedBranch;
+    const matchesSearch = (o.customerName || '').includes(searchQuery) || (o.id || '').includes(searchQuery) || ((o as any).orderId || '').includes(searchQuery);
+    const matchesBranch = selectedBranch === 'ALL' || (o.branch && o.branch.includes(selectedBranch)) || (!o.branch && selectedBranch === 'الفرع الرئيسي');
     return matchesSearch && matchesBranch;
   });
 
