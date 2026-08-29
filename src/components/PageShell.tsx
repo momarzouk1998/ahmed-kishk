@@ -4,6 +4,7 @@ import React from 'react';
 import Sidebar from '@/components/Sidebar';
 import Header from '@/components/Header';
 import { SidebarProvider, useSidebar } from '@/components/SidebarContext';
+import { initCentralSync } from '@/lib/syncService';
 
 interface PageShellProps {
   title?: string;
@@ -22,6 +23,10 @@ interface PageShellProps {
  */
 function ShellContent({ title, badge, action, children }: PageShellProps) {
   const { isCollapsed } = useSidebar();
+
+  React.useEffect(() => {
+    initCentralSync();
+  }, []);
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">

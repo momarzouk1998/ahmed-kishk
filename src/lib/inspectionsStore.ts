@@ -1,3 +1,5 @@
+import { saveServerData } from '@/lib/syncService';
+
 export interface Room {
   id: string;
   name: string;
@@ -202,6 +204,8 @@ export function saveAllInspections(list: InspectionData[]): void {
   if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(INSPECTIONS_STORAGE_KEY, JSON.stringify(list));
+    // Save to central server
+    saveServerData(INSPECTIONS_STORAGE_KEY, list);
   } catch (err) {
     console.error('Failed to save inspections to localStorage:', err);
   }
@@ -249,6 +253,8 @@ export function saveAllQuotations(list: QuotationOrder[]): void {
   if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(QUOTATIONS_STORAGE_KEY, JSON.stringify(list));
+    // Save to central server
+    saveServerData(QUOTATIONS_STORAGE_KEY, list);
   } catch (err) {
     console.error('Failed to save quotations to localStorage:', err);
   }

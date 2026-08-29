@@ -1,5 +1,7 @@
 'use client';
 
+import { saveServerData } from '@/lib/syncService';
+
 // Master Pipeline Stage Enum/Union
 export type GlobalMasterStage =
   | 'المعاينات'
@@ -127,6 +129,8 @@ export function saveStoredPipelineOrders(orders: PipelineMasterOrder[]) {
       return !isIdDel && !isNameDel;
     });
     localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+    // Save to central server
+    saveServerData(STORAGE_KEY, filtered);
   } catch (err) {
     console.error('Error saving pipeline orders:', err);
   }
