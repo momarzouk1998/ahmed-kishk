@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
 import { formatDate } from '@/lib/dateUtils';
+import { formatDate } from '@/lib/dateUtils';
 
 interface FabricLayer {
   layer: string;
@@ -276,7 +277,7 @@ export default function InspectionsPage() {
     <PageShell title="المعاينات ورفع المقاسات">
       <div className="flex flex-col gap-6">
         {/* Header Bar */}
-        <div className="flex items-center justify-between flex-wrap gap-4">
+        <div className="flex items-center justify-between flex-wrap gap-4 no-print">
           <div>
             <h1 className="font-display font-bold text-xl sm:text-2xl text-primary">المعاينات ورفع المقاسات</h1>
             <p className="text-on-surface-variant text-xs sm:text-sm mt-1">تسجيل طلبات المعاينة الميدانية ومقاسات وتفاصيل كل غرفة.</p>
@@ -357,8 +358,88 @@ export default function InspectionsPage() {
                   <span className="material-symbols-outlined text-[16px]">share</span> واتساب
                 </button>
                 <button onClick={() => {
-                  const content = document.querySelector('main');
-                  if (!content) return;
+                  // Create custom printable content specifically for the inspection
+                  if (!selected) return;
+                  
+                  const printContent = `
+                    <div style="font-family: 'Cairo', sans-serif; direction: rtl; padding: 20px;">
+                      <div style="text-align: center; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 10px;">
+                        <h1 style="margin: 0; font-size: 24px; font-weight: bold;">أحمد كشك — للأقمشة والستائر الفاخرة</h1>
+                        <p style="margin: 5px 0 0 0; font-size: 14px; color: #666;">كشف مقاسات وتفاصيل المعاينة</p>
+                      </div>
+                      
+                      <div style="margin-bottom: 20px;">
+                        <h2 style="margin: 0 0 10px 0; font-size: 18px; border-bottom: 1px solid #000; padding-bottom: 5px;">بيانات العميل</h2>
+                        <table style="width: 100%; border-collapse: collapse;">
+                          <tr>
+                            <td style="border: 1px solid #000; padding: 8px; font-weight: bold;">الاسم:</td>
+                            <td style="border: 1px solid #000; padding: 8px;">${selected.customerName}</td>
+                          </tr>
+                          <tr>
+                            <td style="border: 1px solid #000; padding: 8px; font-weight: bold;">الهاتف:</td>
+                            <td style="border: 1px solid #000; padding: 8px;">${selected.phone}</td>
+                          </tr>
+                          <tr>
+                            <td style="border: 1px solid #000; padding: 8px; font-weight: bold;">العنوان:</td>
+                            <td style="border: 1px solid #000; padding: 8px;">${selected.address}</td>
+                          </tr>
+                          <tr>
+                            <td style="border: 1px solid #000; padding: 8px; font-weight: bold;">الفني:</td>
+                            <td style="border: 1px solid #000; padding: 8px;">${selected.technician}</td>
+                          </tr>
+                          <tr>
+                            <td style="border: 1px solid #000; padding: 8px; font-weight: bold;">الموعد:</td>
+                            <td style="border: 1px solid #000; padding: 8px;">${selected.scheduledAt ? formatDate(selected.scheduledAt) : 'غير محدد'}</td>
+                          </tr>
+                        </table>
+                      </div>
+                      
+                      ${selected.rooms.length > 0 ? `
+                      <div style="margin-bottom: 20px;">
+                        <h2 style="margin: 0 0 10px 0; font-size: 18px; border-bottom: 1px solid #000; padding-bottom: 5px;">تفاصيل الغرف والمقاسات</h2>
+                        <table style="width: 100%; border-collapse: collapse;">
+                          <thead>
+                            <tr style="background-color: #f1f5f9;">
+                              <th style="border: 1px solid #000; padding: 8px;">الغرفة</th>
+                              <th style="border: 1px solid #000; padding: 8px;">النوع</th>
+                              <th style="border: 1px solid #000; padding: 8px;">العرض (سم)</th>
+                              <th style="border: 1px solid #000; padding: 8px;">الارتفاع (سم)</th>
+                              <th style="border: 1px solid #000; padding: 8px;">الجوانب</th>
+                              <th style="border: 1px solid #000; padding: 8px;">التكلفة (ج.م)</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            ${selected.rooms.map(room => `
+                              <tr>
+                                <td style="border: 1px solid #000; padding: 8px;">${room.name}</td>
+                                <td style="border: 1px solid #000; padding: 8px;">${room.type}</td>
+                                <td style="border: 1px solid #000; padding: 8px;">${room.widthCm}</td>
+                                <td style="border: 1px solid #000; padding: 8px;">${room.heightCm}</td>
+                                <td style="border: 1px solid #000; padding: 8px;">${room.sides}</td>
+                                <td style="border: 1px solid #000; padding: 8px;">${room.totalSellPrice.toLocaleString()}</td>
+                              </tr>
+                            `).join('')}
+                          </tbody>
+                        </table>
+                        <div style="margin-top: 10px; text-align: left; font-weight: bold;">
+                          الإجمالي: ${selected.rooms.reduce((sum, room) => sum + room.totalSellPrice, 0).toLocaleString()} ج.م
+                        </div>
+                      </div>
+                      ` : '<p style="margin-bottom: 20px;">لم يتم تسجيل غرف بعد</p>'}
+                      
+                      ${selected.notes ? `
+                      <div style="margin-bottom: 20px;">
+                        <h2 style="margin: 0 0 10px 0; font-size: 18px; border-bottom: 1px solid #000; padding-bottom: 5px;">ملاحظات</h2>
+                        <p style="margin: 0; padding: 10px; background-color: #f9f9f9; border: 1px solid #000;">${selected.notes}</p>
+                      </div>
+                      ` : ''}
+                      
+                      <div style="margin-top: 30px; text-align: center; font-size: 12px; color: #666;">
+                        <p>تم إنشاء هذا الكشف بواسطة نظام أحمد كشك لإدارة الأقمشة والستائر</p>
+                        <p>${new Date().toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                      </div>
+                    </div>
+                  `;
                   
                   const printWindow = window.open('', '_blank');
                   if (!printWindow) {
@@ -372,7 +453,7 @@ export default function InspectionsPage() {
                     <head>
                       <meta charset="UTF-8">
                       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                      <title>طباعة المقايسة - أحمد كشك</title>
+                      <title>كشف المقاسات - أحمد كشك</title>
                       <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
                       <style>
                         @page {
@@ -382,40 +463,14 @@ export default function InspectionsPage() {
                         body {
                           font-family: 'Cairo', sans-serif;
                           margin: 0;
-                          padding: 10px;
+                          padding: 0;
                           background: white;
                           color: black;
-                        }
-                        .no-print, button, input, select, .bg-slate-50 button {
-                          display: none !important;
-                        }
-                        table {
-                          border-collapse: collapse;
-                          width: 100%;
-                          margin-top: 10px;
-                        }
-                        th, td {
-                          border: 1px solid #000;
-                          padding: 8px 10px;
-                          font-size: 10pt;
-                          color: #000;
-                          vertical-align: middle;
-                        }
-                        th {
-                          background-color: #f1f5f9;
-                          font-weight: 800;
-                        }
-                        .bg-slate-50, .bg-white {
-                          background: white !important;
-                          border: 1px solid #000 !important;
-                        }
-                        .text-slate-900, .text-slate-800, .text-slate-700 {
-                          color: black !important;
                         }
                       </style>
                     </head>
                     <body>
-                      ${content.innerHTML}
+                      ${printContent}
                     </body>
                     </html>
                   `);

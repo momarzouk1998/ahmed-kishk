@@ -129,7 +129,7 @@ export default function PipelineTailoringPage() {
     if (!o) return false;
     const s = (o.status || '').trim();
     const ls = (o.localStatus || '').trim();
-    return ls === 'جاري الكي' || ls === 'تمت الخياطة';
+    return ls === 'جاري الكي' || ls === 'تمت الخياطة' || (s === 'في الورشة' && ls.includes('كي'));
   };
 
   const isHistory = (o: any) => {
@@ -140,8 +140,15 @@ export default function PipelineTailoringPage() {
       s === 'تجهيز الاكسسوارات' ||
       s === 'جاهز للاستلام' ||
       s === 'جاهز للتركيب' ||
+      s === 'في التسليمات' ||
+      s === 'في التركيبات' ||
       s === 'مكتمل' ||
-      ls === 'تم الكي وجاهز للاكسسوارات'
+      ls.includes('اكسسوار') ||
+      ls.includes('تسليم') ||
+      ls.includes('تركيب') ||
+      ls.includes('مكتمل') ||
+      ls === 'تم الكي وجاهز للاكسسوارات' ||
+      ls === 'تم التجهيز'
     );
   };
 
@@ -380,7 +387,7 @@ export default function PipelineTailoringPage() {
                           {activeTab === 'IRONING' && (
                             <button
                               type="button"
-                              onClick={() => updateOrderStatus(order.id, 'تجهيز الاكسسوارات', 'تم التجهيز')}
+                              onClick={() => updateOrderStatus(order.id, 'تجهيز الاكسسوارات', 'جاري تجهيز الإكسسوارات')}
                               className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-xl text-xs font-black shadow-xs cursor-pointer transition-colors"
                             >
                               تم الكي والتحويل للإكسسوارات / التسليم ✓
@@ -641,7 +648,7 @@ export default function PipelineTailoringPage() {
               {activeTab === 'IRONING' && (
                 <button
                   type="button"
-                  onClick={() => updateOrderStatus(selectedOrderDetails.id, 'تجهيز الاكسسوارات', 'تم التجهيز')}
+                  onClick={() => updateOrderStatus(selectedOrderDetails.id, 'تجهيز الاكسسوارات', 'جاري تجهيز الإكسسوارات')}
                   className="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-xl text-xs font-black shadow-xs cursor-pointer transition-colors"
                 >
                   تم الكي والتحويل للإكسسوارات / التسليم ✓

@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
-import { fetchPipelineOrders, updatePipelineOrderStatus } from '@/lib/pipelineStore';
+import { fetchPipelineOrders, updatePipelineOrderStatus, PipelineMasterOrder } from '@/lib/pipelineStore';
+import { fetchQuotations } from '@/lib/inspectionsStore';
 
 interface AccessoryItemSpec {
   name: string;
@@ -39,30 +40,83 @@ export default function PipelineAccessoriesPage() {
 
   useEffect(() => {
     async function load() {
-      const stored = await fetchPipelineOrders();
-      if (!stored || stored.length === 0) {
-        setKits([]);
-        return;
-      }
-      const relevant = stored.filter(o => 
-        o.status === 'تجهيز الاكسسوارات' ||
-        o.status === 'جاهز للاستلام' ||
-        o.status === 'جاهز للتركيب' ||
-        o.status === 'مكتمل' ||
-        o.localStatus === 'تم تجهيز الإكسسوارات' ||
-        o.localStatus === 'جاري تجهيز الاكسسوار'
-      );
+      const [storedPipeline, quotations] = await Promise.all([
+        fetchPipelineOrders(),
+        fetchQuotations(),
+      ]);
+
+      const pipelineList = storedPipeline || [];
+      const mappedQuotations: PipelineMasterOrder[] = (quotations || [])
+        .filter(q => (q.status === 'تجهيز الاكسسوارات' || (q.status as string).includes('اكسسوار')) && !pipelineList.some(p => p.orderId === q.id || p.id === q.id || p.id === `ORD-${q.id}` || (p.customerName && q.customerName && p.customerName.trim() === q.customerName.trim())))
+        .map((q: any) => ({
+          id: `ORD-${q.id}`,
+          orderId: q.id,
+          customerName: q.customerName || 'عميل',
+          phone: q.phone || '',
+          address: q.address || '',
+          branch: q.branch || 'الفرع الرئيسي',
+          deliveryDate: q.deliveryDate || '',
+          status: 'تجهيز الاكسسوارات',
+          localStatus: 'جاري تجهيز الإكسسوارات',
+          rooms: q.rooms || [],
+          createdAt: q.date || new Date().toISOString().split('T')[0],
+        }));
+
+      const combined = [...pipelineList, ...mappedQuotations];
+
+      const relevant = combined.filter(o => {
+        const s = (o.status || '').trim();
+        const ls = (o.localStatus || '').trim();
+        return (
+          s === 'تجهيز الاكسسوارات' ||
+          s.includes('اكسسوار') ||
+          s === 'جاهز للاستلام' ||
+          s === 'جاهز للتركيب' ||
+          s === 'في التسليمات' ||
+          s === 'في التركيبات' ||
+          s === 'مكتمل' ||
+          ls.includes('اكسسوار') ||
+          ls.includes('تجهيز')
+        );
+      });
 
       const mapped = relevant.map(o => {
         const defaultItems: AccessoryItemSpec[] = [];
-        (o.rooms || []).forEach(r => {
-          defaultItems.push({ name: `تراك / مجرى ${r.roomName || 'الغرفة'}`, detail: `تراك ألومنيوم سقف (${r.widthCm || 350} سم)`, qty: 2, prepared: false });
-          defaultItems.push({ name: `حامل مجوز ${r.roomName || 'الغرفة'}`, detail: 'أوكسيديه مذهب فاخر', qty: 4, prepared: false });
-          defaultItems.push({ name: `قم جانبي / كاب ${r.roomName || 'الغرفة'}`, detail: 'أوكسيديه شيك', qty: 2, prepared: false });
+        (o.rooms || []).forEach((r: any, idx: number) => {
+          const roomTitle = r.roomName || r.name || `غرفة ${idx + 1}`;
+          const width = r.widthCm || 300;
+          const installType = r.installationType || r.installationCategory || 'مجرى / تراك سقف';
+          
+          defaultItems.push({
+            name: `${installType} — ${roomTitle}`,
+            detail: `العرض: ${width} سم ${r.pipeColor ? `| اللون: ${r.pipeColor}` : ''}`,
+            qty: r.trackMeters || Math.ceil(width / 100) || 2,
+            prepared: false,
+          });
+
+          if (r.pipeAccessories) {
+            if (Number(r.pipeAccessories.sideCaps) > 0) {
+              defaultItems.push({ name: `طبات / كاب جانبي — ${roomTitle}`, detail: `لون: ${r.pipeColor || 'فضي'}`, qty: Number(r.pipeAccessories.sideCaps), prepared: false });
+            }
+            if (Number(r.pipeAccessories.doubleBrackets) > 0) {
+              defaultItems.push({ name: `حوامل مجوز — ${roomTitle}`, detail: `تثبيت مواسير/تراك`, qty: Number(r.pipeAccessories.doubleBrackets), prepared: false });
+            }
+            if (Number(r.pipeAccessories.singleBrackets) > 0) {
+              defaultItems.push({ name: `حوامل مفرد — ${roomTitle}`, detail: `تثبيت مواسير/تراك`, qty: Number(r.pipeAccessories.singleBrackets), prepared: false });
+            }
+            if (Number(r.pipeAccessories.doubleRings) > 0) {
+              defaultItems.push({ name: `حلقات ستائر — ${roomTitle}`, detail: `حلقات فورجيه مذهبة`, qty: Number(r.pipeAccessories.doubleRings), prepared: false });
+            }
+            if (Number(r.pipeAccessories.decorHangers) > 0) {
+              defaultItems.push({ name: `أهِلّة / هوكات ديكور — ${roomTitle}`, detail: `لربط الأجناب`, qty: Number(r.pipeAccessories.decorHangers), prepared: false });
+            }
+          }
         });
 
-        const isPrep = o.status === 'تجهيز الاكسسوارات' && o.localStatus !== 'تم تجهيز الإكسسوارات';
-        const isReady = o.localStatus === 'تم تجهيز الإكسسوارات' || o.status === 'جاهز للاستلام';
+        const s = (o.status || '').trim();
+        const ls = (o.localStatus || '').trim();
+        const isPrep = (s === 'تجهيز الاكسسوارات' || s.includes('اكسسوار')) && ls !== 'تم تجهيز الإكسسوارات' && ls !== 'تم التجهيز' && s !== 'جاهز للاستلام' && s !== 'جاهز للتركيب' && s !== 'مكتمل';
+        const isReady = ls === 'تم تجهيز الإكسسوارات' || ls === 'تم التجهيز';
 
         return {
           id: o.id,
@@ -73,7 +127,7 @@ export default function PipelineAccessoriesPage() {
           branch: o.branch || 'الفرع الرئيسي',
           status: (isPrep ? 'جاري التجهيز' : isReady ? 'تم التجهيز' : 'في التركيبات') as any,
           items: defaultItems.length > 0 ? defaultItems : [
-            { name: 'تراك ألومنيوم سقف', detail: 'مجرى ألومنيوم سادة (مقاس 3.50م)', qty: 2, prepared: false },
+            { name: 'تراك ألومنيوم سقف', detail: 'مجرى ألومنيوم سادة', qty: 2, prepared: false },
             { name: 'حامل مجوز فورجيه', detail: 'أوكسيديه مذهب', qty: 4, prepared: false },
             { name: 'قم جانبي / كاب', detail: 'أوكسيديه شيك', qty: 2, prepared: false },
           ],
@@ -125,10 +179,13 @@ export default function PipelineAccessoriesPage() {
     }));
   };
 
-  const updateKitStatus = (kitId: string, status: AccessoryKit['status']) => {
+  const updateKitStatus = async (kitId: string, status: AccessoryKit['status']) => {
     setKits(prev => prev.map(k => k.id === kitId ? { ...k, status } : k));
-    const nextMaster = status === 'تم التجهيز' ? 'جاهز للاستلام' : 'تجهيز الاكسسوارات';
-    updatePipelineOrderStatus(kitId, nextMaster, status);
+    if (status === 'تم التجهيز') {
+      await updatePipelineOrderStatus(kitId, 'تجهيز الاكسسوارات', 'تم تجهيز الإكسسوارات');
+    } else {
+      await updatePipelineOrderStatus(kitId, 'جاهز للاستلام', 'جاهز للتسليم بالمعرض');
+    }
   };
 
   const handleAddCustomItem = (e: React.FormEvent) => {
