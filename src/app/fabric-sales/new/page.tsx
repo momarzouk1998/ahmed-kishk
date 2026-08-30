@@ -320,15 +320,15 @@ export default function NewSalesInvoicePOSPage() {
     <PageShell title="نقطة البيع والكاشير — فواتير المبيعات">
       <div className="max-w-[1600px] mx-auto pb-4">
         {/* 3-Column POS Layout (Col 1: Catalog / Col 2: Customer & Touch / Col 3: Invoice Items & Actions) */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-2.5 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-2.5 items-stretch">
           
           {/* ------------------------------------------------------------- */}
           {/* COLUMN 1 (4 cols - RIGHT): Products Catalog */}
           {/* ------------------------------------------------------------- */}
-          <div className="lg:col-span-4 space-y-2 order-1">
+          <div className="lg:col-span-4 order-1 flex flex-col gap-2">
             
             {/* Search & Category Filter Bar */}
-            <div className="bg-white p-2 rounded-2xl border border-slate-200 shadow-soft space-y-1.5">
+            <div className="bg-white p-2 rounded-2xl border border-slate-200 shadow-soft space-y-1.5 flex-shrink-0">
               <div className="relative">
                 <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-base">
                   search
@@ -382,9 +382,9 @@ export default function NewSalesInvoicePOSPage() {
               </div>
             </div>
 
-            {/* Products Grid — Largest Column */}
-            <div className="bg-white p-2.5 rounded-2xl border border-slate-200 shadow-soft">
-              <div className="flex justify-between items-center mb-1.5">
+            {/* Products Grid — flex-1 to fill remaining height */}
+            <div className="bg-white p-2.5 rounded-2xl border border-slate-200 shadow-soft flex-1 flex flex-col min-h-0">
+              <div className="flex justify-between items-center mb-1.5 flex-shrink-0">
                 <h3 className="font-black text-slate-900 text-[11.5px] flex items-center gap-1">
                   <span className="material-symbols-outlined text-amber-500 text-base">grid_view</span>
                   <span>الأصناف المتاحة ({filteredProducts.length}) — اضغط على الصنف لإضافته فوراً:</span>
@@ -392,18 +392,20 @@ export default function NewSalesInvoicePOSPage() {
               </div>
 
               {filteredProducts.length === 0 ? (
-                <div className="py-8 text-center text-slate-400">
-                  <span className="material-symbols-outlined text-3xl block mb-1 text-slate-300">inventory_2</span>
-                  <p className="text-xs font-bold">لا توجد أقمشة مطابقة للتصنيف أو البحث الحالي</p>
+                <div className="flex-1 flex items-center justify-center text-slate-400">
+                  <div className="text-center">
+                    <span className="material-symbols-outlined text-3xl block mb-1 text-slate-300">inventory_2</span>
+                    <p className="text-xs font-bold">لا توجد أقمشة مطابقة للتصنيف أو البحث الحالي</p>
+                  </div>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 gap-1.5 max-h-[calc(100vh-220px)] overflow-y-auto pr-1">
+                <div className="grid grid-cols-2 gap-1.5 flex-1 overflow-y-auto pr-1 content-start">
                   {filteredProducts.map(prod => (
                     <button
                       key={prod.id}
                       type="button"
                       onClick={() => handleAddProduct(prod)}
-                      className="text-right p-1.5 rounded-xl border border-slate-200 bg-white hover:bg-amber-50/90 hover:border-amber-400 transition-all group cursor-pointer flex flex-col gap-0.5 shadow-3xs"
+                      className="text-right p-1.5 rounded-xl border border-slate-200 bg-white hover:bg-amber-50/90 hover:border-amber-400 transition-all group cursor-pointer flex flex-col gap-0.5 shadow-3xs h-fit"
                     >
                       <span className="font-bold text-slate-900 text-[10px] leading-snug group-hover:text-amber-900 break-words whitespace-normal w-full">
                         {prod.name}
@@ -422,7 +424,7 @@ export default function NewSalesInvoicePOSPage() {
           {/* ------------------------------------------------------------- */}
           {/* COLUMN 2 (4 cols - MIDDLE): Customer Info, Discount & Touch Keypad */}
           {/* ------------------------------------------------------------- */}
-          <div className="lg:col-span-4 space-y-2 order-2">
+          <div className="lg:col-span-4 order-2 flex flex-col gap-2">
             
             {/* Customer & Branch Header Card */}
             <div className="bg-white p-2.5 rounded-2xl border border-slate-200 shadow-soft space-y-2">
@@ -550,8 +552,8 @@ export default function NewSalesInvoicePOSPage() {
               </div>
             </div>
 
-            {/* Light Touch Keypad Panel */}
-            <div className="bg-slate-50 text-slate-900 p-2.5 rounded-2xl border border-slate-200 shadow-soft space-y-1.5">
+            {/* Light Touch Keypad Panel — flex-1 to fill remaining height */}
+            <div className="bg-slate-50 text-slate-900 p-2.5 rounded-2xl border border-slate-200 shadow-soft space-y-1.5 flex-1">
               <div className="flex justify-between items-center border-b border-slate-200 pb-1">
                 <div className="flex items-center gap-1">
                   <button
