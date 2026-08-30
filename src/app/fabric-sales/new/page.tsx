@@ -586,7 +586,7 @@ export default function NewSalesInvoicePOSPage() {
               {touchMode && (
                 <>
                   {/* Quick Fraction Meter Buttons (Only 3: + ¼م, + ½م, + ¾م) */}
-                  <div className="grid grid-cols-3 gap-1">
+                  <div className="grid grid-cols-3 gap-1.5">
                     {[
                       { label: '+ ¼م', val: 0.25 },
                       { label: '+ ½م', val: 0.50 },
@@ -596,21 +596,21 @@ export default function NewSalesInvoicePOSPage() {
                         key={fIdx}
                         type="button"
                         onClick={() => handleAddFraction(frac.val)}
-                        className="bg-amber-100 hover:bg-amber-500 hover:text-white text-amber-950 font-black py-1 rounded-lg text-[11px] transition-colors cursor-pointer text-center border border-amber-300 shadow-3xs"
+                        className="bg-amber-100 hover:bg-amber-500 hover:text-white text-amber-950 font-black py-2.5 rounded-xl text-sm transition-colors cursor-pointer text-center border border-amber-300 shadow-3xs"
                       >
                         {frac.label}
                       </button>
                     ))}
                   </div>
 
-                  {/* Main Compact Light Numeric Numpad */}
-                  <div className="grid grid-cols-4 gap-1 pt-0.5">
+                  {/* Main Numeric Numpad — Large buttons */}
+                  <div className="grid grid-cols-4 gap-1.5 pt-1">
                     {['7', '8', '9'].map(n => (
                       <button
                         key={n}
                         type="button"
                         onClick={() => handleKeypadPress(n)}
-                        className="bg-white hover:bg-amber-50 text-slate-950 font-mono font-black text-base py-1 rounded-lg border border-slate-200 shadow-3xs active:scale-95 transition-all cursor-pointer"
+                        className="bg-white hover:bg-amber-50 text-slate-950 font-mono font-black text-2xl py-3 rounded-xl border border-slate-200 shadow-3xs active:scale-95 transition-all cursor-pointer"
                       >
                         {n}
                       </button>
@@ -618,9 +618,9 @@ export default function NewSalesInvoicePOSPage() {
                     <button
                       type="button"
                       onClick={() => handleKeypadPress('BACKSPACE')}
-                      className="bg-rose-50 hover:bg-rose-500 text-rose-700 hover:text-white font-black py-1 rounded-lg border border-rose-200 flex items-center justify-center cursor-pointer transition-colors shadow-3xs"
+                      className="bg-rose-50 hover:bg-rose-500 text-rose-700 hover:text-white font-black py-3 rounded-xl border border-rose-200 flex items-center justify-center cursor-pointer transition-colors shadow-3xs"
                     >
-                      <span className="material-symbols-outlined text-[16px]">backspace</span>
+                      <span className="material-symbols-outlined text-[22px]">backspace</span>
                     </button>
 
                     {['4', '5', '6'].map(n => (
@@ -628,7 +628,7 @@ export default function NewSalesInvoicePOSPage() {
                         key={n}
                         type="button"
                         onClick={() => handleKeypadPress(n)}
-                        className="bg-white hover:bg-amber-50 text-slate-950 font-mono font-black text-base py-1 rounded-lg border border-slate-200 shadow-3xs active:scale-95 transition-all cursor-pointer"
+                        className="bg-white hover:bg-amber-50 text-slate-950 font-mono font-black text-2xl py-3 rounded-xl border border-slate-200 shadow-3xs active:scale-95 transition-all cursor-pointer"
                       >
                         {n}
                       </button>
@@ -636,9 +636,9 @@ export default function NewSalesInvoicePOSPage() {
                     <button
                       type="button"
                       onClick={() => handleKeypadPress('CLEAR')}
-                      className="bg-amber-50 hover:bg-amber-100 text-amber-900 font-black py-1 rounded-lg border border-amber-200 text-[10px] cursor-pointer transition-colors shadow-3xs"
+                      className="bg-amber-50 hover:bg-amber-100 text-amber-900 font-black py-3 rounded-xl border border-amber-200 text-sm cursor-pointer transition-colors shadow-3xs"
                     >
-                      تفريغ C
+                      C
                     </button>
 
                     {['1', '2', '3'].map(n => (
@@ -646,7 +646,7 @@ export default function NewSalesInvoicePOSPage() {
                         key={n}
                         type="button"
                         onClick={() => handleKeypadPress(n)}
-                        className="bg-white hover:bg-amber-50 text-slate-950 font-mono font-black text-base py-1 rounded-lg border border-slate-200 shadow-3xs active:scale-95 transition-all cursor-pointer"
+                        className="bg-white hover:bg-amber-50 text-slate-950 font-mono font-black text-2xl py-3 rounded-xl border border-slate-200 shadow-3xs active:scale-95 transition-all cursor-pointer"
                       >
                         {n}
                       </button>
@@ -654,7 +654,7 @@ export default function NewSalesInvoicePOSPage() {
                     <button
                       type="button"
                       onClick={() => handleKeypadPress('.')}
-                      className="bg-white hover:bg-amber-50 text-slate-950 font-mono font-black text-base py-1 rounded-lg border border-slate-200 shadow-3xs active:scale-95 transition-all cursor-pointer"
+                      className="bg-white hover:bg-amber-50 text-slate-950 font-mono font-black text-2xl py-3 rounded-xl border border-slate-200 shadow-3xs active:scale-95 transition-all cursor-pointer"
                     >
                       .
                     </button>
@@ -662,7 +662,7 @@ export default function NewSalesInvoicePOSPage() {
                     <button
                       type="button"
                       onClick={() => handleKeypadPress('0')}
-                      className="col-span-2 bg-white hover:bg-amber-50 text-slate-950 font-mono font-black text-base py-1 rounded-lg border border-slate-200 shadow-3xs active:scale-95 transition-all cursor-pointer"
+                      className="col-span-2 bg-white hover:bg-amber-50 text-slate-950 font-mono font-black text-2xl py-3 rounded-xl border border-slate-200 shadow-3xs active:scale-95 transition-all cursor-pointer"
                     >
                       0
                     </button>
@@ -677,10 +677,10 @@ export default function NewSalesInvoicePOSPage() {
                           setKeypadBuffer('');
                         }
                       }}
-                      className="col-span-2 bg-emerald-600 hover:bg-emerald-500 text-white font-black py-1 rounded-lg flex items-center justify-center gap-1 text-[10.5px] cursor-pointer shadow-xs transition-colors"
+                      className="col-span-2 bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3 rounded-xl flex items-center justify-center gap-1 text-sm cursor-pointer shadow-xs transition-colors"
                     >
                       <span>الصنف التالي</span>
-                      <span className="material-symbols-outlined text-[13px]">arrow_downward</span>
+                      <span className="material-symbols-outlined text-[16px]">arrow_downward</span>
                     </button>
                   </div>
                 </>
