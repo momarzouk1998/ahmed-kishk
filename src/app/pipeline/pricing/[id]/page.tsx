@@ -300,9 +300,9 @@ export default function PricingDetailPage() {
         const blackoutCost = effectiveBlackoutMeters * blackoutP;
 
         // Tape Costs
-        const heavyTapeCost = effectiveHeavyMeters * (TAPE_PRICES[heavyTapeType] || 50);
-        const sheerTapeCost = effectiveSheerMeters * (TAPE_PRICES[sheerTapeType] || 140);
-        const blackoutTapeCost = effectiveBlackoutMeters * (TAPE_PRICES[blackoutTapeType] || 50);
+        const heavyTapeCost = heavyEnabled ? effectiveHeavyMeters * (heavyTapePrice || 0) : 0;
+        const sheerTapeCost = sheerEnabled ? effectiveSheerMeters * (sheerTapePrice || 0) : 0;
+        const blackoutTapeCost = blackoutEnabled ? effectiveBlackoutMeters * (blackoutTapePrice || 0) : 0;
         const totalTapeCost = heavyTapeCost + sheerTapeCost + blackoutTapeCost;
 
         // Active layers count
@@ -314,12 +314,12 @@ export default function PricingDetailPage() {
 
         if (installationCategory === 'تراك') {
           trackMeters = editingWidthM * activeLayersCount;
-          trackPrice = trackPricePerMeter || ACCESSORY_PRICES.trackPerMeter;
+          trackPrice = trackPricePerMeter || 0;
           installationTotal = trackMeters * trackPrice;
         } else {
           // Forge pipe calculation
           const pipeMeters = editingWidthM;
-          const pipeBaseCost = pipeMeters * (pipePricePerMeter || 65);
+          const pipeBaseCost = pipeMeters * (pipePricePerMeter || 0);
           const accessoriesCost =
             (pipeAccessories.doubleBrackets * ACCESSORY_PRICES.doubleBracket) +
             (pipeAccessories.singleBrackets * ACCESSORY_PRICES.singleBracket) +
@@ -371,7 +371,7 @@ export default function PricingDetailPage() {
           pipeAccessories,
 
           tapeMeters: Math.round((effectiveHeavyMeters + effectiveSheerMeters + effectiveBlackoutMeters) * 100) / 100,
-          tapePrice: 50,
+          tapePrice: heavyTapePrice || sheerTapePrice || 0,
           tailorPricePerSide: 0,
           installFeeEnabled,
           installFee: effectiveInstallFee,
