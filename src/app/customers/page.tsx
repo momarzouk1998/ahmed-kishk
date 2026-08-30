@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
@@ -821,7 +821,7 @@ export default function CustomersPage() {
                   className="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900 bg-slate-50 focus:outline-none"
                 >
                   <option value="الفرع الرئيسي">الفرع الرئيسي — القاهرة</option>
-                  <option value="فرع عرابي">فرع عرابي — الشيخ زايد</option>
+                  <option value="فرع عرابي">فرع عرابي</option>
                   <option value="فرع التجمع">فرع التجمع الخامس</option>
                   <option value="فرع الثلاثيني">فرع الثلاثيني</option>
                   <option value="فرع عمر أفندي">فرع عمر أفندي</option>

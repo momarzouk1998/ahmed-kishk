@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
@@ -156,7 +156,7 @@ export default function ReportsPage() {
               >
                 <option value="ALL">🌐 جميع الفروع</option>
                 <option value="الفرع الرئيسي">الفرع الرئيسي — القاهرة</option>
-                <option value="فرع عرابي">فرع عرابي — الشيخ زايد</option>
+                <option value="فرع عرابي">فرع عرابي</option>
                 <option value="فرع التجمع">فرع التجمع الخامس</option>
                 <option value="فرع الثلاثيني">فرع الثلاثيني</option>
                 <option value="فرع عمر أفندي">فرع عمر أفندي</option>

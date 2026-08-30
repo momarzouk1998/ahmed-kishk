@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
@@ -174,7 +174,7 @@ export default function NewPurchaseInvoicePage() {
                   className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 font-bold text-slate-900 focus:outline-none bg-slate-50 cursor-pointer"
                 >
                   <option value="الفرع الرئيسي">الفرع الرئيسي — القاهرة</option>
-                  <option value="فرع عرابي">فرع عرابي — الشيخ زايد</option>
+                  <option value="فرع عرابي">فرع عرابي</option>
                 </select>
               </div>
             </div>
