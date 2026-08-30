@@ -90,8 +90,8 @@ export default function PipelineAccessoriesPage() {
           
           defaultItems.push({
             name: `${installType} — ${roomTitle}`,
-            detail: `العرض: ${width} سم ${r.pipeColor ? `| اللون: ${r.pipeColor}` : ''}`,
-            qty: r.trackMeters || Math.ceil(width / 100) || 2,
+            detail: `مقاس الحائط: ${width} سم × ${r.heightCm || '—'} سم ${r.pipeColor ? `| اللون: ${r.pipeColor}` : ''}`,
+            qty: r.trackMeters || (width / 100),
             prepared: false,
           });
 

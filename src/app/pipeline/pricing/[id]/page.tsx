@@ -184,38 +184,38 @@ export default function PricingDetailPage() {
     const hMul = room.heavyMultiplier ?? (TAPE_MULTIPLIERS[hTape] || 2.0);
     const hM = room.heavyMeters || Math.round(widthM * hMul * 100) / 100;
     setHeavyTapeType(hTape);
-    setHeavyTapePrice(TAPE_PRICES[hTape] || 50);
+    setHeavyTapePrice(TAPE_PRICES[hTape] || 0);
     setHeavyMultiplier(hMul);
     setHeavyMeters(hM);
-    setHeavyCode(room.heavyFabricCode || 'HV-201');
-    setHeavyP(room.heavyPrice || 380);
+    setHeavyCode(room.heavyFabricCode || '');
+    setHeavyP(room.heavyPrice || 0);
 
     const sTape = room.sheerTapeType || 'ويفي';
     const sMul = room.sheerMultiplier ?? (TAPE_MULTIPLIERS[sTape] || 2.5);
     const sM = room.sheerMeters || Math.round(widthM * sMul * 100) / 100;
     setSheerTapeType(sTape);
-    setSheerTapePrice(TAPE_PRICES[sTape] || 140);
+    setSheerTapePrice(TAPE_PRICES[sTape] || 0);
     setSheerMultiplier(sMul);
     setSheerMeters(sM);
-    setSheerCode(room.sheerFabricCode || 'SH-101');
-    setSheerP(room.sheerPrice || 160);
+    setSheerCode(room.sheerFabricCode || '');
+    setSheerP(room.sheerPrice || 0);
 
     const bkTape = room.blackoutTapeType || 'جراب';
     const bkMul = room.blackoutMultiplier ?? 1.20;
     const bkM = room.blackoutMeters || Math.round(widthM * bkMul * 100) / 100;
     setBlackoutTapeType(bkTape);
-    setBlackoutTapePrice(TAPE_PRICES[bkTape] || 50);
+    setBlackoutTapePrice(TAPE_PRICES[bkTape] || 0);
     setBlackoutMultiplier(bkMul);
     setBlackoutMeters(bkM);
-    setBlackoutCode(room.blackoutFabricCode || 'BK-301');
-    setBlackoutP(room.blackoutPrice || 250);
+    setBlackoutCode(room.blackoutFabricCode || '');
+    setBlackoutP(room.blackoutPrice || 0);
 
     const isPipe = room.installationType?.includes('مواسير') || room.installationCategory === 'مواسير فورجيه';
     setInstallationCategory(isPipe ? 'مواسير فورجيه' : 'تراك');
-    setTrackPricePerMeter(room.trackPrice || 100);
+    setTrackPricePerMeter(room.trackPrice || 0);
     setPipeTypeDescription(room.pipeTypeDescription || 'سادة');
     setPipeColor(room.pipeColor || 'فضى');
-    setPipePricePerMeter(room.pipePricePerMeter || 65);
+    setPipePricePerMeter(room.pipePricePerMeter || 0);
     setPipeAccessories(room.pipeAccessories || {
       doubleBrackets: isPipe ? 2 : 0,
       singleBrackets: 0,
@@ -225,14 +225,14 @@ export default function PricingDetailPage() {
     });
 
     setInstallFeeEnabled(room.installFeeEnabled !== false);
-    setInstallFee(room.installFee ?? 125);
+    setInstallFee(room.installFee ?? 0);
     setTransportFeeEnabled(!!room.transportFeeEnabled);
     setTransportFee(room.transportFee ?? 0);
   };
 
   const handleHeavyTapeSelect = (tapeName: string) => {
     setHeavyTapeType(tapeName);
-    setHeavyTapePrice(TAPE_PRICES[tapeName] || 50);
+    setHeavyTapePrice(TAPE_PRICES[tapeName] || 0);
     const mul = TAPE_MULTIPLIERS[tapeName] || 2.0;
     setHeavyMultiplier(mul);
     setHeavyMeters(Math.round(editingWidthM * mul * 100) / 100);
@@ -240,7 +240,7 @@ export default function PricingDetailPage() {
 
   const handleSheerTapeSelect = (tapeName: string) => {
     setSheerTapeType(tapeName);
-    setSheerTapePrice(TAPE_PRICES[tapeName] || 140);
+    setSheerTapePrice(TAPE_PRICES[tapeName] || 0);
     const mul = TAPE_MULTIPLIERS[tapeName] || 2.5;
     setSheerMultiplier(mul);
     setSheerMeters(Math.round(editingWidthM * mul * 100) / 100);
@@ -248,8 +248,8 @@ export default function PricingDetailPage() {
 
   const handleBlackoutTapeSelect = (tapeName: string) => {
     setBlackoutTapeType(tapeName);
-    setBlackoutTapePrice(TAPE_PRICES[tapeName] || 50);
-    const mul = TAPE_MULTIPLIERS[tapeName] || 1.2;
+    setBlackoutTapePrice(TAPE_PRICES[tapeName] || 0);
+    const mul = blackoutMultiplier || 1.20;
     setBlackoutMultiplier(mul);
     setBlackoutMeters(Math.round(editingWidthM * mul * 100) / 100);
   };

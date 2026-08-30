@@ -143,11 +143,11 @@ export interface QuotationOrder {
 }
 
 export const TAPE_PRICES: Record<string, number> = {
-  '٣ فتلة': 50,
-  'إيكيا': 70,
-  'ويفي': 140,
-  'جراب': 50,
-  'حلقات ديكور': 70,
+  '٣ فتلة': 0,
+  'إيكيا': 0,
+  'ويفي': 0,
+  'جراب': 0,
+  'حلقات ديكور': 0,
 };
 
 export const TAPE_MULTIPLIERS: Record<string, number> = {
@@ -416,7 +416,7 @@ export function syncInspectionToPricing(inspectionOrId: InspectionData | string)
       heavyTapeType,
       heavyMultiplier,
       heavyMeters,
-      heavyPrice: 380,
+      heavyPrice: 0,
 
       // Sheer 2nd
       sheerFabricCode: 'SH-101',
@@ -424,7 +424,7 @@ export function syncInspectionToPricing(inspectionOrId: InspectionData | string)
       sheerTapeType,
       sheerMultiplier,
       sheerMeters,
-      sheerPrice: 160,
+      sheerPrice: 0,
 
       // Blackout 3rd
       blackoutFabricCode: '',
@@ -436,31 +436,25 @@ export function syncInspectionToPricing(inspectionOrId: InspectionData | string)
 
       // Installation Category
       installationCategory: isPipe ? 'مواسير فورجيه' : 'تراك',
-      trackMeters: isPipe ? 0 : widthMeters * 2, // 2 tracks for 2 layers
-      trackPrice: isPipe ? 0 : 100,
+      trackMeters: widthMeters,
+      trackPrice: 0,
 
       pipeTypeDescription: 'سادة',
       pipeColor: 'فضى',
-      pipePricePerMeter: 65,
+      pipePricePerMeter: 0,
       pipeAccessories: {
-        doubleBrackets: 2,
+        doubleBrackets: isPipe ? 2 : 0,
         singleBrackets: 0,
-        sideCaps: 2,
+        sideCaps: isPipe ? 2 : 0,
         doubleRings: 0,
         decorHangers: 0,
       },
 
       tapeMeters: Math.round((sheerMeters + heavyMeters) * 100) / 100,
-      tapePrice: 50,
+      tapePrice: 0,
       tailorPricePerSide: 0,
-      installFee: 125,
-      totalSellPrice: Math.round(
-        (heavyMeters * 380) +
-        (sheerMeters * 160) +
-        (isPipe ? (widthMeters * 65 + 2 * 55 + 2 * 50) : (widthMeters * 2 * 100)) +
-        (heavyMeters * 50 + sheerMeters * 140) +
-        125
-      ),
+      installFee: 0,
+      totalSellPrice: 0,
     };
   });
 

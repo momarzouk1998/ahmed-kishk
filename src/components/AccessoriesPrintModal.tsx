@@ -47,7 +47,7 @@ export default function AccessoriesPrintModal({ isOpen, onClose, data }: Accesso
           <td style="text-align:center; font-weight:bold;">${idx + 1}</td>
           <td style="font-weight:bold; color:#0f172a;">${item.name}</td>
           <td style="color:#475569;">${item.detail || '—'}</td>
-          <td style="text-align:center; font-family:monospace; font-weight:900; font-size:10pt; color:#0f172a;">${item.qty} قطعة</td>
+          <td style="text-align:center; font-family:monospace; font-weight:900; font-size:10pt; color:#0f172a;">${item.qty} ${item.name.includes('مجرى') || item.name.includes('تراك') || item.name.includes('مواسير') ? 'متر' : 'قطعة'}</td>
           <td style="text-align:center; font-weight:700; color:${item.prepared ? '#166534' : '#b45309'};">${item.prepared ? '✓ جهزت' : 'قيد التجهيز'}</td>
         </tr>
       `;
