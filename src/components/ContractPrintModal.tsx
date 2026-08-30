@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { formatDateOnly } from '@/lib/dateUtils';
+import Logo from '@/components/Logo';
 
 export interface PrintRoomItem {
   id: string;
@@ -38,6 +39,7 @@ export interface PrintContractData {
   customerName: string;
   phone: string;
   address: string;
+  branch?: string;
   date: string;
   deliveryDate?: string;
   estimatorName: string;
@@ -57,244 +59,536 @@ export default function ContractPrintModal({ isOpen, onClose, data }: ContractPr
   if (!isOpen || !data) return null;
 
   const handlePrint = () => {
-    // Get the printable content
-    const printableContent = document.getElementById('printable-contract-modal');
-    if (!printableContent) return;
-
-    // Create a new window for printing
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
-      alert('يرجى السماح بالنوافذ المنبثقة للطباعة');
+      window.print();
       return;
     }
 
-    // Write the content to the new window
+    let roomsRowsHtml = '';
+    (data.rooms || []).forEach((room, rIdx) => {
+      roomsRowsHtml += `
+        <tr style="background:#fffbeb; font-weight:bold; border:1px solid #cbd5e1;">
+          <td colspan="5" style="padding:5px 8px; text-align:right; color:#78350f; font-size:9.5pt; border:1px solid #cbd5e1;">
+            ${rIdx + 1}. ${room.name} — (عرض: ${room.widthCm} سم × ارتفاع: ${room.heightCm} سم | ${room.sides === 2 ? 'جنبين' : 'جنب واحد'})
+          </td>
+        </tr>
+      `;
+
+      if (room.heavyMeters > 0) {
+        roomsRowsHtml += `
+          <tr>
+            <td style="font-weight:700; color:#334155;">1. قماش الجوانب (الثقيل)</td>
+            <td>${room.heavyFabricName || 'قطيفة جاجوار تركيات'} <span style="font-size:8pt; color:#64748b;">(شريط ${room.heavyTapeType || '٣ فتلة'} ×${room.heavyMultiplier ?? 2.0})</span></td>
+            <td style="text-align:center; font-family:monospace; font-weight:700;">${room.heavyMeters} م</td>
+            <td style="text-align:center; font-family:monospace;">${room.heavyPrice} ج</td>
+            <td style="text-align:center; font-family:monospace; font-weight:800; color:#0f172a;">${(room.heavyMeters * room.heavyPrice).toLocaleString()} ج</td>
+          </tr>
+        `;
+      }
+
+      if (room.sheerMeters > 0) {
+        roomsRowsHtml += `
+          <tr>
+            <td style="font-weight:700; color:#334155;">2. قماش الخلفية (الشيفون)</td>
+            <td>${room.sheerFabricName || 'شيفون حرير فاخر'} <span style="font-size:8pt; color:#64748b;">(شريط ${room.sheerTapeType || 'ويفي'} ×${room.sheerMultiplier ?? 2.5})</span></td>
+            <td style="text-align:center; font-family:monospace; font-weight:700;">${room.sheerMeters} م</td>
+            <td style="text-align:center; font-family:monospace;">${room.sheerPrice} ج</td>
+            <td style="text-align:center; font-family:monospace; font-weight:800; color:#0f172a;">${(room.sheerMeters * room.sheerPrice).toLocaleString()} ج</td>
+          </tr>
+        `;
+      }
+
+      if (room.blackoutMeters > 0 && room.blackoutFabricName) {
+        roomsRowsHtml += `
+          <tr>
+            <td style="font-weight:700; color:#334155;">3. عازل البلاك آوت</td>
+            <td>${room.blackoutFabricName || 'بلاك آوت عازل'} <span style="font-size:8pt; color:#64748b;">(معامل ×${room.blackoutMultiplier ?? 1.20})</span></td>
+            <td style="text-align:center; font-family:monospace; font-weight:700;">${room.blackoutMeters} م</td>
+            <td style="text-align:center; font-family:monospace;">${room.blackoutPrice} ج</td>
+            <td style="text-align:center; font-family:monospace; font-weight:800; color:#0f172a;">${(room.blackoutMeters * room.blackoutPrice).toLocaleString()} ج</td>
+          </tr>
+        `;
+      }
+
+      // Accessories
+      const accTotal = (room.trackMeters * room.trackPrice) +
+        (room.tapeMeters * room.tapePrice) +
+        (room.sides * room.tailorPricePerSide) +
+        room.installFee;
+
+      roomsRowsHtml += `
+        <tr style="background:#f8fafc; font-size:8.5pt; color:#475569;">
+          <td style="font-weight:700;">التجهيزات والمصنعيات</td>
+          <td colspan="3">
+            مجرى (${room.trackMeters}م × ${room.trackPrice}ج) + شريط (${room.tapeMeters}م × ${room.tapePrice}ج) + خياطة الورشة (${room.sides} جنب × ${room.tailorPricePerSide}ج) + تركيب (${room.installFee}ج)
+          </td>
+          <td style="text-align:center; font-family:monospace; font-weight:700; color:#0f172a;">${accTotal.toLocaleString()} ج</td>
+        </tr>
+        <tr style="background:#f1f5f9; font-weight:900; border-bottom:2px solid #cbd5e1;">
+          <td colspan="4" style="text-align:left; padding-left:10px; color:#0f172a;">إجمالي تكلفة ${room.name}:</td>
+          <td style="text-align:center; font-family:monospace; font-size:10pt; color:#b45309; background:#fef3c7;">${room.totalSellPrice.toLocaleString()} ج</td>
+        </tr>
+      `;
+    });
+
     printWindow.document.write(`
       <!DOCTYPE html>
       <html dir="rtl" lang="ar">
       <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>طباعة العقد - أحمد كشك</title>
-        <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+        <title>عقد ومقايسة - ${data.customerName}</title>
+        <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
         <style>
           @page {
             size: A4 portrait;
-            margin: 10mm;
+            margin: 8mm 10mm;
+          }
+          * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
           }
           body {
-            font-family: 'Cairo', sans-serif;
-            margin: 0;
-            padding: 10px;
-            background: white;
-            color: black;
+            font-family: 'Cairo', system-ui, -apple-system, sans-serif;
+            background: #ffffff;
+            color: #0f172a;
+            direction: rtl;
+            font-size: 9.5pt;
+            line-height: 1.3;
+            padding: 5px;
           }
-          table {
-            border-collapse: collapse;
+          .sheet-container {
             width: 100%;
-            margin-top: 10px;
+            max-width: 100%;
+            margin: 0 auto;
+            border: 2px solid #0f172a;
+            border-radius: 8px;
+            padding: 12px 14px;
+            background: #ffffff;
           }
-          th, td {
-            border: 1px solid #000;
-            padding: 8px 10px;
+          .header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #0f172a;
+            padding-bottom: 8px;
+            margin-bottom: 10px;
+          }
+          .logo-title-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+          }
+          .brand-logo-container {
+            width: 44px;
+            height: 44px;
+            min-width: 44px;
+            max-width: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 2px;
+            background: #ffffff;
+          }
+          .brand-logo-container img {
+            width: 100%;
+            height: 100%;
+            max-width: 40px;
+            max-height: 40px;
+            object-fit: contain;
+            display: block;
+          }
+          .company-name {
+            font-size: 14pt;
+            font-weight: 900;
+            color: #0f172a;
+            line-height: 1.1;
+          }
+          .doc-subtitle {
+            font-size: 9pt;
+            font-weight: 700;
+            color: #b45309;
+            margin-top: 2px;
+          }
+          .header-meta {
+            text-align: left;
+            font-family: monospace;
+          }
+          .meta-badge {
+            background: #f1f5f9;
+            border: 1px solid #94a3b8;
+            padding: 3px 8px;
+            border-radius: 5px;
+            font-weight: 800;
+            font-size: 9.5pt;
+            color: #0f172a;
+            display: inline-block;
+          }
+          .meta-date {
+            font-size: 8pt;
+            color: #64748b;
+            margin-top: 2px;
+          }
+          .info-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 10px;
+            background: #f8fafc;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            overflow: hidden;
+          }
+          .info-table td {
+            padding: 5px 8px;
+            border: 1px solid #cbd5e1;
+            font-size: 9pt;
+          }
+          .info-label {
+            font-weight: 700;
+            color: #475569;
+            width: 14%;
+            background: #f1f5f9;
+          }
+          .info-val {
+            font-weight: 800;
+            color: #0f172a;
+            width: 36%;
+          }
+          .section-title {
             font-size: 10pt;
-            color: #000;
+            font-weight: 900;
+            color: #0f172a;
+            margin-bottom: 5px;
+          }
+          .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 10px;
+          }
+          .items-table th, .items-table td {
+            border: 1px solid #334155;
+            padding: 5px 6px;
+            font-size: 8.5pt;
             vertical-align: middle;
           }
-          th {
-            background-color: #f1f5f9;
+          .items-table th {
+            background-color: #0f172a !important;
+            color: #ffffff !important;
             font-weight: 800;
+            font-size: 8.5pt;
+            text-align: center;
           }
-          .no-print {
-            display: none !important;
+          .financial-card {
+            background: #f8fafc;
+            border: 1.5px solid #cbd5e1;
+            border-radius: 6px;
+            padding: 8px 10px;
+            margin-bottom: 8px;
           }
-          button, input {
-            display: none !important;
+          .fin-grid {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            margin-top: 5px;
+          }
+          .fin-box {
+            flex: 1;
+            padding: 6px 8px;
+            border-radius: 6px;
+            border: 1px solid #cbd5e1;
+            text-align: center;
+            background: #ffffff;
+          }
+          .fin-label {
+            font-size: 8pt;
+            font-weight: 700;
+            color: #64748b;
+            display: block;
+            margin-bottom: 2px;
+          }
+          .fin-val {
+            font-size: 12pt;
+            font-weight: 900;
+            font-family: monospace;
+            color: #0f172a;
+          }
+          .fin-box-paid {
+            background: #f0fdf4;
+            border-color: #86efac;
+          }
+          .fin-box-paid .fin-label { color: #166534; }
+          .fin-box-paid .fin-val { color: #14532d; }
+          .fin-box-remain {
+            background: #fff1f2;
+            border-color: #fca5a5;
+          }
+          .fin-box-remain .fin-label { color: #9f1239; }
+          .fin-box-remain .fin-val { color: #881337; }
+          .footer-bar {
+            border-top: 1px solid #cbd5e1;
+            padding-top: 5px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 7.5pt;
+            color: #64748b;
+            font-family: monospace;
           }
         </style>
       </head>
       <body>
-        ${printableContent.innerHTML}
+        <div class="sheet-container">
+          <!-- Header -->
+          <div class="header-row">
+            <div class="logo-title-group">
+              <div class="brand-logo-container">
+                <img src="/logo.png" alt="أحمد كشك" style="width:40px; height:40px; max-width:40px; max-height:40px; object-fit:contain; display:block;" onerror="this.onerror=null; this.parentNode.innerHTML='<svg viewBox=\\'0 0 100 100\\' width=\\'40\\' height=\\'40\\' fill=\\'none\\' xmlns=\\'http://www.w3.org/2000/svg\\'><circle cx=\\'50\\' cy=\\'50\\' r=\\'46\\' stroke=\\'#0f172a\\' stroke-width=\\'6\\'/><path d=\\'M25 72 L45 28 L53 28 L73 72 M33 56 L65 56\\' stroke=\\'#0f172a\\' stroke-width=\\'7\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'/><path d=\\'M48 22 L48 78 M48 50 L68 28 M48 50 L72 72\\' stroke=\\'#0f172a\\' stroke-width=\\'7\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'/></svg>';" />
+              </div>
+              <div>
+                <div class="company-name">مؤسسة أحمد كشك للأقمشة والستائر</div>
+                <div class="doc-subtitle">عقد توريد وتركيب ستائر ومقايسة معتمدة</div>
+              </div>
+            </div>
+            <div class="header-meta">
+              <div class="meta-badge">عقد: ${data.id}</div>
+              <div class="meta-date">تاريخ التعاقد: ${data.date ? formatDateOnly(data.date) : new Date().toISOString().split('T')[0]}</div>
+            </div>
+          </div>
+
+          <!-- Customer Info Table -->
+          <table class="info-table">
+            <tr>
+              <td class="info-label">اسم العميل:</td>
+              <td class="info-val">${data.customerName}</td>
+              <td class="info-label">رقم الهاتف:</td>
+              <td class="info-val" style="font-family:monospace; direction:ltr; text-align:right;">${data.phone}</td>
+            </tr>
+            <tr>
+              <td class="info-label">عنوان التركيب:</td>
+              <td class="info-val">${data.address || 'غير محدد'}</td>
+              <td class="info-label">الفرع:</td>
+              <td class="info-val">${data.branch || 'الفرع الرئيسي'}</td>
+            </tr>
+            <tr>
+              <td class="info-label">مسؤول المبيعات:</td>
+              <td class="info-val">${data.estimatorName || 'أحمد كشك'}</td>
+              <td class="info-label">موعد التسليم:</td>
+              <td class="info-val">${data.deliveryDate ? formatDateOnly(data.deliveryDate) : 'مجدول حسب العقد'}</td>
+            </tr>
+          </table>
+
+          <!-- Items Table -->
+          <div class="section-title">
+            تفاصيل غرف المقايسة والأقمشة المختارة (${data.rooms?.length || 0} غرف):
+          </div>
+
+          <table class="items-table">
+            <thead>
+              <tr>
+                <th style="width: 25%;">البند / الطبقة</th>
+                <th>الأقمشة والمواصفات المختارة</th>
+                <th style="width: 12%;">الأمتار</th>
+                <th style="width: 14%;">سعر الوحدة</th>
+                <th style="width: 15%;">الإجمالي</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${roomsRowsHtml}
+            </tbody>
+          </table>
+
+          <!-- Financial Breakdown Card -->
+          <div class="financial-card">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span style="font-size:9pt; font-weight:800; color:#0f172a;">الملخص المالي والتحصيل:</span>
+              <span style="font-size:8pt; font-weight:700; color:#166534; background:#dcfce7; border:1px solid #bbf7d0; padding:2px 6px; border-radius:4px;">
+                ✓ العقد معتمد ومسدد العربون
+              </span>
+            </div>
+            <div class="fin-grid">
+              <div class="fin-box">
+                <span class="fin-label">إجمالي مقايسة العقد</span>
+                <span class="fin-val">${data.totalAmount.toLocaleString()} <span style="font-size:8pt;">ج.م</span></span>
+              </div>
+              <div class="fin-box fin-box-paid">
+                <span class="fin-label">العربون المسدد (المدفوع)</span>
+                <span class="fin-val">${data.depositPaid.toLocaleString()} <span style="font-size:8pt;">ج.م</span></span>
+              </div>
+              <div class="fin-box fin-box-remain">
+                <span class="fin-label">المتبقي للتحصيل عند التركيب</span>
+                <span class="fin-val">${data.remainingAmount.toLocaleString()} <span style="font-size:8pt;">ج.م</span></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Footer -->
+          <div class="footer-bar">
+            <span>مؤسسة أحمد كشك للأقمشة والستائر الفاخرة</span>
+            <span>هاتف الإدارة: 01063821000</span>
+            <span>نظام كشك لإدارة خطوط الإنتاج</span>
+          </div>
+        </div>
       </body>
       </html>
     `);
 
     printWindow.document.close();
-    
-    // Wait for content to load then print
     setTimeout(() => {
       printWindow.print();
       printWindow.close();
-    }, 500);
+    }, 400);
   };
 
   return (
-    <>
-      <style>{`
-        @media print {
-          @page {
-            size: A4 portrait;
-            margin: 10mm;
-          }
-          body.printing-modal * {
-            visibility: hidden !important;
-          }
-          body.printing-modal #printable-contract-modal,
-          body.printing-modal #printable-contract-modal * {
-            visibility: visible !important;
-          }
-          body.printing-modal #printable-contract-modal {
-            position: absolute !important;
-            left: 0 !important;
-            top: 0 !important;
-            width: 100% !important;
-            margin: 0 !important;
-            padding: 10px !important;
-            background: #ffffff !important;
-            color: #000000 !important;
-            box-shadow: none !important;
-            border: none !important;
-            max-height: none !important;
-            overflow: visible !important;
-          }
-          body.printing-modal .no-print,
-          body.printing-modal .print\\:hidden {
-            display: none !important;
-          }
-        }
-      `}</style>
-      <div className="modal-overlay fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs">
-        <div id="printable-contract-modal" className="bg-white text-slate-900 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6 sm:p-8 shadow-2xl relative border border-slate-200 print:max-h-none print:shadow-none print:border-none print:p-0">
-        
+    <div className="modal-overlay fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs">
+      <div className="bg-white text-slate-900 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6 sm:p-8 shadow-2xl relative border border-slate-200">
         {/* Top Control Bar (Hidden when printing) */}
-        <div className="flex items-center justify-between pb-4 border-b border-slate-200 mb-6 print:hidden">
+        <div className="flex items-center justify-between pb-4 border-b border-slate-200 mb-4">
           <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-brand-gold text-2xl">description</span>
-            <h2 className="font-display font-black text-lg text-slate-900">معاينة مقايسة وعقد العميل</h2>
+            <span className="material-symbols-outlined text-amber-600 text-2xl">description</span>
+            <h2 className="font-display font-black text-base sm:text-lg text-slate-900">معاينة مقايسة وعقد العميل (A4)</h2>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <button
+              type="button"
               onClick={handlePrint}
-              className="bg-brand-gold hover:bg-amber-400 text-slate-950 px-4 py-2 rounded-xl text-xs font-black shadow-gold flex items-center gap-1.5 cursor-pointer transition-colors"
+              className="bg-slate-950 hover:bg-slate-800 text-white px-5 py-2 rounded-xl text-xs font-black shadow-xs flex items-center gap-1.5 cursor-pointer transition-colors"
             >
-              <span className="material-symbols-outlined text-[16px]">print</span>
-              طباعة العقد (PDF)
+              <span>🖨️ طباعة العقد الآن (A4)</span>
             </button>
             <button
+              type="button"
               onClick={onClose}
-              className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center text-sm font-bold transition-colors cursor-pointer"
+              className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3.5 py-2 rounded-xl text-xs font-bold transition-colors cursor-pointer"
             >
-              ✕
+              إغلاق ✕
             </button>
           </div>
         </div>
 
-        {/* Printable Contract Document Header */}
-        <div className="space-y-6 text-right">
+        {/* Live Preview Matching Print Layout */}
+        <div className="border-2 border-slate-900 rounded-xl p-5 bg-white text-slate-900 space-y-3 font-sans">
           {/* Header Branding */}
-          <div className="flex justify-between items-start border-b-2 border-slate-900 pb-4">
-            <div>
-              <h1 className="font-display font-black text-2xl text-slate-950">أحمد كشك</h1>
-              <p className="text-xs font-bold text-amber-700">مؤسسة أحمد كشك للأقمشة والستائر الفاخرة</p>
-              <p className="text-[11px] text-slate-500 mt-1">الفرع الرئيسي | القاهرة، مصر</p>
+          <div className="flex justify-between items-center pb-3 border-b-2 border-slate-900">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 flex items-center justify-center p-1 bg-white border border-slate-300 rounded-lg shrink-0">
+                <Logo size="md" />
+              </div>
+              <div>
+                <h1 className="font-black text-lg text-slate-950 leading-tight">مؤسسة أحمد كشك للأقمشة والستائر</h1>
+                <p className="text-xs font-bold text-amber-700">عقد توريد وتركيب ستائر ومقايسة معتمدة</p>
+              </div>
             </div>
-            <div className="text-left font-mono">
-              <p className="text-xs text-slate-700 font-bold">تاريخ التعاقد: {data.date ? formatDateOnly(data.date) : 'غير محدد'}</p>
-            </div>
-          </div>
-
-          {/* Customer Info Box */}
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs">
-            <div>
-              <span className="text-slate-400 font-bold block">اسم العميل:</span>
-              <strong className="text-slate-900 text-sm">{data.customerName}</strong>
-            </div>
-            <div>
-              <span className="text-slate-400 font-bold block">رقم الهاتف:</span>
-              <strong className="text-slate-900 font-mono text-sm" dir="ltr">{data.phone}</strong>
-            </div>
-            <div className="col-span-2 sm:col-span-2">
-              <span className="text-slate-400 font-bold block">عنوان التركيب:</span>
-              <strong className="text-slate-900">{data.address}</strong>
-            </div>
-            <div>
-              <span className="text-amber-800 font-bold block">تاريخ التسليم:</span>
-              <strong className="text-slate-900 font-mono text-sm block mt-0.5">{data.deliveryDate ? formatDateOnly(data.deliveryDate) : 'غير محدد'}</strong>
+            <div className="text-left font-mono text-xs">
+              <div className="bg-slate-100 border border-slate-300 px-2.5 py-1 rounded font-black text-slate-900">
+                عقد: {data.id}
+              </div>
+              <div className="text-[11px] text-slate-500 mt-1">
+                تاريخ: {data.date ? formatDateOnly(data.date) : new Date().toISOString().split('T')[0]}
+              </div>
             </div>
           </div>
 
-          {/* Detailed Rooms Table with Center Alignment */}
-          <div className="space-y-3">
-            <h3 className="font-bold text-sm text-slate-900 border-r-4 border-brand-gold pr-2">تفاصيل غرف المقايسة والأقمشة المختارة:</h3>
-            <table className="w-full text-center text-xs border-collapse border border-slate-300">
-              <thead className="bg-slate-100 text-slate-800 font-bold border-b border-slate-300">
+          {/* Customer Info Table */}
+          <div className="bg-slate-50 border border-slate-200 rounded-lg overflow-hidden">
+            <table className="w-full text-right text-xs">
+              <tbody>
+                <tr className="border-b border-slate-200">
+                  <td className="p-2 font-bold text-slate-500 bg-slate-100/70 w-[14%]">اسم العميل:</td>
+                  <td className="p-2 font-black text-slate-900 w-[36%]">{data.customerName}</td>
+                  <td className="p-2 font-bold text-slate-500 bg-slate-100/70 w-[14%]">رقم الهاتف:</td>
+                  <td className="p-2 font-mono font-bold text-slate-900 w-[36%]" dir="ltr">{data.phone}</td>
+                </tr>
+                <tr className="border-b border-slate-200">
+                  <td className="p-2 font-bold text-slate-500 bg-slate-100/70">عنوان التركيب:</td>
+                  <td className="p-2 font-bold text-slate-900">{data.address || '—'}</td>
+                  <td className="p-2 font-bold text-slate-500 bg-slate-100/70">الفرع:</td>
+                  <td className="p-2 font-bold text-slate-900">{data.branch || 'الفرع الرئيسي'}</td>
+                </tr>
                 <tr>
-                  <th className="p-2 border border-slate-300 text-center">الغرفة والمقاسات</th>
-                  <th className="p-2 border border-slate-300 text-center">الأقمشة والأصناف المختارة</th>
-                  <th className="p-2 border border-slate-300 text-center font-mono">الأمتار</th>
-                  <th className="p-2 border border-slate-300 text-center font-mono">سعر المتر/الوحدة</th>
-                  <th className="p-2 border border-slate-300 text-center font-mono">الإجمالي</th>
+                  <td className="p-2 font-bold text-slate-500 bg-slate-100/70">مسؤول التسعير:</td>
+                  <td className="p-2 font-bold text-slate-900">{data.estimatorName || 'أحمد كشك'}</td>
+                  <td className="p-2 font-bold text-slate-500 bg-slate-100/70">موعد التسليم:</td>
+                  <td className="p-2 font-mono text-slate-900">{data.deliveryDate ? formatDateOnly(data.deliveryDate) : 'مجدول حسب العقد'}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          {/* Rooms Table */}
+          <div className="space-y-1.5 pt-1">
+            <span className="font-black text-xs text-slate-900 block">
+              تفاصيل غرف المقايسة والأقمشة المختارة ({data.rooms?.length || 0} غرف):
+            </span>
+            <table className="w-full text-right text-xs border-collapse border border-slate-300">
+              <thead>
+                <tr className="bg-slate-950 text-white font-bold text-center">
+                  <th className="p-2 border border-slate-700 w-1/4">البند / الطبقة</th>
+                  <th className="p-2 border border-slate-700 text-right">الأقمشة والمواصفات المختارة</th>
+                  <th className="p-2 border border-slate-700 font-mono w-20">الأمتار</th>
+                  <th className="p-2 border border-slate-700 font-mono w-24">سعر الوحدة</th>
+                  <th className="p-2 border border-slate-700 font-mono w-24">الإجمالي</th>
                 </tr>
               </thead>
               <tbody>
                 {data.rooms.map((room, rIdx) => (
                   <React.Fragment key={room.id}>
-                    {/* Room main row header */}
-                    <tr className="bg-slate-50 font-bold">
-                      <td colSpan={5} className="p-2 border border-slate-300 text-slate-900 bg-amber-50/60 text-center">
-                        {rIdx + 1}. {room.name} — (عرض: {room.widthCm}سم × ارتفاع: {room.heightCm}سم | {room.sides === 2 ? 'جنبين' : 'جنب واحد'})
+                    <tr className="bg-amber-50/70 font-bold border-t border-b border-amber-200">
+                      <td colSpan={5} className="p-2 text-amber-950">
+                        {rIdx + 1}. {room.name} — (عرض: {room.widthCm} سم × ارتفاع: {room.heightCm} سم | {room.sides === 2 ? 'جنبين' : 'جنب واحد'})
                       </td>
                     </tr>
 
-                    {/* 1. Heavy fabric row (1st) */}
                     {room.heavyMeters > 0 && (
-                      <tr className="border border-slate-200">
-                        <td className="p-2 border border-slate-200 text-slate-500 font-bold text-center">1. قماش الجوانب (الثقيل)</td>
-                        <td className="p-2 border border-slate-200 text-slate-900 font-bold text-center">
+                      <tr className="border-b border-slate-200">
+                        <td className="p-2 font-bold text-slate-700">1. قماش الجوانب (الثقيل)</td>
+                        <td className="p-2 text-slate-900">
                           {room.heavyFabricName || 'قطيفة جاجوار تركيات'}
-                          <span className="text-[11px] text-slate-500 block font-normal text-center">شريط {room.heavyTapeType || '٣ فتلة'} (معامل ×{room.heavyMultiplier ?? 2.0})</span>
+                          <span className="text-[11px] text-slate-500 block">شريط {room.heavyTapeType || '٣ فتلة'} (معامل ×{room.heavyMultiplier ?? 2.0})</span>
                         </td>
-                        <td className="p-2 border border-slate-200 text-center font-mono">{room.heavyMeters} م</td>
-                        <td className="p-2 border border-slate-200 text-center font-mono">{room.heavyPrice} ج</td>
-                        <td className="p-2 border border-slate-200 text-center font-mono font-bold">{(room.heavyMeters * room.heavyPrice).toLocaleString()} ج</td>
+                        <td className="p-2 text-center font-mono font-bold">{room.heavyMeters} م</td>
+                        <td className="p-2 text-center font-mono">{room.heavyPrice} ج</td>
+                        <td className="p-2 text-center font-mono font-bold text-slate-900">{(room.heavyMeters * room.heavyPrice).toLocaleString()} ج</td>
                       </tr>
                     )}
 
-                    {/* 2. Sheer fabric row (2nd) */}
                     {room.sheerMeters > 0 && (
-                      <tr className="border border-slate-200">
-                        <td className="p-2 border border-slate-200 text-slate-500 font-bold text-center">2. قماش الخلفية (الشيفون)</td>
-                        <td className="p-2 border border-slate-200 text-slate-900 font-bold text-center">
+                      <tr className="border-b border-slate-200">
+                        <td className="p-2 font-bold text-slate-700">2. قماش الخلفية (الشيفون)</td>
+                        <td className="p-2 text-slate-900">
                           {room.sheerFabricName || 'شيفون حرير فاخر'}
-                          <span className="text-[11px] text-slate-500 block font-normal text-center">شريط {room.sheerTapeType || 'ويفي'} (معامل ×{room.sheerMultiplier ?? 2.5})</span>
+                          <span className="text-[11px] text-slate-500 block">شريط {room.sheerTapeType || 'ويفي'} (معامل ×{room.sheerMultiplier ?? 2.5})</span>
                         </td>
-                        <td className="p-2 border border-slate-200 text-center font-mono">{room.sheerMeters} م</td>
-                        <td className="p-2 border border-slate-200 text-center font-mono">{room.sheerPrice} ج</td>
-                        <td className="p-2 border border-slate-200 text-center font-mono font-bold">{(room.sheerMeters * room.sheerPrice).toLocaleString()} ج</td>
+                        <td className="p-2 text-center font-mono font-bold">{room.sheerMeters} م</td>
+                        <td className="p-2 text-center font-mono">{room.sheerPrice} ج</td>
+                        <td className="p-2 text-center font-mono font-bold text-slate-900">{(room.sheerMeters * room.sheerPrice).toLocaleString()} ج</td>
                       </tr>
                     )}
 
-                    {/* 3. Blackout fabric row (3rd) */}
                     {room.blackoutMeters > 0 && room.blackoutFabricName && (
-                      <tr className="border border-slate-200">
-                        <td className="p-2 border border-slate-200 text-slate-500 font-bold text-center">3. طبقة البلاك آوت العازل</td>
-                        <td className="p-2 border border-slate-200 text-slate-900 font-bold text-center">
-                          {room.blackoutFabricName || 'بلاك آوت عازل حراري'}
-                          <span className="text-[11px] text-slate-500 block font-normal text-center">(معامل ×{room.blackoutMultiplier ?? 1.20})</span>
+                      <tr className="border-b border-slate-200">
+                        <td className="p-2 font-bold text-slate-700">3. عازل البلاك آوت</td>
+                        <td className="p-2 text-slate-900">
+                          {room.blackoutFabricName || 'بلاك آوت عازل'}
+                          <span className="text-[11px] text-slate-500 block">(معامل ×{room.blackoutMultiplier ?? 1.20})</span>
                         </td>
-                        <td className="p-2 border border-slate-200 text-center font-mono">{room.blackoutMeters} م</td>
-                        <td className="p-2 border border-slate-200 text-center font-mono">{room.blackoutPrice} ج</td>
-                        <td className="p-2 border border-slate-200 text-center font-mono font-bold">{(room.blackoutMeters * room.blackoutPrice).toLocaleString()} ج</td>
+                        <td className="p-2 text-center font-mono font-bold">{room.blackoutMeters} م</td>
+                        <td className="p-2 text-center font-mono">{room.blackoutPrice} ج</td>
+                        <td className="p-2 text-center font-mono font-bold text-slate-900">{(room.blackoutMeters * room.blackoutPrice).toLocaleString()} ج</td>
                       </tr>
                     )}
 
-                    {/* Accessories & Tailoring summary row */}
-                    <tr className="border border-slate-200 text-[11px] text-slate-600 bg-slate-50/30">
-                      <td className="p-2 border border-slate-200 font-bold text-center">التجهيزات والمصنعيات</td>
-                      <td colSpan={3} className="p-2 border border-slate-200 text-center">
-                        مجرى/ماسورة ({room.trackMeters}م × {room.trackPrice}ج) + شريط كشكشة ({room.tapeMeters}م × {room.tapePrice}ج) + خياطة الورشة ({room.sides} جنب × {room.tailorPricePerSide}ج) + رسوم التركيب ({room.installFee}ج)
+                    <tr className="border-b border-slate-200 text-xs bg-slate-50/50">
+                      <td className="p-2 font-bold text-slate-600">التجهيزات والمصنعيات</td>
+                      <td colSpan={3} className="p-2 text-slate-600">
+                        مجرى ({room.trackMeters}م × {room.trackPrice}ج) + شريط ({room.tapeMeters}م × {room.tapePrice}ج) + خياطة ({room.sides} جنب × {room.tailorPricePerSide}ج) + تركيب ({room.installFee}ج)
                       </td>
-                      <td className="p-2 border border-slate-200 text-center font-mono font-bold text-slate-900">
+                      <td className="p-2 text-center font-mono font-bold text-slate-900">
                         {(
                           (room.trackMeters * room.trackPrice) +
                           (room.tapeMeters * room.tapePrice) +
@@ -304,10 +598,9 @@ export default function ContractPrintModal({ isOpen, onClose, data }: ContractPr
                       </td>
                     </tr>
 
-                    {/* Room Total */}
                     <tr className="bg-slate-100 font-black border-b-2 border-slate-300">
-                      <td colSpan={4} className="p-2 border border-slate-300 text-center">إجمالي تكلفة {room.name}:</td>
-                      <td className="p-2 border border-slate-300 text-center font-mono text-amber-950 bg-amber-100/60">{room.totalSellPrice.toLocaleString()} ج</td>
+                      <td colSpan={4} className="p-2 text-left pl-4 text-slate-900">إجمالي تكلفة {room.name}:</td>
+                      <td className="p-2 text-center font-mono text-amber-950 bg-amber-100/60 font-bold">{room.totalSellPrice.toLocaleString()} ج</td>
                     </tr>
                   </React.Fragment>
                 ))}
@@ -315,50 +608,38 @@ export default function ContractPrintModal({ isOpen, onClose, data }: ContractPr
             </table>
           </div>
 
-          {/* Clean White/Slate Financial Breakdown Card */}
-          <div className="bg-slate-50 text-slate-900 p-5 sm:p-6 rounded-2xl border-2 border-amber-300 shadow-soft space-y-4">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-4 border-b border-slate-200">
-              <div className="space-y-1">
-                <span className="text-[11px] text-amber-800 font-bold uppercase tracking-wider block">اعتماد مقايسة وتكاليف العقد</span>
-                <h4 className="font-display font-black text-lg text-slate-900">الملخص المالي والتحصيل</h4>
-              </div>
-              <div className="flex flex-wrap items-center gap-3 text-xs">
-                <div className="bg-white px-3 py-1.5 rounded-xl border border-slate-200 text-slate-700">
-                  مسؤول التسعير: <strong className="text-slate-900 font-bold">{data.estimatorName}</strong>
-                </div>
-                <div className="bg-emerald-100 text-emerald-900 px-3 py-1.5 rounded-xl border border-emerald-300 font-bold">
-                  ✓ العقد معتمد ومسدد العربون
-                </div>
-              </div>
+          {/* Financial Breakdown Card */}
+          <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-2">
+            <div className="flex justify-between items-center">
+              <span className="font-black text-xs text-slate-900">الملخص المالي والتحصيل:</span>
+              <span className="text-[11px] font-bold text-emerald-800 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded">
+                ✓ العقد معتمد ومسدد العربون
+              </span>
             </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
-              <div className="bg-white p-3.5 rounded-xl border border-slate-200 text-center">
-                <span className="text-slate-500 text-xs font-bold block mb-1">إجمالي مقايسة العقد:</span>
-                <strong className="font-mono text-xl sm:text-2xl font-black text-slate-900 block">
-                  {data.totalAmount.toLocaleString()} <span className="text-xs text-amber-800 font-bold">ج.م</span>
-                </strong>
+            <div className="grid grid-cols-3 gap-2 text-center">
+              <div className="bg-white border border-slate-200 p-2 rounded-lg">
+                <span className="text-[10px] text-slate-500 font-bold block mb-0.5">إجمالي مقايسة العقد</span>
+                <span className="font-mono font-black text-base text-slate-900 block">{data.totalAmount.toLocaleString()} ج.م</span>
               </div>
-
-              <div className="bg-emerald-50/80 p-3.5 rounded-xl border border-emerald-200 text-center">
-                <span className="text-emerald-800 text-xs font-bold block mb-1">العربون المدفوع (المسدد):</span>
-                <strong className="font-mono text-xl sm:text-2xl font-black text-emerald-950 block">
-                  {data.depositPaid.toLocaleString()} <span className="text-xs text-emerald-800 font-bold">ج.م</span>
-                </strong>
+              <div className="bg-emerald-50/80 border border-emerald-200 p-2 rounded-lg">
+                <span className="text-[10px] text-emerald-800 font-bold block mb-0.5">العربون المسدد</span>
+                <span className="font-mono font-black text-base text-emerald-950 block">{data.depositPaid.toLocaleString()} ج.م</span>
               </div>
-
-              <div className="bg-rose-50/80 p-3.5 rounded-xl border border-rose-200 text-center">
-                <span className="text-rose-800 text-xs font-bold block mb-1">المتبقي للتحصيل عند التركيب:</span>
-                <strong className="font-mono text-xl sm:text-2xl font-black text-rose-950 block">
-                  {data.remainingAmount.toLocaleString()} <span className="text-xs text-rose-800 font-bold">ج.م</span>
-                </strong>
+              <div className="bg-rose-50/80 border border-rose-200 p-2 rounded-lg">
+                <span className="text-[10px] text-rose-800 font-bold block mb-0.5">المتبقي للتحصيل</span>
+                <span className="font-mono font-black text-base text-rose-950 block">{data.remainingAmount.toLocaleString()} ج.م</span>
               </div>
             </div>
           </div>
 
+          {/* Footer */}
+          <div className="pt-2 border-t border-slate-200 flex justify-between text-[10px] text-slate-400 font-mono">
+            <span>مؤسسة أحمد كشك للأقمشة والستائر</span>
+            <span>هاتف: 01063821000</span>
+            <span>نظام كشك لإدارة خطوط الإنتاج</span>
+          </div>
         </div>
       </div>
     </div>
-    </>
   );
 }
