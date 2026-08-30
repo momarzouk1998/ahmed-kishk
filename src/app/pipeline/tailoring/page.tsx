@@ -6,6 +6,7 @@ import { getStoredPipelineOrders, fetchPipelineOrders, updatePipelineOrderStatus
 import { fetchQuotations } from '@/lib/inspectionsStore';
 import { formatDateOnly } from '@/lib/dateUtils';
 import TailoringPrintModal from '@/components/TailoringPrintModal';
+import WhatsAppShareButton from '@/components/WhatsAppShareButton';
 
 interface RoomTailoringDetail {
   roomName: string;
@@ -417,6 +418,10 @@ export default function PipelineTailoringPage() {
         <div className="modal-overlay fixed inset-0 bg-black/75 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
           <style>{`
             @media print {
+              @page {
+                size: A5 portrait;
+                margin: 4mm 5mm;
+              }
               body * {
                 visibility: hidden !important;
               }
@@ -430,11 +435,12 @@ export default function PipelineTailoringPage() {
                 top: 0 !important;
                 width: 100% !important;
                 margin: 0 !important;
-                padding: 15px !important;
+                padding: 10px !important;
                 background: #ffffff !important;
                 color: #000000 !important;
                 box-shadow: none !important;
                 border: none !important;
+                font-size: 11pt !important;
               }
               .no-print {
                 display: none !important;
@@ -447,13 +453,19 @@ export default function PipelineTailoringPage() {
             <div className="no-print flex justify-between items-center pb-3 border-b border-slate-200">
               <h3 className="font-bold text-sm text-slate-900">تفاصيل تفصيل الورشة وتعديل الارتفاعات</h3>
               <div className="flex items-center gap-2">
+                <WhatsAppShareButton
+                  title="أمر تفصيل ورشة الستائر"
+                  customerName={selectedOrderDetails.customerName}
+                  phone={selectedOrderDetails.phone}
+                  detailsText={`أمر تفصيل الورشة: ${selectedOrderDetails.orderId || selectedOrderDetails.id}\nالعميل: ${selectedOrderDetails.customerName}\nتاريخ الاستلام: ${selectedOrderDetails.deliveryDate || 'غير محدد'}\nعدد الغرف: ${selectedOrderDetails.rooms?.length || 0}`}
+                />
                 <button
                   type="button"
                   onClick={() => setPrintTailoringOrder(selectedOrderDetails)}
                   className="bg-brand-gold hover:bg-amber-400 text-slate-950 px-4 py-2 rounded-xl text-xs font-black shadow-gold flex items-center gap-1 cursor-pointer transition-colors"
                 >
                   <span className="material-symbols-outlined text-[16px]">print</span>
-                  طباعة ورقة الورشة (PDF)
+                  طباعة (A5)
                 </button>
 
                 <button
