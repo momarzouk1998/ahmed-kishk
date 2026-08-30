@@ -420,9 +420,9 @@ export default function NewSalesInvoicePOSPage() {
           </div>
 
           {/* ------------------------------------------------------------- */}
-          {/* COLUMN 2 (3.5 cols - MIDDLE): Customer Info & Touch Keypad */}
+          {/* COLUMN 2 (3 cols - MIDDLE): Customer Info & Touch Keypad */}
           {/* ------------------------------------------------------------- */}
-          <div className="lg:col-span-3.5 space-y-2 order-2">
+          <div className="lg:col-span-3 space-y-2 order-2">
             
             {/* Customer & Branch Header Card */}
             <div className="bg-white p-2.5 rounded-2xl border border-slate-200 shadow-soft space-y-2">
@@ -639,9 +639,9 @@ export default function NewSalesInvoicePOSPage() {
           </div>
 
           {/* ------------------------------------------------------------- */}
-          {/* COLUMN 3 (3.5 cols - LEFT): Cart Items Table, Totals & Save Actions */}
+          {/* COLUMN 3 (4 cols - LEFT): Cart Items Table, Totals & Save Actions */}
           {/* ------------------------------------------------------------- */}
-          <div className="lg:col-span-3.5 space-y-2 order-3">
+          <div className="lg:col-span-4 space-y-2 order-3">
             <div className="bg-white p-2.5 rounded-2xl border-2 border-slate-300/80 shadow-soft space-y-2 relative">
               
               {/* Items Table — Single Row per Item (NO CODE LINE!) */}
