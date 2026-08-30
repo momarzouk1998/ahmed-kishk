@@ -4,6 +4,8 @@ import React from 'react';
 import { formatDateOnly } from '@/lib/dateUtils';
 import Logo from '@/components/Logo';
 
+import WhatsAppShareButton from '@/components/WhatsAppShareButton';
+
 export interface TailoringPrintData {
   id: string;
   orderId?: string;
@@ -38,7 +40,7 @@ export default function TailoringPrintModal({ isOpen, onClose, data }: Tailoring
     (data.rooms || []).forEach((room: any, rIdx: number) => {
       roomsHtml += `
         <tr style="background:#fffbeb; font-weight:bold; border:1px solid #cbd5e1;">
-          <td colspan="5" style="padding:5px 8px; text-align:right; color:#78350f; font-size:9.5pt; border:1px solid #cbd5e1;">
+          <td colspan="5" style="padding:5px 8px; text-align:right; color:#78350f; font-size:11pt; border:1px solid #cbd5e1;">
             ${rIdx + 1}. ${room.roomName || room.name || `غرفة ${rIdx + 1}`}
           </td>
         </tr>
@@ -47,11 +49,11 @@ export default function TailoringPrintModal({ isOpen, onClose, data }: Tailoring
       if (room.heavyFabric) {
         roomsHtml += `
           <tr>
-            <td style="font-weight:700; color:#334155;">قماش الجوانب (الثقيل)</td>
-            <td style="font-weight:bold;">${room.heavyFabric.name}</td>
-            <td style="text-align:center; font-family:monospace; font-weight:700;">${room.heavyFabric.meters} م (${room.heavyFabric.pieces || 'جنبين'})</td>
-            <td style="text-align:center;">${room.heavyFabric.tapeType || '٣ فتلة'}</td>
-            <td style="text-align:center; font-family:monospace; font-weight:900; font-size:10pt; color:#0f172a;">${room.heavyFabric.heightCm || 270} سم</td>
+            <td style="font-weight:700; color:#334155; font-size:11pt;">قماش الجوانب (الثقيل)</td>
+            <td style="font-weight:bold; font-size:11pt;">${room.heavyFabric.name}</td>
+            <td style="text-align:center; font-family:monospace; font-weight:700; font-size:11.5pt;">${room.heavyFabric.meters} م (${room.heavyFabric.pieces || 'جنبين'})</td>
+            <td style="text-align:center; font-size:11pt;">${room.heavyFabric.tapeType || '٣ فتلة'}</td>
+            <td style="text-align:center; font-family:monospace; font-weight:900; font-size:12pt; color:#0f172a;">${room.heavyFabric.heightCm || 270} سم</td>
           </tr>
         `;
       }
@@ -59,11 +61,11 @@ export default function TailoringPrintModal({ isOpen, onClose, data }: Tailoring
       if (room.sheerFabric) {
         roomsHtml += `
           <tr>
-            <td style="font-weight:700; color:#334155;">قماش الخلفية (الشيفون)</td>
-            <td style="font-weight:bold;">${room.sheerFabric.name}</td>
-            <td style="text-align:center; font-family:monospace; font-weight:700;">${room.sheerFabric.meters} م (${room.sheerFabric.pieces || 'قطعة واحدة'})</td>
-            <td style="text-align:center;">${room.sheerFabric.tapeType || 'ويفي'}</td>
-            <td style="text-align:center; font-family:monospace; font-weight:900; font-size:10pt; color:#0f172a;">${room.sheerFabric.heightCm || 270} سم</td>
+            <td style="font-weight:700; color:#334155; font-size:11pt;">قماش الخلفية (الشيفون)</td>
+            <td style="font-weight:bold; font-size:11pt;">${room.sheerFabric.name}</td>
+            <td style="text-align:center; font-family:monospace; font-weight:700; font-size:11.5pt;">${room.sheerFabric.meters} م (${room.sheerFabric.pieces || 'قطعة واحدة'})</td>
+            <td style="text-align:center; font-size:11pt;">${room.sheerFabric.tapeType || 'ويفي'}</td>
+            <td style="text-align:center; font-family:monospace; font-weight:900; font-size:12pt; color:#0f172a;">${room.sheerFabric.heightCm || 270} سم</td>
           </tr>
         `;
       }
@@ -71,11 +73,11 @@ export default function TailoringPrintModal({ isOpen, onClose, data }: Tailoring
       if (room.blackoutFabric) {
         roomsHtml += `
           <tr>
-            <td style="font-weight:700; color:#334155;">عازل البلاك آوت</td>
-            <td style="font-weight:bold;">${room.blackoutFabric.name}</td>
-            <td style="text-align:center; font-family:monospace; font-weight:700;">${room.blackoutFabric.meters} م (${room.blackoutFabric.pieces || 'قطعة واحدة'})</td>
-            <td style="text-align:center;">${room.blackoutFabric.tapeType || 'جراب'}</td>
-            <td style="text-align:center; font-family:monospace; font-weight:900; font-size:10pt; color:#0f172a;">${room.blackoutFabric.heightCm || 270} سم</td>
+            <td style="font-weight:700; color:#334155; font-size:11pt;">عازل البلاك آوت</td>
+            <td style="font-weight:bold; font-size:11pt;">${room.blackoutFabric.name}</td>
+            <td style="text-align:center; font-family:monospace; font-weight:700; font-size:11.5pt;">${room.blackoutFabric.meters} م (${room.blackoutFabric.pieces || 'قطعة واحدة'})</td>
+            <td style="text-align:center; font-size:11pt;">${room.blackoutFabric.tapeType || 'جراب'}</td>
+            <td style="text-align:center; font-family:monospace; font-weight:900; font-size:12pt; color:#0f172a;">${room.blackoutFabric.heightCm || 270} سم</td>
           </tr>
         `;
       }
@@ -91,8 +93,8 @@ export default function TailoringPrintModal({ isOpen, onClose, data }: Tailoring
         <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
         <style>
           @page {
-            size: A4 portrait;
-            margin: 8mm 10mm;
+            size: A5 portrait;
+            margin: 4mm 5mm;
           }
           * {
             box-sizing: border-box;
@@ -106,8 +108,8 @@ export default function TailoringPrintModal({ isOpen, onClose, data }: Tailoring
             background: #ffffff;
             color: #0f172a;
             direction: rtl;
-            font-size: 9.5pt;
-            line-height: 1.3;
+            font-size: 11pt;
+            line-height: 1.35;
             padding: 5px;
           }
           .sheet-container {
@@ -333,12 +335,18 @@ export default function TailoringPrintModal({ isOpen, onClose, data }: Tailoring
             <h2 className="font-display font-black text-base sm:text-lg text-slate-900">معاينة أمر تفصيل الورشة (A4)</h2>
           </div>
           <div className="flex items-center gap-2">
+            <WhatsAppShareButton
+              title="أمر تفصيل ورشة الستائر"
+              customerName={data.customerName}
+              phone={data.phone}
+              detailsText={`أمر تفصيل الورشة: ${data.orderId || data.id}\nالعميل: ${data.customerName}\nتاريخ التسليم: ${data.deliveryDate || 'غير محدد'}\nعدد الغرف المطلوبة: ${data.rooms?.length || 0}`}
+            />
             <button
               type="button"
               onClick={handlePrint}
               className="bg-slate-950 hover:bg-slate-800 text-white px-5 py-2 rounded-xl text-xs font-black shadow-xs flex items-center gap-1.5 cursor-pointer transition-colors"
             >
-              <span>🖨️ طباعة ورقة الورشة (A4)</span>
+              <span>🖨️ طباعة (A5)</span>
             </button>
             <button
               type="button"

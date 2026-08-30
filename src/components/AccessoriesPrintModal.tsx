@@ -3,6 +3,8 @@
 import React from 'react';
 import Logo from '@/components/Logo';
 
+import WhatsAppShareButton from '@/components/WhatsAppShareButton';
+
 export interface AccessoryItem {
   name: string;
   qty: number;
@@ -44,11 +46,11 @@ export default function AccessoriesPrintModal({ isOpen, onClose, data }: Accesso
     (data.items || []).forEach((item, idx) => {
       itemsHtml += `
         <tr>
-          <td style="text-align:center; font-weight:bold;">${idx + 1}</td>
-          <td style="font-weight:bold; color:#0f172a;">${item.name}</td>
-          <td style="color:#475569;">${item.detail || '—'}</td>
-          <td style="text-align:center; font-family:monospace; font-weight:900; font-size:10pt; color:#0f172a;">${item.qty} ${item.name.includes('مجرى') || item.name.includes('تراك') || item.name.includes('مواسير') ? 'متر' : 'قطعة'}</td>
-          <td style="text-align:center; font-weight:700; color:${item.prepared ? '#166534' : '#b45309'};">${item.prepared ? '✓ جهزت' : 'قيد التجهيز'}</td>
+          <td style="text-align:center; font-weight:bold; font-size:11pt;">${idx + 1}</td>
+          <td style="font-weight:bold; color:#0f172a; font-size:11pt;">${item.name}</td>
+          <td style="color:#475569; font-size:10.5pt;">${item.detail || '—'}</td>
+          <td style="text-align:center; font-family:monospace; font-weight:900; font-size:11.5pt; color:#0f172a;">${item.qty} ${item.name.includes('مجرى') || item.name.includes('تراك') || item.name.includes('مواسير') ? 'متر' : 'قطعة'}</td>
+          <td style="text-align:center; font-weight:700; font-size:11pt; color:${item.prepared ? '#166534' : '#b45309'};">${item.prepared ? '✓ جهزت' : 'قيد التجهيز'}</td>
         </tr>
       `;
     });
@@ -63,8 +65,8 @@ export default function AccessoriesPrintModal({ isOpen, onClose, data }: Accesso
         <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
         <style>
           @page {
-            size: A4 portrait;
-            margin: 8mm 10mm;
+            size: A5 portrait;
+            margin: 4mm 5mm;
           }
           * {
             box-sizing: border-box;
@@ -78,8 +80,8 @@ export default function AccessoriesPrintModal({ isOpen, onClose, data }: Accesso
             background: #ffffff;
             color: #0f172a;
             direction: rtl;
-            font-size: 9.5pt;
-            line-height: 1.3;
+            font-size: 11pt;
+            line-height: 1.35;
             padding: 5px;
           }
           .sheet-container {
@@ -302,12 +304,18 @@ export default function AccessoriesPrintModal({ isOpen, onClose, data }: Accesso
             <h2 className="font-display font-black text-base sm:text-lg text-slate-900">معاينة أمر صرف الإكسسوارات (A4)</h2>
           </div>
           <div className="flex items-center gap-2">
+            <WhatsAppShareButton
+              title="أمر صرف الإكسسوارات"
+              customerName={data.customerName}
+              phone={data.phone}
+              detailsText={`أمر صرف إكسسوارات: ${data.orderId || data.id}\nالعميل: ${data.customerName}\nإجمالي قطع الإكسسوار: ${totalItemsCount} قطعة/متر`}
+            />
             <button
               type="button"
               onClick={handlePrint}
               className="bg-slate-950 hover:bg-slate-800 text-white px-5 py-2 rounded-xl text-xs font-black shadow-xs flex items-center gap-1.5 cursor-pointer transition-colors"
             >
-              <span>🖨️ طباعة ورقة الإكسسوارات (A4)</span>
+              <span>🖨️ طباعة (A5)</span>
             </button>
             <button
               type="button"

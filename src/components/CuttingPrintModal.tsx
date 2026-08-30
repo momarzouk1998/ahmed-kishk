@@ -4,6 +4,8 @@ import React from 'react';
 import { formatDateOnly } from '@/lib/dateUtils';
 import Logo from '@/components/Logo';
 
+import WhatsAppShareButton from '@/components/WhatsAppShareButton';
+
 interface CuttingRoomFabric {
   roomName: string;
   heavyFabric?: { name: string; code?: string; meters: number };
@@ -72,20 +74,20 @@ export default function CuttingPrintModal({ isOpen, onClose, data }: CuttingPrin
 
       rowsHtml += `
         <tr>
-          <td style="text-align:center; font-weight:bold;">${idx + 1}</td>
-          <td style="font-weight:bold; color:#0f172a;">${room.roomName || room.name || `غرفة ${idx + 1}`}</td>
-          <td style="font-weight:700;">${heavy ? `${heavy.name}` : '<span style="color:#94a3b8;">—</span>'}</td>
-          <td style="text-align:center; font-family:monospace; font-weight:800; font-size:10.5pt; color:#0f172a;">${heavy ? `${heavy.meters} م` : '—'}</td>
-          <td style="font-weight:700;">${sheer ? `${sheer.name}` : '<span style="color:#94a3b8;">—</span>'}</td>
-          <td style="text-align:center; font-family:monospace; font-weight:800; font-size:10.5pt; color:#0f172a;">${sheer ? `${sheer.meters} م` : '—'}</td>
-          <td style="font-weight:700;">${blackout ? `${blackout.name}` : '<span style="color:#94a3b8;">—</span>'}</td>
-          <td style="text-align:center; font-family:monospace; font-weight:800; font-size:10.5pt; color:#0f172a;">${blackout ? `${blackout.meters} م` : '—'}</td>
+          <td style="text-align:center; font-weight:bold; font-size:11pt;">${idx + 1}</td>
+          <td style="font-weight:bold; color:#0f172a; font-size:11pt;">${room.roomName || room.name || `غرفة ${idx + 1}`}</td>
+          <td style="font-weight:700; font-size:11pt;">${heavy ? `${heavy.name}` : '<span style="color:#94a3b8;">—</span>'}</td>
+          <td style="text-align:center; font-family:monospace; font-weight:800; font-size:12pt; color:#0f172a;">${heavy ? `${heavy.meters} م` : '—'}</td>
+          <td style="font-weight:700; font-size:11pt;">${sheer ? `${sheer.name}` : '<span style="color:#94a3b8;">—</span>'}</td>
+          <td style="text-align:center; font-family:monospace; font-weight:800; font-size:12pt; color:#0f172a;">${sheer ? `${sheer.meters} م` : '—'}</td>
+          <td style="font-weight:700; font-size:11pt;">${blackout ? `${blackout.name}` : '<span style="color:#94a3b8;">—</span>'}</td>
+          <td style="text-align:center; font-family:monospace; font-weight:800; font-size:12pt; color:#0f172a;">${blackout ? `${blackout.meters} م` : '—'}</td>
         </tr>
       `;
     });
 
     const summaryBadgesHtml = totals.map(t => `
-      <div style="background:#f8fafc; border:1px solid #cbd5e1; padding:4px 10px; border-radius:6px; display:inline-flex; justify-content:space-between; gap:12px; margin:2px 4px; font-size:9pt;">
+      <div style="background:#f8fafc; border:1px solid #cbd5e1; padding:4px 10px; border-radius:6px; display:inline-flex; justify-content:space-between; gap:12px; margin:2px 4px; font-size:10pt;">
         <span style="color:#334155; font-weight:700;">${t.name}:</span>
         <span style="color:#0f172a; font-family:monospace; font-weight:900;">${t.meters} م</span>
       </div>
@@ -101,8 +103,8 @@ export default function CuttingPrintModal({ isOpen, onClose, data }: CuttingPrin
         <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
         <style>
           @page {
-            size: A4 portrait;
-            margin: 8mm 10mm;
+            size: A5 portrait;
+            margin: 4mm 5mm;
           }
           * {
             box-sizing: border-box;
@@ -116,8 +118,8 @@ export default function CuttingPrintModal({ isOpen, onClose, data }: CuttingPrin
             background: #ffffff;
             color: #0f172a;
             direction: rtl;
-            font-size: 9.5pt;
-            line-height: 1.3;
+            font-size: 11pt;
+            line-height: 1.35;
             padding: 5px;
           }
           .sheet-container {
@@ -363,12 +365,18 @@ export default function CuttingPrintModal({ isOpen, onClose, data }: CuttingPrin
             <h2 className="font-display font-black text-base sm:text-lg text-slate-900">معاينة أمر قص القماش (A4)</h2>
           </div>
           <div className="flex items-center gap-2">
+            <WhatsAppShareButton
+              title="أمر قص القماش"
+              customerName={data.customerName}
+              phone={data.phone}
+              detailsText={`أمر قص قماش: ${data.orderId || data.id}\nالعميل: ${data.customerName}\nإجمالي الأمتار المطلوبة للقص: ${totalAllMeters} متر\nعدد الغرف: ${data.rooms?.length || 0}`}
+            />
             <button
               type="button"
               onClick={handlePrint}
               className="bg-slate-950 hover:bg-slate-800 text-white px-5 py-2 rounded-xl text-xs font-black shadow-xs flex items-center gap-1.5 cursor-pointer transition-colors"
             >
-              <span>🖨️ طباعة ورقة القص (A4)</span>
+              <span>🖨️ طباعة (A5)</span>
             </button>
             <button
               type="button"

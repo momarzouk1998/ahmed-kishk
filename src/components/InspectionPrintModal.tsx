@@ -4,6 +4,7 @@ import React from 'react';
 import { formatDate } from '@/lib/dateUtils';
 import { InspectionData, Room } from '@/lib/inspectionsStore';
 import Logo from '@/components/Logo';
+import WhatsAppShareButton from '@/components/WhatsAppShareButton';
 
 interface InspectionPrintModalProps {
   isOpen: boolean;
@@ -24,15 +25,15 @@ export default function InspectionPrintModal({ isOpen, onClose, data }: Inspecti
     const roomsHtml = (data.rooms && data.rooms.length > 0)
       ? data.rooms.map((room: Room, idx: number) => `
           <tr>
-            <td style="text-align:center; font-weight:bold;">${idx + 1}</td>
-            <td style="font-weight:bold; color:#0f172a;">${room.name || 'غرفة'}</td>
-            <td style="text-align:center;">${room.type || 'شباك'}</td>
-            <td style="text-align:center; font-weight:900; font-family:monospace; font-size:11pt; color:#0f172a;">${room.widthCm}</td>
-            <td style="text-align:center; font-weight:900; font-family:monospace; font-size:11pt; color:#0f172a;">${room.heightCm}</td>
-            <td style="text-align:center;">${room.sides === 2 ? 'جنبين (2)' : 'جنب واحد (1)'}</td>
-            <td>${room.installationType || 'تراك سقف'}</td>
-            <td>${room.ceilingType || 'سقف عادي'}</td>
-            <td style="font-size:8.5pt; color:#475569;">${room.notes || '—'}</td>
+            <td style="text-align:center; font-weight:bold; font-size:11pt;">${idx + 1}</td>
+            <td style="font-weight:bold; color:#0f172a; font-size:11pt;">${room.name || 'غرفة'}</td>
+            <td style="text-align:center; font-size:10.5pt;">${room.type || 'شباك'}</td>
+            <td style="text-align:center; font-weight:900; font-family:monospace; font-size:12pt; color:#0f172a;">${room.widthCm}</td>
+            <td style="text-align:center; font-weight:900; font-family:monospace; font-size:12pt; color:#0f172a;">${room.heightCm}</td>
+            <td style="text-align:center; font-size:10.5pt;">${room.sides === 2 ? 'جنبين (2)' : 'جنب واحد (1)'}</td>
+            <td style="font-size:10.5pt;">${room.installationType || 'تراك سقف'}</td>
+            <td style="font-size:10.5pt;">${room.ceilingType || 'سقف عادي'}</td>
+            <td style="font-size:9.5pt; color:#475569;">${room.notes || '—'}</td>
           </tr>
         `).join('')
       : `<tr><td colspan="9" style="text-align:center; padding:15px; color:#64748b;">لا توجد غرف مسجلة في هذا الكشف</td></tr>`;
@@ -47,8 +48,8 @@ export default function InspectionPrintModal({ isOpen, onClose, data }: Inspecti
         <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
         <style>
           @page {
-            size: A4 portrait;
-            margin: 8mm 10mm;
+            size: A5 portrait;
+            margin: 4mm 5mm;
           }
           * {
             box-sizing: border-box;
@@ -62,17 +63,17 @@ export default function InspectionPrintModal({ isOpen, onClose, data }: Inspecti
             background: #ffffff;
             color: #0f172a;
             direction: rtl;
-            font-size: 10pt;
-            line-height: 1.3;
-            padding: 5px;
+            font-size: 11pt;
+            line-height: 1.35;
+            padding: 2px;
           }
           .sheet-container {
             width: 100%;
             max-width: 100%;
             margin: 0 auto;
             border: 2px solid #0f172a;
-            border-radius: 8px;
-            padding: 14px 16px;
+            border-radius: 6px;
+            padding: 10px 12px;
             background: #ffffff;
           }
           .header-row {
@@ -80,218 +81,68 @@ export default function InspectionPrintModal({ isOpen, onClose, data }: Inspecti
             justify-content: space-between;
             align-items: center;
             border-bottom: 2px solid #0f172a;
-            padding-bottom: 10px;
-            margin-bottom: 12px;
+            padding-bottom: 6px;
+            margin-bottom: 8px;
           }
-          .logo-title-group {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-          }
-          .brand-logo-container {
-            width: 48px;
-            height: 48px;
-            min-width: 48px;
-            max-width: 48px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 1px solid #cbd5e1;
-            border-radius: 8px;
-            padding: 2px;
-            background: #ffffff;
-          }
-          .brand-logo-container img {
-            width: 100%;
-            height: 100%;
-            max-width: 44px;
-            max-height: 44px;
-            object-fit: contain;
-            display: block;
-          }
-          .company-name {
-            font-size: 15pt;
+          .title-area h1 {
+            font-size: 13pt;
             font-weight: 900;
-            color: #0f172a;
-            line-height: 1.1;
           }
-          .doc-subtitle {
-            font-size: 9.5pt;
-            font-weight: 700;
-            color: #b45309;
-            margin-top: 2px;
-          }
-          .header-meta {
-            text-align: left;
-            font-family: monospace;
-          }
-          .meta-badge {
-            background: #f1f5f9;
-            border: 1px solid #94a3b8;
-            padding: 3px 8px;
-            border-radius: 5px;
-            font-weight: 800;
-            font-size: 10pt;
-            color: #0f172a;
-            display: inline-block;
-          }
-          .meta-date {
-            font-size: 8.5pt;
-            color: #64748b;
-            margin-top: 3px;
-          }
-          .info-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 12px;
-            background: #f8fafc;
-            border: 1px solid #cbd5e1;
-            border-radius: 6px;
-            overflow: hidden;
-          }
-          .info-table td {
-            padding: 6px 10px;
-            border: 1px solid #cbd5e1;
-            font-size: 9.5pt;
-          }
-          .info-label {
-            font-weight: 700;
-            color: #475569;
-            width: 14%;
-            background: #f1f5f9;
-          }
-          .info-val {
-            font-weight: 800;
-            color: #0f172a;
-            width: 36%;
-          }
-          .section-title {
+          .title-area p {
             font-size: 10.5pt;
-            font-weight: 900;
-            color: #0f172a;
-            margin-bottom: 6px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
+            font-weight: 800;
+            color: #b45309;
           }
-          .rooms-table {
+          table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 10px;
+            margin-top: 6px;
           }
-          .rooms-table th, .rooms-table td {
-            border: 1px solid #334155;
-            padding: 6px 7px;
-            font-size: 9pt;
-            vertical-align: middle;
+          th, td {
+            border: 1px solid #0f172a;
+            padding: 4px 6px;
+            font-size: 10.5pt;
           }
-          .rooms-table th {
+          th {
             background-color: #0f172a !important;
             color: #ffffff !important;
             font-weight: 800;
-            font-size: 9pt;
-            text-align: center;
-          }
-          .rooms-table tr:nth-child(even) {
-            background-color: #f8fafc;
-          }
-          .notes-box {
-            background: #fffbeb;
-            border: 1px solid #fde68a;
-            padding: 8px 10px;
-            border-radius: 6px;
-            font-size: 9pt;
-            color: #78350f;
-            margin-bottom: 10px;
-          }
-          .footer-bar {
-            border-top: 1px solid #cbd5e1;
-            padding-top: 6px;
-            display: flex;
-            justify-content: space-between;
-            font-size: 8pt;
-            color: #64748b;
-            font-family: monospace;
+            font-size: 11pt;
           }
         </style>
       </head>
       <body>
         <div class="sheet-container">
-          <!-- Header -->
           <div class="header-row">
-            <div class="logo-title-group">
-              <div class="brand-logo-container">
-                <img src="/logo.png" alt="أحمد كشك" style="width:42px; height:42px; max-width:42px; max-height:42px; object-fit:contain; display:block;" onerror="this.onerror=null; this.parentNode.innerHTML='<svg viewBox=\\'0 0 100 100\\' width=\\'42\\' height=\\'42\\' fill=\\'none\\' xmlns=\\'http://www.w3.org/2000/svg\\'><circle cx=\\'50\\' cy=\\'50\\' r=\\'46\\' stroke=\\'#0f172a\\' stroke-width=\\'6\\'/><path d=\\'M25 72 L45 28 L53 28 L73 72 M33 56 L65 56\\' stroke=\\'#0f172a\\' stroke-width=\\'7\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'/><path d=\\'M48 22 L48 78 M48 50 L68 28 M48 50 L72 72\\' stroke=\\'#0f172a\\' stroke-width=\\'7\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'/></svg>';" />
-              </div>
-              <div>
-                <div class="company-name">مؤسسة أحمد كشك للأقمشة والستائر</div>
-                <div class="doc-subtitle">كشف مقاسات ومعاينة هندسية ميدانية</div>
-              </div>
+            <div class="title-area">
+              <h1>مؤسسة أحمد كشك للأقمشة والستائر</h1>
+              <p>كشف مقاسات ومعاينة هندسية (A5)</p>
             </div>
-            <div class="header-meta">
-              <div class="meta-badge">كشف: ${data.id}</div>
-              <div class="meta-date">تاريخ الطباعة: ${new Date().toISOString().split('T')[0]}</div>
+            <div>
+              <strong>كشف: ${data.id}</strong><br>
+              <small>التاريخ: ${new Date().toISOString().split('T')[0]}</small>
             </div>
           </div>
-
-          <!-- Customer & Inspection Meta Grid -->
-          <table class="info-table">
-            <tr>
-              <td class="info-label">اسم العميل:</td>
-              <td class="info-val">${data.customerName}</td>
-              <td class="info-label">رقم الهاتف:</td>
-              <td class="info-val" style="font-family:monospace; direction:ltr; text-align:right;">${data.phone}</td>
-            </tr>
-            <tr>
-              <td class="info-label">العنوان:</td>
-              <td class="info-val">${data.address || 'غير محدد'}</td>
-              <td class="info-label">الفرع:</td>
-              <td class="info-val">${data.branch || 'الفرع الرئيسي'}</td>
-            </tr>
-            <tr>
-              <td class="info-label">الفني المسؤول:</td>
-              <td class="info-val">${data.technician || 'أحمد كشك'}</td>
-              <td class="info-label">موعد المعاينة:</td>
-              <td class="info-val">${data.scheduledAt || 'غير محدد'}</td>
-            </tr>
-          </table>
-
-          <!-- Rooms Table -->
-          <div class="section-title">
-            <span>مقاسات الغرف المسجلة (${data.rooms?.length || 0} غرف):</span>
-          </div>
-
-          <table class="rooms-table">
+          <p><strong>اسم العميل:</strong> ${data.customerName} | <strong>الهاتف:</strong> ${data.phone}</p>
+          <p><strong>العنوان:</strong> ${data.address || '—'} | <strong>الفرع:</strong> ${data.branch || 'الفرع الرئيسي'}</p>
+          <table>
             <thead>
               <tr>
-                <th style="width: 25px;">#</th>
+                <th>#</th>
                 <th>الغرفة</th>
-                <th style="width: 55px;">المكان</th>
-                <th style="width: 65px;">العرض (سم)</th>
-                <th style="width: 70px;">الارتفاع (سم)</th>
-                <th style="width: 65px;">الجوانب</th>
-                <th>طريقة التركيب</th>
-                <th>نوع السقف</th>
-                <th>ملاحظات فنية</th>
+                <th>المكان</th>
+                <th>العرض</th>
+                <th>الارتفاع</th>
+                <th>الجوانب</th>
+                <th>التركيب</th>
+                <th>السقف</th>
+                <th>ملاحظات</th>
               </tr>
             </thead>
             <tbody>
               ${roomsHtml}
             </tbody>
           </table>
-
-          ${data.notes ? `
-            <div class="notes-box">
-              <strong>ملاحظات عامة:</strong> ${data.notes}
-            </div>
-          ` : ''}
-
-          <!-- Footer -->
-          <div class="footer-bar">
-            <span>أحمد كشك للأقمشة والستائر الفاخرة</span>
-            <span>هاتف الإدارة: 01063821000</span>
-            <span>نظام كشك لإدارة خطوط الإنتاج</span>
-          </div>
         </div>
       </body>
       </html>
@@ -304,6 +155,8 @@ export default function InspectionPrintModal({ isOpen, onClose, data }: Inspecti
     }, 400);
   };
 
+  const shareDetailsText = `كشف مقاسات: ${data.id}\nالعميل: ${data.customerName}\nالعنوان: ${data.address || '—'}\nعدد الغرف: ${data.rooms?.length || 0}`;
+
   return (
     <div className="modal-overlay fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 overflow-y-auto">
       <div className="bg-white rounded-2xl max-w-4xl w-full p-6 sm:p-8 space-y-4 text-slate-900 border border-slate-200 my-8 shadow-2xl overflow-y-auto max-h-[90vh]">
@@ -311,15 +164,21 @@ export default function InspectionPrintModal({ isOpen, onClose, data }: Inspecti
         <div className="flex items-center justify-between pb-3 border-b border-slate-200">
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-amber-600 text-[24px]">print</span>
-            <h3 className="font-black text-sm sm:text-base text-slate-900">معاينة كشف المقاسات الميداني (A4)</h3>
+            <h3 className="font-black text-sm sm:text-base text-slate-900">معاينة كشف المقاسات الميداني (A5)</h3>
           </div>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
+            <WhatsAppShareButton
+              title="كشف المقاسات"
+              customerName={data.customerName}
+              phone={data.phone}
+              detailsText={shareDetailsText}
+            />
             <button
               type="button"
               onClick={handlePrint}
               className="bg-slate-950 hover:bg-slate-800 text-white px-5 py-2 rounded-xl text-xs font-black shadow-xs flex items-center gap-1.5 cursor-pointer transition-colors"
             >
-              <span>🖨️ طباعة الآن (A4 صفحة واحدة)</span>
+              <span>🖨️ طباعة (A5)</span>
             </button>
             <button
               type="button"

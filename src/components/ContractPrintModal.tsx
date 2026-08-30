@@ -4,6 +4,8 @@ import React from 'react';
 import { formatDateOnly } from '@/lib/dateUtils';
 import Logo from '@/components/Logo';
 
+import WhatsAppShareButton from '@/components/WhatsAppShareButton';
+
 export interface PrintRoomItem {
   id: string;
   name: string;
@@ -69,7 +71,7 @@ export default function ContractPrintModal({ isOpen, onClose, data }: ContractPr
     (data.rooms || []).forEach((room, rIdx) => {
       roomsRowsHtml += `
         <tr style="background:#fffbeb; font-weight:bold; border:1px solid #cbd5e1;">
-          <td colspan="5" style="padding:5px 8px; text-align:right; color:#78350f; font-size:9.5pt; border:1px solid #cbd5e1;">
+          <td colspan="5" style="padding:5px 8px; text-align:right; color:#78350f; font-size:11pt; border:1px solid #cbd5e1;">
             ${rIdx + 1}. ${room.name} — (عرض: ${room.widthCm} سم × ارتفاع: ${room.heightCm} سم | ${room.sides === 2 ? 'جنبين' : 'جنب واحد'})
           </td>
         </tr>
@@ -78,11 +80,11 @@ export default function ContractPrintModal({ isOpen, onClose, data }: ContractPr
       if (room.heavyMeters > 0) {
         roomsRowsHtml += `
           <tr>
-            <td style="font-weight:700; color:#334155;">1. قماش الجوانب (الثقيل)</td>
-            <td>${room.heavyFabricName || 'قطيفة جاجوار تركيات'} <span style="font-size:8pt; color:#64748b;">(شريط ${room.heavyTapeType || '٣ فتلة'} ×${room.heavyMultiplier ?? 2.0})</span></td>
-            <td style="text-align:center; font-family:monospace; font-weight:700;">${room.heavyMeters} م</td>
-            <td style="text-align:center; font-family:monospace;">${room.heavyPrice} ج</td>
-            <td style="text-align:center; font-family:monospace; font-weight:800; color:#0f172a;">${(room.heavyMeters * room.heavyPrice).toLocaleString()} ج</td>
+            <td style="font-weight:700; color:#334155; font-size:11pt;">1. قماش الجوانب (الثقيل)</td>
+            <td style="font-size:11pt;">${room.heavyFabricName || 'قطيفة جاجوار تركيات'} <span style="font-size:9.5pt; color:#64748b;">(شريط ${room.heavyTapeType || '٣ فتلة'} ×${room.heavyMultiplier ?? 2.0})</span></td>
+            <td style="text-align:center; font-family:monospace; font-weight:700; font-size:11.5pt;">${room.heavyMeters} م</td>
+            <td style="text-align:center; font-family:monospace; font-size:11pt;">${room.heavyPrice} ج</td>
+            <td style="text-align:center; font-family:monospace; font-weight:800; color:#0f172a; font-size:11.5pt;">${(room.heavyMeters * room.heavyPrice).toLocaleString()} ج</td>
           </tr>
         `;
       }
@@ -90,11 +92,11 @@ export default function ContractPrintModal({ isOpen, onClose, data }: ContractPr
       if (room.sheerMeters > 0) {
         roomsRowsHtml += `
           <tr>
-            <td style="font-weight:700; color:#334155;">2. قماش الخلفية (الشيفون)</td>
-            <td>${room.sheerFabricName || 'شيفون حرير فاخر'} <span style="font-size:8pt; color:#64748b;">(شريط ${room.sheerTapeType || 'ويفي'} ×${room.sheerMultiplier ?? 2.5})</span></td>
-            <td style="text-align:center; font-family:monospace; font-weight:700;">${room.sheerMeters} م</td>
-            <td style="text-align:center; font-family:monospace;">${room.sheerPrice} ج</td>
-            <td style="text-align:center; font-family:monospace; font-weight:800; color:#0f172a;">${(room.sheerMeters * room.sheerPrice).toLocaleString()} ج</td>
+            <td style="font-weight:700; color:#334155; font-size:11pt;">2. قماش الخلفية (الشيفون)</td>
+            <td style="font-size:11pt;">${room.sheerFabricName || 'شيفون حرير فاخر'} <span style="font-size:9.5pt; color:#64748b;">(شريط ${room.sheerTapeType || 'ويفي'} ×${room.sheerMultiplier ?? 2.5})</span></td>
+            <td style="text-align:center; font-family:monospace; font-weight:700; font-size:11.5pt;">${room.sheerMeters} م</td>
+            <td style="text-align:center; font-family:monospace; font-size:11pt;">${room.sheerPrice} ج</td>
+            <td style="text-align:center; font-family:monospace; font-weight:800; color:#0f172a; font-size:11.5pt;">${(room.sheerMeters * room.sheerPrice).toLocaleString()} ج</td>
           </tr>
         `;
       }
@@ -102,11 +104,11 @@ export default function ContractPrintModal({ isOpen, onClose, data }: ContractPr
       if (room.blackoutMeters > 0 && room.blackoutFabricName) {
         roomsRowsHtml += `
           <tr>
-            <td style="font-weight:700; color:#334155;">3. عازل البلاك آوت</td>
-            <td>${room.blackoutFabricName || 'بلاك آوت عازل'} <span style="font-size:8pt; color:#64748b;">(معامل ×${room.blackoutMultiplier ?? 1.20})</span></td>
-            <td style="text-align:center; font-family:monospace; font-weight:700;">${room.blackoutMeters} م</td>
-            <td style="text-align:center; font-family:monospace;">${room.blackoutPrice} ج</td>
-            <td style="text-align:center; font-family:monospace; font-weight:800; color:#0f172a;">${(room.blackoutMeters * room.blackoutPrice).toLocaleString()} ج</td>
+            <td style="font-weight:700; color:#334155; font-size:11pt;">3. عازل البلاك آوت</td>
+            <td style="font-size:11pt;">${room.blackoutFabricName || 'بلاك آوت عازل'} <span style="font-size:9.5pt; color:#64748b;">(معامل ×${room.blackoutMultiplier ?? 1.20})</span></td>
+            <td style="text-align:center; font-family:monospace; font-weight:700; font-size:11.5pt;">${room.blackoutMeters} م</td>
+            <td style="text-align:center; font-family:monospace; font-size:11pt;">${room.blackoutPrice} ج</td>
+            <td style="text-align:center; font-family:monospace; font-weight:800; color:#0f172a; font-size:11.5pt;">${(room.blackoutMeters * room.blackoutPrice).toLocaleString()} ج</td>
           </tr>
         `;
       }
@@ -118,16 +120,16 @@ export default function ContractPrintModal({ isOpen, onClose, data }: ContractPr
         room.installFee;
 
       roomsRowsHtml += `
-        <tr style="background:#f8fafc; font-size:8.5pt; color:#475569;">
+        <tr style="background:#f8fafc; font-size:10pt; color:#475569;">
           <td style="font-weight:700;">التجهيزات والمصنعيات</td>
           <td colspan="3">
-            مجرى (${room.trackMeters}م × ${room.trackPrice}ج) + شريط (${room.tapeMeters}م × ${room.tapePrice}ج) + خياطة الورشة (${room.sides} جنب × ${room.tailorPricePerSide}ج) + تركيب (${room.installFee}ج)
+            مجرى (${room.trackMeters}م × ${room.trackPrice}ج) + شريط (${room.tapeMeters}م × ${room.tapePrice}ج) + تركيب (${room.installFee}ج)
           </td>
-          <td style="text-align:center; font-family:monospace; font-weight:700; color:#0f172a;">${accTotal.toLocaleString()} ج</td>
+          <td style="text-align:center; font-family:monospace; font-weight:700; color:#0f172a; font-size:11pt;">${accTotal.toLocaleString()} ج</td>
         </tr>
         <tr style="background:#f1f5f9; font-weight:900; border-bottom:2px solid #cbd5e1;">
-          <td colspan="4" style="text-align:left; padding-left:10px; color:#0f172a;">إجمالي تكلفة ${room.name}:</td>
-          <td style="text-align:center; font-family:monospace; font-size:10pt; color:#b45309; background:#fef3c7;">${room.totalSellPrice.toLocaleString()} ج</td>
+          <td colspan="4" style="text-align:left; padding-left:10px; color:#0f172a; font-size:11pt;">إجمالي تكلفة ${room.name}:</td>
+          <td style="text-align:center; font-family:monospace; font-size:12pt; color:#b45309; background:#fef3c7;">${room.totalSellPrice.toLocaleString()} ج</td>
         </tr>
       `;
     });
@@ -142,8 +144,8 @@ export default function ContractPrintModal({ isOpen, onClose, data }: ContractPr
         <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
         <style>
           @page {
-            size: A4 portrait;
-            margin: 8mm 10mm;
+            size: A5 portrait;
+            margin: 4mm 5mm;
           }
           * {
             box-sizing: border-box;
@@ -157,9 +159,9 @@ export default function ContractPrintModal({ isOpen, onClose, data }: ContractPr
             background: #ffffff;
             color: #0f172a;
             direction: rtl;
-            font-size: 9.5pt;
-            line-height: 1.3;
-            padding: 5px;
+            font-size: 11pt;
+            line-height: 1.35;
+            padding: 2px;
           }
           .sheet-container {
             width: 100%;
@@ -454,12 +456,18 @@ export default function ContractPrintModal({ isOpen, onClose, data }: ContractPr
             <h2 className="font-display font-black text-base sm:text-lg text-slate-900">معاينة مقايسة وعقد العميل (A4)</h2>
           </div>
           <div className="flex items-center gap-2">
+            <WhatsAppShareButton
+              title="العقد والمقايسة"
+              customerName={data.customerName}
+              phone={data.phone}
+              detailsText={`عقد ومقايسة رقم: ${data.id}\nالعميل: ${data.customerName}\nالإجمالي: ${data.totalAmount} ج.م\nالمدفوع: ${data.depositPaid} ج.م\nالمتبقي: ${data.remainingAmount} ج.م`}
+            />
             <button
               type="button"
               onClick={handlePrint}
               className="bg-slate-950 hover:bg-slate-800 text-white px-5 py-2 rounded-xl text-xs font-black shadow-xs flex items-center gap-1.5 cursor-pointer transition-colors"
             >
-              <span>🖨️ طباعة العقد الآن (A4)</span>
+              <span>🖨️ طباعة (A5)</span>
             </button>
             <button
               type="button"

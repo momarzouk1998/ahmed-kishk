@@ -1376,7 +1376,7 @@ export default function PricingDetailPage() {
           <button
             type="button"
             onClick={() => setShowPrintModal(true)}
-            disabled={quotation.totalAmount === 0}
+            disabled={!quotation}
             className="w-full sm:w-auto bg-slate-100 hover:bg-slate-200 text-slate-900 border border-slate-300 px-6 py-3 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer transition-colors shadow-2xs"
           >
             <span className="material-symbols-outlined text-[19px]">picture_as_pdf</span>
