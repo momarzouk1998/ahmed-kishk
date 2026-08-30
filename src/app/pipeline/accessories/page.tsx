@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
 import { fetchPipelineOrders, updatePipelineOrderStatus, PipelineMasterOrder } from '@/lib/pipelineStore';
 import { fetchQuotations } from '@/lib/inspectionsStore';
+import AccessoriesPrintModal from '@/components/AccessoriesPrintModal';
 
 interface AccessoryItemSpec {
   name: string;
@@ -543,93 +544,12 @@ export default function PipelineAccessoriesPage() {
         </div>
       )}
 
-      {/* 🖨️ Printable Accessories Worksheet Modal */}
-      {printTargetKit && (
-        <div className="modal-overlay fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <style>{`
-            @media print {
-              body * { visibility: hidden !important; }
-              #printable-accessory-worksheet, #printable-accessory-worksheet * { visibility: visible !important; }
-              #printable-accessory-worksheet { position: fixed !important; left: 0 !important; top: 0 !important; width: 100% !important; margin: 0 !important; padding: 15px !important; background: #ffffff !important; color: #000000 !important; }
-              .no-print { display: none !important; }
-            }
-          `}</style>
-          <div id="printable-accessory-worksheet" className="bg-white rounded-3xl max-w-2xl w-full p-6 space-y-5 text-slate-900 border border-slate-200 my-auto shadow-2xl">
-            {/* Modal Control Bar */}
-            <div className="no-print flex justify-between items-center pb-3 border-b border-slate-200">
-              <h3 className="font-bold text-sm text-slate-900">معاينة وطباعة ورقة الإكسسوارات والمواسير</h3>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => window.print()}
-                  className="bg-brand-gold hover:bg-amber-400 text-slate-950 px-4 py-1.5 rounded-xl text-xs font-black shadow-gold flex items-center gap-1 cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-[16px]">print</span>
-                  طباعة ورقة الإكسسوارات (PDF)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPrintTargetKit(null)}
-                  className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer"
-                >
-                  إغلاق ✕
-                </button>
-              </div>
-            </div>
-
-            {/* Document Header */}
-            <div className="flex justify-between items-center pb-4 border-b-2 border-slate-900">
-              <div>
-                <h2 className="font-display font-black text-xl text-slate-950">مؤسسة أحمد كشك للأقمشة والستائر</h2>
-                <p className="text-xs font-bold text-amber-800">أمر ورقة الإكسسوارات والتراكات والمواسير (أمين المخزن)</p>
-              </div>
-              <div className="text-left font-mono text-xs">
-                <div><strong>كود الطلب:</strong> {printTargetKit.orderId || printTargetKit.id}</div>
-                <div><strong>الحالة:</strong> {printTargetKit.status}</div>
-              </div>
-            </div>
-
-            {/* Customer Details */}
-            <div className="bg-slate-50 p-4 rounded-xl border border-slate-300 grid grid-cols-2 gap-3 text-xs">
-              <div><strong>اسم العميل:</strong> {printTargetKit.customerName}</div>
-              <div><strong>رقم الهاتف:</strong> {printTargetKit.phone}</div>
-              <div><strong>العنوان:</strong> {printTargetKit.address}</div>
-              <div><strong>الفرع:</strong> {printTargetKit.branch || 'الفرع الرئيسي'}</div>
-            </div>
-
-            {/* Items Specs Table */}
-            <div className="space-y-3">
-              <h3 className="font-black text-sm text-slate-950 border-b border-slate-300 pb-1">
-                🛠️ أطقم التراكات والمواسير والحوامل المطلوب صرفها وتجهيزها:
-              </h3>
-              <table className="w-full text-right text-xs border-collapse border border-slate-300">
-                <thead className="bg-slate-200 text-slate-900 font-bold border-b border-slate-300">
-                  <tr>
-                    <th className="p-2 border border-slate-300 text-center w-10">#</th>
-                    <th className="p-2 border border-slate-300">اسم الإكسسوار / التراك / الماسورة</th>
-                    <th className="p-2 border border-slate-300">التفاصيل والتشطيب</th>
-                    <th className="p-2 border border-slate-300 text-center font-mono w-24">الكمية</th>
-                    <th className="p-2 border border-slate-300 text-center w-24">الحالة</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(printTargetKit.items || []).map((item, idx) => (
-                    <tr key={idx} className="border-b border-slate-200">
-                      <td className="p-2 border border-slate-300 text-center font-bold">{idx + 1}</td>
-                      <td className="p-2 border border-slate-300 font-bold">{item.name}</td>
-                      <td className="p-2 border border-slate-300 text-slate-700">{item.detail}</td>
-                      <td className="p-2 border border-slate-300 text-center font-mono font-black text-amber-950">{item.qty} قطعة</td>
-                      <td className="p-2 border border-slate-300 text-center font-bold text-xs">
-                        {item.prepared ? '✓ جهزت' : 'قيد التجهيز'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* 🖨️ Accessories Printable Modal */}
+      <AccessoriesPrintModal
+        isOpen={!!printTargetKit}
+        onClose={() => setPrintTargetKit(null)}
+        data={printTargetKit}
+      />
     </PageShell>
   );
 }

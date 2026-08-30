@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
 import ContractPrintModal, { PrintContractData } from '@/components/ContractPrintModal';
 import InspectionPrintModal from '@/components/InspectionPrintModal';
+import CuttingPrintModal from '@/components/CuttingPrintModal';
+import TailoringPrintModal from '@/components/TailoringPrintModal';
 import {
   getStoredPipelineOrders,
   fetchPipelineOrders,
@@ -660,144 +662,18 @@ export default function CentralOrdersLedgerPage() {
       />
 
       {/* ✂️ Cutting Sheet Printable Modal */}
-      {printCuttingOrder && (
-        <div className="modal-overlay fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <style>{`
-            @media print {
-              body * { visibility: hidden !important; }
-              #printable-cutting-worksheet, #printable-cutting-worksheet * { visibility: visible !important; }
-              #printable-cutting-worksheet { position: fixed !important; left: 0 !important; top: 0 !important; width: 100% !important; margin: 0 !important; padding: 15px !important; background: #ffffff !important; color: #000000 !important; }
-              .no-print { display: none !important; }
-            }
-          `}</style>
-          <div id="printable-cutting-worksheet" className="bg-white rounded-2xl max-w-3xl w-full p-6 space-y-4 text-slate-900 border border-slate-200 my-8">
-            <div className="no-print flex justify-between items-center pb-3 border-b border-slate-200">
-              <h3 className="font-bold text-sm">ورقة قص القماش</h3>
-              <div className="flex gap-2">
-                <button type="button" onClick={() => window.print()} className="bg-slate-900 text-white px-3 py-1 rounded-xl text-xs font-bold">طباعة PDF</button>
-                <button type="button" onClick={() => setPrintCuttingOrder(null)} className="bg-slate-100 text-slate-700 px-3 py-1 rounded-xl text-xs font-bold">إغلاق ✕</button>
-              </div>
-            </div>
-
-            <div className="flex justify-between items-center pb-3 border-b-2 border-slate-900">
-              <div>
-                <h2 className="font-black text-xl">مؤسسة أحمد كشك للأقمشة والستائر</h2>
-                <p className="text-xs font-bold text-amber-800">أمر ورقة قص القماش (للبياع / أمين المخزن)</p>
-              </div>
-              <div className="text-left font-mono text-xs">
-                <div><strong>التاريخ:</strong> {printCuttingOrder.createdAt ? formatDateOnly(printCuttingOrder.createdAt) : 'غير محدد'}</div>
-              </div>
-            </div>
-
-            <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 grid grid-cols-2 gap-2 text-xs">
-              <div><strong>اسم العميل:</strong> {printCuttingOrder.customerName}</div>
-              <div><strong>رقم الهاتف:</strong> {printCuttingOrder.phone}</div>
-              <div><strong>العنوان:</strong> {printCuttingOrder.address}</div>
-              <div><strong>الفرع:</strong> {printCuttingOrder.branch}</div>
-            </div>
-
-            <div className="space-y-2">
-              <h4 className="font-bold text-xs">بيانات الأقمشة والأمتار المطلوب قصها من التوب:</h4>
-              <table className="w-full text-right text-xs border-collapse border border-slate-300">
-                <thead className="bg-slate-100 font-bold border-b border-slate-300">
-                  <tr>
-                    <th className="p-2 border border-slate-300">الغرفة</th>
-                    <th className="p-2 border border-slate-300">اسم القماش والتفاصيل</th>
-                    <th className="p-2 border border-slate-300 text-center font-mono">الأمتار المطلوب قصها</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(printCuttingOrder.rooms || []).map((r: any, idx: number) => (
-                    <tr key={idx} className="border-b border-slate-200">
-                      <td className="p-2 border border-slate-300 font-bold">{r.roomName || r.name || `غرفة ${idx + 1}`}</td>
-                      <td className="p-2 border border-slate-300">
-                        {r.heavyFabric && <div>ثقيل: {r.heavyFabric.name}</div>}
-                        {r.sheerFabric && <div>خلفية: {r.sheerFabric.name}</div>}
-                      </td>
-                      <td className="p-2 border border-slate-300 text-center font-mono font-bold text-amber-950">
-                        {((Number(r.heavyFabric?.meters) || 0) + (Number(r.sheerFabric?.meters) || 0)).toFixed(2)} متر
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
+      <CuttingPrintModal
+        isOpen={!!printCuttingOrder}
+        onClose={() => setPrintCuttingOrder(null)}
+        data={printCuttingOrder}
+      />
 
       {/* 🧵 Workshop Sheet Printable Modal */}
-      {printWorksheetOrder && (
-        <div className="modal-overlay fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <style>{`
-            @media print {
-              body * { visibility: hidden !important; }
-              #printable-tailoring-modal, #printable-tailoring-modal * { visibility: visible !important; }
-              #printable-tailoring-modal { position: fixed !important; left: 0 !important; top: 0 !important; width: 100% !important; margin: 0 !important; padding: 15px !important; background: #ffffff !important; color: #000000 !important; }
-              .no-print { display: none !important; }
-            }
-          `}</style>
-          <div id="printable-tailoring-modal" className="bg-white rounded-2xl max-w-3xl w-full p-6 space-y-4 text-slate-900 border border-slate-200 my-8">
-            <div className="no-print flex justify-between items-center pb-3 border-b border-slate-200">
-              <h3 className="font-bold text-sm">ورقة تفصيل الورشة</h3>
-              <div className="flex gap-2">
-                <button type="button" onClick={() => window.print()} className="bg-purple-900 text-white px-3 py-1 rounded-xl text-xs font-bold">طباعة PDF</button>
-                <button type="button" onClick={() => setPrintWorksheetOrder(null)} className="bg-slate-100 text-slate-700 px-3 py-1 rounded-xl text-xs font-bold">إغلاق ✕</button>
-              </div>
-            </div>
-
-            <div className="flex justify-between items-center pb-3 border-b-2 border-slate-900">
-              <div>
-                <h2 className="font-black text-xl">مؤسسة أحمد كشك للأقمشة والستائر</h2>
-                <p className="text-xs font-bold text-purple-900">أمر ورقة التفصيل والورشة (للخياط)</p>
-              </div>
-              <div className="text-left font-mono text-xs">
-                <div><strong>التاريخ:</strong> {printWorksheetOrder.createdAt ? formatDateOnly(printWorksheetOrder.createdAt) : 'غير محدد'}</div>
-                <div><strong>موعد الاستلام:</strong> {printWorksheetOrder.deliveryDate ? formatDateOnly(printWorksheetOrder.deliveryDate) : 'غير محدد'}</div>
-              </div>
-            </div>
-
-            <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 grid grid-cols-2 gap-2 text-xs">
-              <div><strong>اسم العميل:</strong> {printWorksheetOrder.customerName}</div>
-              <div><strong>رقم الهاتف:</strong> {printWorksheetOrder.phone}</div>
-              <div><strong>العنوان:</strong> {printWorksheetOrder.address}</div>
-              <div><strong>الفرع:</strong> {printWorksheetOrder.branch}</div>
-            </div>
-
-            <div className="space-y-2">
-              <h4 className="font-bold text-xs">تفاصيل الخياطة والارتفاعات المشطبة لكل غرفة:</h4>
-              <table className="w-full text-right text-xs border-collapse border border-slate-300">
-                <thead className="bg-slate-100 font-bold border-b border-slate-300">
-                  <tr>
-                    <th className="p-2 border border-slate-300">الغرفة</th>
-                    <th className="p-2 border border-slate-300">الطبقة والقماش</th>
-                    <th className="p-2 border border-slate-300 text-center font-mono">الأمتار والشريط</th>
-                    <th className="p-2 border border-slate-300 text-center font-mono">الارتفاع الصافي</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(printWorksheetOrder.rooms || []).map((r: any, idx: number) => (
-                    <tr key={idx} className="border-b border-slate-200">
-                      <td className="p-2 border border-slate-300 font-bold">{r.roomName || r.name || `غرفة ${idx + 1}`}</td>
-                      <td className="p-2 border border-slate-300">
-                        {r.heavyFabric && <div>ثقيل: {r.heavyFabric.name}</div>}
-                        {r.sheerFabric && <div>خلفية: {r.sheerFabric.name}</div>}
-                      </td>
-                      <td className="p-2 border border-slate-300 text-center font-mono">
-                        {r.heavyFabric && <div>{r.heavyFabric.meters}م ({r.heavyFabric.tapeType || '3 فتلة'})</div>}
-                        {r.sheerFabric && <div>{r.sheerFabric.meters}م ({r.sheerFabric.tapeType || 'ويفي'})</div>}
-                      </td>
-                      <td className="p-2 border border-slate-300 text-center font-mono font-black text-slate-950">
-                        {r.heavyFabric?.netHeight || r.sheerFabric?.netHeight || '_______ سم'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
+      <TailoringPrintModal
+        isOpen={!!printWorksheetOrder}
+        onClose={() => setPrintWorksheetOrder(null)}
+        data={printWorksheetOrder}
+      />
     </PageShell>
   );
 }

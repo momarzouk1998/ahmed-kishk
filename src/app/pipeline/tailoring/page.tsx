@@ -5,6 +5,7 @@ import PageShell from '@/components/PageShell';
 import { getStoredPipelineOrders, fetchPipelineOrders, updatePipelineOrderStatus, saveStoredPipelineOrders } from '@/lib/pipelineStore';
 import { fetchQuotations } from '@/lib/inspectionsStore';
 import { formatDateOnly } from '@/lib/dateUtils';
+import TailoringPrintModal from '@/components/TailoringPrintModal';
 
 interface RoomTailoringDetail {
   roomName: string;
@@ -60,6 +61,7 @@ export default function PipelineTailoringPage() {
 
   // Selected Order for Detail View & Editable Heights Modal
   const [selectedOrderDetails, setSelectedOrderDetails] = useState<TailoringJobOrder | null>(null);
+  const [printTailoringOrder, setPrintTailoringOrder] = useState<TailoringJobOrder | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -447,8 +449,8 @@ export default function PipelineTailoringPage() {
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => window.print()}
-                  className="bg-brand-gold hover:bg-amber-400 text-slate-950 px-4 py-2 rounded-xl text-xs font-black shadow-gold flex items-center gap-1 cursor-pointer"
+                  onClick={() => setPrintTailoringOrder(selectedOrderDetails)}
+                  className="bg-brand-gold hover:bg-amber-400 text-slate-950 px-4 py-2 rounded-xl text-xs font-black shadow-gold flex items-center gap-1 cursor-pointer transition-colors"
                 >
                   <span className="material-symbols-outlined text-[16px]">print</span>
                   طباعة ورقة الورشة (PDF)
@@ -666,6 +668,12 @@ export default function PipelineTailoringPage() {
           </div>
         </div>
       )}
+      {/* 🖨️ Tailoring Worksheet Print Modal */}
+      <TailoringPrintModal
+        isOpen={!!printTailoringOrder}
+        onClose={() => setPrintTailoringOrder(null)}
+        data={printTailoringOrder}
+      />
     </PageShell>
   );
 }

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
 import { useRouter } from 'next/navigation';
 import { formatDateOnly } from '@/lib/dateUtils';
+import FabricSalesPrintModal from '@/components/FabricSalesPrintModal';
 
 interface SalesInvoiceItem {
   code: string;
@@ -565,163 +566,12 @@ export default function FabricSalesPage() {
         )}
       </div>
 
-      {/* 🔍 OPEN INVOICE MODAL (عرض تفاصيل الفاتورة والطباعة) */}
-      {selectedInvoice && (
-        <div className="modal-overlay fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
-          <style>{`
-            @media print {
-              body * { visibility: hidden !important; }
-              #printable-sales-invoice, #printable-sales-invoice * { visibility: visible !important; }
-              #printable-sales-invoice { position: fixed !important; left: 0 !important; top: 0 !important; width: 100% !important; margin: 0 !important; padding: 15px !important; background: #ffffff !important; color: #000000 !important; }
-              .no-print { display: none !important; }
-            }
-          `}</style>
-          <div id="printable-sales-invoice" className="bg-white rounded-3xl max-w-2xl w-full p-6 space-y-5 text-slate-900 border border-slate-200 my-auto shadow-2xl max-h-[92vh] overflow-y-auto">
-            
-            {/* Modal Control Header */}
-            <div className="no-print flex justify-between items-center pb-3 border-b border-slate-200">
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-amber-500 text-2xl">receipt_long</span>
-                <div>
-                  <h3 className="font-black text-sm text-slate-950 flex items-center gap-2">
-                    <span>فاتورة مبيعات:</span>
-                    <span className="bg-amber-100 text-amber-950 px-2 py-0.5 rounded-lg font-mono text-xs border border-amber-300">
-                      {selectedInvoice.invoiceNumber}
-                    </span>
-                  </h3>
-                  <p className="text-[11px] text-slate-400">{selectedInvoice.branch} — {selectedInvoice.date ? formatDateOnly(selectedInvoice.date) : ''}</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => window.print()}
-                  className="bg-brand-gold hover:bg-amber-400 text-slate-950 px-3.5 py-2 rounded-xl text-xs font-black shadow-gold flex items-center gap-1 cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-[16px]">print</span>
-                  <span>طباعة الفاتورة</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSelectedInvoice(null)}
-                  className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-sm cursor-pointer"
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
-
-            {/* Print Header */}
-            <div className="text-center pb-3 border-b-2 border-slate-900 space-y-1">
-              <h2 className="font-display font-black text-xl text-slate-950">مؤسسة أحمد كشك للأقمشة والستائر</h2>
-              <p className="text-xs text-slate-600 font-bold">{selectedInvoice.branch}</p>
-              <div className="flex justify-between text-xs font-mono pt-2 text-slate-700">
-                <span><strong>رقم الفاتورة:</strong> {selectedInvoice.invoiceNumber}</span>
-                <span><strong>التاريخ:</strong> {selectedInvoice.date}</span>
-              </div>
-            </div>
-
-            {/* Customer Info Card */}
-            <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 grid grid-cols-2 gap-2 text-xs">
-              <div><strong>اسم العميل:</strong> {selectedInvoice.customerName}</div>
-              <div><strong>رقم الهاتف:</strong> {selectedInvoice.phone || selectedInvoice.customerPhone || '—'}</div>
-              <div><strong>طريقة الدفع:</strong> {selectedInvoice.paymentMethod}</div>
-              <div><strong>الفرع:</strong> {selectedInvoice.branch}</div>
-            </div>
-
-            {/* Items Table */}
-            <div className="space-y-2">
-              <h4 className="font-black text-xs text-slate-900 border-r-4 border-amber-500 pr-2">
-                الأصناف والأقمشة المشتراة ({selectedInvoice.items ? selectedInvoice.items.length : 0}):
-              </h4>
-
-              <div className="border border-slate-200 rounded-2xl overflow-hidden">
-                <table className="w-full text-right text-xs border-collapse">
-                  <thead className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
-                    <tr>
-                      <th className="p-2.5">الصنف والكود</th>
-                      <th className="p-2.5 font-mono text-center">السعر</th>
-                      <th className="p-2.5 font-mono text-center">الأمتار</th>
-                      <th className="p-2.5 font-mono text-center">الإجمالي</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {(!selectedInvoice.items || selectedInvoice.items.length === 0) ? (
-                      <tr>
-                        <td colSpan={4} className="p-4 text-center text-slate-400 font-bold">
-                          لا توجد أصناف مضافة في الفاتورة
-                        </td>
-                      </tr>
-                    ) : (
-                      selectedInvoice.items.map((it, idx) => (
-                        <tr key={idx}>
-                          <td className="p-2.5">
-                            <span className="font-bold text-slate-900 block">{it.name}</span>
-                            <span className="text-[10px] text-slate-400 font-mono">{it.code}</span>
-                          </td>
-                          <td className="p-2.5 text-center font-mono font-bold text-slate-700">{it.pricePerMeter} ج</td>
-                          <td className="p-2.5 text-center font-mono font-black text-amber-900">{it.meters} م</td>
-                          <td className="p-2.5 text-center font-mono font-black text-slate-950">{it.totalPrice} ج</td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Financial Summary */}
-            <div className="bg-slate-900 text-white p-4 rounded-2xl space-y-2 text-xs font-bold shadow-md">
-              <div className="flex justify-between text-slate-300">
-                <span>المجموع الفرعي:</span>
-                <span className="font-mono">{selectedInvoice.subtotal || selectedInvoice.totalAmount} ج.م</span>
-              </div>
-
-              {(selectedInvoice.discountAmount || 0) > 0 && (
-                <div className="flex justify-between text-amber-400">
-                  <span>الخصم الممنوح:</span>
-                  <span className="font-mono">- {selectedInvoice.discountAmount} ج.م</span>
-                </div>
-              )}
-
-              <div className="flex justify-between text-white border-t border-slate-800 pt-2 text-sm font-black">
-                <span>صافي الفاتورة الإجمالي:</span>
-                <span className="font-mono text-base text-amber-400">{selectedInvoice.totalAmount.toLocaleString()} ج.م</span>
-              </div>
-
-              <div className="border-t border-slate-800 pt-2 flex justify-between">
-                <span className="text-emerald-400">المدفوع ({selectedInvoice.paymentMethod}):</span>
-                <span className="font-mono text-emerald-400">{selectedInvoice.paidAmount.toLocaleString()} ج.م</span>
-              </div>
-
-              {(selectedInvoice.remainingAmount || 0) > 0 && (
-                <div className="flex justify-between text-rose-400">
-                  <span>المتبقي بالآجل:</span>
-                  <span className="font-mono">{selectedInvoice.remainingAmount.toLocaleString()} ج.م</span>
-                </div>
-              )}
-            </div>
-
-            {/* Footer Notes */}
-            {selectedInvoice.notes && (
-              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-600">
-                <strong>ملاحظات:</strong> {selectedInvoice.notes}
-              </div>
-            )}
-
-            <div className="no-print pt-2 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setSelectedInvoice(null)}
-                className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-xl text-xs font-bold cursor-pointer"
-              >
-                إغلاق
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* 🖨️ Fabric Sales Invoice Printable Modal */}
+      <FabricSalesPrintModal
+        isOpen={!!selectedInvoice}
+        onClose={() => setSelectedInvoice(null)}
+        data={selectedInvoice}
+      />
 
       {/* ➕ Modal: Add Sales Return */}
       {showAddReturnModal && (

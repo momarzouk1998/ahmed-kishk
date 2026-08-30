@@ -5,6 +5,7 @@ import PageShell from '@/components/PageShell';
 import { getStoredPipelineOrders, fetchPipelineOrders, updatePipelineOrderStatus } from '@/lib/pipelineStore';
 import { fetchQuotations } from '@/lib/inspectionsStore';
 import { formatDateOnly } from '@/lib/dateUtils';
+import CuttingPrintModal from '@/components/CuttingPrintModal';
 
 interface RoomFabricItem {
   roomName: string;
@@ -475,144 +476,12 @@ export default function PipelineCuttingPage() {
         )}
       </div>
 
-      {/* 🖨️ Printable Order Cut Sheet Modal (ورقة قص القماش للبياع) */}
-      {selectedOrderForPrint && (
-        <div className="modal-overlay fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 overflow-y-auto">
-          {/* Printable CSS styles */}
-          <style>{`
-            @media print {
-              body * {
-                visibility: hidden !important;
-              }
-              #printable-cut-sheet-modal,
-              #printable-cut-sheet-modal * {
-                visibility: visible !important;
-              }
-              #printable-cut-sheet-modal {
-                position: fixed !important;
-                left: 0 !important;
-                top: 0 !important;
-                width: 100% !important;
-                margin: 0 !important;
-                padding: 15px !important;
-                background: #ffffff !important;
-                color: #000000 !important;
-                box-shadow: none !important;
-                border: none !important;
-              }
-              .no-print {
-                display: none !important;
-              }
-            }
-          `}</style>
-
-          <div
-            id="printable-cut-sheet-modal"
-            className="bg-white rounded-3xl max-w-2xl w-full p-6 space-y-5 text-slate-900 border border-slate-200 shadow-2xl max-h-[90vh] overflow-y-auto"
-          >
-            {/* Modal Header */}
-            <div className="no-print flex justify-between items-center pb-3 border-b border-slate-200">
-              <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
-                <span className="material-symbols-outlined text-amber-500">content_cut</span>
-                <span>معاينة ورقة قص القماش (للبياع في المحل)</span>
-              </h3>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => window.print()}
-                  className="bg-brand-gold hover:bg-amber-400 text-slate-950 px-3.5 py-1.5 rounded-xl text-xs font-black shadow-gold flex items-center gap-1 cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-[16px]">print</span>
-                  <span>طباعة ورقة القص</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSelectedOrderForPrint(null)}
-                  className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-sm cursor-pointer"
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
-
-            {/* Document Print Layout */}
-            <div className="text-center pb-3 border-b-2 border-slate-900 space-y-1">
-              <h2 className="font-display font-black text-xl text-slate-950">مؤسسة أحمد كشك للأقمشة والستائر</h2>
-              <p className="text-xs font-bold text-amber-800">إذن وقائمة قص أقمشة وتوريد للورشة</p>
-              <div className="flex justify-between text-xs font-mono pt-2 text-slate-700">
-                <span><strong>الفرع:</strong> {selectedOrderForPrint.branch}</span>
-                <span><strong>التاريخ:</strong> {selectedOrderForPrint.createdAt ? formatDateOnly(selectedOrderForPrint.createdAt) : ''}</span>
-              </div>
-            </div>
-
-            {/* Customer Details Box */}
-            <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 grid grid-cols-2 gap-2 text-xs">
-              <div><strong>اسم العميل:</strong> {selectedOrderForPrint.customerName}</div>
-              <div><strong>رقم الهاتف:</strong> {selectedOrderForPrint.phone}</div>
-              <div><strong>العنوان:</strong> {selectedOrderForPrint.address || '—'}</div>
-              <div><strong>كود الطلب:</strong> {selectedOrderForPrint.orderId || selectedOrderForPrint.id}</div>
-            </div>
-
-            {/* Room by Room Cutting Table */}
-            <div className="space-y-2">
-              <h4 className="font-black text-xs text-slate-900 border-r-4 border-amber-500 pr-2">
-                1. الأمتار والأقمشة المطلوبة لكل غرفة بالتفصيل:
-              </h4>
-
-              <div className="border border-slate-200 rounded-2xl overflow-hidden">
-                <table className="w-full text-right text-xs border-collapse">
-                  <thead className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
-                    <tr>
-                      <th className="p-2.5">الغرفة / الشباك</th>
-                      <th className="p-2.5">القماش الثقيل (متر)</th>
-                      <th className="p-2.5">التول / الشيفون (متر)</th>
-                      <th className="p-2.5">بلاك آوت (متر)</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 font-mono">
-                    {(selectedOrderForPrint.rooms || []).map((room: any, idx: number) => {
-                      const heavy = room.heavyFabric || (room.heavyEnabled !== false && room.heavyFabricName && Number(room.heavyMeters) > 0 ? { name: room.heavyFabricName, meters: Number(room.heavyMeters) } : null);
-                      const sheer = room.sheerFabric || (room.sheerEnabled !== false && room.sheerFabricName && Number(room.sheerMeters) > 0 ? { name: room.sheerFabricName, meters: Number(room.sheerMeters) } : null);
-                      const blackout = room.blackoutFabric || (room.blackoutEnabled && room.blackoutFabricName && Number(room.blackoutMeters) > 0 ? { name: room.blackoutFabricName, meters: Number(room.blackoutMeters) } : null);
-
-                      return (
-                        <tr key={idx}>
-                          <td className="p-2.5 font-bold font-sans text-slate-900">{room.roomName || room.name || `غرفة ${idx + 1}`}</td>
-                          <td className="p-2.5">{heavy ? `${heavy.name} (${heavy.meters}م)` : '—'}</td>
-                          <td className="p-2.5">{sheer ? `${sheer.name} (${sheer.meters}م)` : '—'}</td>
-                          <td className="p-2.5">{blackout ? `${blackout.name} (${blackout.meters}م)` : '—'}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Total Aggregated Summary Box */}
-            <div className="space-y-2">
-              <h4 className="font-black text-xs text-slate-900 border-r-4 border-emerald-500 pr-2">
-                2. إجمالي الأمتار المطلوب قصها وسحبها من المخزن:
-              </h4>
-
-              <div className="bg-slate-900 text-white p-3.5 rounded-2xl text-xs space-y-1.5 font-bold">
-                {getFabricTotals(selectedOrderForPrint.rooms).map((t, idx) => (
-                  <div key={idx} className="flex justify-between border-b border-slate-800 pb-1 last:border-b-0 last:pb-0">
-                    <span>{t.name}</span>
-                    <span className="font-mono text-amber-400 font-black">{t.meters} متر</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Signatures */}
-            <div className="pt-4 grid grid-cols-2 gap-4 text-center text-xs font-bold text-slate-700 border-t border-slate-200">
-              <div>توقيع مسؤول القص / البياع: ....................</div>
-              <div>توقيع مستلم الورشة: ....................</div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* 🖨️ Cutting Worksheet Printable Modal */}
+      <CuttingPrintModal
+        isOpen={!!selectedOrderForPrint}
+        onClose={() => setSelectedOrderForPrint(null)}
+        data={selectedOrderForPrint}
+      />
     </PageShell>
   );
 }
