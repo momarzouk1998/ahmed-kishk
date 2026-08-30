@@ -3,6 +3,7 @@
 import React from 'react';
 import { formatDate } from '@/lib/dateUtils';
 import { InspectionData, Room } from '@/lib/inspectionsStore';
+import Logo from '@/components/Logo';
 
 interface InspectionPrintModalProps {
   isOpen: boolean;
@@ -87,19 +88,26 @@ export default function InspectionPrintModal({ isOpen, onClose, data }: Inspecti
             align-items: center;
             gap: 12px;
           }
-          .brand-logo-badge {
-            width: 44px;
-            height: 44px;
-            background: #0f172a;
-            color: #d97706;
-            border-radius: 8px;
+          .brand-logo-container {
+            width: 48px;
+            height: 48px;
+            min-width: 48px;
+            max-width: 48px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-weight: 900;
-            font-size: 14pt;
-            border: 2px solid #d97706;
-            font-family: sans-serif;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 2px;
+            background: #ffffff;
+          }
+          .brand-logo-container img {
+            width: 100%;
+            height: 100%;
+            max-width: 44px;
+            max-height: 44px;
+            object-fit: contain;
+            display: block;
           }
           .company-name {
             font-size: 15pt;
@@ -212,7 +220,9 @@ export default function InspectionPrintModal({ isOpen, onClose, data }: Inspecti
           <!-- Header -->
           <div class="header-row">
             <div class="logo-title-group">
-              <div class="brand-logo-badge">AK</div>
+              <div class="brand-logo-container">
+                <img src="/logo.png" alt="أحمد كشك" style="width:42px; height:42px; max-width:42px; max-height:42px; object-fit:contain; display:block;" onerror="this.onerror=null; this.parentNode.innerHTML='<svg viewBox=\\'0 0 100 100\\' width=\\'42\\' height=\\'42\\' fill=\\'none\\' xmlns=\\'http://www.w3.org/2000/svg\\'><circle cx=\\'50\\' cy=\\'50\\' r=\\'46\\' stroke=\\'#0f172a\\' stroke-width=\\'6\\'/><path d=\\'M25 72 L45 28 L53 28 L73 72 M33 56 L65 56\\' stroke=\\'#0f172a\\' stroke-width=\\'7\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'/><path d=\\'M48 22 L48 78 M48 50 L68 28 M48 50 L72 72\\' stroke=\\'#0f172a\\' stroke-width=\\'7\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'/></svg>';" />
+              </div>
               <div>
                 <div class="company-name">مؤسسة أحمد كشك للأقمشة والستائر</div>
                 <div class="doc-subtitle">كشف مقاسات ومعاينة هندسية ميدانية</div>
@@ -326,8 +336,8 @@ export default function InspectionPrintModal({ isOpen, onClose, data }: Inspecti
           {/* Header */}
           <div className="flex justify-between items-center pb-3 border-b-2 border-slate-900">
             <div className="flex items-center gap-3">
-              <div className="w-11 h-11 bg-slate-950 text-amber-500 rounded-lg flex items-center justify-center font-black text-lg border-2 border-amber-500">
-                AK
+              <div className="w-12 h-12 flex items-center justify-center p-1 bg-white border border-slate-300 rounded-lg shrink-0">
+                <Logo size="md" />
               </div>
               <div>
                 <h1 className="font-black text-lg text-slate-950 leading-tight">مؤسسة أحمد كشك للأقمشة والستائر</h1>
