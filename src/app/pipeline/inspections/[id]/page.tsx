@@ -13,6 +13,7 @@ import {
   Room
 } from '@/lib/inspectionsStore';
 import { updatePipelineOrderStatus } from '@/lib/pipelineStore';
+import InspectionPrintModal from '@/components/InspectionPrintModal';
 
 const installOptions = [
   'تراك سقف',
@@ -87,6 +88,7 @@ export default function InspectionDetailPage() {
   const [showRoomModal, setShowRoomModal] = useState(false);
   const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
   const [showApprovalModal, setShowApprovalModal] = useState(false);
+  const [showPrintModal, setShowPrintModal] = useState(false);
 
   // Form State
   const [roomName, setRoomName] = useState('الصالة');
@@ -225,6 +227,15 @@ export default function InspectionDetailPage() {
             <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
             العودة لقائمة المعاينات
           </Link>
+
+          <button
+            type="button"
+            onClick={() => setShowPrintModal(true)}
+            className="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
+          >
+            <span className="material-symbols-outlined text-[18px]">print</span>
+            <span>🖨️ طباعة كشف المقاسات (PDF)</span>
+          </button>
         </div>
 
         {/* Customer Info Card on Screen */}
@@ -443,11 +454,12 @@ export default function InspectionDetailPage() {
 
           <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
             <button
-              onClick={() => window.print()}
-              className="bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 px-4 py-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
+              type="button"
+              onClick={() => setShowPrintModal(true)}
+              className="bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 px-4 py-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs cursor-pointer transition-colors"
             >
               <span className="material-symbols-outlined text-[16px]">print</span>
-              <span>طباعة كشف المقاسات</span>
+              <span>طباعة كشف المقاسات (PDF)</span>
             </button>
 
             {!isReadOnly && data.rooms.length > 0 && (
@@ -641,6 +653,12 @@ export default function InspectionDetailPage() {
           </div>
         </div>
       )}
+      {/* 🖨️ Inspection Measurement Sheet Printable Modal */}
+      <InspectionPrintModal
+        isOpen={showPrintModal}
+        onClose={() => setShowPrintModal(false)}
+        data={data}
+      />
     </PageShell>
   );
 }

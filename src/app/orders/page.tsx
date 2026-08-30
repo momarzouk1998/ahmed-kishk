@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
 import ContractPrintModal, { PrintContractData } from '@/components/ContractPrintModal';
+import InspectionPrintModal from '@/components/InspectionPrintModal';
 import {
   getStoredPipelineOrders,
   fetchPipelineOrders,
@@ -49,6 +50,7 @@ export default function CentralOrdersLedgerPage() {
   // Print Modals State
   const [printContractData, setPrintContractData] = useState<PrintContractData | null>(null);
   const [isContractPrintOpen, setIsContractPrintOpen] = useState<boolean>(false);
+  const [printInspectionData, setPrintInspectionData] = useState<any>(null);
   const [printWorksheetOrder, setPrintWorksheetOrder] = useState<PipelineMasterOrder | null>(null);
   const [printCuttingOrder, setPrintCuttingOrder] = useState<PipelineMasterOrder | null>(null);
 
@@ -476,29 +478,38 @@ export default function CentralOrdersLedgerPage() {
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
+                  onClick={() => setPrintInspectionData(activeEditingOrder)}
+                  className="bg-amber-600 hover:bg-amber-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[16px]">square_foot</span>
+                  <span>1. كشف المقاسات (PDF)</span>
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => openContractPrint(activeEditingOrder)}
-                  className="bg-brand-gold hover:bg-amber-400 text-slate-950 px-3.5 py-2 rounded-xl text-xs font-black shadow-gold flex items-center gap-1 cursor-pointer"
+                  className="bg-brand-gold hover:bg-amber-400 text-slate-950 px-3.5 py-2 rounded-xl text-xs font-black shadow-gold flex items-center gap-1 cursor-pointer transition-colors"
                 >
                   <span className="material-symbols-outlined text-[16px]">description</span>
-                  <span>1. طباعة عقد العميل (PDF)</span>
+                  <span>2. عقد العميل (PDF)</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setPrintCuttingOrder(activeEditingOrder)}
-                  className="bg-slate-900 hover:bg-slate-800 text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer"
+                  className="bg-slate-900 hover:bg-slate-800 text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors"
                 >
                   <span className="material-symbols-outlined text-[16px]">content_cut</span>
-                  <span>2. ورقة قص القماش (PDF)</span>
+                  <span>3. ورقة قص القماش (PDF)</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setPrintWorksheetOrder(activeEditingOrder)}
-                  className="bg-purple-900 hover:bg-purple-800 text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer"
+                  className="bg-purple-900 hover:bg-purple-800 text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors"
                 >
                   <span className="material-symbols-outlined text-[16px]">precision_manufacturing</span>
-                  <span>3. ورقة تفصيل الورشة (PDF)</span>
+                  <span>4. ورقة تفصيل الورشة (PDF)</span>
                 </button>
               </div>
             </div>
@@ -639,6 +650,13 @@ export default function CentralOrdersLedgerPage() {
         isOpen={isContractPrintOpen}
         onClose={() => setIsContractPrintOpen(false)}
         data={printContractData}
+      />
+
+      {/* 📐 Inspection Measurement Sheet Print Modal */}
+      <InspectionPrintModal
+        isOpen={!!printInspectionData}
+        onClose={() => setPrintInspectionData(null)}
+        data={printInspectionData}
       />
 
       {/* ✂️ Cutting Sheet Printable Modal */}

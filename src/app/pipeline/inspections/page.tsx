@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { getStoredInspections, saveOrUpdateInspection, fetchInspections, InspectionData } from '@/lib/inspectionsStore';
 import { isTodayOrOverdue } from '@/lib/pipelineStore';
 import { formatDate } from '@/lib/dateUtils';
+import InspectionPrintModal from '@/components/InspectionPrintModal';
 
 export type InspectionSummary = InspectionData;
 
@@ -35,6 +36,7 @@ export default function PipelineInspectionsPage() {
 
   const [showNewModal, setShowNewModal] = useState(false);
   const [successToast, setSuccessToast] = useState<string | null>(null);
+  const [printItem, setPrintItem] = useState<InspectionData | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -399,9 +401,18 @@ export default function PipelineInspectionsPage() {
                         </span>
                       </td>
 
-                      {/* Communication Icon-Only Column */}
+                      {/* Communication & Print Column */}
                       <td className="p-3.5 text-center align-middle" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setPrintItem(item)}
+                            className="w-8 h-8 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 flex items-center justify-center transition-colors shadow-2xs cursor-pointer"
+                            title="طباعة كشف المقاسات (PDF)"
+                          >
+                            <span className="material-symbols-outlined text-[17px]">print</span>
+                          </button>
+
                           <a
                             href={`tel:${item.phone}`}
                             className="w-8 h-8 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 flex items-center justify-center transition-colors shadow-2xs"
@@ -446,20 +457,23 @@ export default function PipelineInspectionsPage() {
                     </span>
                   </div>
 
-                  <div className="text-xs text-slate-500 font-mono flex items-center gap-2 flex-wrap">
-                    <span>{formatDate(item.scheduledAt)}</span>
-                    <span>•</span>
-                    <span>{item.technician}</span>
-                    <span>•</span>
-                    <span className={`px-2 py-0.2 rounded font-bold border text-[10px] ${getBranchBadgeStyle(item.branch)}`}>
-                      {item.branch}
-                    </span>
+                  <div className="text-xs text-slate-500 space-y-0.5">
+                    <div>{item.address || 'العنوان غير مسجل'} • {item.branch}</div>
+                    <div className="font-mono text-slate-700 font-bold">{formatDate(item.scheduledAt)} • فني: {item.technician}</div>
                   </div>
 
                   <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
                     <span className="font-bold text-slate-700">الغرف: {item.rooms?.length || 0}</span>
                     
                     <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        onClick={() => setPrintItem(item)}
+                        className="w-7 h-7 rounded-lg bg-amber-50 text-amber-900 border border-amber-200 flex items-center justify-center cursor-pointer"
+                        title="طباعة كشف المقاسات"
+                      >
+                        <span className="material-symbols-outlined text-[15px]">print</span>
+                      </button>
                       <a
                         href={`tel:${item.phone}`}
                         className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center"
@@ -653,6 +667,12 @@ export default function PipelineInspectionsPage() {
           </div>
         </div>
       )}
+      {/* 📐 Inspection Measurement Sheet Print Modal */}
+      <InspectionPrintModal
+        isOpen={!!printItem}
+        onClose={() => setPrintItem(null)}
+        data={printItem}
+      />
     </PageShell>
   );
 }
