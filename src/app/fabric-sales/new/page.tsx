@@ -61,7 +61,7 @@ export default function NewSalesInvoicePOSPage() {
   const [customerType, setCustomerType] = useState<'WALK_IN' | 'REGISTERED'>('WALK_IN');
   const [custName, setCustName] = useState('عميل نقدي');
   const [custPhone, setCustPhone] = useState('');
-  const [branch, setBranch] = useState('الفرع الرئيسي');
+  const [branch, setBranch] = useState('الفرع الرئيسي — سعد زغلول');
 
   // Invoice Line Items (Table rows)
   const [items, setItems] = useState<InvoiceLineItem[]>([]);
@@ -76,10 +76,16 @@ export default function NewSalesInvoicePOSPage() {
   const [discountValue, setDiscountValue] = useState<number>(0);
 
   // Payment Method & Settlement
-  const [paymentMethod, setPaymentMethod] = useState<'نقدي' | 'إنستاباي' | 'فودافون كاش' | 'فيزا / كارت' | 'بالآجل / دفعات'>('نقدي');
+  const [paymentMethod, setPaymentMethod] = useState<'نقدي' | 'إنستاباي' | 'فودافون كاش' | 'فيزا / كارت' | 'بالآجل / دفعات' | 'دفع متعدد / مزيج'>('نقدي');
   const [paidAmount, setPaidAmount] = useState<number>(0);
   const [isFullPaid, setIsFullPaid] = useState<boolean>(true);
   const [invNotes, setInvNotes] = useState('');
+
+  // Split Payments Breakdown (عند اختيار دفع متعدد)
+  const [splitCash, setSplitCash] = useState<number>(0);
+  const [splitInstapay, setSplitInstapay] = useState<number>(0);
+  const [splitVodafone, setSplitVodafone] = useState<number>(0);
+  const [splitVisa, setSplitVisa] = useState<number>(0);
 
   // Print Thermal / Receipt Modal State
   const [showReceiptModal, setShowReceiptModal] = useState<boolean>(false);
@@ -262,6 +268,12 @@ export default function NewSalesInvoicePOSPage() {
       paidAmount: paidAmount || 0,
       remainingAmount,
       status: statusLabel,
+      splitPayments: paymentMethod === 'دفع متعدد / مزيج' ? {
+        cash: Number(splitCash) || 0,
+        instapay: Number(splitInstapay) || 0,
+        vodafone: Number(splitVodafone) || 0,
+        visa: Number(splitVisa) || 0,
+      } : undefined,
       notes: invNotes.trim(),
     };
 
@@ -307,46 +319,6 @@ export default function NewSalesInvoicePOSPage() {
   return (
     <PageShell title="نقطة البيع والكاشير — فواتير المبيعات">
       <div className="max-w-[1600px] mx-auto pb-4">
-        {/* Top Header Bar - Ultra Compact for POS Touch Monitors */}
-        <div className="flex flex-wrap justify-between items-center bg-white p-2 sm:p-2.5 rounded-2xl border border-slate-200 shadow-soft mb-2.5 gap-2">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center font-black shadow-xs">
-              <span className="material-symbols-outlined text-lg">point_of_sale</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xs sm:text-sm font-black text-slate-900">
-                كاشير بيع الأقمشة السريع
-              </h1>
-              <span className="bg-amber-100 text-amber-900 text-[10px] px-2 py-0.5 rounded-full font-mono font-black border border-amber-300">
-                {invoiceNumber}
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setTouchMode(!touchMode)}
-              className={`px-2.5 py-1 rounded-xl text-[11px] font-black transition-all flex items-center gap-1 cursor-pointer shadow-xs border ${
-                touchMode
-                  ? 'bg-amber-500 text-white border-amber-600 shadow-amber-500/30'
-                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
-              }`}
-            >
-              <span className="material-symbols-outlined text-[15px]">touch_app</span>
-              <span>لوحة التاتش {touchMode ? '✓ مفعّلة' : 'مغلقة'}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => router.push('/fabric-sales')}
-              className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-xl text-[11px] font-bold transition-colors cursor-pointer border border-slate-200"
-            >
-              ↩️ سجل الفواتير
-            </button>
-          </div>
-        </div>
-
         {/* 2-Column POS Layout (Right: Catalog & Touch / Left: Live Invoice) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-start">
           
@@ -423,167 +395,162 @@ export default function NewSalesInvoicePOSPage() {
                   <p className="text-xs font-bold">لا توجد أقمشة مطابقة للتصنيف أو البحث الحالي</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-1.5 max-h-[175px] overflow-y-auto pr-1">
+                <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-1.5 max-h-[160px] overflow-y-auto pr-1">
                   {filteredProducts.map(prod => (
                     <button
                       key={prod.id}
                       type="button"
                       onClick={() => handleAddProduct(prod)}
-                      className="text-right p-2 rounded-xl border border-slate-200 bg-gradient-to-b from-white to-slate-50 hover:to-amber-50/60 hover:border-amber-400 hover:shadow-xs transition-all group cursor-pointer flex flex-col justify-between relative overflow-hidden"
+                      className="text-right p-1.5 px-2.5 rounded-xl border border-slate-200 bg-white hover:bg-amber-50/80 hover:border-amber-400 transition-all group cursor-pointer flex justify-between items-center shadow-3xs"
                     >
-                      <div className="space-y-0.5">
-                        <div className="flex justify-between items-center text-[9px]">
-                          <span className="font-mono font-black text-slate-400 bg-slate-100 px-1 py-0.2 rounded">
-                            {prod.code}
-                          </span>
-                          <span className="bg-amber-100 text-amber-800 px-1 py-0.2 rounded font-bold text-[8.5px]">
-                            {prod.category}
-                          </span>
-                        </div>
-                        <p className="font-black text-slate-900 text-[11px] leading-tight line-clamp-1 group-hover:text-amber-700 transition-colors">
-                          {prod.name}
-                        </p>
-                      </div>
-
-                      <div className="mt-1 pt-1 border-t border-slate-100 flex justify-between items-center">
-                        <span className="font-mono font-black text-xs text-emerald-700">
-                          {prod.sellPrice.toLocaleString()} ج
-                        </span>
-                        <span className="w-5 h-5 rounded-md bg-amber-500 group-hover:bg-amber-600 text-white flex items-center justify-center text-xs font-bold">
-                          +
-                        </span>
-                      </div>
+                      <span className="font-black text-slate-900 text-[11px] leading-tight truncate group-hover:text-amber-900">
+                        {prod.name}
+                      </span>
+                      <span className="font-mono font-black text-xs text-emerald-700 whitespace-nowrap bg-emerald-50/90 px-1.5 py-0.5 rounded-lg border border-emerald-200/80 mr-1">
+                        {prod.sellPrice.toLocaleString()} ج
+                      </span>
                     </button>
                   ))}
                 </div>
               )}
             </div>
 
-            {/* Compact Touch Screen Keypad Panel */}
-            {touchMode && (
-              <div className="bg-slate-900 text-white p-2.5 rounded-2xl shadow-lg border border-slate-800 space-y-1.5">
-                <div className="flex justify-between items-center border-b border-slate-800 pb-1">
-                  <div className="flex items-center gap-1.5">
-                    <span className="material-symbols-outlined text-amber-400 text-base">dialpad</span>
-                    <span className="text-[11px] font-black text-slate-200">لوحة التاتش السريعة لتعديل الأمتار:</span>
+            {/* Light Touch Screen Keypad Panel */}
+            <div className="bg-slate-50 text-slate-900 p-2.5 rounded-2xl border border-slate-200 shadow-soft space-y-1.5">
+              <div className="flex justify-between items-center border-b border-slate-200 pb-1">
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setTouchMode(!touchMode)}
+                    className={`px-2 py-0.5 rounded-lg text-[10px] font-black transition-all flex items-center gap-1 cursor-pointer border ${
+                      touchMode
+                        ? 'bg-amber-500 text-white border-amber-600 shadow-xs'
+                        : 'bg-slate-200 hover:bg-slate-300 text-slate-700 border-slate-300'
+                    }`}
+                    title="تفعيل أو إغلاق التاتش"
+                  >
+                    <span className="material-symbols-outlined text-[13px]">touch_app</span>
+                    <span>لوحة التاتش {touchMode ? '✓ مفعّلة' : 'مغلقة'}</span>
+                  </button>
+                  <span className="text-[10.5px] font-black text-slate-700">تعديل الأمتار:</span>
+                </div>
+
+                {activeSelectedItem ? (
+                  <div className="bg-white border border-slate-200 px-2 py-0.5 rounded-lg text-[10.5px] flex items-center gap-1.5 shadow-3xs">
+                    <span className="text-slate-500 font-bold">الصنف:</span>
+                    <span className="font-black text-amber-800 max-w-[120px] truncate">{activeSelectedItem.name}</span>
+                    <span className="bg-emerald-100 text-emerald-900 font-mono font-black px-1 rounded text-[10px]">
+                      {activeSelectedItem.meters} م
+                    </span>
+                  </div>
+                ) : (
+                  <span className="text-[10px] text-slate-400 font-bold">اختر صنفاً لتعديل أمتاره</span>
+                )}
+              </div>
+
+              {touchMode && (
+                <>
+                  {/* Quick Fraction Meter Buttons (Only 3: + ¼م, + ½م, + ¾م) */}
+                  <div className="grid grid-cols-3 gap-1">
+                    {[
+                      { label: '+ ¼م', val: 0.25 },
+                      { label: '+ ½م', val: 0.50 },
+                      { label: '+ ¾م', val: 0.75 },
+                    ].map((frac, fIdx) => (
+                      <button
+                        key={fIdx}
+                        type="button"
+                        onClick={() => handleAddFraction(frac.val)}
+                        className="bg-amber-100 hover:bg-amber-500 hover:text-white text-amber-950 font-black py-1 rounded-lg text-xs transition-colors cursor-pointer text-center border border-amber-300 shadow-3xs"
+                      >
+                        {frac.label}
+                      </button>
+                    ))}
                   </div>
 
-                  {activeSelectedItem ? (
-                    <div className="bg-slate-800 border border-slate-700 px-2 py-0.5 rounded-lg text-[10.5px] flex items-center gap-1.5">
-                      <span className="text-slate-400 font-bold">الصنف:</span>
-                      <span className="font-black text-amber-400 max-w-[130px] truncate">{activeSelectedItem.name}</span>
-                      <span className="bg-emerald-500/20 text-emerald-300 font-mono font-black px-1 rounded text-[10px]">
-                        {activeSelectedItem.meters} م
-                      </span>
-                    </div>
-                  ) : (
-                    <span className="text-[10px] text-slate-400 font-bold">اختر صنفاً لتعديل أمتاره</span>
-                  )}
-                </div>
-
-                {/* Quick Fraction & Meter Addition Buttons */}
-                <div className="grid grid-cols-6 gap-1">
-                  {[
-                    { label: '+ ¼م', val: 0.25 },
-                    { label: '+ ½م', val: 0.50 },
-                    { label: '+ ¾م', val: 0.75 },
-                    { label: '+ 1م', val: 1.0 },
-                    { label: '+ 2م', val: 2.0 },
-                    { label: '+ 5م', val: 5.0 },
-                  ].map((frac, fIdx) => (
+                  {/* Main Compact Light Numeric Numpad */}
+                  <div className="grid grid-cols-4 gap-1 pt-0.5">
+                    {['7', '8', '9'].map(n => (
+                      <button
+                        key={n}
+                        type="button"
+                        onClick={() => handleKeypadPress(n)}
+                        className="bg-white hover:bg-amber-50 text-slate-950 font-mono font-black text-base py-1 rounded-lg border border-slate-200 shadow-3xs active:scale-95 transition-all cursor-pointer"
+                      >
+                        {n}
+                      </button>
+                    ))}
                     <button
-                      key={fIdx}
                       type="button"
-                      onClick={() => handleAddFraction(frac.val)}
-                      className="bg-amber-500/20 hover:bg-amber-500 hover:text-slate-950 text-amber-300 border border-amber-500/30 font-black py-1 rounded-lg text-[10.5px] transition-colors cursor-pointer text-center"
+                      onClick={() => handleKeypadPress('BACKSPACE')}
+                      className="bg-rose-50 hover:bg-rose-500 text-rose-700 hover:text-white font-black py-1 rounded-lg border border-rose-200 flex items-center justify-center cursor-pointer transition-colors shadow-3xs"
                     >
-                      {frac.label}
+                      <span className="material-symbols-outlined text-[16px]">backspace</span>
                     </button>
-                  ))}
-                </div>
 
-                {/* Main Compact Numeric Numpad */}
-                <div className="grid grid-cols-4 gap-1 pt-0.5">
-                  {['7', '8', '9'].map(n => (
+                    {['4', '5', '6'].map(n => (
+                      <button
+                        key={n}
+                        type="button"
+                        onClick={() => handleKeypadPress(n)}
+                        className="bg-white hover:bg-amber-50 text-slate-950 font-mono font-black text-base py-1 rounded-lg border border-slate-200 shadow-3xs active:scale-95 transition-all cursor-pointer"
+                      >
+                        {n}
+                      </button>
+                    ))}
                     <button
-                      key={n}
                       type="button"
-                      onClick={() => handleKeypadPress(n)}
-                      className="bg-slate-800 hover:bg-slate-700 text-white font-mono font-black text-base py-1.5 rounded-lg border border-slate-700 active:scale-95 transition-all cursor-pointer"
+                      onClick={() => handleKeypadPress('CLEAR')}
+                      className="bg-amber-50 hover:bg-amber-100 text-amber-900 font-black py-1 rounded-lg border border-amber-200 text-[10px] cursor-pointer transition-colors shadow-3xs"
                     >
-                      {n}
+                      تفريغ C
                     </button>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => handleKeypadPress('BACKSPACE')}
-                    className="bg-rose-500/20 hover:bg-rose-500 text-rose-300 hover:text-white font-black py-1.5 rounded-lg border border-rose-500/30 flex items-center justify-center cursor-pointer transition-colors"
-                  >
-                    <span className="material-symbols-outlined text-[16px]">backspace</span>
-                  </button>
 
-                  {['4', '5', '6'].map(n => (
+                    {['1', '2', '3'].map(n => (
+                      <button
+                        key={n}
+                        type="button"
+                        onClick={() => handleKeypadPress(n)}
+                        className="bg-white hover:bg-amber-50 text-slate-950 font-mono font-black text-base py-1 rounded-lg border border-slate-200 shadow-3xs active:scale-95 transition-all cursor-pointer"
+                      >
+                        {n}
+                      </button>
+                    ))}
                     <button
-                      key={n}
                       type="button"
-                      onClick={() => handleKeypadPress(n)}
-                      className="bg-slate-800 hover:bg-slate-700 text-white font-mono font-black text-base py-1.5 rounded-lg border border-slate-700 active:scale-95 transition-all cursor-pointer"
+                      onClick={() => handleKeypadPress('.')}
+                      className="bg-white hover:bg-amber-50 text-slate-950 font-mono font-black text-base py-1 rounded-lg border border-slate-200 shadow-3xs active:scale-95 transition-all cursor-pointer"
                     >
-                      {n}
+                      .
                     </button>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => handleKeypadPress('CLEAR')}
-                    className="bg-slate-800 hover:bg-slate-700 text-amber-400 font-black py-1.5 rounded-lg border border-slate-700 text-[10px] cursor-pointer transition-colors"
-                  >
-                    تفريغ C
-                  </button>
 
-                  {['1', '2', '3'].map(n => (
                     <button
-                      key={n}
                       type="button"
-                      onClick={() => handleKeypadPress(n)}
-                      className="bg-slate-800 hover:bg-slate-700 text-white font-mono font-black text-base py-1.5 rounded-lg border border-slate-700 active:scale-95 transition-all cursor-pointer"
+                      onClick={() => handleKeypadPress('0')}
+                      className="col-span-2 bg-white hover:bg-amber-50 text-slate-950 font-mono font-black text-base py-1 rounded-lg border border-slate-200 shadow-3xs active:scale-95 transition-all cursor-pointer"
                     >
-                      {n}
+                      0
                     </button>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => handleKeypadPress('.')}
-                    className="bg-slate-800 hover:bg-slate-700 text-white font-mono font-black text-base py-1.5 rounded-lg border border-slate-700 active:scale-95 transition-all cursor-pointer"
-                  >
-                    .
-                  </button>
 
-                  <button
-                    type="button"
-                    onClick={() => handleKeypadPress('0')}
-                    className="col-span-2 bg-slate-800 hover:bg-slate-700 text-white font-mono font-black text-base py-1.5 rounded-lg border border-slate-700 active:scale-95 transition-all cursor-pointer"
-                  >
-                    0
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (items.length > 0) {
-                        const curIdx = items.findIndex(it => it.id === selectedRowId);
-                        const nextIdx = (curIdx + 1) % items.length;
-                        setSelectedRowId(items[nextIdx].id);
-                        setKeypadBuffer('');
-                      }
-                    }}
-                    className="col-span-2 bg-emerald-600 hover:bg-emerald-500 text-white font-black py-1.5 rounded-lg flex items-center justify-center gap-1 text-[11px] cursor-pointer shadow-xs transition-colors"
-                  >
-                    <span>الصنف التالي</span>
-                    <span className="material-symbols-outlined text-[14px]">arrow_downward</span>
-                  </button>
-                </div>
-              </div>
-            )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (items.length > 0) {
+                          const curIdx = items.findIndex(it => it.id === selectedRowId);
+                          const nextIdx = (curIdx + 1) % items.length;
+                          setSelectedRowId(items[nextIdx].id);
+                          setKeypadBuffer('');
+                        }
+                      }}
+                      className="col-span-2 bg-emerald-600 hover:bg-emerald-500 text-white font-black py-1 rounded-lg flex items-center justify-center gap-1 text-[11px] cursor-pointer shadow-xs transition-colors"
+                    >
+                      <span>الصنف التالي</span>
+                      <span className="material-symbols-outlined text-[14px]">arrow_downward</span>
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
 
           {/* LEFT COLUMN (5 cols): Live Invoice Panel (Starts directly from TOP) */}
@@ -593,10 +560,22 @@ export default function NewSalesInvoicePOSPage() {
               {/* Customer & Branch Header - Compact Single Line */}
               <div className="space-y-1.5 pb-2 border-b border-slate-100">
                 <div className="flex justify-between items-center">
-                  <span className="text-[11px] font-black text-slate-900 flex items-center gap-1">
-                    <span className="material-symbols-outlined text-amber-500 text-base">receipt_long</span>
-                    <span>تفاصيل الفاتورة والعميل:</span>
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] font-black text-slate-900 flex items-center gap-1">
+                      <span className="material-symbols-outlined text-amber-500 text-base">receipt_long</span>
+                      <span>الفاتورة:</span>
+                    </span>
+                    <span className="bg-amber-100 text-amber-900 text-[10px] px-1.5 py-0.2 rounded font-mono font-black border border-amber-300">
+                      {invoiceNumber}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => router.push('/fabric-sales')}
+                      className="text-[9.5px] font-bold text-slate-500 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-1.5 py-0.5 rounded transition-colors cursor-pointer border border-slate-200"
+                    >
+                      ↩️ سجل الفواتير
+                    </button>
+                  </div>
                   
                   <div className="flex gap-1 text-[10px] font-bold">
                     <button
@@ -647,11 +626,10 @@ export default function NewSalesInvoicePOSPage() {
                     <select
                       value={branch}
                       onChange={e => setBranch(e.target.value)}
-                      className="w-full border border-slate-200 rounded-lg px-1.5 py-1 font-bold text-slate-900 bg-slate-50 text-[11px] focus:outline-none"
+                      className="w-full border border-slate-200 rounded-lg px-1.5 py-1 font-bold text-slate-900 bg-slate-50 text-[10.5px] focus:outline-none"
                     >
-                      <option value="الفرع الرئيسي">الفرع الرئيسي</option>
-                      <option value="فرع عرابي">فرع عرابي</option>
-                      <option value="فرع التجمع">فرع التجمع</option>
+                      <option value="الفرع الرئيسي — سعد زغلول">الفرع الرئيسي — سعد زغلول</option>
+                      <option value="فرع عرابي — الشيخ زايد">فرع عرابي — الشيخ زايد</option>
                       <option value="فرع الثلاثيني">فرع الثلاثيني</option>
                       <option value="فرع عمر أفندي">فرع عمر أفندي</option>
                     </select>

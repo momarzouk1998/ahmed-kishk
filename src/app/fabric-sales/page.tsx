@@ -440,6 +440,15 @@ export default function FabricSalesPage() {
 
                                 <button
                                   type="button"
+                                  onClick={() => setEditingInvoice(inv)}
+                                  className="text-amber-600 hover:text-amber-700 p-1 rounded-lg hover:bg-amber-50 transition-colors cursor-pointer"
+                                  title="تعديل الفاتورة المحفوظة"
+                                >
+                                  <span className="material-symbols-outlined text-[18px]">edit</span>
+                                </button>
+
+                                <button
+                                  type="button"
                                   onClick={() => handleDeleteInvoice(inv.id, inv.invoiceNumber)}
                                   className="text-slate-300 hover:text-rose-600 p-1 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
                                   title="حذف الفاتورة"
@@ -671,6 +680,241 @@ export default function FabricSalesPage() {
                 <button
                   type="button"
                   onClick={() => setShowAddReturnModal(false)}
+                  className="bg-slate-100 text-slate-700 font-bold px-4 py-2.5 rounded-xl cursor-pointer text-xs"
+                >
+                  إلغاء
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* ✏️ Modal: Edit Saved Invoice (تعديل الفاتورة المحفوظة للأدمن ومدير الفرع) */}
+      {editingInvoice && (
+        <div className="modal-overlay fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-xl w-full p-6 space-y-4 shadow-2xl border border-slate-200 my-auto">
+            <div className="flex justify-between items-center pb-3 border-b border-slate-200">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-amber-600 text-xl">edit_note</span>
+                <h3 className="font-bold text-slate-900 text-sm">
+                  تعديل فاتورة المبيعات: <span className="font-mono text-amber-800">{editingInvoice.invoiceNumber}</span>
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingInvoice(null)}
+                className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-xs cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateInvoice} className="space-y-3.5 text-xs">
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className="text-slate-700 font-bold block mb-1">اسم العميل:</label>
+                  <input
+                    type="text"
+                    required
+                    value={editingInvoice.customerName}
+                    onChange={e => setEditingInvoice({ ...editingInvoice, customerName: e.target.value })}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-1.5 font-bold text-slate-900 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-slate-700 font-bold block mb-1">رقم الهاتف:</label>
+                  <input
+                    type="text"
+                    value={editingInvoice.phone || editingInvoice.customerPhone || ''}
+                    onChange={e => setEditingInvoice({ ...editingInvoice, phone: e.target.value })}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-1.5 font-mono font-bold text-slate-900 focus:outline-none focus:border-amber-500"
+                    dir="ltr"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className="text-slate-700 font-bold block mb-1">الفرع:</label>
+                  <select
+                    value={editingInvoice.branch || 'الفرع الرئيسي'}
+                    onChange={e => setEditingInvoice({ ...editingInvoice, branch: e.target.value })}
+                    className="w-full border border-slate-200 rounded-xl px-2.5 py-1.5 font-bold text-slate-900 focus:outline-none"
+                  >
+                    <option value="الفرع الرئيسي">الفرع الرئيسي</option>
+                    <option value="فرع عرابي">فرع عرابي</option>
+                    <option value="فرع التجمع">فرع التجمع</option>
+                    <option value="فرع الثلاثيني">فرع الثلاثيني</option>
+                    <option value="فرع عمر أفندي">فرع عمر أفندي</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-slate-700 font-bold block mb-1">طريقة السداد:</label>
+                  <select
+                    value={editingInvoice.paymentMethod || 'نقدي'}
+                    onChange={e => setEditingInvoice({ ...editingInvoice, paymentMethod: e.target.value as any })}
+                    className="w-full border border-slate-200 rounded-xl px-2.5 py-1.5 font-bold text-slate-900 focus:outline-none"
+                  >
+                    <option value="نقدي">💵 كاش / نقدي</option>
+                    <option value="فيزا / كارت">💳 فيزا / كارت</option>
+                    <option value="إنستاباي">⚡ إنستاباي (InstaPay)</option>
+                    <option value="فودافون كاش">📱 فودافون كاش</option>
+                    <option value="بالآجل / دفعات">⏳ بالآجل / دفعات</option>
+                    <option value="دفع متعدد / مزيج">🔀 دفع متعدد (مزيج)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Financial & Payment Edit */}
+              <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 space-y-2.5">
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <label className="text-slate-600 font-bold block mb-1 text-[11px]">إجمالي الفاتورة:</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={editingInvoice.totalAmount}
+                      onChange={e => setEditingInvoice({ ...editingInvoice, totalAmount: Number(e.target.value) })}
+                      className="w-full border border-slate-300 rounded-xl px-2.5 py-1 font-mono font-black text-slate-900 bg-white text-xs"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-slate-600 font-bold block mb-1 text-[11px]">المدفوع الآن:</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={editingInvoice.paidAmount}
+                      onChange={e => setEditingInvoice({ ...editingInvoice, paidAmount: Number(e.target.value) })}
+                      className="w-full border border-slate-300 rounded-xl px-2.5 py-1 font-mono font-black text-emerald-700 bg-white text-xs"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-slate-600 font-bold block mb-1 text-[11px]">المتبقي بالآجل:</label>
+                    <div className="bg-slate-200 border border-slate-300 rounded-xl px-2.5 py-1 font-mono font-black text-rose-800 text-xs flex items-center justify-between h-[29px]">
+                      <span>{Math.max(0, editingInvoice.totalAmount - editingInvoice.paidAmount).toLocaleString()}</span>
+                      <span className="text-[10px]">ج</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* If Payment method is Split Payment */}
+                {(editingInvoice.paymentMethod as string) === 'دفع متعدد / مزيج' && (
+                  <div className="bg-amber-100/70 border border-amber-300 p-2.5 rounded-xl space-y-2 text-xs">
+                    <span className="font-black text-amber-950 block">توزيع المبالغ بين طرق الدفع المختلفة:</span>
+                    <div className="grid grid-cols-4 gap-2">
+                      <div>
+                        <label className="font-bold text-slate-700 block mb-0.5 text-[10px]">💵 كاش:</label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={(editingInvoice as any).splitPayments?.cash || 0}
+                          onChange={e => {
+                            const val = Number(e.target.value);
+                            const cur = (editingInvoice as any).splitPayments || { cash: 0, instapay: 0, vodafone: 0, visa: 0 };
+                            const updatedSplit = { ...cur, cash: val };
+                            const totalPaid = updatedSplit.cash + updatedSplit.instapay + updatedSplit.vodafone + updatedSplit.visa;
+                            setEditingInvoice({
+                              ...editingInvoice,
+                              paidAmount: totalPaid,
+                              splitPayments: updatedSplit,
+                            } as any);
+                          }}
+                          className="w-full bg-white border border-amber-300 rounded-lg px-2 py-1 font-mono font-bold text-xs"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="font-bold text-slate-700 block mb-0.5 text-[10px]">⚡ إنستاباي:</label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={(editingInvoice as any).splitPayments?.instapay || 0}
+                          onChange={e => {
+                            const val = Number(e.target.value);
+                            const cur = (editingInvoice as any).splitPayments || { cash: 0, instapay: 0, vodafone: 0, visa: 0 };
+                            const updatedSplit = { ...cur, instapay: val };
+                            const totalPaid = updatedSplit.cash + updatedSplit.instapay + updatedSplit.vodafone + updatedSplit.visa;
+                            setEditingInvoice({
+                              ...editingInvoice,
+                              paidAmount: totalPaid,
+                              splitPayments: updatedSplit,
+                            } as any);
+                          }}
+                          className="w-full bg-white border border-amber-300 rounded-lg px-2 py-1 font-mono font-bold text-xs"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="font-bold text-slate-700 block mb-0.5 text-[10px]">📱 فودافون:</label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={(editingInvoice as any).splitPayments?.vodafone || 0}
+                          onChange={e => {
+                            const val = Number(e.target.value);
+                            const cur = (editingInvoice as any).splitPayments || { cash: 0, instapay: 0, vodafone: 0, visa: 0 };
+                            const updatedSplit = { ...cur, vodafone: val };
+                            const totalPaid = updatedSplit.cash + updatedSplit.instapay + updatedSplit.vodafone + updatedSplit.visa;
+                            setEditingInvoice({
+                              ...editingInvoice,
+                              paidAmount: totalPaid,
+                              splitPayments: updatedSplit,
+                            } as any);
+                          }}
+                          className="w-full bg-white border border-amber-300 rounded-lg px-2 py-1 font-mono font-bold text-xs"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="font-bold text-slate-700 block mb-0.5 text-[10px]">💳 فيزا:</label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={(editingInvoice as any).splitPayments?.visa || 0}
+                          onChange={e => {
+                            const val = Number(e.target.value);
+                            const cur = (editingInvoice as any).splitPayments || { cash: 0, instapay: 0, vodafone: 0, visa: 0 };
+                            const updatedSplit = { ...cur, visa: val };
+                            const totalPaid = updatedSplit.cash + updatedSplit.instapay + updatedSplit.vodafone + updatedSplit.visa;
+                            setEditingInvoice({
+                              ...editingInvoice,
+                              paidAmount: totalPaid,
+                              splitPayments: updatedSplit,
+                            } as any);
+                          }}
+                          className="w-full bg-white border border-amber-300 rounded-lg px-2 py-1 font-mono font-bold text-xs"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="text-slate-700 font-bold block mb-1">ملاحظات الفاتورة:</label>
+                <textarea
+                  rows={2}
+                  value={editingInvoice.notes || ''}
+                  onChange={e => setEditingInvoice({ ...editingInvoice, notes: e.target.value })}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-1.5 text-slate-900 focus:outline-none text-xs"
+                  placeholder="ملاحظات..."
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="submit"
+                  className="flex-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-2.5 rounded-xl cursor-pointer shadow-gold text-xs"
+                >
+                  حفظ تعديلات الفاتورة ✓
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditingInvoice(null)}
                   className="bg-slate-100 text-slate-700 font-bold px-4 py-2.5 rounded-xl cursor-pointer text-xs"
                 >
                   إلغاء

@@ -26,7 +26,13 @@ export interface FabricSalesInvoiceData {
   discountValue: number;
   discountAmount: number;
   totalAmount: number;
-  paymentMethod: 'نقدي' | 'إنستاباي' | 'فودافون كاش' | 'فيزا / كارت' | 'بالآجل / دفعات';
+  paymentMethod: 'نقدي' | 'إنستاباي' | 'فودافون كاش' | 'فيزا / كارت' | 'بالآجل / دفعات' | 'دفع متعدد / مزيج' | string;
+  splitPayments?: {
+    cash?: number;
+    instapay?: number;
+    vodafone?: number;
+    visa?: number;
+  };
   paidAmount: number;
   remainingAmount: number;
   status: 'تم السداد بالكامل' | 'مسدد جزئياً' | 'آجل / غير مسدد';
@@ -296,7 +302,14 @@ export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricS
               <td class="info-label">الفرع:</td>
               <td class="info-val">${data.branch || 'الفرع الرئيسي'}</td>
               <td class="info-label">طريقة السداد:</td>
-              <td class="info-val">${data.paymentMethod || 'نقدي'}</td>
+              <td class="info-val">
+                ${data.splitPayments ? `متعدد (${[
+                  data.splitPayments.cash ? `${data.splitPayments.cash}ج كاش` : '',
+                  data.splitPayments.instapay ? `${data.splitPayments.instapay}ج إنستاباي` : '',
+                  data.splitPayments.vodafone ? `${data.splitPayments.vodafone}ج فودافون` : '',
+                  data.splitPayments.visa ? `${data.splitPayments.visa}ج فيزا` : ''
+                ].filter(Boolean).join(' + ')})` : (data.paymentMethod || 'نقدي')}
+              </td>
             </tr>
           </table>
 
