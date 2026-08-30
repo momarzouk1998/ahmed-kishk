@@ -268,7 +268,7 @@ export default function CustomersPage() {
                 activeTab === 'CUSTOMERS' ? 'border-amber-500 text-slate-950' : 'border-transparent text-slate-400 hover:text-slate-700'
               }`}
             >
-              <span>👥 قائمة العملاء والديون</span>
+              <span>👥 العملاء</span>
               <span className="bg-amber-100 text-amber-950 px-2 py-0.5 rounded-full text-[11px] font-mono font-bold">{customers.length}</span>
             </button>
 
@@ -279,7 +279,7 @@ export default function CustomersPage() {
                 activeTab === 'COLLECTIONS' ? 'border-amber-500 text-slate-950' : 'border-transparent text-slate-400 hover:text-slate-700'
               }`}
             >
-              <span>💰 سجل سندات التحصيل</span>
+              <span>💰 التحصيلات</span>
               <span className="bg-emerald-100 text-emerald-950 px-2 py-0.5 rounded-full text-[11px] font-mono font-bold">{collections.length}</span>
             </button>
           </div>

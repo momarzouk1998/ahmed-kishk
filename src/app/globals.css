@@ -129,7 +129,8 @@
   /* The printable card itself */
   #printable-contract-modal,
   #printable-cutting-worksheet,
-  #printable-tailoring-modal {
+  #printable-tailoring-modal,
+  #printable-inspection-modal {
     display: block !important;
     position: static !important;
     width: 100% !important;
@@ -146,10 +147,16 @@
     margin: 0 auto !important;
   }
 
+  /* Ensure print-only elements are visible during print */
+  .print-only {
+    display: block !important;
+  }
+
   /* Hide control bars */
   #printable-contract-modal > div:first-child,
   #printable-cutting-worksheet > div:first-child,
   #printable-tailoring-modal > div:first-child,
+  #printable-inspection-modal > div:first-child,
   .no-print {
     display: none !important;
   }
