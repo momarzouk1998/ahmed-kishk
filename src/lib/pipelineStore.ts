@@ -212,21 +212,32 @@ export async function updatePipelineOrderStatus(
   });
 
   if (!found && cleanId) {
+    let quotMatch: any = null;
+    try {
+      const qs = await fetchQuotations();
+      quotMatch = qs.find(q => 
+        q.id === rawId || 
+        q.id === cleanId || 
+        (q.customerName && cleanId.includes(q.customerName)) ||
+        (q.customerName && cleanId === `ORD-${q.id}`)
+      );
+    } catch {}
+
     const newEntry: PipelineMasterOrder = {
       id: cleanId.startsWith('ORD-') ? cleanId : `ORD-${cleanId}`,
       orderId: rawId,
-      customerName: 'عميل',
-      phone: '',
-      address: '',
-      branch: 'الفرع الرئيسي',
-      deliveryDate: '',
+      customerName: quotMatch?.customerName || (cleanId.startsWith('ORD-') ? 'عميل' : cleanId),
+      phone: quotMatch?.phone || '',
+      address: quotMatch?.address || '',
+      branch: quotMatch?.branch || 'الفرع الرئيسي',
+      deliveryDate: quotMatch?.deliveryDate || '',
       status: normalized,
       localStatus: localStatus || newStatus,
-      createdAt: new Date().toISOString().split('T')[0],
-      totalAmount: 0,
-      depositPaid: 0,
-      remainingAmount: 0,
-      rooms: [],
+      createdAt: quotMatch?.date || new Date().toISOString().split('T')[0],
+      totalAmount: quotMatch?.totalAmount || 0,
+      depositPaid: quotMatch?.depositPaid || 0,
+      remainingAmount: quotMatch?.remainingAmount || 0,
+      rooms: quotMatch?.rooms || [],
     };
     updated.unshift(newEntry);
   }
