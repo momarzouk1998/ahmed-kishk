@@ -121,3 +121,38 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
+
+export async function DELETE(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get('id');
+    const name = searchParams.get('name');
+
+    if (!id && !name) {
+      return NextResponse.json({ success: false, error: 'id or name is required' }, { status: 400 });
+    }
+
+    const conditions: any[] = [];
+    if (id) {
+      const cleanId = id.trim();
+      const rawId = cleanId.replace(/^ORD-/, '');
+      conditions.push({ id: cleanId });
+      conditions.push({ orderId: cleanId });
+      conditions.push({ orderId: rawId });
+      conditions.push({ id: `ORD-${rawId}` });
+    }
+    if (name) {
+      conditions.push({ customerName: name.trim() });
+    }
+
+    await prisma.pipelineOrder.deleteMany({
+      where: {
+        OR: conditions,
+      },
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}

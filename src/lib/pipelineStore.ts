@@ -56,26 +56,15 @@ export function isTodayOrOverdue(dateStr?: string): boolean {
 }
 
 export function getDeletedOrderIds(): string[] {
-  if (typeof window === 'undefined') return [...PERMANENT_BLACKLIST_NAMES];
-  try {
-    const raw = localStorage.getItem(DELETED_IDS_KEY);
-    const list: string[] = raw ? JSON.parse(raw) : [];
-    return Array.from(new Set([...list, ...PERMANENT_BLACKLIST_NAMES]));
-  } catch {
-    return [...PERMANENT_BLACKLIST_NAMES];
-  }
+  return [...PERMANENT_BLACKLIST_NAMES];
 }
 
 export function registerDeletedOrderId(id: string) {
-  if (typeof window === 'undefined') return;
-  try {
-    const deleted = getDeletedOrderIds();
-    if (!deleted.includes(id)) {
-      deleted.push(id);
-      localStorage.setItem(DELETED_IDS_KEY, JSON.stringify(deleted));
-    }
-  } catch (err) {
-    console.error('Error saving deleted order id:', err);
+  // DB is now the source of truth for deletion
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.removeItem(DELETED_IDS_KEY);
+    } catch {}
   }
 }
 
@@ -98,15 +87,16 @@ export function normalizeMasterStage(statusStr: string): GlobalMasterStage {
 
 export async function fetchPipelineOrders(): Promise<PipelineMasterOrder[]> {
   try {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(DELETED_IDS_KEY);
+    }
     const res = await fetch('/api/pipeline-orders', { cache: 'no-store' });
     if (res.ok) {
       const json = await res.json();
       if (json.success && Array.isArray(json.orders)) {
-        const deleted = getDeletedOrderIds();
         const serverFiltered: PipelineMasterOrder[] = json.orders.filter((o: any) => {
-          const isIdDel = deleted.includes(o.id) || deleted.includes(o.orderId);
           const isNameDel = PERMANENT_BLACKLIST_NAMES.some(bn => o.customerName?.includes(bn));
-          return !isIdDel && !isNameDel;
+          return !isNameDel;
         });
 
         if (typeof window !== 'undefined') {
@@ -124,7 +114,6 @@ export async function fetchPipelineOrders(): Promise<PipelineMasterOrder[]> {
 export function getStoredPipelineOrders(): PipelineMasterOrder[] {
   if (typeof window === 'undefined') return DEFAULT_PIPELINE_ORDERS;
   try {
-    const deleted = getDeletedOrderIds();
     const raw = localStorage.getItem(STORAGE_KEY);
     let list: PipelineMasterOrder[] = [];
     if (!raw) {
@@ -134,9 +123,8 @@ export function getStoredPipelineOrders(): PipelineMasterOrder[] {
       list = JSON.parse(raw);
     }
     const filtered = list.filter(o => {
-      const isIdDel = deleted.includes(o.id) || deleted.includes(o.orderId);
-      const isNameDel = PERMANENT_BLACKLIST_NAMES.some(bn => o.customerName.includes(bn));
-      return !isIdDel && !isNameDel;
+      const isNameDel = PERMANENT_BLACKLIST_NAMES.some(bn => o.customerName?.includes(bn));
+      return !isNameDel;
     });
     return filtered;
   } catch (err) {
@@ -146,11 +134,9 @@ export function getStoredPipelineOrders(): PipelineMasterOrder[] {
 }
 
 export async function saveStoredPipelineOrders(orders: PipelineMasterOrder[]) {
-  const deleted = getDeletedOrderIds();
   const filtered = orders.filter(o => {
-    const isIdDel = deleted.includes(o.id) || deleted.includes(o.orderId);
-    const isNameDel = PERMANENT_BLACKLIST_NAMES.some(bn => o.customerName.includes(bn));
-    return !isIdDel && !isNameDel;
+    const isNameDel = PERMANENT_BLACKLIST_NAMES.some(bn => o.customerName?.includes(bn));
+    return !isNameDel;
   });
 
   if (typeof window !== 'undefined') {

@@ -157,14 +157,19 @@ export default function CentralOrdersLedgerPage() {
     }
   };
 
-  const handleDelete = (id: string, name: string) => {
-    if (confirm(`هل أنت أسر بالتأكيد من حذف طلب العميل "${name}" نهائياً من النظام؟`)) {
+  const handleDelete = async (id: string, name: string) => {
+    if (confirm(`هل أنت متأكد من حذف طلب العميل "${name}" نهائياً من النظام؟`)) {
       deleteQuotationOrder(id);
-      registerDeletedOrderId(id);
-      if (name) registerDeletedOrderId(name);
       
-      const target = orders.find(o => o.id === id || o.orderId === id || o.customerName === name);
-      if (target?.orderId) registerDeletedOrderId(target.orderId);
+      try {
+        await Promise.all([
+          fetch(`/api/pipeline-orders?id=${encodeURIComponent(id)}&name=${encodeURIComponent(name || '')}`, { method: 'DELETE' }),
+          fetch(`/api/orders?id=${encodeURIComponent(id)}`, { method: 'DELETE' }),
+          fetch(`/api/pricing?id=${encodeURIComponent(id)}`, { method: 'DELETE' }),
+        ]);
+      } catch (err) {
+        console.error('Error deleting order from server:', err);
+      }
 
       const updated = orders.filter(o => o.id !== id && o.orderId !== id && o.customerName !== name);
       setOrders(updated);
