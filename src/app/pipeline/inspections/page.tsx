@@ -613,7 +613,6 @@ export default function PipelineInspectionsPage() {
                   <select value={branch} onChange={e => setBranch(e.target.value)} className="border border-slate-200 rounded-xl p-2 text-xs font-bold">
                     <option>الفرع الرئيسي</option>
                     <option>فرع عرابي</option>
-                    <option>فرع زايد</option>
                   </select>
                 </div>
                 <div className="flex flex-col gap-1">

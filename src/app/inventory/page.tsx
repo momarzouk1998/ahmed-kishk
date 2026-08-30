@@ -81,7 +81,7 @@ export default function InventoryPage() {
   const [reservedQuantity, setReservedQuantity] = useState<number>(0);
   const [costPrice, setCostPrice] = useState<number>(100);
   const [sellPrice, setSellPrice] = useState<number>(150);
-  const [branch, setBranch] = useState('الفرع الرئيسي — القاهرة');
+  const [branch, setBranch] = useState('الفرع الرئيسي');
   const [supplier, setSupplier] = useState('');
 
   // Dynamically set default supplier once suppliers list is loaded
@@ -299,9 +299,10 @@ export default function InventoryPage() {
                 className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700"
               >
                 <option value="الكل">كل الفروع</option>
-                <option value="الفرع الرئيسي — القاهرة">الفرع الرئيسي — القاهرة</option>
-                <option value="فرع ثانٍ — القاهرة">فرع ثانٍ — القاهرة</option>
-                <option value="فرع ثالث — القاهرة">فرع ثالث — القاهرة</option>
+                <option value="الفرع الرئيسي">الفرع الرئيسي</option>
+                <option value="فرع عرابي">فرع عرابي</option>
+                <option value="فرع الثلاثيني">فرع الثلاثيني</option>
+                <option value="فرع عمر أفندي">فرع عمر أفندي</option>
               </select>
 
               <input
@@ -435,9 +436,10 @@ export default function InventoryPage() {
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-bold text-slate-700">الفرع</label>
                   <select value={branch} onChange={e => setBranch(e.target.value)} className="border border-slate-200 rounded-xl p-2 text-sm text-slate-900">
-                    <option value="الفرع الرئيسي — القاهرة">الفرع الرئيسي — القاهرة</option>
-                    <option value="فرع ثانٍ — القاهرة">فرع ثانٍ — القاهرة</option>
-                    <option value="فرع ثالث — القاهرة">فرع ثالث — القاهرة</option>
+                    <option value="الفرع الرئيسي">الفرع الرئيسي</option>
+                    <option value="فرع عرابي">فرع عرابي</option>
+                    <option value="فرع الثلاثيني">فرع الثلاثيني</option>
+                    <option value="فرع عمر أفندي">فرع عمر أفندي</option>
                   </select>
                 </div>
               </div>
@@ -526,9 +528,10 @@ export default function InventoryPage() {
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-bold text-slate-700">الفرع</label>
                   <select value={branch} onChange={e => setBranch(e.target.value)} className="border border-slate-200 rounded-xl p-2 text-sm text-slate-900">
-                    <option value="الفرع الرئيسي — القاهرة">الفرع الرئيسي — القاهرة</option>
-                    <option value="فرع ثانٍ — القاهرة">فرع ثانٍ — القاهرة</option>
-                    <option value="فرع ثالث — القاهرة">فرع ثالث — القاهرة</option>
+                    <option value="الفرع الرئيسي">الفرع الرئيسي</option>
+                    <option value="فرع عرابي">فرع عرابي</option>
+                    <option value="فرع الثلاثيني">فرع الثلاثيني</option>
+                    <option value="فرع عمر أفندي">فرع عمر أفندي</option>
                   </select>
                 </div>
               </div>
