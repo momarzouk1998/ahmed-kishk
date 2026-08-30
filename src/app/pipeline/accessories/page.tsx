@@ -133,6 +133,13 @@ export default function PipelineAccessoriesPage() {
           ],
         };
       });
+      console.log('🔄 [Accessories Pipeline Polling] Loaded data:', {
+        pipelineOrdersCount: (storedPipeline || []).length,
+        quotationsCount: (quotations || []).length,
+        relevantOrdersCount: relevant.length,
+        kits: mapped.map(m => ({ id: m.id, customer: m.customerName, status: m.status }))
+      });
+
       setKits(mapped);
     }
     load();
@@ -180,20 +187,52 @@ export default function PipelineAccessoriesPage() {
   };
 
   const updateKitStatus = async (kitId: string, status: AccessoryKit['status']) => {
-    setKits(prev => prev.map(k => k.id === kitId ? { ...k, status } : k));
+    console.group('🛠️ [Accessories Pipeline Debug] updateKitStatus Triggered');
+    console.log('📌 Kit ID:', kitId);
+    console.log('📌 Target Status:', status);
+    console.log('📌 Current Active Tab before click:', activeTab);
+
+    setKits(prev => {
+      const updated = prev.map(k => k.id === kitId ? { ...k, status } : k);
+      console.log('📌 Optimistic Local Kits Updated:', updated);
+      return updated;
+    });
+
     if (status === 'تم التجهيز') {
+      console.log('🔄 Switching Active Tab to: PREPARED');
       setActiveTab('PREPARED');
     }
-    await updatePipelineOrderStatus(kitId, 'تجهيز الاكسسوارات', 'تم تجهيز الإكسسوارات');
+
+    try {
+      console.log('📡 Sending update to Pipeline Store & Server DB...');
+      await updatePipelineOrderStatus(kitId, 'تجهيز الاكسسوارات', 'تم تجهيز الإكسسوارات');
+      console.log('✅ Pipeline Store Update Finished Successfully!');
+    } catch (err) {
+      console.error('❌ Failed to update pipeline order in DB:', err);
+    }
+    console.groupEnd();
   };
 
   const updateKitTransfer = async (kitId: string, destination: 'DELIVERY' | 'INSTALLATION') => {
+    console.group('🚀 [Accessories Pipeline Debug] updateKitTransfer Triggered');
+    console.log('📌 Kit ID:', kitId);
+    console.log('📌 Destination:', destination);
+
     setKits(prev => prev.map(k => k.id === kitId ? { ...k, status: destination === 'DELIVERY' ? 'في التسليمات' : 'في التركيبات' } : k));
-    if (destination === 'DELIVERY') {
-      await updatePipelineOrderStatus(kitId, 'جاهز للاستلام', 'جاهز للتسليم بالمعرض');
-    } else {
-      await updatePipelineOrderStatus(kitId, 'جاهز للتركيب', 'مُجدول للتركيب');
+
+    try {
+      if (destination === 'DELIVERY') {
+        console.log('📦 Transferring to Delivery (جاهز للاستلام)...');
+        await updatePipelineOrderStatus(kitId, 'جاهز للاستلام', 'جاهز للتسليم بالمعرض');
+      } else {
+        console.log('🛠️ Transferring to Installation (جاهز للتركيب)...');
+        await updatePipelineOrderStatus(kitId, 'جاهز للتركيب', 'مُجدول للتركيب');
+      }
+      console.log('✅ Transfer update finished successfully!');
+    } catch (err) {
+      console.error('❌ Failed transfer update in DB:', err);
     }
+    console.groupEnd();
   };
 
   const handleAddCustomItem = (e: React.FormEvent) => {

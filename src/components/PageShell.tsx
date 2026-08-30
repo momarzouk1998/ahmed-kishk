@@ -34,15 +34,7 @@ function ShellContent({ title, badge, action, children }: PageShellProps) {
       <Header title={title} badge={badge} action={action} />
       <div className={`pt-16 transition-all duration-300 ${isCollapsed ? 'lg:pr-20' : 'lg:pr-64'}`}>
         <main className="px-4 sm:px-6 lg:px-8 py-6 lg:py-8 max-w-full overflow-x-hidden">
-          {/*
-            Pass syncReady as a key to child content so React remounts
-            the subtree once the server sync completes.  This forces
-            every page that reads from localStorage in its initial
-            useState/useEffect to re-run with the server-hydrated data.
-          */}
-          <React.Fragment key={syncReady ? 'synced' : 'local'}>
-            {children}
-          </React.Fragment>
+          {children}
         </main>
       </div>
     </div>
