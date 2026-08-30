@@ -309,6 +309,7 @@ export default function AccessoriesPrintModal({ isOpen, onClose, data }: Accesso
               customerName={data.customerName}
               phone={data.phone}
               detailsText={`أمر صرف إكسسوارات: ${data.orderId || data.id}\nالعميل: ${data.customerName}\nإجمالي قطع الإكسسوار: ${totalItemsCount} قطعة/متر`}
+              targetElementId="printable-accessories-sheet"
             />
             <button
               type="button"
@@ -328,7 +329,7 @@ export default function AccessoriesPrintModal({ isOpen, onClose, data }: Accesso
         </div>
 
         {/* Live Preview Matching Print Layout */}
-        <div className="border-2 border-slate-900 rounded-xl p-5 bg-white text-slate-900 space-y-3 font-sans">
+        <div id="printable-accessories-sheet" className="border-2 border-slate-900 rounded-xl p-5 bg-white text-slate-900 space-y-3 font-sans">
           {/* Header Branding */}
           <div className="flex justify-between items-center pb-3 border-b-2 border-slate-900">
             <div className="flex items-center gap-3">

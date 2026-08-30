@@ -458,6 +458,7 @@ export default function PipelineTailoringPage() {
                   customerName={selectedOrderDetails.customerName}
                   phone={selectedOrderDetails.phone}
                   detailsText={`أمر تفصيل الورشة: ${selectedOrderDetails.orderId || selectedOrderDetails.id}\nالعميل: ${selectedOrderDetails.customerName}\nتاريخ الاستلام: ${selectedOrderDetails.deliveryDate || 'غير محدد'}\nعدد الغرف: ${selectedOrderDetails.rooms?.length || 0}`}
+                  targetElementId="printable-tailoring-worksheet"
                 />
                 <button
                   type="button"

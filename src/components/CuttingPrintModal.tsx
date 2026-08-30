@@ -370,6 +370,7 @@ export default function CuttingPrintModal({ isOpen, onClose, data }: CuttingPrin
               customerName={data.customerName}
               phone={data.phone}
               detailsText={`أمر قص قماش: ${data.orderId || data.id}\nالعميل: ${data.customerName}\nإجمالي الأمتار المطلوبة للقص: ${totalAllMeters} متر\nعدد الغرف: ${data.rooms?.length || 0}`}
+              targetElementId="printable-cutting-sheet"
             />
             <button
               type="button"
@@ -389,7 +390,7 @@ export default function CuttingPrintModal({ isOpen, onClose, data }: CuttingPrin
         </div>
 
         {/* Live Preview Matching Print Layout */}
-        <div className="border-2 border-slate-900 rounded-xl p-5 bg-white text-slate-900 space-y-3 font-sans">
+        <div id="printable-cutting-sheet" className="border-2 border-slate-900 rounded-xl p-5 bg-white text-slate-900 space-y-3 font-sans">
           {/* Header Branding */}
           <div className="flex justify-between items-center pb-3 border-b-2 border-slate-900">
             <div className="flex items-center gap-3">

@@ -172,6 +172,7 @@ export default function InspectionPrintModal({ isOpen, onClose, data }: Inspecti
               customerName={data.customerName}
               phone={data.phone}
               detailsText={shareDetailsText}
+              targetElementId="printable-inspection-sheet"
             />
             <button
               type="button"
@@ -191,7 +192,7 @@ export default function InspectionPrintModal({ isOpen, onClose, data }: Inspecti
         </div>
 
         {/* Live Preview of the Clean Single-Page Sheet */}
-        <div className="border-2 border-slate-900 rounded-xl p-5 bg-white text-slate-900 space-y-3 font-sans">
+        <div id="printable-inspection-sheet" className="border-2 border-slate-900 rounded-xl p-5 bg-white text-slate-900 space-y-3 font-sans">
           {/* Header */}
           <div className="flex justify-between items-center pb-3 border-b-2 border-slate-900">
             <div className="flex items-center gap-3">

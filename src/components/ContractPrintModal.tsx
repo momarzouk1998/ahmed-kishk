@@ -481,6 +481,7 @@ export default function ContractPrintModal({ isOpen, onClose, data }: ContractPr
               customerName={data.customerName}
               phone={data.phone}
               detailsText={`عقد ومقايسة رقم: ${data.id}\nالعميل: ${data.customerName}\nالإجمالي: ${calculatedTotal} ج.م\nالمدفوع: ${data.depositPaid || 0} ج.م\nالمتبقي: ${calculatedRemaining} ج.م`}
+              targetElementId="printable-contract-sheet"
             />
             <button
               type="button"
@@ -500,7 +501,7 @@ export default function ContractPrintModal({ isOpen, onClose, data }: ContractPr
         </div>
 
         {/* Live Preview Matching Print Layout */}
-        <div className="border-2 border-slate-900 rounded-xl p-5 bg-white text-slate-900 space-y-3 font-sans">
+        <div id="printable-contract-sheet" className="border-2 border-slate-900 rounded-xl p-5 bg-white text-slate-900 space-y-3 font-sans">
           {/* Header Branding */}
           <div className="flex justify-between items-center pb-3 border-b-2 border-slate-900">
             <div className="flex items-center gap-3">
