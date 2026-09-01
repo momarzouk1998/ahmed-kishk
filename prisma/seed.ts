@@ -4,7 +4,19 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Seeding database with official branches...');
+  console.log('🧹 Purging all old test transactions (inspections, quotes, orders, inventory, customers)...');
+  await prisma.inspectionRequest.deleteMany({});
+  await prisma.quotationOrder.deleteMany({});
+  await prisma.pipelineOrder.deleteMany({});
+  await prisma.customer.deleteMany({});
+  await prisma.inventoryItem.deleteMany({});
+  await prisma.supplier.deleteMany({});
+  await prisma.salesInvoice.deleteMany({});
+  await prisma.purchaseInvoice.deleteMany({});
+  await prisma.systemStore.deleteMany({});
+  console.log('✅ All old test data purged successfully.');
+
+  console.log('🌱 Seeding database with official branches and users...');
 
   const hashedPassword = await bcrypt.hash('123456', 10);
 
