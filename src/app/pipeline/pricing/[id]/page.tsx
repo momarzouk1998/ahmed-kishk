@@ -15,7 +15,6 @@ import {
   RoomPricing,
   TAPE_PRICES,
   TAPE_MULTIPLIERS,
-  ACCESSORY_PRICES,
   PipeAccessories
 } from '@/lib/inspectionsStore';
 import { getStoredPipelineOrders, fetchPipelineOrders, saveStoredPipelineOrders, updatePipelineOrderStatus, PipelineMasterOrder, isTodayOrOverdue } from '@/lib/pipelineStore';
@@ -40,23 +39,16 @@ const TAPE_OPTIONS: { name: string; defaultMultiplier: number }[] = [
   { name: 'حلقات ديكور', defaultMultiplier: 2.0 },
 ];
 
-const mockFabricsInventory: InventoryFabric[] = [
-  { id: 'f1', code: 'SH-101', name: 'شيفون حرير فاخر (أبيض سادة)', category: 'شيفون / تول', pricePerMeter: 160, stockMeters: 250 },
-  { id: 'f2', code: 'SH-102', name: 'تول مطرز كريستال تركيات', category: 'شيفون / تول', pricePerMeter: 220, stockMeters: 180 },
-  { id: 'f3', code: 'HV-201', name: 'قطيفة جاجوار تركيات (درجات البيج)', category: 'قطيفة / ثقيل', pricePerMeter: 380, stockMeters: 320 },
-  { id: 'f4', code: 'HV-202', name: 'قطيفة شانيل كابوتونيه فاخر', category: 'قطيفة / ثقيل', pricePerMeter: 450, stockMeters: 140 },
-  { id: 'f5', code: 'BK-301', name: 'بلاك آوت عازل حراري ومائي (ثلاثي)', category: 'بلاك آوت عازل', pricePerMeter: 250, stockMeters: 210 },
-  { id: 'f6', code: 'LN-401', name: 'كتان إسباني مدرج ألوان هادئة', category: 'كتان / درابيري', pricePerMeter: 310, stockMeters: 95 },
-];
+const mockFabricsInventory: InventoryFabric[] = [];
 
 export default function PricingDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const rawId = (params?.id as string) || 'QOT-101';
+  const rawId = (params?.id as string) || '';
   const orderId = decodeURIComponent(rawId);
 
   const [quotations, setQuotations] = useState<QuotationOrder[]>(() => getStoredQuotations());
-  const [inventory] = useState<InventoryFabric[]>(mockFabricsInventory);
+  const [inventory, setInventory] = useState<InventoryFabric[]>(mockFabricsInventory);
   const [showPrintModal, setShowPrintModal] = useState(false);
 
   useEffect(() => {
@@ -65,6 +57,15 @@ export default function PricingDetailPage() {
       if (list && list.length > 0) {
         setQuotations(list);
       }
+      try {
+        const res = await fetch('/api/inventory', { cache: 'no-store' });
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && Array.isArray(json.items)) {
+            setInventory(json.items);
+          }
+        }
+      } catch (e) {}
     }
     load();
   }, []);
@@ -80,6 +81,9 @@ export default function PricingDetailPage() {
     if (ok) setMgrUnlocked(true);
     return ok;
   };
+
+  // القيم الافتراضية لتسعير الستائر (تُقرأ من /settings/curtain-defaults)
+  const curtainDefaults = getCurtainDefaults();
 
   const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
   const [deliveryDate, setDeliveryDate] = useState<string>('');
@@ -166,8 +170,6 @@ export default function PricingDetailPage() {
   const [sheerPieces, setSheerPieces] = useState<'قطعة واحدة' | 'قطعتين'>('قطعة واحدة');
 
   // Sheer Lining (بطانة شيفون) — خدمة إضافية اختيارية.
-  // القيم الافتراضية تُقرأ من صفحة الإعدادات (/settings/curtain-defaults).
-  const curtainDefaults = getCurtainDefaults();
   const DEFAULT_SHEER_LINING_PRICE = curtainDefaults.sheerLiningPricePerMeter;
   const [sheerLiningEnabled, setSheerLiningEnabled] = useState<boolean>(false);
   const [sheerLiningPricePerMeter, setSheerLiningPricePerMeter] = useState<number>(DEFAULT_SHEER_LINING_PRICE);
