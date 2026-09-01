@@ -134,6 +134,45 @@ export default function SettingsPage() {
             حفظ وتحديث بيانات الفواتير
           </button>
         </form>
+
+        {/* Danger Zone: Zero Out All System Data */}
+        <div className="bg-rose-50 border border-rose-200 p-6 rounded-2xl space-y-3 mt-4">
+          <h2 className="font-black text-base text-rose-900 flex items-center gap-2">
+            <span className="material-symbols-outlined text-rose-600">delete_forever</span>
+            تصفير بيانات البرنامج بالكامل (إعادة ضبط المصنع)
+          </h2>
+          <p className="text-xs text-rose-800 leading-relaxed font-bold">
+            هذا الخيار يقوم بمحو جميع المعاينات، المقايسات، طلبات الورشة، العملاء، المخزون، والموردين نهائياً من قاعدة البيانات والتخزين المحلي.
+            <br />
+            <strong>ملاحظة:</strong> يتم الحفاظ الكامل على الفروع الرسمية وحسابات المستخدمين.
+          </p>
+          <button
+            type="button"
+            onClick={async () => {
+              if (confirm('هل أنت تأكيد من رغبتك في تصفير جميع بيانات البرنامج نهائياً؟ لا يمكن التراجع عن هذا الإجراء.')) {
+                try {
+                  const res = await fetch('/api/reset-data', { method: 'POST' });
+                  const json = await res.json();
+                  if (json.success) {
+                    if (typeof window !== 'undefined') {
+                      localStorage.clear();
+                    }
+                    alert('تم تصفير جميع البيانات بنجاح في قاعدة البيانات والتخزين المحلي!');
+                    window.location.reload();
+                  } else {
+                    alert('حدث خطأ أثناء التصفير: ' + json.error);
+                  }
+                } catch (e: any) {
+                  alert('فشل الاتصال بالسيرفر لتصفير البيانات');
+                }
+              }
+            }}
+            className="bg-rose-600 hover:bg-rose-700 text-white font-black px-6 py-3 rounded-xl text-xs flex items-center gap-2 shadow-lg transition-colors cursor-pointer"
+          >
+            <span className="material-symbols-outlined text-[18px]">cleaning_services</span>
+            تصفير جميع البيانات الآن ⚠️
+          </button>
+        </div>
       </div>
     </PageShell>
   );

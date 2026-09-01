@@ -79,8 +79,8 @@ jobs:
             echo "🗄️ Pushing Prisma schema to database (Creating tables)..."
             docker exec ahmed-kishk sh -c "node node_modules/prisma/build/index.js db push --skip-generate --accept-data-loss"
 
-            echo "🌱 Seeding database with initial users..."
-            docker exec ahmed-kishk sh -c "node node_modules/tsx/dist/cli.mjs prisma/seed.ts" || docker exec ahmed-kishk npx tsx prisma/seed.ts || true
+            echo "🌱 Seeding database and purging old test transactions..."
+            docker exec ahmed-kishk node prisma/seed.js
 
             echo "🧹 Cleaning up unused docker images..."
             docker image prune -f
