@@ -5,6 +5,7 @@ import { formatDate } from '@/lib/dateUtils';
 import { InspectionData, Room } from '@/lib/inspectionsStore';
 import Logo from '@/components/Logo';
 import WhatsAppShareButton from '@/components/WhatsAppShareButton';
+import { getBrandSettings } from '@/lib/brandSettings';
 
 interface InspectionPrintModalProps {
   isOpen: boolean;
@@ -14,6 +15,7 @@ interface InspectionPrintModalProps {
 
 export default function InspectionPrintModal({ isOpen, onClose, data }: InspectionPrintModalProps) {
   if (!isOpen || !data) return null;
+  const brand = getBrandSettings();
 
   const handlePrint = () => {
     const printWindow = window.open('', '_blank');
@@ -115,7 +117,7 @@ export default function InspectionPrintModal({ isOpen, onClose, data }: Inspecti
         <div class="sheet-container">
           <div class="header-row">
             <div class="title-area">
-              <h1>مؤسسة أحمد كشك للأقمشة والستائر</h1>
+              <h1>${brand.storeName}</h1>
               <p>كشف مقاسات ومعاينة هندسية (A5)</p>
             </div>
             <div>
@@ -200,7 +202,7 @@ export default function InspectionPrintModal({ isOpen, onClose, data }: Inspecti
                 <Logo size="md" />
               </div>
               <div>
-                <h1 className="font-black text-lg text-slate-950 leading-tight">مؤسسة أحمد كشك للأقمشة والستائر</h1>
+                <h1 className="font-black text-lg text-slate-950 leading-tight">{brand.storeName}</h1>
                 <p className="text-xs font-bold text-amber-700">كشف مقاسات ومعاينة هندسية ميدانية</p>
               </div>
             </div>
@@ -287,7 +289,7 @@ export default function InspectionPrintModal({ isOpen, onClose, data }: Inspecti
 
           {/* Footer */}
           <div className="pt-3 border-t border-slate-200 flex justify-between text-[10px] text-slate-400 font-mono">
-            <span>مؤسسة أحمد كشك للأقمشة والستائر</span>
+            <span>{brand.storeName}</span>
             <span>هاتف: 01063821000</span>
             <span>نظام كشك لإدارة خطوط الإنتاج</span>
           </div>

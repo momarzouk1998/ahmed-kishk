@@ -3,6 +3,7 @@
 import React from 'react';
 import { formatDateOnly } from '@/lib/dateUtils';
 import Logo from '@/components/Logo';
+import { getBrandSettings } from '@/lib/brandSettings';
 
 import WhatsAppShareButton from '@/components/WhatsAppShareButton';
 
@@ -61,6 +62,7 @@ interface ContractPrintModalProps {
 
 export default function ContractPrintModal({ isOpen, onClose, data }: ContractPrintModalProps) {
   if (!isOpen || !data) return null;
+  const brand = getBrandSettings();
 
   const calculatedTotal = (data.rooms || []).reduce((sum, r) => {
     const tP = r.tapePrice || 0;
@@ -387,7 +389,7 @@ export default function ContractPrintModal({ isOpen, onClose, data }: ContractPr
                 <img src="/logo.png" alt="أحمد كشك" style="width:40px; height:40px; max-width:40px; max-height:40px; object-fit:contain; display:block;" onerror="this.onerror=null; this.parentNode.innerHTML='<svg viewBox=\\'0 0 100 100\\' width=\\'40\\' height=\\'40\\' fill=\\'none\\' xmlns=\\'http://www.w3.org/2000/svg\\'><circle cx=\\'50\\' cy=\\'50\\' r=\\'46\\' stroke=\\'#0f172a\\' stroke-width=\\'6\\'/><path d=\\'M25 72 L45 28 L53 28 L73 72 M33 56 L65 56\\' stroke=\\'#0f172a\\' stroke-width=\\'7\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'/><path d=\\'M48 22 L48 78 M48 50 L68 28 M48 50 L72 72\\' stroke=\\'#0f172a\\' stroke-width=\\'7\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'/></svg>';" />
               </div>
               <div>
-                <div class="company-name">مؤسسة أحمد كشك للأقمشة والستائر</div>
+                <div class="company-name">${brand.storeName}</div>
                 <div class="doc-subtitle">عقد توريد وتركيب ستائر ومقايسة معتمدة</div>
               </div>
             </div>
@@ -465,7 +467,7 @@ export default function ContractPrintModal({ isOpen, onClose, data }: ContractPr
 
           <!-- Footer -->
           <div class="footer-bar">
-            <span>مؤسسة أحمد كشك للأقمشة والستائر الفاخرة</span>
+            <span>${brand.storeName}</span>
             <span>هاتف الإدارة: 01063821000</span>
             <span>نظام كشك لإدارة خطوط الإنتاج</span>
           </div>
@@ -524,7 +526,7 @@ export default function ContractPrintModal({ isOpen, onClose, data }: ContractPr
                 <Logo size="md" />
               </div>
               <div>
-                <h1 className="font-black text-lg text-slate-950 leading-tight">مؤسسة أحمد كشك للأقمشة والستائر</h1>
+                <h1 className="font-black text-lg text-slate-950 leading-tight">{brand.storeName}</h1>
                 <p className="text-xs font-bold text-amber-700">عقد توريد وتركيب ستائر ومقايسة معتمدة</p>
               </div>
             </div>
@@ -699,7 +701,7 @@ export default function ContractPrintModal({ isOpen, onClose, data }: ContractPr
 
           {/* Footer */}
           <div className="pt-2 border-t border-slate-200 flex justify-between text-[10px] text-slate-400 font-mono">
-            <span>مؤسسة أحمد كشك للأقمشة والستائر</span>
+            <span>{brand.storeName}</span>
             <span>هاتف: 01063821000</span>
             <span>نظام كشك لإدارة خطوط الإنتاج</span>
           </div>
