@@ -21,7 +21,7 @@ const initialEmployees: Employee[] = [
     id: 'EMP-01',
     name: 'openappo',
     phone: '01558282760',
-    role: 'المدير العام ومطور النظام (Super Admin)',
+    role: 'مطور النظام (Super Admin)',
     branch: 'الفرع الرئيسي',
     restrictToBranch: false,
     allowedPageIds: ALL_SYSTEM_PAGES.map(p => p.id),
