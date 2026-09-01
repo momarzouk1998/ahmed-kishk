@@ -3,8 +3,19 @@ const bcrypt = require('bcryptjs');
 
 const prisma = new PrismaClient();
 
+const REAL_USERS = [
+  { name: 'openappo', phone: '01558282760', role: 'ADMIN', branch: 'الفرع الرئيسي' },
+  { name: 'أحمد كشك', phone: '01063821000', role: 'ADMIN', branch: 'الفرع الرئيسي' },
+  { name: 'يوسف ياسر', phone: '01279549182', role: 'BRANCH_STAFF', branch: 'الفرع الرئيسي' },
+  { name: 'أحمد عبدالله', phone: '01023232370', role: 'BRANCH_STAFF', branch: 'فرع عرابي' },
+  { name: 'محمد نصار', phone: '01055288214', role: 'BRANCH_STAFF', branch: 'فرع عرابي' },
+  { name: 'محمد كشك', phone: '01018728640', role: 'BRANCH_STAFF', branch: 'فرع عمر أفندي' },
+  { name: 'أحمد عبدالعال', phone: '01275763008', role: 'BRANCH_STAFF', branch: 'فرع عمر أفندي' },
+  { name: 'عبدالله كشك', phone: '01033447262', role: 'BRANCH_STAFF', branch: 'فرع الثلاثيني' },
+];
+
 async function main() {
-  console.log('🧹 Purging all old test transactions (inspections, quotes, orders, inventory, customers)...');
+  console.log('🧹 Purging all old test transactions...');
   try {
     await prisma.inspectionRequest.deleteMany({});
     await prisma.quotationOrder.deleteMany({});
@@ -20,111 +31,42 @@ async function main() {
     console.error('Error purging operational data:', err);
   }
 
-  console.log('🌱 Seeding database with official branches and users...');
+  // Remove dummy test users if any exist
+  const validPhones = REAL_USERS.map(u => u.phone);
+  try {
+    await prisma.user.deleteMany({
+      where: {
+        phone: { notIn: validPhones }
+      }
+    });
+  } catch (err) {
+    console.error('Error deleting dummy users:', err);
+  }
+
+  console.log('🌱 Seeding database with official 8 users across 4 branches...');
   const hashedPassword = await bcrypt.hash('123456', 10);
 
-  // 1. General Manager (openappo)
-  const superAdmin = await prisma.user.upsert({
-    where: { phone: '01558282760' },
-    update: {
-      name: 'openappo',
-      password: hashedPassword,
-      role: 'ADMIN',
-      branch: 'الفرع الرئيسي',
-    },
-    create: {
-      name: 'openappo',
-      phone: '01558282760',
-      password: hashedPassword,
-      role: 'ADMIN',
-      branch: 'الفرع الرئيسي',
-    },
-  });
-  console.log('✅ Super Admin (openappo) created:', superAdmin.phone);
+  for (const u of REAL_USERS) {
+    const user = await prisma.user.upsert({
+      where: { phone: u.phone },
+      update: {
+        name: u.name,
+        password: hashedPassword,
+        role: u.role,
+        branch: u.branch,
+      },
+      create: {
+        name: u.name,
+        phone: u.phone,
+        password: hashedPassword,
+        role: u.role,
+        branch: u.branch,
+      },
+    });
+    console.log(`✅ User seeded: ${user.name} (${user.phone}) - ${user.branch}`);
+  }
 
-  // 2. Store Owner / Manager (أحمد كشك) - 1 مستخدم الفرع الرئيسي
-  const storeOwner = await prisma.user.upsert({
-    where: { phone: '01063821000' },
-    update: {
-      name: 'أحمد كشك',
-      password: hashedPassword,
-      role: 'ADMIN',
-      branch: 'الفرع الرئيسي',
-    },
-    create: {
-      name: 'أحمد كشك',
-      phone: '01063821000',
-      password: hashedPassword,
-      role: 'ADMIN',
-      branch: 'الفرع الرئيسي',
-    },
-  });
-  console.log('✅ Store Owner (أحمد كشك) created:', storeOwner.phone);
-
-  // 3. فرع عرابي (18 ش عدلي - ستائر وتنجيد) - 2 مستخدمين
-  await prisma.user.upsert({
-    where: { phone: '01011111111' },
-    update: { branch: 'فرع عرابي' },
-    create: {
-      name: 'موظف فرع عرابي 1',
-      phone: '01011111111',
-      password: hashedPassword,
-      role: 'BRANCH_STAFF',
-      branch: 'فرع عرابي',
-    },
-  });
-
-  await prisma.user.upsert({
-    where: { phone: '01022222222' },
-    update: { branch: 'فرع عرابي' },
-    create: {
-      name: 'موظف فرع عرابي 2',
-      phone: '01022222222',
-      password: hashedPassword,
-      role: 'BRANCH_STAFF',
-      branch: 'فرع عرابي',
-    },
-  });
-
-  // 4. فرع عمر أفندي (أقمشة فقط) - 2 مستخدمين
-  await prisma.user.upsert({
-    where: { phone: '01033333333' },
-    update: { branch: 'فرع عمر أفندي' },
-    create: {
-      name: 'موظف فرع عمر أفندي 1',
-      phone: '01033333333',
-      password: hashedPassword,
-      role: 'BRANCH_STAFF',
-      branch: 'فرع عمر أفندي',
-    },
-  });
-
-  await prisma.user.upsert({
-    where: { phone: '01044444444' },
-    update: { branch: 'فرع عمر أفندي' },
-    create: {
-      name: 'موظف فرع عمر أفندي 2',
-      phone: '01044444444',
-      password: hashedPassword,
-      role: 'BRANCH_STAFF',
-      branch: 'فرع عمر أفندي',
-    },
-  });
-
-  // 5. فرع الثلاثيني (أقمشة فقط) - 1 مستخدم
-  await prisma.user.upsert({
-    where: { phone: '01055555555' },
-    update: { branch: 'فرع الثلاثيني' },
-    create: {
-      name: 'موظف فرع الثلاثيني',
-      phone: '01055555555',
-      password: hashedPassword,
-      role: 'BRANCH_STAFF',
-      branch: 'فرع الثلاثيني',
-    },
-  });
-
-  console.log('✅ Users seeded for the 4 official branches');
+  console.log('🎉 Database reset & 8 official users seeded successfully!');
 }
 
 main()
