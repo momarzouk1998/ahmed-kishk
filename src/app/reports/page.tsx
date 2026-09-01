@@ -397,7 +397,7 @@ function SalesReport({ kpis, invoices, branchLabel, periodLabel }: any) {
   return (
     <>
       <KpiStrip items={[
-        { label: 'إجمالى المبيعات', value: `${kpis.grand.toLocaleString()} ج`, color: 'bg-slate-900 text-white border-slate-900' },
+        { label: 'إجمالى المبيعات', value: `${kpis.grand.toLocaleString()} ج`, color: 'bg-amber-100 border-amber-400' },
         { label: '💵 كاش بالدرج', value: `${kpis.cash.toLocaleString()} ج`, color: 'bg-emerald-50 border-emerald-300' },
         { label: '⚡ إنستاباى', value: `${kpis.instapay.toLocaleString()} ج`, color: 'bg-purple-50 border-purple-300' },
         { label: '📱 فودافون', value: `${kpis.vodafone.toLocaleString()} ج`, color: 'bg-rose-50 border-rose-300' },
@@ -474,7 +474,7 @@ function ProfitsReport({ stats, topItems, branchLabel, periodLabel }: any) {
   return (
     <>
       <KpiStrip items={[
-        { label: 'إجمالى الإيرادات', value: `${stats.revenue.toLocaleString()} ج`, color: 'bg-slate-900 text-white border-slate-900' },
+        { label: 'إجمالى الإيرادات', value: `${stats.revenue.toLocaleString()} ج`, color: 'bg-amber-100 border-amber-400' },
         { label: 'تكلفة المبيعات', value: `${stats.cost.toLocaleString()} ج`, color: 'bg-rose-50 border-rose-300' },
         { label: 'صافى الربح', value: `${stats.profit.toLocaleString()} ج`, color: 'bg-emerald-50 border-emerald-300' },
         { label: 'هامش الربح %', value: `${stats.marginPct.toFixed(1)}%`, color: 'bg-amber-50 border-amber-300' },
@@ -681,7 +681,7 @@ function LedgersReport({ stats, branchLabel }: any) {
         { label: 'ديون العملاء (لنا)', value: `${stats.custTotalDebt.toLocaleString()} ج`, color: 'bg-rose-50 border-rose-300' },
         { label: 'رصيد للعملاء (علينا)', value: `${stats.custTotalCredit.toLocaleString()} ج`, color: 'bg-emerald-50 border-emerald-300' },
         { label: 'مستحقات الموردين', value: `${stats.supTotalDebt.toLocaleString()} ج`, color: 'bg-amber-50 border-amber-300' },
-        { label: 'إجمالى المديونيات', value: `${(stats.custTotalDebt + stats.supTotalDebt).toLocaleString()} ج`, color: 'bg-slate-900 text-white border-slate-900' },
+        { label: 'إجمالى المديونيات', value: `${(stats.custTotalDebt + stats.supTotalDebt).toLocaleString()} ج`, color: 'bg-amber-100 border-amber-400' },
       ]} />
 
       <div className="card bg-white rounded-2xl border border-slate-200 p-3">
