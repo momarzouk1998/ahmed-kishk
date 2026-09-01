@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
 import { useRouter } from 'next/navigation';
+import { canUserEditPrices } from '@/lib/permissions';
+import { useManagerGate, isManagerUnlocked } from '@/components/ManagerUnlockGate';
 
 interface InvoiceLineItem {
   id: string;
@@ -74,6 +76,18 @@ export default function NewSalesInvoicePOSPage() {
   // Discount States
   const [discountType, setDiscountType] = useState<'EGP' | 'PERCENT'>('EGP');
   const [discountValue, setDiscountValue] = useState<number>(0);
+
+  // Manager unlock gate — للتحكم فى تعديل الأسعار والخصومات
+  const { requestUnlock, Modal: MgrModal } = useManagerGate();
+  const [mgrUnlocked, setMgrUnlocked] = useState<boolean>(false);
+  useEffect(() => { setMgrUnlocked(isManagerUnlocked()); }, []);
+  const priceLocked = !canUserEditPrices('p_fabric_sales') && !mgrUnlocked;
+  const requirePriceUnlock = async (): Promise<boolean> => {
+    if (!priceLocked) return true;
+    const ok = await requestUnlock();
+    if (ok) setMgrUnlocked(true);
+    return ok;
+  };
 
   // Payment Method & Settlement
   const [paymentMethod, setPaymentMethod] = useState<'نقدي' | 'إنستاباي' | 'فودافون كاش' | 'فيزا / كارت' | 'بالآجل / دفعات' | 'دفع متعدد / مزيج'>('نقدي');
@@ -534,15 +548,22 @@ export default function NewSalesInvoicePOSPage() {
                   min="0"
                   placeholder="0"
                   value={discountValue || ''}
-                  onChange={e => setDiscountValue(Number(e.target.value))}
-                  className="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 font-mono font-bold text-slate-900 text-[11px] focus:outline-none focus:border-amber-500"
+                  readOnly={priceLocked}
+                  onFocus={async () => { if (priceLocked) await requirePriceUnlock(); }}
+                  onClick={async () => { if (priceLocked) await requirePriceUnlock(); }}
+                  onChange={e => { if (!priceLocked) setDiscountValue(Number(e.target.value)); }}
+                  className={`w-full rounded-lg px-2 py-1 font-mono font-bold text-slate-900 text-[11px] focus:outline-none focus:border-amber-500 ${priceLocked ? 'bg-amber-50 border border-amber-200 cursor-pointer' : 'bg-white border border-slate-200'}`}
+                  title={priceLocked ? 'الخصم يتطلب باسورد المدير' : ''}
                 />
                 <div className="flex gap-0.5">
                   {[5, 10, 15, 20].map(pct => (
                     <button
                       key={pct}
                       type="button"
-                      onClick={() => { setDiscountType('PERCENT'); setDiscountValue(pct); }}
+                      onClick={async () => {
+                        if (priceLocked && !(await requirePriceUnlock())) return;
+                        setDiscountType('PERCENT'); setDiscountValue(pct);
+                      }}
                       className="bg-amber-100 hover:bg-amber-200 text-amber-900 px-1.5 py-0.5 rounded text-[9px] font-bold border border-amber-300 cursor-pointer"
                     >
                       {pct}%
@@ -754,9 +775,12 @@ export default function NewSalesInvoicePOSPage() {
                                 type="number"
                                 min="1"
                                 value={it.pricePerMeter}
-                                onChange={e => handleUpdateItem(it.id, 'pricePerMeter', Number(e.target.value))}
-                                onClick={e => e.stopPropagation()}
-                                className="w-full text-center border border-slate-200 rounded py-0.5 font-mono font-bold text-[11px] focus:outline-none focus:border-amber-500 bg-white"
+                                readOnly={priceLocked}
+                                onFocus={async () => { if (priceLocked) await requirePriceUnlock(); }}
+                                onClick={async (e) => { e.stopPropagation(); if (priceLocked) await requirePriceUnlock(); }}
+                                onChange={e => { if (!priceLocked) handleUpdateItem(it.id, 'pricePerMeter', Number(e.target.value)); }}
+                                className={`w-full text-center rounded py-0.5 font-mono font-bold text-[11px] focus:outline-none focus:border-amber-500 ${priceLocked ? 'bg-amber-50 border border-amber-200 cursor-pointer' : 'bg-white border border-slate-200'}`}
+                                title={priceLocked ? 'تغيير السعر يتطلب باسورد المدير' : ''}
                               />
                             </td>
 
@@ -1050,6 +1074,7 @@ export default function NewSalesInvoicePOSPage() {
           </div>
         </div>
       )}
+      {MgrModal}
     </PageShell>
   );
 }

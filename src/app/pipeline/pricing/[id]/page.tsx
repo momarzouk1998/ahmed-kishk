@@ -20,6 +20,8 @@ import {
 } from '@/lib/inspectionsStore';
 import { getStoredPipelineOrders, fetchPipelineOrders, saveStoredPipelineOrders, updatePipelineOrderStatus, PipelineMasterOrder, isTodayOrOverdue } from '@/lib/pipelineStore';
 import { canUserEditPrices } from '@/lib/permissions';
+import { useManagerGate, isManagerUnlocked } from '@/components/ManagerUnlockGate';
+import { getCurtainDefaults } from '@/lib/curtainDefaults';
 
 interface InventoryFabric {
   id: string;
@@ -68,7 +70,16 @@ export default function PricingDetailPage() {
   }, []);
 
   const quotation = quotations.find(q => q.id === orderId || q.inspectionId === orderId) || quotations[0];
-  const canEditPrices = canUserEditPrices('p_pricing');
+  const { requestUnlock: requestMgrUnlock, Modal: MgrModal } = useManagerGate();
+  const [mgrUnlocked, setMgrUnlocked] = useState<boolean>(false);
+  useEffect(() => { setMgrUnlocked(isManagerUnlocked()); }, []);
+  const canEditPrices = canUserEditPrices('p_pricing') || mgrUnlocked;
+  const requirePriceUnlock = async (): Promise<boolean> => {
+    if (canEditPrices) return true;
+    const ok = await requestMgrUnlock();
+    if (ok) setMgrUnlocked(true);
+    return ok;
+  };
 
   const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
   const [deliveryDate, setDeliveryDate] = useState<string>('');
@@ -138,13 +149,7 @@ export default function PricingDetailPage() {
   const [pipeColor, setPipeColor] = useState<'فضى' | 'أوكسيديه' | 'أسود' | 'زيتى'>('فضى');
   const [pipePricePerMeter, setPipePricePerMeter] = useState<number>(65);
 
-  const [accessoryPrices, setAccessoryPrices] = useState({
-    doubleBracket: 55,
-    singleBracket: 45,
-    sideCap: 50,
-    doubleRing: 5,
-    decorHanger: 100,
-  });
+  const [accessoryPrices, setAccessoryPrices] = useState(curtainDefaults.accessoryPrices);
 
   const [pipeAccessories, setPipeAccessories] = useState<PipeAccessories>({
     doubleBrackets: 0,
@@ -155,10 +160,17 @@ export default function PricingDetailPage() {
   });
 
   const [installFeeEnabled, setInstallFeeEnabled] = useState<boolean>(true);
-  const [installFee, setInstallFee] = useState<number>(125);
+  const [installFee, setInstallFee] = useState<number>(curtainDefaults.installFee);
   const [transportFeeEnabled, setTransportFeeEnabled] = useState<boolean>(false);
-  const [transportFee, setTransportFee] = useState<number>(0);
+  const [transportFee, setTransportFee] = useState<number>(curtainDefaults.transportFee);
   const [sheerPieces, setSheerPieces] = useState<'قطعة واحدة' | 'قطعتين'>('قطعة واحدة');
+
+  // Sheer Lining (بطانة شيفون) — خدمة إضافية اختيارية.
+  // القيم الافتراضية تُقرأ من صفحة الإعدادات (/settings/curtain-defaults).
+  const curtainDefaults = getCurtainDefaults();
+  const DEFAULT_SHEER_LINING_PRICE = curtainDefaults.sheerLiningPricePerMeter;
+  const [sheerLiningEnabled, setSheerLiningEnabled] = useState<boolean>(false);
+  const [sheerLiningPricePerMeter, setSheerLiningPricePerMeter] = useState<number>(DEFAULT_SHEER_LINING_PRICE);
 
   const [showWorkshopModal, setShowWorkshopModal] = useState<boolean>(false);
 
@@ -199,6 +211,10 @@ export default function PricingDetailPage() {
     setSheerMeters(sM);
     setSheerCode(room.sheerFabricCode || '');
     setSheerP(room.sheerPrice || 0);
+
+    setSheerLiningEnabled(!!(room as any).sheerLiningEnabled);
+    setSheerLiningPricePerMeter((room as any).sheerLiningPricePerMeter || DEFAULT_SHEER_LINING_PRICE);
+    setSheerPieces((room as any).sheerPieces || 'قطعة واحدة');
 
     const bkTape = room.blackoutTapeType || 'جراب';
     const bkMul = room.blackoutMultiplier ?? 1.20;
@@ -320,19 +336,23 @@ export default function PricingDetailPage() {
           // Forge pipe calculation
           const pipeMeters = editingWidthM;
           const pipeBaseCost = pipeMeters * (pipePricePerMeter || 0);
+          // #5: يستخدم أسعار المستخدم المُعدَّلة من state (كانت تُتجاهل قبلاً)
           const accessoriesCost =
-            (pipeAccessories.doubleBrackets * ACCESSORY_PRICES.doubleBracket) +
-            (pipeAccessories.singleBrackets * ACCESSORY_PRICES.singleBracket) +
-            (pipeAccessories.sideCaps * ACCESSORY_PRICES.sideCap) +
-            (pipeAccessories.doubleRings * ACCESSORY_PRICES.doubleRing) +
-            (pipeAccessories.decorHangers * ACCESSORY_PRICES.decorHanger);
+            (pipeAccessories.doubleBrackets * accessoryPrices.doubleBracket) +
+            (pipeAccessories.singleBrackets * accessoryPrices.singleBracket) +
+            (pipeAccessories.sideCaps * accessoryPrices.sideCap) +
+            (pipeAccessories.doubleRings * accessoryPrices.doubleRing) +
+            (pipeAccessories.decorHangers * accessoryPrices.decorHanger);
           installationTotal = pipeBaseCost + accessoriesCost;
         }
 
         const effectiveInstallFee = installFeeEnabled ? installFee : 0;
         const effectiveTransportFee = transportFeeEnabled ? (transportFee || 0) : 0;
 
-        const total = heavyCost + sheerCost + blackoutCost + totalTapeCost + installationTotal + effectiveInstallFee + effectiveTransportFee;
+        // Sheer Lining cost
+        const sheerLiningCost = (sheerEnabled && sheerLiningEnabled) ? effectiveSheerMeters * (sheerLiningPricePerMeter || 0) : 0;
+
+        const total = heavyCost + sheerCost + blackoutCost + totalTapeCost + installationTotal + effectiveInstallFee + effectiveTransportFee + sheerLiningCost;
 
         return {
           ...rm,
@@ -353,6 +373,9 @@ export default function PricingDetailPage() {
           sheerMultiplier,
           sheerMeters: effectiveSheerMeters,
           sheerPrice: sheerP,
+          sheerPieces, // #17: يُحفظ عدد قطع الشيفون (قطعة/قطعتين) مع الغرفة
+          sheerLiningEnabled: sheerEnabled ? sheerLiningEnabled : false,
+          sheerLiningPricePerMeter: sheerEnabled && sheerLiningEnabled ? sheerLiningPricePerMeter : 0,
 
           blackoutFabricCode: blackoutEnabled ? blackoutCode : '',
           blackoutFabricName: blackoutEnabled ? (blackoutFab?.name || 'بلاك آوت عازل ثلاثي') : undefined,
@@ -863,6 +886,38 @@ export default function PricingDetailPage() {
                                     />
                                     <span className="text-slate-500 font-bold">ج</span>
                                   </div>
+                                </div>
+
+                                {/* Sheer Lining (بطانة) Option */}
+                                <div className="mt-2 p-3 bg-blue-50/50 rounded-xl border border-blue-200">
+                                  <label className="flex items-center gap-2 cursor-pointer text-xs font-black text-blue-900">
+                                    <input
+                                      type="checkbox"
+                                      checked={sheerLiningEnabled}
+                                      onChange={e => setSheerLiningEnabled(e.target.checked)}
+                                      className="w-4 h-4 rounded accent-blue-700 cursor-pointer"
+                                    />
+                                    <span>🧵 بطانة إضافية للشيفون</span>
+                                    {sheerLiningEnabled && (
+                                      <span className="font-mono text-blue-800 font-bold mr-auto">
+                                        إجمالي البطانة: {(sheerMeters * (sheerLiningPricePerMeter || 0)).toLocaleString()} ج
+                                      </span>
+                                    )}
+                                  </label>
+                                  {sheerLiningEnabled && (
+                                    <div className="mt-2 flex items-center gap-2">
+                                      <span className="text-xs text-blue-700 font-bold">سعر متر البطانة:</span>
+                                      <input
+                                        type="number"
+                                        value={sheerLiningPricePerMeter}
+                                        disabled={!canEditPrices}
+                                        onChange={e => setSheerLiningPricePerMeter(Number(e.target.value))}
+                                        className="w-20 border border-blue-300 rounded-lg px-2 py-1 text-center font-mono font-bold text-xs bg-white"
+                                      />
+                                      <span className="text-xs text-blue-600">ج/م</span>
+                                      <span className="text-xs text-blue-500 mr-1">× {sheerMeters} م</span>
+                                    </div>
+                                  )}
                                 </div>
                               </>
                             )}
@@ -1459,6 +1514,8 @@ export default function PricingDetailPage() {
                       meters: Number(r.sheerMeters) || 0,
                       tapeType: r.sheerTapeType || 'ويفي',
                       netHeight: String(r.heightCm || 280),
+                      hasLining: !!(r.sheerLiningEnabled),
+                      liningPricePerMeter: r.sheerLiningPricePerMeter || 0,
                     } : undefined,
                     blackoutFabric: (r.blackoutEnabled && (Number(r.blackoutMeters) > 0 || r.blackoutFabricName)) ? {
                       name: r.blackoutFabricName || 'بلاك آوت',
@@ -1533,6 +1590,23 @@ export default function PricingDetailPage() {
         onClose={() => setShowPrintModal(false)}
         data={quotation as any}
       />
+
+      {/* شريط تنبيه عند قفل الأسعار — يفتح مودال المدير */}
+      {!canEditPrices && (
+        <div className="fixed bottom-4 left-4 right-4 md:right-auto z-40 bg-amber-50 border-2 border-amber-300 rounded-2xl shadow-2xl p-3 flex items-center gap-3 max-w-md mx-auto md:mx-0">
+          <span className="material-symbols-outlined text-amber-800">lock</span>
+          <div className="flex-1">
+            <p className="font-black text-slate-900 text-xs">تعديل الأسعار مقفول لدورك</p>
+            <p className="text-[11px] text-slate-600">اطلب من المدير فتح الصلاحية لهذه الجلسة</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => requirePriceUnlock()}
+            className="bg-amber-500 hover:bg-amber-600 text-slate-950 px-3 py-1.5 rounded-lg font-bold text-xs shadow"
+          >فتح</button>
+        </div>
+      )}
+      {MgrModal}
     </PageShell>
   );
 }

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
 import { ALL_SYSTEM_PAGES } from '@/lib/permissions';
 import { BRANCHES_LIST, BranchConfig } from '@/lib/branches';
+import ManagerPasswordCard from '@/components/ManagerPasswordCard';
 
 interface Employee {
   id: string;
@@ -22,62 +23,76 @@ const initialEmployees: Employee[] = [
     phone: '01558282760',
     role: 'المدير العام ومطور النظام (Super Admin)',
     branch: 'الفرع الرئيسي',
-    restrictToBranch: false, // Admin sees all branches
+    restrictToBranch: false,
     allowedPageIds: ALL_SYSTEM_PAGES.map(p => p.id),
   },
   {
     id: 'EMP-02',
     name: 'أحمد كشك',
     phone: '01063821000',
-    role: 'مدير (Store Manager)',
+    role: 'المدير العام للمؤسسة (Store Manager)',
     branch: 'الفرع الرئيسي',
-    restrictToBranch: false, // Store Manager sees all branches
+    restrictToBranch: false,
+    allowedPageIds: ALL_SYSTEM_PAGES.map(p => p.id),
+  },
+  // ═════════ الفرع الرئيسي (سعد زغلول) ═════════
+  {
+    id: 'EMP-03',
+    name: 'يوسف ياسر',
+    phone: '01279549182',
+    role: 'مدير فرع سعد زغلول (الرئيسي)',
+    branch: 'الفرع الرئيسي',
+    restrictToBranch: true,
+    allowedPageIds: ALL_SYSTEM_PAGES.map(p => p.id),
+  },
+  // ═════════ فرع عرابي ═════════
+  {
+    id: 'EMP-04',
+    name: 'أحمد عبدالله',
+    phone: '01023232370',
+    role: 'مدير فرع عرابي',
+    branch: 'فرع عرابي',
+    restrictToBranch: true,
     allowedPageIds: ALL_SYSTEM_PAGES.map(p => p.id),
   },
   {
-    id: 'EMP-03',
-    name: 'موظف فرع عرابي 1',
-    phone: '01011111111',
-    role: 'مسؤول مبيعات ومعاينات',
-    branch: 'فرع عرابي',
-    restrictToBranch: true,
-    allowedPageIds: ['p_inspections', 'p_pricing', 'p_fabric_sales', 'p_customers', 'p_dashboard'],
-  },
-  {
-    id: 'EMP-04',
-    name: 'موظف فرع عرابي 2',
-    phone: '01022222222',
-    role: 'فني تفصيل وتركيبات',
-    branch: 'فرع عرابي',
-    restrictToBranch: true,
-    allowedPageIds: ['p_cutting', 'p_tailoring', 'p_accessories', 'p_installation'],
-  },
-  {
     id: 'EMP-05',
-    name: 'موظف فرع عمر أفندي 1',
-    phone: '01033333333',
-    role: 'كاشير ومبيعات أقمشة',
-    branch: 'فرع عمر أفندي',
+    name: 'محمد نصار',
+    phone: '01055288214',
+    role: 'كاشير فرع عرابي',
+    branch: 'فرع عرابي',
     restrictToBranch: true,
-    allowedPageIds: ['p_fabric_sales', 'p_customers', 'p_inventory', 'p_dashboard'],
+    // كاشير: بدون صلاحية تعديل الأسعار — يحتاج باسورد المدير
+    allowedPageIds: ['p_inspections', 'p_pricing', 'p_fabric_sales', 'p_customers', 'p_inventory', 'p_dashboard'],
   },
+  // ═════════ فرع عمر أفندي ═════════
   {
     id: 'EMP-06',
-    name: 'موظف فرع عمر أفندي 2',
-    phone: '01044444444',
-    role: 'بائع أقمشة',
+    name: 'محمد كشك',
+    phone: '01018728640',
+    role: 'مدير فرع عمر أفندي',
     branch: 'فرع عمر أفندي',
     restrictToBranch: true,
-    allowedPageIds: ['p_fabric_sales', 'p_customers', 'p_inventory', 'p_dashboard'],
+    allowedPageIds: ALL_SYSTEM_PAGES.map(p => p.id),
   },
   {
     id: 'EMP-07',
-    name: 'موظف فرع الثلاثيني',
-    phone: '01055555555',
-    role: 'مسؤول فرع الثلاثيني (أقمشة)',
-    branch: 'فرع الثلاثيني',
+    name: 'أحمد عبدالعال',
+    phone: '01275763008',
+    role: 'كاشير فرع عمر أفندي',
+    branch: 'فرع عمر أفندي',
     restrictToBranch: true,
     allowedPageIds: ['p_fabric_sales', 'p_customers', 'p_inventory', 'p_dashboard'],
+  },
+  // ═════════ فرع الثلاثيني ═════════
+  {
+    id: 'EMP-08',
+    name: 'عبدالله كشك',
+    phone: '01033447262',
+    role: 'مدير فرع الثلاثيني',
+    branch: 'فرع الثلاثيني',
+    restrictToBranch: true,
+    allowedPageIds: ALL_SYSTEM_PAGES.map(p => p.id),
   },
 ];
 
@@ -237,6 +252,9 @@ export default function BranchesAndPermissionsPage() {
             })}
           </div>
         </div>
+
+        {/* Manager Password Change Card */}
+        <ManagerPasswordCard />
 
         {/* Employees & Permissions Table */}
         <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-soft">

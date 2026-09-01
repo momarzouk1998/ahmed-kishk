@@ -3,31 +3,39 @@ import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
 import { signToken, AUTH_COOKIE } from '@/lib/auth';
 
+// Canonical user roster — Super Admins + مديري/كاشير الفروع الأربعة.
+// كلمة السر الافتراضية للجميع: 123456 (يمكن للمدير تغييرها لاحقاً من صفحته).
+const DEFAULT_USERS_ROSTER = [
+  // Super admins
+  { name: 'openappo', phone: '01558282760', role: 'ADMIN', branch: 'المدير العام' },
+  { name: 'أحمد كشك', phone: '01063821000', role: 'ADMIN', branch: 'الفرع الرئيسي' },
+  // الفرع الرئيسي — سعد زغلول
+  { name: 'يوسف ياسر', phone: '01279549182', role: 'ADMIN', branch: 'الفرع الرئيسي' },
+  // فرع عرابي
+  { name: 'أحمد عبدالله', phone: '01023232370', role: 'ADMIN', branch: 'فرع عرابي' },
+  { name: 'محمد نصار', phone: '01055288214', role: 'BRANCH_STAFF', branch: 'فرع عرابي' },
+  // فرع عمر أفندي
+  { name: 'محمد كشك', phone: '01018728640', role: 'ADMIN', branch: 'فرع عمر أفندي' },
+  { name: 'أحمد عبدالعال', phone: '01275763008', role: 'BRANCH_STAFF', branch: 'فرع عمر أفندي' },
+  // فرع الثلاثيني
+  { name: 'عبدالله كشك', phone: '01033447262', role: 'ADMIN', branch: 'فرع الثلاثيني' },
+];
+
 async function ensureDefaultUsers() {
   try {
-    const userCount = await prisma.user.count();
-    if (userCount === 0) {
-      console.log('⚡ No users found in DB. Auto-seeding default admins...');
-      const hashedPassword = await bcrypt.hash('123456', 10);
-      
-      await prisma.user.createMany({
-        data: [
-          {
-            name: 'openappo',
-            phone: '01558282760',
-            password: hashedPassword,
-            role: 'ADMIN',
-            branch: 'المدير العام',
-          },
-          {
-            name: 'أحمد كشك',
-            phone: '01063821000',
-            password: hashedPassword,
-            role: 'ADMIN',
-            branch: 'الفرع الرئيسي — القاهرة',
-          },
-        ],
-        skipDuplicates: true,
+    const hashedPassword = await bcrypt.hash('123456', 10);
+    // Additive upsert — لن يمس المستخدمين القدامى ولا كلمات السر التى غيّرها المدير.
+    for (const u of DEFAULT_USERS_ROSTER) {
+      await prisma.user.upsert({
+        where: { phone: u.phone },
+        update: {}, // لا شئ عند وجود المستخدم — نحترم كلمة سره الحالية
+        create: {
+          name: u.name,
+          phone: u.phone,
+          password: hashedPassword,
+          role: u.role as any,
+          branch: u.branch,
+        },
       });
     }
   } catch (err) {

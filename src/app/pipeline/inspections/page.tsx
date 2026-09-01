@@ -7,6 +7,7 @@ import { getStoredInspections, saveOrUpdateInspection, fetchInspections, Inspect
 import { isTodayOrOverdue } from '@/lib/pipelineStore';
 import { formatDate } from '@/lib/dateUtils';
 import InspectionPrintModal from '@/components/InspectionPrintModal';
+import { CURTAIN_TECHNICIANS, DEFAULT_TECHNICIAN } from '@/lib/technicians';
 
 export type InspectionSummary = InspectionData;
 
@@ -16,7 +17,9 @@ function getBranchBadgeStyle(branchName: string) {
       return 'bg-indigo-50 text-indigo-800 border-indigo-200';
     case 'فرع عرابي':
       return 'bg-teal-50 text-teal-800 border-teal-200';
-    case 'فرع زايد':
+    case 'فرع عمر أفندي':
+      return 'bg-amber-50 text-amber-800 border-amber-200';
+    case 'فرع الثلاثيني':
       return 'bg-purple-50 text-purple-800 border-purple-200';
     default:
       return 'bg-slate-100 text-slate-700 border-slate-200';
@@ -51,7 +54,7 @@ export default function PipelineInspectionsPage() {
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
   const [branch, setBranch] = useState('الفرع الرئيسي');
-  const [tech, setTech] = useState('أحمد حسن');
+  const [tech, setTech] = useState(DEFAULT_TECHNICIAN);
   const [schedule, setSchedule] = useState('');
 
   // Customer Autocomplete State
@@ -133,7 +136,7 @@ export default function PipelineInspectionsPage() {
           name: custName.trim(),
           phone: custPhone.trim() || '—',
           address: custAddress.trim() || '—',
-          city: 'القاهرة',
+          city: 'غير مسجل',
           inspectionsCount: 1,
           ordersCount: 0,
           totalSpent: 0,
@@ -290,8 +293,7 @@ export default function PipelineInspectionsPage() {
               className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-brand-gold shadow-2xs"
             >
               <option value="ALL">جميع الفنيين</option>
-              <option value="أحمد حسن">أحمد حسن</option>
-              <option value="محمد علي">محمد علي</option>
+              {CURTAIN_TECHNICIANS.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
           </div>
 
@@ -303,8 +305,10 @@ export default function PipelineInspectionsPage() {
               className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-brand-gold shadow-2xs"
             >
               <option value="ALL">جميع الفروع</option>
-              <option value="الفرع الرئيسي">الفرع الرئيسي</option>
+              <option value="الفرع الرئيسي">الفرع الرئيسي (سعد زغلول)</option>
               <option value="فرع عرابي">فرع عرابي</option>
+              <option value="فرع عمر أفندي">فرع عمر أفندي</option>
+              <option value="فرع الثلاثيني">فرع الثلاثيني</option>
             </select>
           </div>
 
@@ -611,15 +615,16 @@ export default function PipelineInspectionsPage() {
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-bold text-slate-700">الفرع</label>
                   <select value={branch} onChange={e => setBranch(e.target.value)} className="border border-slate-200 rounded-xl p-2 text-xs font-bold">
-                    <option>الفرع الرئيسي</option>
-                    <option>فرع عرابي</option>
+                    <option value="الفرع الرئيسي">الفرع الرئيسي (سعد زغلول)</option>
+                    <option value="فرع عرابي">فرع عرابي</option>
+                    <option value="فرع عمر أفندي">فرع عمر أفندي</option>
+                    <option value="فرع الثلاثيني">فرع الثلاثيني</option>
                   </select>
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-bold text-slate-700">الفني المسؤول</label>
                   <select value={tech} onChange={e => setTech(e.target.value)} className="border border-slate-200 rounded-xl p-2 text-xs font-bold">
-                    <option>أحمد حسن</option>
-                    <option>محمد علي</option>
+                    {CURTAIN_TECHNICIANS.map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
               </div>

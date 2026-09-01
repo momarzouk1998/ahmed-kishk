@@ -256,9 +256,10 @@ export default function PipelineCuttingPage() {
               className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 font-bold text-slate-800 focus:outline-none focus:border-brand-gold shadow-2xs cursor-pointer"
             >
               <option value="ALL">جميع الفروع</option>
-              <option value="الفرع الرئيسي">الفرع الرئيسي — القاهرة</option>
+              <option value="الفرع الرئيسي">الفرع الرئيسي (سعد زغلول)</option>
               <option value="فرع عرابي">فرع عرابي</option>
-              <option value="فرع التجمع">فرع التجمع الخامس</option>
+              <option value="فرع عمر أفندي">فرع عمر أفندي</option>
+              <option value="فرع الثلاثيني">فرع الثلاثيني</option>
             </select>
           </div>
         </div>
@@ -384,7 +385,7 @@ export default function PipelineCuttingPage() {
                             {order.branch || 'الفرع الرئيسي'}
                           </span>
                         </div>
-                        <p className="text-xs text-slate-500 font-mono mt-0.5">{order.phone} — {order.address || 'القاهرة'}</p>
+                        <p className="text-xs text-slate-500 font-mono mt-0.5">{order.phone} — {order.address || 'غير مسجل'}</p>
                       </div>
 
                       <button

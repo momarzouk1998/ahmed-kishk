@@ -134,6 +134,24 @@ export default function InspectionDetailPage() {
     e.preventDefault();
     if (editingRoomId && isReadOnly) return;
 
+    // #24: تحقق من صحة المقاسات
+    if (!roomName.trim()) {
+      alert('من فضلك أدخل اسم الغرفة');
+      return;
+    }
+    if (!Number.isFinite(widthCm) || widthCm <= 0) {
+      alert('عرض الغرفة يجب أن يكون رقماً أكبر من صفر (بالسنتيمتر)');
+      return;
+    }
+    if (!Number.isFinite(heightCm) || heightCm <= 0) {
+      alert('ارتفاع الغرفة يجب أن يكون رقماً أكبر من صفر (بالسنتيمتر)');
+      return;
+    }
+    if (widthCm > 2000 || heightCm > 2000) {
+      alert('المقاس يبدو كبيراً جداً (>20 متر). راجع القيم من فضلك.');
+      return;
+    }
+
     const newRoom: Room = {
       id: editingRoomId || `rm-${Date.now()}`,
       name: roomName,

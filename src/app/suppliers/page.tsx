@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
 import { formatDateOnly } from '@/lib/dateUtils';
+import PdfPrintButton from '@/components/PdfPrintButton';
 
 interface Supplier {
   id: string;
@@ -102,8 +103,8 @@ export default function SuppliersPage() {
     dueDate: string;
     notes: string;
   }[]>([
-    { checkNumber: '', bankName: 'البنك الأهلي المصري', amount: 5000, dueDate: '2026-09-30', notes: '' },
-    { checkNumber: '', bankName: 'بنك مصر', amount: 3000, dueDate: '2026-10-15', notes: '' },
+    { checkNumber: '', bankName: 'QNB', amount: 5000, dueDate: '2026-09-30', notes: '' },
+    { checkNumber: '', bankName: 'QNB', amount: 3000, dueDate: '2026-10-15', notes: '' },
   ]);
 
   useEffect(() => {
@@ -249,7 +250,7 @@ export default function SuppliersPage() {
     saveChecksState([...createdChecks, ...checks]);
     setShowBatchChecksModal(false);
     setBatchCheckRows([
-      { checkNumber: '', bankName: 'البنك الأهلي المصري', amount: 5000, dueDate: '2026-09-30', notes: '' },
+      { checkNumber: '', bankName: 'QNB', amount: 5000, dueDate: '2026-09-30', notes: '' },
     ]);
   };
 
@@ -348,7 +349,13 @@ export default function SuppliersPage() {
 
   return (
     <PageShell title="إدارة الموردين والحسابات">
-      <div className="flex flex-col gap-5 max-w-7xl mx-auto">
+      <div className="flex flex-col gap-5 max-w-7xl mx-auto" id="print-area">
+        <div className="flex justify-end no-print">
+          <PdfPrintButton
+            documentTitle={activeTab === 'SUPPLIERS' ? 'قائمة-الموردين' : activeTab === 'PAYMENTS' ? 'سندات-السداد-والمصروفات' : 'سجل-الشيكات-البنكية'}
+            label="طباعة PDF"
+          />
+        </div>
         {/* Navigation Tabs (3 Tabs) */}
         <div className="flex border-b border-slate-200 gap-2">
           <button
@@ -966,7 +973,7 @@ export default function SuppliersPage() {
                         if (batchCheckRows.length >= 15) return;
                         setBatchCheckRows([
                           ...batchCheckRows,
-                          { checkNumber: '', bankName: 'البنك الأهلي المصري', amount: 5000, dueDate: '2026-10-30', notes: '' }
+                          { checkNumber: '', bankName: 'QNB', amount: 5000, dueDate: '2026-10-30', notes: '' }
                         ]);
                       }}
                       className="bg-purple-900 text-white hover:bg-purple-800 px-3 py-1 rounded-xl text-xs font-bold shadow-xs flex items-center gap-1 cursor-pointer"
@@ -1024,10 +1031,10 @@ export default function SuppliersPage() {
                         }}
                         className="w-full border border-slate-200 rounded-xl px-2.5 py-1.5 font-bold text-slate-900 focus:outline-none bg-white"
                       >
+                        <option value="QNB">بنك QNB</option>
                         <option value="البنك الأهلي المصري">البنك الأهلي المصري</option>
                         <option value="بنك مصر">بنك مصر</option>
                         <option value="CIB">البنك التجاري الدولي CIB</option>
-                        <option value="بنك القاهرة">بنك القاهرة</option>
                       </select>
                     </div>
 

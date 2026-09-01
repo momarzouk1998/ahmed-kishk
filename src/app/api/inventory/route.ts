@@ -35,7 +35,7 @@ export async function POST(request: Request) {
         reservedQuantity: Number(reservedQuantity) || 0,
         costPrice: Number(costPrice) || 0,
         sellPrice: Number(sellPrice) || 0,
-        branch: branch || 'الفرع الرئيسي — القاهرة',
+        branch: branch || 'الفرع الرئيسي',
         minAlert: Number(minAlert) || 20,
         supplier: supplier || 'شركة النيل',
       },

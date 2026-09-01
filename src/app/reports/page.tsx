@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
 import { formatDateOnly } from '@/lib/dateUtils';
+import PdfPrintButton from '@/components/PdfPrintButton';
 
 interface SalesInvoice {
   id: string;
@@ -131,8 +132,8 @@ export default function ReportsPage() {
 
   return (
     <PageShell title="التقارير والإحصائيات الشاملة">
-      <div className="flex flex-col gap-6 max-w-[1600px] mx-auto">
-        
+      <div className="flex flex-col gap-6 max-w-[1600px] mx-auto" id="print-area">
+
         {/* Top Control Bar: Title & Period & Branch Filter */}
         <div className="flex flex-wrap items-center justify-between gap-4 bg-white p-4 sm:p-5 rounded-3xl border border-slate-200 shadow-soft">
           <div>
@@ -146,6 +147,11 @@ export default function ReportsPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
+            <PdfPrintButton
+              targetSelector="#print-area"
+              documentTitle={`تقرير-${reportType}-${period}-${selectedBranch === 'ALL' ? 'كل-الفروع' : selectedBranch}`}
+              label="طباعة / حفظ PDF"
+            />
             {/* Branch Filter Selector */}
             <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-2xl border border-slate-200">
               <span className="text-xs font-bold text-slate-600 pr-2">الفرع:</span>
@@ -155,11 +161,10 @@ export default function ReportsPage() {
                 className="bg-white border border-slate-200 text-slate-900 rounded-xl px-3 py-1.5 text-xs font-bold focus:outline-none cursor-pointer"
               >
                 <option value="ALL">🌐 جميع الفروع</option>
-                <option value="الفرع الرئيسي">الفرع الرئيسي — القاهرة</option>
+                <option value="الفرع الرئيسي">الفرع الرئيسي (سعد زغلول)</option>
                 <option value="فرع عرابي">فرع عرابي</option>
-                <option value="فرع التجمع">فرع التجمع الخامس</option>
-                <option value="فرع الثلاثيني">فرع الثلاثيني</option>
                 <option value="فرع عمر أفندي">فرع عمر أفندي</option>
+                <option value="فرع الثلاثيني">فرع الثلاثيني</option>
               </select>
             </div>
 

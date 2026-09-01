@@ -48,6 +48,86 @@ interface FabricSalesPrintModalProps {
 export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricSalesPrintModalProps) {
   if (!isOpen || !data) return null;
 
+  // 80mm طباعة على طابعة كاشير ثرمال — الافتراضى الآن
+  const handlePrintCashier = () => {
+    const w = window.open('', '_blank');
+    if (!w) { window.print(); return; }
+
+    const rows = (data.items || []).map((it, i) => `
+      <tr>
+        <td style="width:6mm; text-align:center; font-size:8pt;">${i + 1}</td>
+        <td style="font-size:9pt;">
+          <div style="font-weight:900;">${it.name}</div>
+          <div style="font-size:7.5pt; color:#555;">${it.code} • ${it.meters}م × ${it.pricePerMeter}</div>
+        </td>
+        <td style="text-align:left; font-family:monospace; font-weight:900; font-size:9pt;">${it.totalPrice.toLocaleString()}</td>
+      </tr>
+    `).join('');
+
+    const paymentLine = data.splitPayments
+      ? [
+          data.splitPayments.cash ? `${data.splitPayments.cash} كاش` : '',
+          data.splitPayments.instapay ? `${data.splitPayments.instapay} إنستاباي` : '',
+          data.splitPayments.vodafone ? `${data.splitPayments.vodafone} فودافون` : '',
+          data.splitPayments.visa ? `${data.splitPayments.visa} فيزا` : '',
+        ].filter(Boolean).join(' + ')
+      : (data.paymentMethod || 'نقدي');
+
+    w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head>
+      <meta charset="UTF-8"><title>فاتورة ${data.invoiceNumber}</title>
+      <style>
+        @page { size: 80mm auto; margin: 3mm; }
+        * { box-sizing:border-box; margin:0; padding:0; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
+        body { font-family: 'Cairo', system-ui, sans-serif; direction:rtl; color:#000; font-size:9pt; width:74mm; }
+        .center { text-align:center; }
+        .brand { font-weight:900; font-size:11pt; margin-top:2mm; }
+        .sub { font-size:8pt; color:#333; }
+        .divider { border-top:1px dashed #000; margin:2mm 0; }
+        table { width:100%; border-collapse:collapse; }
+        th, td { padding:1mm 0; vertical-align:top; }
+        thead th { border-bottom:1px solid #000; font-size:8pt; text-align:right; }
+        tfoot td { border-top:1px solid #000; padding-top:1.5mm; font-size:9pt; }
+        .totals td { padding: 0.5mm 0; }
+        .totals .lbl { color:#333; font-size:8.5pt; }
+        .totals .v { text-align:left; font-family:monospace; font-weight:900; }
+        .total-row td { font-size:11pt; font-weight:900; border-top:1px solid #000; padding-top:1.5mm; }
+        .foot { text-align:center; font-size:7.5pt; color:#333; margin-top:3mm; }
+      </style></head><body>
+        <div class="center">
+          <div class="brand">مؤسسة أحمد كشك</div>
+          <div class="sub">للأقمشة والستائر الفاخرة</div>
+          <div class="sub">${data.branch || 'الفرع الرئيسي (سعد زغلول)'}</div>
+        </div>
+        <div class="divider"></div>
+        <div style="display:flex; justify-content:space-between; font-size:8.5pt;">
+          <span>فاتورة: <b>${data.invoiceNumber}</b></span>
+          <span>${data.date ? formatDateOnly(data.date) : new Date().toISOString().split('T')[0]}</span>
+        </div>
+        <div style="font-size:8.5pt; margin-top:1mm;">
+          العميل: <b>${data.customerName}</b>${(data.phone || data.customerPhone) ? ` — <span style="font-family:monospace; direction:ltr;">${data.phone || data.customerPhone}</span>` : ''}
+        </div>
+        <div class="divider"></div>
+        <table>
+          <thead><tr><th>#</th><th>الصنف</th><th style="text-align:left;">الإجمالى</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+        <div class="divider"></div>
+        <table class="totals">
+          <tr><td class="lbl">إجمالى قبل الخصم:</td><td class="v">${(data.subtotal || 0).toLocaleString()} ج</td></tr>
+          ${data.discountAmount ? `<tr><td class="lbl">الخصم:</td><td class="v">-${data.discountAmount.toLocaleString()} ج</td></tr>` : ''}
+          <tr class="total-row"><td>الصافى:</td><td class="v">${data.totalAmount.toLocaleString()} ج</td></tr>
+          <tr><td class="lbl">المدفوع (${paymentLine}):</td><td class="v">${data.paidAmount.toLocaleString()} ج</td></tr>
+          ${data.remainingAmount > 0 ? `<tr><td class="lbl">المتبقى:</td><td class="v">${data.remainingAmount.toLocaleString()} ج</td></tr>` : ''}
+        </table>
+        <div class="foot">
+          شكراً لثقتكم • هاتف: 01063821000<br>
+          ${data.status}
+        </div>
+      </body></html>`);
+    w.document.close();
+    setTimeout(() => { w.print(); w.close(); }, 300);
+  };
+
   const handlePrint = () => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
@@ -382,15 +462,24 @@ export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricS
         <div className="flex items-center justify-between pb-4 border-b border-slate-200 mb-4">
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-amber-600 text-2xl">receipt_long</span>
-            <h2 className="font-display font-black text-base sm:text-lg text-slate-900">معاينة فاتورة المبيعات (A4)</h2>
+            <h2 className="font-display font-black text-base sm:text-lg text-slate-900">معاينة فاتورة المبيعات</h2>
           </div>
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={handlePrint}
-              className="bg-slate-950 hover:bg-slate-800 text-white px-5 py-2 rounded-xl text-xs font-black shadow-xs flex items-center gap-1.5 cursor-pointer transition-colors"
+              onClick={handlePrintCashier}
+              className="bg-amber-500 hover:bg-amber-600 text-slate-950 px-5 py-2 rounded-xl text-xs font-black shadow flex items-center gap-1.5 cursor-pointer transition-colors"
+              title="طباعة على طابعة الكاشير الحرارية 80 مم"
             >
-              <span>🖨️ طباعة الفاتورة (A4)</span>
+              <span>🧾 طباعة كاشير (80mm)</span>
+            </button>
+            <button
+              type="button"
+              onClick={handlePrint}
+              className="bg-slate-950 hover:bg-slate-800 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-xs flex items-center gap-1.5 cursor-pointer transition-colors"
+              title="طباعة على ورق A4 عادى"
+            >
+              <span>🖨️ A4</span>
             </button>
             <button
               type="button"

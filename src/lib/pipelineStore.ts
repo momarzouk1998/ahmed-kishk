@@ -40,12 +40,7 @@ export interface PipelineMasterOrder {
 const STORAGE_KEY = 'ahmed_kishk_pipeline_orders_v5';
 const DELETED_IDS_KEY = 'ahmed_kishk_deleted_order_ids_v1';
 
-export const PERMANENT_BLACKLIST_NAMES = [
-  'محمود عبد الرحمن',
-  'سارة أحمد',
-  'شركة المعمار للمقاولات',
-];
-
+// #1: تم إلغاء القائمة السوداء تماماً — العملاء المحذوفون تُدار حذفهم فى قاعدة البيانات فقط.
 export const DEFAULT_PIPELINE_ORDERS: PipelineMasterOrder[] = [];
 
 export function isTodayOrOverdue(dateStr?: string): boolean {
@@ -56,7 +51,7 @@ export function isTodayOrOverdue(dateStr?: string): boolean {
 }
 
 export function getDeletedOrderIds(): string[] {
-  return [...PERMANENT_BLACKLIST_NAMES];
+  return [];
 }
 
 export function registerDeletedOrderId(id: string) {
@@ -94,15 +89,10 @@ export async function fetchPipelineOrders(): Promise<PipelineMasterOrder[]> {
     if (res.ok) {
       const json = await res.json();
       if (json.success && Array.isArray(json.orders)) {
-        const serverFiltered: PipelineMasterOrder[] = json.orders.filter((o: any) => {
-          const isNameDel = PERMANENT_BLACKLIST_NAMES.some(bn => o.customerName?.includes(bn));
-          return !isNameDel;
-        });
-
         if (typeof window !== 'undefined') {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(serverFiltered));
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(json.orders));
         }
-        return serverFiltered;
+        return json.orders;
       }
     }
   } catch (err) {
@@ -122,11 +112,7 @@ export function getStoredPipelineOrders(): PipelineMasterOrder[] {
     } else {
       list = JSON.parse(raw);
     }
-    const filtered = list.filter(o => {
-      const isNameDel = PERMANENT_BLACKLIST_NAMES.some(bn => o.customerName?.includes(bn));
-      return !isNameDel;
-    });
-    return filtered;
+    return list;
   } catch (err) {
     console.error('Error reading pipeline orders:', err);
     return DEFAULT_PIPELINE_ORDERS;
@@ -134,14 +120,9 @@ export function getStoredPipelineOrders(): PipelineMasterOrder[] {
 }
 
 export async function saveStoredPipelineOrders(orders: PipelineMasterOrder[]) {
-  const filtered = orders.filter(o => {
-    const isNameDel = PERMANENT_BLACKLIST_NAMES.some(bn => o.customerName?.includes(bn));
-    return !isNameDel;
-  });
-
   if (typeof window !== 'undefined') {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(orders));
     } catch {}
   }
 
@@ -149,7 +130,7 @@ export async function saveStoredPipelineOrders(orders: PipelineMasterOrder[]) {
     await fetch('/api/pipeline-orders', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ orders: filtered }),
+      body: JSON.stringify({ orders }),
     });
   } catch (err) {
     console.error('Error saving pipeline orders to database:', err);
@@ -159,7 +140,7 @@ export async function saveStoredPipelineOrders(orders: PipelineMasterOrder[]) {
     await fetch('/api/system-data', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ key: STORAGE_KEY, data: filtered }),
+      body: JSON.stringify({ key: STORAGE_KEY, data: orders }),
     });
   } catch (err) {
     console.error('Error saving pipeline orders to system-data:', err);
@@ -178,13 +159,14 @@ export async function updatePipelineOrderStatus(
 
   let found = false;
   const updated = current.map(o => {
+    // #19: مطابقة بالمعرّفات فقط — لا نستخدم customerName كخيار احتياطى
+    // (كان يخلط بين عملاء بنفس الاسم).
     const isMatch =
       o.id === cleanId ||
       o.orderId === cleanId ||
       o.orderId === rawId ||
       o.id === `ORD-${rawId}` ||
-      o.id.replace(/^ORD-/, '') === rawId ||
-      (o.customerName && cleanId.includes(o.customerName));
+      o.id.replace(/^ORD-/, '') === rawId;
 
     if (isMatch) {
       found = true;
@@ -201,11 +183,10 @@ export async function updatePipelineOrderStatus(
     let quotMatch: any = null;
     try {
       const qs = await fetchQuotations();
-      quotMatch = qs.find(q => 
-        q.id === rawId || 
-        q.id === cleanId || 
-        (q.customerName && cleanId.includes(q.customerName)) ||
-        (q.customerName && cleanId === `ORD-${q.id}`)
+      quotMatch = qs.find(q =>
+        q.id === rawId ||
+        q.id === cleanId ||
+        cleanId === `ORD-${q.id}`
       );
     } catch {}
 
@@ -233,10 +214,8 @@ export async function updatePipelineOrderStatus(
   // Sync quotation status as well
   try {
     const quotations = await fetchQuotations();
-    const qIdx = quotations.findIndex(q => 
-      q.id === rawId || 
-      q.id === cleanId || 
-      (q.customerName && cleanId.includes(q.customerName))
+    const qIdx = quotations.findIndex(q =>
+      q.id === rawId || q.id === cleanId
     );
     if (qIdx >= 0) {
       quotations[qIdx].status = normalized as any;
@@ -251,8 +230,8 @@ export function addPipelineOrder(order: Partial<PipelineMasterOrder>): PipelineM
     id: order.id || `ORD-${Date.now()}`,
     orderId: order.orderId || `ORD-00${current.length + 1}`,
     customerName: order.customerName || 'عميل جديد',
-    phone: order.phone || '01000000000',
-    address: order.address || 'القاهرة',
+    phone: order.phone || '',
+    address: order.address || 'غير مسجل',
     branch: order.branch || 'الفرع الرئيسي',
     deliveryDate: order.deliveryDate || new Date().toISOString().split('T')[0],
     status: normalizeMasterStage(order.status || 'المعاينات'),

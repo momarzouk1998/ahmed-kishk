@@ -65,6 +65,9 @@ export interface RoomPricing {
   sheerMultiplier?: number;
   sheerMeters: number;
   sheerPrice: number;
+  sheerLiningEnabled?: boolean;       // بطانة إضافية للشيفون
+  sheerLiningPricePerMeter?: number;  // سعر متر البطانة
+  sheerPieces?: 'قطعة واحدة' | 'قطعتين'; // عدد قطع الشيفون
 
   // Blackout Layer (3rd)
   blackoutFabricCode?: string;
@@ -96,34 +99,51 @@ export interface RoomPricing {
   totalSellPrice: number;
 }
 
+/**
+ * الحالات الرسمية الوحيدة (Canonical Statuses).
+ * أى نص قديم مخزَّن يُطبّع بواسطة normalizeQuotationStatus قبل الحفظ/العرض.
+ */
 export type QuotationStatus =
-  | 'المعاينات'
-  | 'تم ارسال المعاينات'
   | 'بانتظار التسعير'
   | 'تم إرسال المقايسة'
   | 'معتمد ومسدد العربون'
-  | 'معتمد و مسدد العربون'
   | 'تم التحويل للورشة'
-  | 'تم التحويل الى الورشه'
   | 'في المقص'
-  | 'قص القماش'
-  | 'تم القص'
   | 'في الورشة'
-  | 'تمت الخياطة'
   | 'تجهيز الاكسسوارات'
-  | 'جاري تجهيز الاكسسوار'
-  | 'تم تجهيز الاكسسوار'
   | 'جاهز للاستلام'
-  | 'جاهز للستليم'
-  | 'جاهز للتسليم'
   | 'جاهز للتركيب'
-  | 'في التركيبات'
-  | 'تم التركيب بنجاح'
-  | 'في التسليمات'
-  | 'تم التسليم بنجاح'
-  | 'تم التسليم'
-  | 'مكتمل'
-  | 'مكتمل ومسلم';
+  | 'مكتمل';
+
+/**
+ * يحوّل أى صيغة قديمة/بها خطأ إملائى إلى الحالة الرسمية.
+ * يُستدعى عند القراءة والحفظ معاً.
+ */
+export function normalizeQuotationStatus(raw: string | undefined | null): QuotationStatus {
+  const s = String(raw || '').trim();
+  if (!s) return 'بانتظار التسعير';
+  // completed / delivered
+  if (s.includes('مكتمل') || s === 'تم التسليم' || s === 'تم التسليم بنجاح' || s === 'مكتمل ومسلم') return 'مكتمل';
+  // install
+  if (s === 'تم التركيب بنجاح' || s === 'في التركيبات' || s === 'جاهز للتركيب') return 'جاهز للتركيب';
+  // pickup / delivery-ready
+  if (s === 'جاهز للاستلام' || s === 'جاهز للستليم' || s === 'جاهز للتسليم' || s === 'في التسليمات') return 'جاهز للاستلام';
+  // accessories
+  if (s.includes('اكسسوار') || s === 'تجهيز الاكسسوارات') return 'تجهيز الاكسسوارات';
+  // workshop
+  if (s.includes('خياطة') || s === 'في الورشة' || s === 'تمت الخياطة' || s === 'تم القص وجاهز للخياطة') return 'في الورشة';
+  // cutting
+  if (s === 'في المقص' || s === 'قص القماش' || s === 'تم القص' || s === 'بانتظار القص') return 'في المقص';
+  // approved-deposit
+  if (s === 'معتمد ومسدد العربون' || s === 'معتمد و مسدد العربون') return 'معتمد ومسدد العربون';
+  // sent to workshop transition
+  if (s === 'تم التحويل للورشة' || s === 'تم التحويل الى الورشه') return 'تم التحويل للورشة';
+  // sent quote
+  if (s === 'تم إرسال المقايسة' || s === 'تم ارسال المعاينات') return 'تم إرسال المقايسة';
+  // pricing pending
+  if (s === 'بانتظار التسعير' || s === 'المعاينات' || s === 'انتظار تسعير' || s === 'قيد التسعير') return 'بانتظار التسعير';
+  return 'بانتظار التسعير';
+}
 
 export interface QuotationOrder {
   id: string;
@@ -140,6 +160,7 @@ export interface QuotationOrder {
   deliveryDate?: string;
   estimatorName: string;
   rooms: RoomPricing[];
+  updatedAt?: string; // #18: timestamp للـ conflict detection
 }
 
 export const TAPE_PRICES: Record<string, number> = {
@@ -169,22 +190,11 @@ export const ACCESSORY_PRICES = {
   defaultInstallFee: 125, // رسوم التركيب الثابتة
 };
 
-export const PERMANENT_BLACKLIST_CUSTOMER_NAMES = [
-  'محمود عبد الرحمن',
-  'سارة أحمد',
-  'شركة المعمار للمقاولات',
-];
-
 export const defaultInspectionsList: InspectionData[] = [];
 export const defaultQuotationsList: QuotationOrder[] = [];
 
 const INSPECTIONS_STORAGE_KEY = 'ahmed_kishk_inspections_data_v4';
 const QUOTATIONS_STORAGE_KEY = 'ahmed_kishk_quotations_data_v4';
-
-function isCustomerBlacklisted(name: string): boolean {
-  if (!name) return false;
-  return PERMANENT_BLACKLIST_CUSTOMER_NAMES.some(bn => name.includes(bn));
-}
 
 export async function fetchInspections(): Promise<InspectionData[]> {
   try {
@@ -192,11 +202,10 @@ export async function fetchInspections(): Promise<InspectionData[]> {
     if (res.ok) {
       const json = await res.json();
       if (json.success && Array.isArray(json.inspections)) {
-        const filtered = json.inspections.filter((i: any) => !isCustomerBlacklisted(i.customerName));
         if (typeof window !== 'undefined') {
-          localStorage.setItem(INSPECTIONS_STORAGE_KEY, JSON.stringify(filtered));
+          localStorage.setItem(INSPECTIONS_STORAGE_KEY, JSON.stringify(json.inspections));
         }
-        return filtered;
+        return json.inspections;
       }
     }
   } catch (err) {
@@ -229,16 +238,10 @@ export function getStoredInspections(): InspectionData[] {
   }
   try {
     const raw = localStorage.getItem(INSPECTIONS_STORAGE_KEY);
-    let list: InspectionData[] = [];
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) list = parsed;
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
     }
-    const filtered = list.filter(i => !isCustomerBlacklisted(i.customerName));
-    if (filtered.length > 0) return filtered;
-
-    // localStorage is empty — trigger a background server fetch to hydrate it,
-    // and return empty for now (PageShell's onSyncReady will trigger a remount).
     fetchInspections().catch(() => {});
     return defaultInspectionsList;
   } catch {
@@ -340,15 +343,40 @@ export async function saveAllQuotations(list: QuotationOrder[]): Promise<void> {
   }
 }
 
+export class ConflictError extends Error {
+  serverUpdatedAt: string;
+  constructor(msg: string, serverUpdatedAt: string) {
+    super(msg);
+    this.serverUpdatedAt = serverUpdatedAt;
+  }
+}
+
 export async function saveOrUpdateQuotation(item: QuotationOrder): Promise<void> {
   const list = getStoredQuotations();
   const index = list.findIndex(q => q.id.toUpperCase() === item.id.toUpperCase());
+
+  // #18: Conflict detection — لو النسخة المحفوظة أحدث من اللى بنكتبها، نرفض ونرمى ConflictError
+  if (index >= 0) {
+    const stored = list[index];
+    const storedTs = stored.updatedAt ? new Date(stored.updatedAt).getTime() : 0;
+    const incomingTs = item.updatedAt ? new Date(item.updatedAt).getTime() : 0;
+    // فقط لو الاثنين لديهم timestamp والمخزَّن أحدث بأكتر من 2 ثانية (safe margin)
+    if (storedTs && incomingTs && storedTs - incomingTs > 2000) {
+      throw new ConflictError(
+        'تم تعديل هذا العقد من جلسة أخرى بعد آخر تحميل. أعِد التحميل ثم حاول من جديد.',
+        stored.updatedAt || ''
+      );
+    }
+  }
+
+  // إضافة timestamp حالى قبل الحفظ
+  const withTs: QuotationOrder = { ...item, updatedAt: new Date().toISOString() };
   let updated: QuotationOrder[];
   if (index >= 0) {
     updated = [...list];
-    updated[index] = item;
+    updated[index] = withTs;
   } else {
-    updated = [item, ...list];
+    updated = [withTs, ...list];
   }
   if (typeof window !== 'undefined') {
     localStorage.setItem(QUOTATIONS_STORAGE_KEY, JSON.stringify(updated));
@@ -357,7 +385,7 @@ export async function saveOrUpdateQuotation(item: QuotationOrder): Promise<void>
     await fetch('/api/pricing', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(item),
+      body: JSON.stringify(withTs),
     });
   } catch (err) {
     console.error('Failed to save quotation to API:', err);
@@ -377,9 +405,11 @@ export function syncInspectionToPricing(inspectionOrId: InspectionData | string)
         status: 'تم رفع المقاسات',
         isLocked: false,
         notes: '',
-        rooms: []
+        rooms: [],
       })
     : inspectionOrId;
+
+  // #17: لا يوجد قماش وهمى افتراضى — الغرفة تبدأ فارغة وتحتاج تسعير يدوى.
 
   const quotations = getStoredQuotations();
   const existingIdx = quotations.findIndex(q => q.inspectionId.toUpperCase() === inspection.id.toUpperCase());
@@ -410,17 +440,17 @@ export function syncInspectionToPricing(inspectionOrId: InspectionData | string)
       sheerEnabled: true,
       blackoutEnabled: false,
 
-      // Heavy 1st
-      heavyFabricCode: 'HV-201',
-      heavyFabricName: 'قطيفة جاجوار تركيات (درجات البيج)',
+      // Heavy 1st — تُترك فارغة، المُسعِّر يختار من المخزون
+      heavyFabricCode: '',
+      heavyFabricName: '',
       heavyTapeType,
       heavyMultiplier,
       heavyMeters,
       heavyPrice: 0,
 
-      // Sheer 2nd
-      sheerFabricCode: 'SH-101',
-      sheerFabricName: 'شيفون حرير فاخر (أبيض سادة)',
+      // Sheer 2nd — تُترك فارغة، المُسعِّر يختار من المخزون
+      sheerFabricCode: '',
+      sheerFabricName: '',
       sheerTapeType,
       sheerMultiplier,
       sheerMeters,
@@ -527,23 +557,24 @@ export function updateQuotationStageAndStatus(orderId: string, newStatus: Quotat
   const quotations = getStoredQuotations();
   const target = quotations.find(q => q.id.toUpperCase() === orderId.toUpperCase());
   if (target) {
-    target.status = newStatus;
+    const canonical = normalizeQuotationStatus(newStatus);
+    target.status = canonical;
     saveAllQuotations(quotations);
 
-    // Sync inspection
+    // Sync inspection status + قفل تلقائى عند اعتماد العربون فما بعد
     const insp = getInspectionById(target.inspectionId);
     if (insp) {
-      if (newStatus === 'تم التحويل الى الورشه' || newStatus === 'جاهز للستليم') {
-        insp.status = 'في الورشة';
-      } else if (newStatus === 'تم التسليم') {
-        insp.status = 'مكتمل';
-      } else if (newStatus === 'بانتظار التسعير') {
-        insp.status = 'قيد التسعير';
-      } else if (newStatus === 'المعاينات') {
-        insp.status = 'مُجدول';
-      } else if (newStatus === 'تم ارسال المعاينات') {
-        insp.status = 'تم رفع المقاسات';
-      }
+      // #23: قفل المعاينة تلقائياً بعد اعتماد العربون (لا يمكن تعديل المقاسات بعدها)
+      const LOCK_AFTER: string[] = [
+        'معتمد ومسدد العربون', 'تم التحويل للورشة', 'في المقص', 'في الورشة',
+        'تجهيز الاكسسوارات', 'جاهز للاستلام', 'جاهز للتركيب', 'مكتمل',
+      ];
+      if (LOCK_AFTER.includes(canonical)) insp.isLocked = true;
+
+      if (canonical === 'تم التحويل للورشة' || canonical === 'في الورشة') insp.status = 'في الورشة';
+      else if (canonical === 'مكتمل') insp.status = 'مكتمل';
+      else if (canonical === 'بانتظار التسعير') insp.status = 'قيد التسعير';
+      else if (canonical === 'تم إرسال المقايسة') insp.status = 'تم رفع المقاسات';
       saveOrUpdateInspection(insp);
     }
   }

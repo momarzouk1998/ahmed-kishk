@@ -25,6 +25,8 @@ interface RoomTailoringDetail {
     pieces?: string;
     tapeType?: string;
     netHeight?: string;
+    hasLining?: boolean;             // #13 يجب أن يعرف الخياط لو فيه بطانة
+    liningPricePerMeter?: number;
   };
   blackoutFabric?: {
     name: string;
@@ -96,8 +98,11 @@ export default function PipelineTailoringPage() {
               name: r.sheerFabricName || 'شيفون',
               code: r.sheerFabricCode || 'SH-101',
               meters: Number(r.sheerMeters) || 0,
+              pieces: r.sheerPieces || 'قطعة واحدة',
               tapeType: r.sheerTapeType || 'ويفي',
               netHeight: String(r.heightCm || 280),
+              hasLining: !!(r.sheerLiningEnabled),
+              liningPricePerMeter: r.sheerLiningPricePerMeter || 0,
             } : undefined,
             blackoutFabric: (r.blackoutEnabled && (Number(r.blackoutMeters) > 0 || r.blackoutFabricName)) ? {
               name: r.blackoutFabricName || 'بلاك آوت',
@@ -557,9 +562,17 @@ export default function PipelineTailoringPage() {
                         <tr className="border-b border-slate-200 bg-blue-50/40">
                           <td className="p-2 border border-slate-300 font-bold">
                             خلفية شيفون / تول ({room.sheerFabric.name})
+                            {room.sheerFabric.hasLining && (
+                              <div className="mt-1 inline-flex items-center gap-1.5 bg-blue-100 text-blue-900 border-2 border-blue-400 rounded-lg px-2 py-1 text-xs font-black">
+                                🧵 مطلوب بطانة شيفون ({room.sheerFabric.meters} متر × {room.sheerFabric.liningPricePerMeter || 100} ج/م)
+                              </div>
+                            )}
                           </td>
                           <td className="p-2 border border-slate-300 font-mono font-bold text-blue-900">
                             {room.sheerFabric.meters} متر ({room.sheerFabric.pieces || 'قطعة واحدة'})
+                            {room.sheerFabric.hasLining && (
+                              <div className="text-[10px] font-bold text-blue-700 mt-0.5">+ بطانة {room.sheerFabric.meters}م</div>
+                            )}
                           </td>
                           <td className="p-2 border border-slate-300 font-bold text-slate-800">
                             {room.sheerFabric.tapeType || 'شريط ويفي (معامل ×2.5)'}

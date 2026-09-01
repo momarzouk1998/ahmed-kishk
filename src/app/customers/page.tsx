@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
 import { formatDateOnly } from '@/lib/dateUtils';
+import PdfPrintButton from '@/components/PdfPrintButton';
 
 interface CustomerLedgerEntry {
   id: string;
@@ -256,8 +257,8 @@ export default function CustomersPage() {
 
   return (
     <PageShell title="العملاء والحسابات المالية">
-      <div className="flex flex-col gap-5 max-w-7xl mx-auto pb-12">
-        
+      <div className="flex flex-col gap-5 max-w-7xl mx-auto pb-12" id="print-area">
+
         {/* Navigation Tabs */}
         <div className="flex border-b border-slate-200 justify-between items-center gap-2 pb-1">
           <div className="flex gap-2">
@@ -285,6 +286,10 @@ export default function CustomersPage() {
           </div>
 
           <div className="flex items-center gap-2">
+            <PdfPrintButton
+              documentTitle={activeTab === 'CUSTOMERS' ? 'قائمة-العملاء-والديون' : 'سندات-التحصيل'}
+              label="طباعة PDF"
+            />
             <button
               type="button"
               onClick={() => setShowAddCollectionModal(true)}
@@ -820,11 +825,10 @@ export default function CustomersPage() {
                   onChange={e => setCustCity(e.target.value)}
                   className="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900 bg-slate-50 focus:outline-none"
                 >
-                  <option value="الفرع الرئيسي">الفرع الرئيسي — القاهرة</option>
+                  <option value="الفرع الرئيسي">الفرع الرئيسي (سعد زغلول)</option>
                   <option value="فرع عرابي">فرع عرابي</option>
-                  <option value="فرع التجمع">فرع التجمع الخامس</option>
-                  <option value="فرع الثلاثيني">فرع الثلاثيني</option>
                   <option value="فرع عمر أفندي">فرع عمر أفندي</option>
+                  <option value="فرع الثلاثيني">فرع الثلاثيني</option>
                 </select>
               </div>
 
@@ -927,11 +931,11 @@ export default function CustomersPage() {
                   onChange={e => setColTreasury(e.target.value)}
                   className="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900 bg-slate-50 focus:outline-none"
                 >
-                  <option value="الخزينة الرئيسية">الخزينة الرئيسية — القاهرة</option>
+                  <option value="الخزينة الرئيسية">الخزينة الرئيسية — سعد زغلول</option>
                   <option value="خزينة فرع عرابي">خزينة فرع عرابي</option>
-                  <option value="خزينة فرع التجمع">خزينة فرع التجمع الخامس</option>
+                  <option value="خزينة فرع عمر أفندي">خزينة فرع عمر أفندي</option>
+                  <option value="حساب بنك QNB">حساب بنك QNB</option>
                   <option value="حساب بنك مصر">حساب بنك مصر</option>
-                  <option value="حساب CIB">حساب البنك التجاري الدولي (CIB)</option>
                   <option value="محفظة إنستاباي">محفظة إنستاباي المؤسسة</option>
                 </select>
               </div>

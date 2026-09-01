@@ -7,6 +7,7 @@ import {
   getStoredQuotations,
   fetchQuotations,
   QuotationOrder,
+  normalizeQuotationStatus,
 } from '@/lib/inspectionsStore';
 function getBranchBadgeStyle(branchName: string) {
   switch (branchName) {
@@ -14,7 +15,9 @@ function getBranchBadgeStyle(branchName: string) {
       return 'bg-indigo-50 text-indigo-800 border-indigo-200';
     case 'فرع عرابي':
       return 'bg-teal-50 text-teal-800 border-teal-200';
-    case 'فرع زايد':
+    case 'فرع عمر أفندي':
+      return 'bg-amber-50 text-amber-800 border-amber-200';
+    case 'فرع الثلاثيني':
       return 'bg-purple-50 text-purple-800 border-purple-200';
     default:
       return 'bg-slate-100 text-slate-700 border-slate-200';
@@ -39,20 +42,12 @@ export default function PipelinePricingPage() {
     load();
   }, []);
 
-  const isSent = (status: any) => {
-    if (!status) return false;
-    const s = String(status).trim();
-    return (
-      s === 'في المقص' ||
-      s === 'في الورشة' ||
-      s === 'تم التحويل للورشة' ||
-      s === 'تجهيز الاكسسوارات' ||
-      s === 'جاهز للاستلام' ||
-      s === 'جاهز للتركيب' ||
-      s === 'مكتمل' ||
-      s === 'تم القص وجاهز للخياطة'
-    );
-  };
+  // #9 + #14: مقارنة بعد التطبيع للحالة الرسمية
+  const SENT_STATUSES = new Set<string>([
+    'تم التحويل للورشة', 'في المقص', 'في الورشة',
+    'تجهيز الاكسسوارات', 'جاهز للاستلام', 'جاهز للتركيب', 'مكتمل',
+  ]);
+  const isSent = (status: any) => SENT_STATUSES.has(normalizeQuotationStatus(status));
 
   const tabFiltered = quotations.filter(q => activeTab === 'OPEN' ? !isSent(q.status) : isSent(q.status));
   const filtered = tabFiltered.filter(q => {
@@ -63,7 +58,8 @@ export default function PipelinePricingPage() {
       q.id.toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesBranch = selectedBranch === 'ALL' || (q as any).branch === selectedBranch;
-    const matchesStatus = selectedStatus === 'ALL' || q.status === selectedStatus;
+    const normalized = normalizeQuotationStatus(q.status);
+    const matchesStatus = selectedStatus === 'ALL' || normalized === selectedStatus;
 
     return matchesSearch && matchesBranch && matchesStatus;
   });
@@ -135,8 +131,10 @@ export default function PipelinePricingPage() {
               className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-brand-gold shadow-2xs"
             >
               <option value="ALL">جميع الفروع</option>
-              <option value="الفرع الرئيسي">الفرع الرئيسي</option>
+              <option value="الفرع الرئيسي">الفرع الرئيسي (سعد زغلول)</option>
               <option value="فرع عرابي">فرع عرابي</option>
+              <option value="فرع عمر أفندي">فرع عمر أفندي</option>
+              <option value="فرع الثلاثيني">فرع الثلاثيني</option>
             </select>
           </div>
 
@@ -148,9 +146,15 @@ export default function PipelinePricingPage() {
               className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-brand-gold shadow-2xs cursor-pointer"
             >
               <option value="ALL">جميع الحالات</option>
-              <option value="انتظار تسعير">انتظار تسعير</option>
+              <option value="بانتظار التسعير">بانتظار التسعير</option>
+              <option value="تم إرسال المقايسة">تم إرسال المقايسة</option>
+              <option value="معتمد ومسدد العربون">معتمد ومسدد العربون</option>
+              <option value="تم التحويل للورشة">تم التحويل للورشة</option>
               <option value="في المقص">في المقص</option>
               <option value="في الورشة">في الورشة</option>
+              <option value="تجهيز الاكسسوارات">تجهيز الاكسسوارات</option>
+              <option value="جاهز للاستلام">جاهز للاستلام</option>
+              <option value="جاهز للتركيب">جاهز للتركيب</option>
               <option value="مكتمل">مكتمل</option>
             </select>
           </div>

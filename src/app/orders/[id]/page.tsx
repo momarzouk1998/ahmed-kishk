@@ -13,13 +13,14 @@ import {
   RoomPricing,
 } from '@/lib/inspectionsStore';
 import { canUserEditPrices } from '@/lib/permissions';
+import { useManagerGate, isManagerUnlocked } from '@/components/ManagerUnlockGate';
 
 const STAGE_LIST: QuotationOrder['status'][] = [
   'بانتظار التسعير',
   'تم إرسال المقايسة',
   'معتمد ومسدد العربون',
   'تم التحويل للورشة',
-  'مكتمل ومسلم',
+  'مكتمل',
 ];
 
 export default function OrderDetailPage() {
@@ -38,6 +39,18 @@ export default function OrderDetailPage() {
   const [status, setStatus] = useState<QuotationOrder['status']>('بانتظار التسعير');
   const [deliveryDate, setDeliveryDate] = useState('');
   const [depositPaid, setDepositPaid] = useState<number>(0);
+
+  // #25: Manager gate على تعديل الأسعار (العربون، إجماليات الغرف)
+  const { requestUnlock, Modal: MgrModal } = useManagerGate();
+  const [mgrUnlocked, setMgrUnlocked] = useState<boolean>(false);
+  useEffect(() => { setMgrUnlocked(isManagerUnlocked()); }, []);
+  const priceLocked = !canUserEditPrices('p_orders') && !mgrUnlocked;
+  const gatePriceEdit = async (): Promise<boolean> => {
+    if (!priceLocked) return true;
+    const ok = await requestUnlock();
+    if (ok) setMgrUnlocked(true);
+    return ok;
+  };
   const [estimatorName, setEstimatorName] = useState('أحمد كشك');
   const [rooms, setRooms] = useState<RoomPricing[]>([]);
 
@@ -227,9 +240,10 @@ export default function OrderDetailPage() {
                 onChange={e => setBranch(e.target.value)}
                 className="w-full border border-slate-300 rounded-xl p-2.5 font-bold text-slate-900 bg-slate-50/50"
               >
-                <option value="الفرع الرئيسي">الفرع الرئيسي</option>
-                <option value="فرع القاهرة">فرع القاهرة</option>
-                <option value="فرع الجيزة">فرع الجيزة</option>
+                <option value="الفرع الرئيسي">الفرع الرئيسي (سعد زغلول)</option>
+                <option value="فرع عرابي">فرع عرابي</option>
+                <option value="فرع عمر أفندي">فرع عمر أفندي</option>
+                <option value="فرع الثلاثيني">فرع الثلاثيني</option>
               </select>
             </div>
 
@@ -275,10 +289,12 @@ export default function OrderDetailPage() {
                 <input
                   type="number"
                   value={depositPaid}
-                  disabled={!canUserEditPrices('p_orders')}
-                  onChange={e => setDepositPaid(Number(e.target.value))}
-                  className="w-32 text-center font-mono font-black text-lg bg-white border border-emerald-300 rounded-xl px-2 py-1 text-emerald-950 focus:outline-none disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed"
-                  title={!canUserEditPrices('p_orders') ? 'تعديل الأسعار والماليات مغلق للصلاحيات' : ''}
+                  readOnly={priceLocked}
+                  onFocus={async () => { if (priceLocked) await gatePriceEdit(); }}
+                  onClick={async () => { if (priceLocked) await gatePriceEdit(); }}
+                  onChange={e => { if (!priceLocked) setDepositPaid(Number(e.target.value)); }}
+                  className={`w-32 text-center font-mono font-black text-lg rounded-xl px-2 py-1 text-emerald-950 focus:outline-none ${priceLocked ? 'bg-amber-50 border border-amber-300 cursor-pointer' : 'bg-white border border-emerald-300'}`}
+                  title={priceLocked ? 'اضغط لإدخال باسورد المدير' : ''}
                 />
                 <span className="font-bold text-emerald-900">جنيه</span>
               </div>
@@ -449,6 +465,7 @@ export default function OrderDetailPage() {
           </button>
         </div>
       </div>
+      {MgrModal}
     </PageShell>
   );
 }

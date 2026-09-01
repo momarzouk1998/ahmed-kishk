@@ -37,6 +37,32 @@ export default function NewPurchaseInvoicePage() {
   const [paidAmount, setPaidAmount] = useState<number>(0);
   const [purNotes, setPurNotes] = useState('');
 
+  // شيكات بنكية للفاتورة (تظهر عند اختيار "شيكات بنكية" فى طرق الدفع)
+  interface PurchaseCheckRow {
+    id: string;
+    checkNumber: string;
+    bankName: string;
+    amount: number;
+    dueDate: string;
+    notes?: string;
+  }
+  const BANKS = ['QNB', 'البنك الأهلي المصري', 'بنك مصر', 'CIB'];
+  const [checkRows, setCheckRows] = useState<PurchaseCheckRow[]>([]);
+  useEffect(() => {
+    // عند التبديل إلى "شيكات بنكية" وسطر واحد فارغ افتراضياً
+    if (paymentMethod === 'شيكات بنكية' && checkRows.length === 0) {
+      setCheckRows([{ id: 'c1', checkNumber: '', bankName: BANKS[0], amount: 0, dueDate: '', notes: '' }]);
+    }
+  }, [paymentMethod]);
+  const addCheckRow = () => setCheckRows(prev => [
+    ...prev,
+    { id: `c${Date.now()}`, checkNumber: '', bankName: BANKS[0], amount: 0, dueDate: '', notes: '' },
+  ]);
+  const removeCheckRow = (id: string) => setCheckRows(prev => prev.length > 1 ? prev.filter(r => r.id !== id) : prev);
+  const updateCheckRow = (id: string, field: keyof PurchaseCheckRow, val: any) =>
+    setCheckRows(prev => prev.map(r => r.id === id ? { ...r, [field]: val } : r));
+  const checksTotal = checkRows.reduce((s, r) => s + (Number(r.amount) || 0), 0);
+
   // Calculations
   const subtotal = items.reduce((sum, item) => sum + item.meters * item.unitCost, 0);
   const calculatedDiscount = discountType === 'PERCENT' ? (subtotal * discountValue) / 100 : discountValue;
@@ -70,12 +96,23 @@ export default function NewPurchaseInvoicePage() {
     e.preventDefault();
     if (!supplierName.trim() || items.length === 0 || subtotal <= 0) return;
 
+    // إذا كانت طريقة الدفع شيكات بنكية فيجب أن تكون كل الشيكات مكتملة
+    if (paymentMethod === 'شيكات بنكية') {
+      const bad = checkRows.find(r => !r.checkNumber.trim() || !r.bankName || r.amount <= 0 || !r.dueDate);
+      if (bad) {
+        alert('من فضلك أكمل بيانات جميع الشيكات (رقم الشيك، البنك، المبلغ، تاريخ الاستحقاق)');
+        return;
+      }
+    }
+
     try {
       const rawPurchases = localStorage.getItem(PURCHASES_KEY);
       const existingPurchases = rawPurchases ? JSON.parse(rawPurchases) : [];
 
       const purNum = `PUR-2026-${String(existingPurchases.length + 1).padStart(3, '0')}`;
       const statusLabel = remainingAmount === 0 ? 'مسدد بالكامل' : paidAmount > 0 ? 'مسدد جزئياً' : 'آجل / غير مسدد';
+
+      const attachedChecks = paymentMethod === 'شيكات بنكية' ? checkRows : [];
 
       const newPur = {
         id: `PUR-${Date.now()}`,
@@ -95,6 +132,7 @@ export default function NewPurchaseInvoicePage() {
         remainingAmount,
         status: statusLabel,
         notes: purNotes.trim(),
+        checks: attachedChecks,
       };
 
       const updated = [newPur, ...existingPurchases];
@@ -106,6 +144,35 @@ export default function NewPurchaseInvoicePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ key: PURCHASES_KEY, data: updated }),
       }).catch(() => {});
+
+      // إذا شيكات بنكية → قيّدها فى سجل شيكات الموردين
+      if (attachedChecks.length > 0) {
+        try {
+          const CHECKS_KEY = 'ahmed_kishk_supplier_checks_v1';
+          const rawChecks = localStorage.getItem(CHECKS_KEY);
+          const existingChecks = rawChecks ? JSON.parse(rawChecks) : [];
+          const newChecks = attachedChecks.map((c, i) => ({
+            id: `CHK-${Date.now()}-${i}`,
+            supplierName: supplierName.trim(),
+            invoiceNumber: purNum,
+            branch,
+            checkNumber: c.checkNumber.trim(),
+            bankName: c.bankName,
+            amount: Number(c.amount) || 0,
+            dueDate: c.dueDate,
+            notes: c.notes || '',
+            status: 'قيد الاستحقاق',
+            createdAt: new Date().toISOString(),
+          }));
+          const combinedChecks = [...newChecks, ...existingChecks];
+          localStorage.setItem(CHECKS_KEY, JSON.stringify(combinedChecks));
+          await fetch('/api/system-data', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key: CHECKS_KEY, data: combinedChecks }),
+          }).catch(() => {});
+        } catch (err) { console.error('check sync failed', err); }
+      }
 
       router.push('/purchases');
     } catch (e) {
@@ -173,8 +240,10 @@ export default function NewPurchaseInvoicePage() {
                   onChange={e => setBranch(e.target.value)}
                   className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 font-bold text-slate-900 focus:outline-none bg-slate-50 cursor-pointer"
                 >
-                  <option value="الفرع الرئيسي">الفرع الرئيسي — القاهرة</option>
+                  <option value="الفرع الرئيسي">الفرع الرئيسي (سعد زغلول)</option>
                   <option value="فرع عرابي">فرع عرابي</option>
+                  <option value="فرع عمر أفندي">فرع عمر أفندي</option>
+                  <option value="فرع الثلاثيني">فرع الثلاثيني</option>
                 </select>
               </div>
             </div>
@@ -341,6 +410,91 @@ export default function NewPurchaseInvoicePage() {
                   </button>
                 ))}
               </div>
+
+              {/* ─── جدول تسجيل الشيكات البنكية (يظهر عند اختيار "شيكات بنكية") ─── */}
+              {paymentMethod === 'شيكات بنكية' && (
+                <div className="mt-3 p-3 bg-purple-50/60 border-2 border-purple-200 rounded-2xl space-y-2">
+                  <div className="flex justify-between items-center">
+                    <h4 className="font-black text-purple-950 text-xs flex items-center gap-1.5">
+                      <span className="material-symbols-outlined text-[16px]">receipt_long</span>
+                      تسجيل الشيكات البنكية المسلمة للمورد
+                    </h4>
+                    <span className="text-[11px] text-purple-800 font-bold">
+                      إجمالى الشيكات: <span className="font-mono">{checksTotal.toLocaleString()} ج</span>
+                    </span>
+                  </div>
+                  <div className="space-y-2">
+                    {checkRows.map((row, idx) => (
+                      <div key={row.id} className="grid grid-cols-12 gap-2 bg-white border border-purple-200 rounded-xl p-2 items-end">
+                        <div className="col-span-1 text-center text-[11px] font-black text-purple-700 pt-4">#{idx + 1}</div>
+                        <div className="col-span-3">
+                          <label className="text-[10.5px] font-bold text-slate-600 block mb-1">رقم الشيك:</label>
+                          <input
+                            type="text"
+                            value={row.checkNumber}
+                            onChange={e => updateCheckRow(row.id, 'checkNumber', e.target.value)}
+                            className="w-full border border-slate-200 rounded-lg px-2 py-1.5 font-mono font-bold text-slate-900 focus:outline-none bg-white text-xs"
+                            placeholder="12345678"
+                            required
+                          />
+                        </div>
+                        <div className="col-span-3">
+                          <label className="text-[10.5px] font-bold text-slate-600 block mb-1">البنك:</label>
+                          <select
+                            value={row.bankName}
+                            onChange={e => updateCheckRow(row.id, 'bankName', e.target.value)}
+                            className="w-full border border-slate-200 rounded-lg px-2 py-1.5 font-bold text-slate-900 focus:outline-none bg-white text-xs"
+                          >
+                            {BANKS.map(b => <option key={b} value={b}>{b}</option>)}
+                          </select>
+                        </div>
+                        <div className="col-span-2">
+                          <label className="text-[10.5px] font-bold text-slate-600 block mb-1">المبلغ:</label>
+                          <input
+                            type="number"
+                            min="1"
+                            value={row.amount || ''}
+                            onChange={e => updateCheckRow(row.id, 'amount', Number(e.target.value))}
+                            className="w-full border border-slate-200 rounded-lg px-2 py-1.5 font-mono font-bold text-slate-900 focus:outline-none bg-white text-xs"
+                            required
+                          />
+                        </div>
+                        <div className="col-span-2">
+                          <label className="text-[10.5px] font-bold text-slate-600 block mb-1">تاريخ الاستحقاق:</label>
+                          <input
+                            type="date"
+                            value={row.dueDate}
+                            onChange={e => updateCheckRow(row.id, 'dueDate', e.target.value)}
+                            className="w-full border border-slate-200 rounded-lg px-2 py-1.5 font-bold text-slate-900 focus:outline-none bg-white text-xs"
+                            required
+                          />
+                        </div>
+                        <div className="col-span-1">
+                          <button
+                            type="button"
+                            onClick={() => removeCheckRow(row.id)}
+                            disabled={checkRows.length <= 1}
+                            className="w-full bg-rose-100 text-rose-700 disabled:opacity-30 hover:bg-rose-200 py-1.5 rounded-lg text-xs font-black"
+                            title="حذف الشيك"
+                          >✕</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={addCheckRow}
+                    className="w-full bg-purple-100 hover:bg-purple-200 text-purple-950 py-1.5 rounded-lg font-black text-xs border border-purple-300"
+                  >
+                    + إضافة شيك آخر
+                  </button>
+                  {Math.abs(checksTotal - totalAmount) > 0.01 && checksTotal > 0 && (
+                    <div className="text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-2">
+                      ⚠️ إجمالى الشيكات ({checksTotal.toLocaleString()} ج) لا يساوى صافى الفاتورة ({totalAmount.toLocaleString()} ج).
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-3 pt-2">
                 <div>

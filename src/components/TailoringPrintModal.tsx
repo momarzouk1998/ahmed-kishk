@@ -59,9 +59,10 @@ export default function TailoringPrintModal({ isOpen, onClose, data }: Tailoring
       }
 
       if (room.sheerFabric) {
+        const liningNote = (room.sheerFabric as any).hasLining ? ` <span style="background:#dbeafe; color:#1d4ed8; border:1px solid #93c5fd; border-radius:4px; padding:1px 5px; font-size:9pt; font-weight:900;">🧵 مع بطانة</span>` : '';
         roomsHtml += `
           <tr>
-            <td style="font-weight:700; color:#334155; font-size:11pt;">قماش الخلفية (الشيفون)</td>
+            <td style="font-weight:700; color:#334155; font-size:11pt;">قماش الخلفية (الشيفون)${liningNote}</td>
             <td style="font-weight:bold; font-size:11pt;">${room.sheerFabric.name}</td>
             <td style="text-align:center; font-family:monospace; font-weight:700; font-size:11.5pt;">${room.sheerFabric.meters} م (${room.sheerFabric.pieces || 'قطعة واحدة'})</td>
             <td style="text-align:center; font-size:11pt;">${room.sheerFabric.tapeType || 'ويفي'}</td>

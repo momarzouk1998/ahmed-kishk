@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
 import { canUserEditPrices } from '@/lib/permissions';
+import { useManagerGate, isManagerUnlocked } from '@/components/ManagerUnlockGate';
 
 interface InventoryItem {
   id: string;
@@ -81,6 +82,18 @@ export default function InventoryPage() {
   const [reservedQuantity, setReservedQuantity] = useState<number>(0);
   const [costPrice, setCostPrice] = useState<number>(100);
   const [sellPrice, setSellPrice] = useState<number>(150);
+
+  // Manager unlock gate for price editing (used when the user has no direct permission)
+  const { requestUnlock, Modal: MgrModal } = useManagerGate();
+  const [mgrUnlocked, setMgrUnlocked] = useState<boolean>(false);
+  useEffect(() => { setMgrUnlocked(isManagerUnlocked()); }, []);
+  const priceLocked = !canUserEditPrices('p_inventory') && !mgrUnlocked;
+  const gatePriceEdit = async (): Promise<boolean> => {
+    if (!priceLocked) return true;
+    const ok = await requestUnlock();
+    if (ok) setMgrUnlocked(true);
+    return ok;
+  };
   const [branch, setBranch] = useState('الفرع الرئيسي');
   const [supplier, setSupplier] = useState('');
 
@@ -454,10 +467,12 @@ export default function InventoryPage() {
                   <input
                     type="number"
                     value={costPrice}
-                    disabled={!canUserEditPrices('p_inventory')}
-                    onChange={e => setCostPrice(Number(e.target.value))}
-                    className="border border-slate-200 rounded-xl p-2 text-sm font-mono disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed text-slate-900"
-                    title={!canUserEditPrices('p_inventory') ? 'تعديل الأسعار مغلق للصلاحيات' : ''}
+                    readOnly={priceLocked}
+                    onFocus={async () => { if (priceLocked) await gatePriceEdit(); }}
+                    onClick={async () => { if (priceLocked) await gatePriceEdit(); }}
+                    onChange={e => { if (!priceLocked) setCostPrice(Number(e.target.value)); }}
+                    className={`border rounded-xl p-2 text-sm font-mono text-slate-900 ${priceLocked ? 'bg-amber-50 border-amber-200 cursor-pointer' : 'border-slate-200'}`}
+                    title={priceLocked ? 'اضغط لإدخال باسورد المدير' : ''}
                   />
                 </div>
                 <div className="flex flex-col gap-1">
@@ -465,10 +480,12 @@ export default function InventoryPage() {
                   <input
                     type="number"
                     value={sellPrice}
-                    disabled={!canUserEditPrices('p_inventory')}
-                    onChange={e => setSellPrice(Number(e.target.value))}
-                    className="border border-slate-200 rounded-xl p-2 text-sm font-mono disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed text-slate-900"
-                    title={!canUserEditPrices('p_inventory') ? 'تعديل الأسعار مغلق للصلاحيات' : ''}
+                    readOnly={priceLocked}
+                    onFocus={async () => { if (priceLocked) await gatePriceEdit(); }}
+                    onClick={async () => { if (priceLocked) await gatePriceEdit(); }}
+                    onChange={e => { if (!priceLocked) setSellPrice(Number(e.target.value)); }}
+                    className={`border rounded-xl p-2 text-sm font-mono text-slate-900 ${priceLocked ? 'bg-amber-50 border-amber-200 cursor-pointer' : 'border-slate-200'}`}
+                    title={priceLocked ? 'اضغط لإدخال باسورد المدير' : ''}
                   />
                 </div>
               </div>
@@ -546,10 +563,12 @@ export default function InventoryPage() {
                   <input
                     type="number"
                     value={costPrice}
-                    disabled={!canUserEditPrices('p_inventory')}
-                    onChange={e => setCostPrice(Number(e.target.value))}
-                    className="border border-slate-200 rounded-xl p-2 text-sm font-mono disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed text-slate-900"
-                    title={!canUserEditPrices('p_inventory') ? 'تعديل الأسعار مغلق للصلاحيات' : ''}
+                    readOnly={priceLocked}
+                    onFocus={async () => { if (priceLocked) await gatePriceEdit(); }}
+                    onClick={async () => { if (priceLocked) await gatePriceEdit(); }}
+                    onChange={e => { if (!priceLocked) setCostPrice(Number(e.target.value)); }}
+                    className={`border rounded-xl p-2 text-sm font-mono text-slate-900 ${priceLocked ? 'bg-amber-50 border-amber-200 cursor-pointer' : 'border-slate-200'}`}
+                    title={priceLocked ? 'اضغط لإدخال باسورد المدير' : ''}
                   />
                 </div>
                 <div className="flex flex-col gap-1">
@@ -557,10 +576,12 @@ export default function InventoryPage() {
                   <input
                     type="number"
                     value={sellPrice}
-                    disabled={!canUserEditPrices('p_inventory')}
-                    onChange={e => setSellPrice(Number(e.target.value))}
-                    className="border border-slate-200 rounded-xl p-2 text-sm font-mono disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed text-slate-900"
-                    title={!canUserEditPrices('p_inventory') ? 'تعديل الأسعار مغلق للصلاحيات' : ''}
+                    readOnly={priceLocked}
+                    onFocus={async () => { if (priceLocked) await gatePriceEdit(); }}
+                    onClick={async () => { if (priceLocked) await gatePriceEdit(); }}
+                    onChange={e => { if (!priceLocked) setSellPrice(Number(e.target.value)); }}
+                    className={`border rounded-xl p-2 text-sm font-mono text-slate-900 ${priceLocked ? 'bg-amber-50 border-amber-200 cursor-pointer' : 'border-slate-200'}`}
+                    title={priceLocked ? 'اضغط لإدخال باسورد المدير' : ''}
                   />
                 </div>
               </div>
@@ -587,6 +608,7 @@ export default function InventoryPage() {
           </div>
         </div>
       )}
+      {MgrModal}
     </PageShell>
   );
 }

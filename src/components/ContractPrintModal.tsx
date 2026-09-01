@@ -22,6 +22,8 @@ export interface PrintRoomItem {
   sheerMultiplier?: number;
   sheerMeters: number;
   sheerPrice: number;
+  sheerLiningEnabled?: boolean;
+  sheerLiningPricePerMeter?: number;
   blackoutFabricName?: string;
   blackoutMultiplier?: number;
   blackoutMeters: number;
@@ -66,7 +68,8 @@ export default function ContractPrintModal({ isOpen, onClose, data }: ContractPr
     const instF = r.installFee || 0;
     const tailP = r.tailorPricePerSide || 0;
     const accT = (r.trackMeters * trP) + (r.tapeMeters * tP) + (r.sides * tailP) + instF;
-    const roomT = (r.heavyMeters * (r.heavyPrice || 0)) + (r.sheerMeters * (r.sheerPrice || 0)) + (r.blackoutMeters * (r.blackoutPrice || 0)) + accT;
+    const liningCost = (r.sheerLiningEnabled && r.sheerLiningPricePerMeter) ? (r.sheerMeters * r.sheerLiningPricePerMeter) : 0;
+    const roomT = (r.heavyMeters * (r.heavyPrice || 0)) + (r.sheerMeters * (r.sheerPrice || 0)) + (r.blackoutMeters * (r.blackoutPrice || 0)) + accT + liningCost;
     return sum + roomT;
   }, 0);
   const calculatedRemaining = Math.max(0, calculatedTotal - (data.depositPaid || 0));
@@ -110,6 +113,18 @@ export default function ContractPrintModal({ isOpen, onClose, data }: ContractPr
             <td style="text-align:center; font-family:monospace; font-weight:800; color:#0f172a; font-size:11.5pt;">${(room.sheerMeters * (room.sheerPrice || 0)).toLocaleString()} ج</td>
           </tr>
         `;
+        if (room.sheerLiningEnabled && room.sheerLiningPricePerMeter) {
+          const liningTotal = room.sheerMeters * room.sheerLiningPricePerMeter;
+          roomsRowsHtml += `
+            <tr style="background:#eff6ff;">
+              <td style="font-weight:700; color:#1d4ed8; font-size:10.5pt; padding-right:20px;">↳ 🧵 بطانة شيفون</td>
+              <td style="font-size:10.5pt; color:#1e40af;">بطانة إضافية</td>
+              <td style="text-align:center; font-family:monospace; font-weight:700; font-size:11pt;">${room.sheerMeters} م</td>
+              <td style="text-align:center; font-family:monospace; font-size:11pt;">${room.sheerLiningPricePerMeter} ج</td>
+              <td style="text-align:center; font-family:monospace; font-weight:800; color:#1d4ed8; font-size:11.5pt;">${liningTotal.toLocaleString()} ج</td>
+            </tr>
+          `;
+        }
       }
 
       if (room.blackoutMeters > 0 && room.blackoutFabricName) {
@@ -599,6 +614,18 @@ export default function ContractPrintModal({ isOpen, onClose, data }: ContractPr
                       </tr>
                     )}
 
+                    {room.sheerMeters > 0 && room.sheerLiningEnabled && room.sheerLiningPricePerMeter ? (
+                      <tr className="border-b border-blue-200 bg-blue-50/50">
+                        <td className="p-2 font-bold text-blue-800 pr-5">↳ 🧵 بطانة شيفون</td>
+                        <td className="p-2 text-blue-700 text-xs">بطانة إضافية</td>
+                        <td className="p-2 text-center font-mono font-bold text-blue-800">{room.sheerMeters} م</td>
+                        <td className="p-2 text-center font-mono text-blue-800">{room.sheerLiningPricePerMeter} ج</td>
+                        <td className="p-2 text-center font-mono font-bold text-blue-900">{(room.sheerMeters * room.sheerLiningPricePerMeter).toLocaleString()} ج</td>
+                      </tr>
+                    ) : null}
+
+
+
                     {room.blackoutMeters > 0 && room.blackoutFabricName && (
                       <tr className="border-b border-slate-200">
                         <td className="p-2 font-bold text-slate-700">3. عازل البلاك آوت</td>
@@ -618,7 +645,8 @@ export default function ContractPrintModal({ isOpen, onClose, data }: ContractPr
                       const instF = room.installFee || 0;
                       const tailP = room.tailorPricePerSide || 0;
                       const accT = (room.trackMeters * trP) + (room.tapeMeters * tP) + (room.sides * tailP) + instF;
-                      const roomT = (room.heavyMeters * (room.heavyPrice || 0)) + (room.sheerMeters * (room.sheerPrice || 0)) + (room.blackoutMeters * (room.blackoutPrice || 0)) + accT;
+                      const liningC = (room.sheerLiningEnabled && room.sheerLiningPricePerMeter) ? (room.sheerMeters * room.sheerLiningPricePerMeter) : 0;
+                      const roomT = (room.heavyMeters * (room.heavyPrice || 0)) + (room.sheerMeters * (room.sheerPrice || 0)) + (room.blackoutMeters * (room.blackoutPrice || 0)) + accT + liningC;
 
                       return (
                         <>

@@ -5,6 +5,7 @@ import PageShell from '@/components/PageShell';
 import { useRouter } from 'next/navigation';
 import { formatDateOnly } from '@/lib/dateUtils';
 import FabricSalesPrintModal from '@/components/FabricSalesPrintModal';
+import PdfPrintButton from '@/components/PdfPrintButton';
 
 interface SalesInvoiceItem {
   code: string;
@@ -217,8 +218,8 @@ export default function FabricSalesPage() {
 
   return (
     <PageShell title="فواتير المبيعات ومردودات العملاء">
-      <div className="flex flex-col gap-5 max-w-7xl mx-auto pb-12">
-        
+      <div className="flex flex-col gap-5 max-w-7xl mx-auto pb-12" id="print-area">
+
         {/* Navigation Tabs */}
         <div className="flex border-b border-slate-200 justify-between items-center gap-2 pb-1">
           <div className="flex gap-2">
@@ -246,6 +247,10 @@ export default function FabricSalesPage() {
           </div>
 
           <div className="flex items-center gap-2">
+            <PdfPrintButton
+              documentTitle={activeTab === 'INVOICES' ? 'قائمة-فواتير-المبيعات' : 'قائمة-مرتجعات-العملاء'}
+              label="طباعة PDF"
+            />
             <button
               type="button"
               onClick={() => router.push('/fabric-sales/new')}
