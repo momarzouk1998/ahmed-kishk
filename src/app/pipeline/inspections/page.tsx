@@ -8,6 +8,7 @@ import { isTodayOrOverdue } from '@/lib/pipelineStore';
 import { formatDate } from '@/lib/dateUtils';
 import InspectionPrintModal from '@/components/InspectionPrintModal';
 import { CURTAIN_TECHNICIANS, DEFAULT_TECHNICIAN } from '@/lib/technicians';
+import OrderRowActions from '@/components/OrderRowActions';
 
 export type InspectionSummary = InspectionData;
 
@@ -352,6 +353,7 @@ export default function PipelineInspectionsPage() {
                     <th className="p-3.5 text-center">الغرف</th>
                     <th className="p-3.5 text-center">الحالة</th>
                     <th className="p-3.5 text-center">تواصل سريع</th>
+                    <th className="p-3.5 text-center">إجراءات</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -434,6 +436,20 @@ export default function PipelineInspectionsPage() {
                           >
                             <span className="material-symbols-outlined text-[17px]">chat</span>
                           </a>
+                        </div>
+                      </td>
+
+                      {/* Actions Column: Edit + Delete (يعتمد على الصلاحيات) */}
+                      <td className="p-3.5 text-center align-middle" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex justify-center">
+                          <OrderRowActions
+                            pageId="p_inspections"
+                            orderId={item.id}
+                            customerName={item.customerName}
+                            editHref={`/pipeline/inspections/${item.id}`}
+                            onDeleted={() => setInspections(prev => prev.filter(i => i.id !== item.id))}
+                            compact
+                          />
                         </div>
                       </td>
                     </tr>

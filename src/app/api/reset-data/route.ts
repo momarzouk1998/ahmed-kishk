@@ -1,27 +1,19 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
+// تم تعطيل هذا الـ endpoint نهائياً بناءً على طلب المستخدم — خطر بلا رجعة.
+// أى محاولة نداء تُرفض بـ 410 Gone.
 export async function POST() {
-  try {
-    // Delete all operational/transactional data in order
-    await prisma.inspectionRequest.deleteMany({});
-    await prisma.quotationOrder.deleteMany({});
-    await prisma.pipelineOrder.deleteMany({});
-    await prisma.customer.deleteMany({});
-    await prisma.inventoryItem.deleteMany({});
-    await prisma.supplier.deleteMany({});
-    await prisma.salesInvoice.deleteMany({});
-    await prisma.purchaseInvoice.deleteMany({});
-    await prisma.systemStore.deleteMany({});
+  return NextResponse.json(
+    { success: false, error: 'هذا الإجراء تم تعطيله نهائياً لأسباب أمنية.' },
+    { status: 410 }
+  );
+}
 
-    return NextResponse.json({
-      success: true,
-      message: 'تم تصفير جميع بيانات البرنامج بنجاح، مع الحفاظ على حسابات المستخدمين والفروع الرسمية.',
-    });
-  } catch (error: any) {
-    console.error('Error resetting database:', error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
-  }
+export async function GET() {
+  return NextResponse.json(
+    { success: false, error: 'disabled' },
+    { status: 410 }
+  );
 }

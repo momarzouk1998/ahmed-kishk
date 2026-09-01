@@ -5,6 +5,7 @@ import PageShell from '@/components/PageShell';
 import { fetchPipelineOrders, updatePipelineOrderStatus, PipelineMasterOrder } from '@/lib/pipelineStore';
 import { fetchQuotations } from '@/lib/inspectionsStore';
 import AccessoriesPrintModal from '@/components/AccessoriesPrintModal';
+import OrderRowActions from '@/components/OrderRowActions';
 
 interface AccessoryItemSpec {
   name: string;
@@ -346,6 +347,7 @@ export default function PipelineAccessoriesPage() {
                     <th className="p-3.5 text-center">ورقة الإكسسوارات</th>
                     <th className="p-3.5 text-center">واتساب</th>
                     <th className="p-3.5 text-center">الحالة</th>
+                    <th className="p-3.5 text-center">إجراءات</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -381,6 +383,18 @@ export default function PipelineAccessoriesPage() {
                         <span className="text-[11px] px-2.5 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-900 border border-emerald-200">
                           مكتمل ومحول
                         </span>
+                      </td>
+                      <td className="p-3.5 text-center">
+                        <div className="flex justify-center">
+                          <OrderRowActions
+                            pageId="p_accessories"
+                            orderId={kit.orderId || kit.id}
+                            customerName={kit.customerName}
+                            editHref={`/orders/${encodeURIComponent(kit.orderId || kit.id)}`}
+                            onDeleted={() => setKits(prev => prev.filter(k => k.id !== kit.id))}
+                            compact
+                          />
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -480,6 +494,15 @@ export default function PipelineAccessoriesPage() {
                       </button>
                     </div>
                   )}
+                  <div className="flex justify-center pt-1">
+                    <OrderRowActions
+                      pageId="p_accessories"
+                      orderId={kit.orderId || kit.id}
+                      customerName={kit.customerName}
+                      editHref={`/orders/${encodeURIComponent(kit.orderId || kit.id)}`}
+                      onDeleted={() => setKits(prev => prev.filter(k => k.id !== kit.id))}
+                    />
+                  </div>
                 </div>
               </div>
             ))}

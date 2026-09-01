@@ -528,29 +528,60 @@ export function syncInspectionToPricing(inspectionOrId: InspectionData | string)
   return targetQuotation;
 }
 
-export function deleteQuotationOrder(orderId: string): void {
-  const targetQot = getStoredQuotations().find(q => q.id.toUpperCase() === orderId.toUpperCase() || q.inspectionId?.toUpperCase() === orderId.toUpperCase());
-  const customerName = targetQot?.customerName;
-  
+/**
+ * حذف كامل ودائم للأوردر: يمسح المعاينة + التسعير + سطر الـ pipeline من قاعدة البيانات.
+ * لا يعتمد على أى قائمة سوداء — الحذف حقيقى على السيرفر.
+ */
+export async function deleteQuotationOrder(orderId: string): Promise<void> {
+  const targetQot = getStoredQuotations().find(
+    q => q.id.toUpperCase() === orderId.toUpperCase() ||
+         q.inspectionId?.toUpperCase() === orderId.toUpperCase()
+  );
+
+  const inspectionId = targetQot?.inspectionId || orderId;
+  const quotationId = targetQot?.id || orderId;
+
+  // 1) امسح من الـ localStorage فوراً (UI تحديث سريع)
   if (typeof window !== 'undefined') {
     try {
-      const raw = localStorage.getItem('ahmed_kishk_deleted_order_ids_v1');
-      const deletedArr: string[] = raw ? JSON.parse(raw) : [];
-      if (!deletedArr.includes(orderId)) deletedArr.push(orderId);
-      if (targetQot?.id && !deletedArr.includes(targetQot.id)) deletedArr.push(targetQot.id);
-      if (targetQot?.inspectionId && !deletedArr.includes(targetQot.inspectionId)) deletedArr.push(targetQot.inspectionId);
-      if (customerName && !deletedArr.includes(customerName)) deletedArr.push(customerName);
-      localStorage.setItem('ahmed_kishk_deleted_order_ids_v1', JSON.stringify(deletedArr));
+      const rawQ = localStorage.getItem('ahmed_kishk_quotations_data_v4');
+      if (rawQ) {
+        const arr = JSON.parse(rawQ);
+        if (Array.isArray(arr)) {
+          const nx = arr.filter((q: any) => q.id !== quotationId && q.inspectionId !== inspectionId);
+          localStorage.setItem('ahmed_kishk_quotations_data_v4', JSON.stringify(nx));
+        }
+      }
+      const rawI = localStorage.getItem('ahmed_kishk_inspections_data_v4');
+      if (rawI) {
+        const arr = JSON.parse(rawI);
+        if (Array.isArray(arr)) {
+          const nx = arr.filter((i: any) => i.id !== inspectionId);
+          localStorage.setItem('ahmed_kishk_inspections_data_v4', JSON.stringify(nx));
+        }
+      }
+      const rawP = localStorage.getItem('ahmed_kishk_pipeline_orders_v5');
+      if (rawP) {
+        const arr = JSON.parse(rawP);
+        if (Array.isArray(arr)) {
+          const nx = arr.filter((p: any) => p.id !== quotationId && p.orderId !== quotationId && p.id !== `ORD-${quotationId}`);
+          localStorage.setItem('ahmed_kishk_pipeline_orders_v5', JSON.stringify(nx));
+        }
+      }
     } catch {}
   }
 
-  const quotations = getStoredQuotations();
-  const filteredQots = quotations.filter(q => q.id.toUpperCase() !== orderId.toUpperCase() && q.inspectionId?.toUpperCase() !== orderId.toUpperCase() && q.customerName !== customerName);
-  saveAllQuotations(filteredQots);
+  // 2) امسح من قاعدة البيانات (بالتوازى)
+  const del = (key: string, id: string) =>
+    fetch(`/api/system-data?key=${encodeURIComponent(key)}&id=${encodeURIComponent(id)}`, { method: 'DELETE' })
+      .catch(err => console.error(`Failed to delete ${key}:${id}`, err));
 
-  const inspections = getStoredInspections();
-  const filteredInsps = inspections.filter(i => i.id.toUpperCase() !== orderId.toUpperCase() && i.customerName !== customerName);
-  saveAllInspections(filteredInsps);
+  await Promise.all([
+    del('ahmed_kishk_quotations_data_v4', quotationId),
+    del('ahmed_kishk_inspections_data_v4', inspectionId),
+    del('ahmed_kishk_pipeline_orders_v5', quotationId),
+    del('ahmed_kishk_pipeline_orders_v5', `ORD-${quotationId}`),
+  ]);
 }
 
 export function updateQuotationStageAndStatus(orderId: string, newStatus: QuotationOrder['status']): void {

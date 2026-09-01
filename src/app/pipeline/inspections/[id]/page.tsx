@@ -14,6 +14,7 @@ import {
 } from '@/lib/inspectionsStore';
 import { updatePipelineOrderStatus } from '@/lib/pipelineStore';
 import InspectionPrintModal from '@/components/InspectionPrintModal';
+import { useCurrentUser } from '@/lib/useCurrentUser';
 
 const installOptions = [
   'تراك سقف',
@@ -101,7 +102,10 @@ export default function InspectionDetailPage() {
   const [roomNotes, setRoomNotes] = useState('');
 
   // Lock status (Read-Only when locked or sent)
-  const isReadOnly = data.isLocked || data.status === 'قيد التسعير' || data.status === 'في الورشة' || data.status === 'مكتمل';
+  // مدير الفرع والـ ADMIN يقدروا يعدلوا فى أى مرحلة — بيتخطوا القفل
+  const { canOverrideLocks } = useCurrentUser();
+  const naturallyLocked = data.isLocked || data.status === 'قيد التسعير' || data.status === 'في الورشة' || data.status === 'مكتمل';
+  const isReadOnly = naturallyLocked && !canOverrideLocks;
 
   const openRoomModal = (room?: Room) => {
     if (room) {

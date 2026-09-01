@@ -9,6 +9,7 @@ import {
   QuotationOrder,
   normalizeQuotationStatus,
 } from '@/lib/inspectionsStore';
+import OrderRowActions from '@/components/OrderRowActions';
 function getBranchBadgeStyle(branchName: string) {
   switch (branchName) {
     case 'الفرع الرئيسي':
@@ -181,6 +182,7 @@ export default function PipelinePricingPage() {
                     <th className="p-3.5 text-left font-mono">العربون المسدد</th>
                     <th className="p-3.5 text-left font-mono">المتبقي للتحصيل</th>
                     <th className="p-3.5 text-center">حالة العقد</th>
+                    <th className="p-3.5 text-center">إجراءات</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -232,6 +234,20 @@ export default function PipelinePricingPage() {
                         }`}>
                           {q.status}
                         </span>
+                      </td>
+
+                      {/* Actions */}
+                      <td className="p-3.5 text-center align-middle" onClick={e => e.stopPropagation()}>
+                        <div className="flex justify-center">
+                          <OrderRowActions
+                            pageId="p_pricing"
+                            orderId={q.id}
+                            customerName={q.customerName}
+                            editHref={`/pipeline/pricing/${encodeURIComponent(q.id)}`}
+                            onDeleted={() => setQuotations(prev => prev.filter(x => x.id !== q.id))}
+                            compact
+                          />
+                        </div>
                       </td>
                     </tr>
                   ))}

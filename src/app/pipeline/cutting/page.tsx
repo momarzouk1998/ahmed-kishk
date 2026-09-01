@@ -6,6 +6,7 @@ import { getStoredPipelineOrders, fetchPipelineOrders, updatePipelineOrderStatus
 import { fetchQuotations } from '@/lib/inspectionsStore';
 import { formatDateOnly } from '@/lib/dateUtils';
 import CuttingPrintModal from '@/components/CuttingPrintModal';
+import OrderRowActions from '@/components/OrderRowActions';
 
 interface RoomFabricItem {
   roomName: string;
@@ -357,6 +358,14 @@ export default function PipelineCuttingPage() {
                             >
                               <span className="material-symbols-outlined text-[16px]">chat</span>
                             </a>
+                            <OrderRowActions
+                              pageId="p_cutting"
+                              orderId={(order as any).orderId || order.id}
+                              customerName={order.customerName}
+                              editHref={`/orders/${encodeURIComponent((order as any).orderId || order.id)}`}
+                              onDeleted={() => setOrders(prev => prev.filter((o: any) => o.id !== order.id && o.orderId !== (order as any).orderId))}
+                              compact
+                            />
                           </div>
                         </td>
                       </tr>
@@ -469,6 +478,17 @@ export default function PipelineCuttingPage() {
                       <span className="material-symbols-outlined text-[18px]">check_circle</span>
                       <span>تم قص القماش بالكامل وتحويله للورشة ←</span>
                     </button>
+
+                    {/* Edit / Delete للمدير */}
+                    <div className="flex justify-center pt-1">
+                      <OrderRowActions
+                        pageId="p_cutting"
+                        orderId={(order as any).orderId || order.id}
+                        customerName={order.customerName}
+                        editHref={`/orders/${encodeURIComponent((order as any).orderId || order.id)}`}
+                        onDeleted={() => setOrders(prev => prev.filter((o: any) => o.id !== order.id && o.orderId !== (order as any).orderId))}
+                      />
+                    </div>
                   </div>
                 </div>
               );

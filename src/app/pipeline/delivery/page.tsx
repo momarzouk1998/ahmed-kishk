@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
 import { getStoredPipelineOrders, fetchPipelineOrders, updatePipelineOrderStatus, isTodayOrOverdue } from '@/lib/pipelineStore';
+import OrderRowActions from '@/components/OrderRowActions';
 
 interface DeliveryJob {
   id: string;
@@ -193,6 +194,7 @@ export default function PipelineDeliveryPage() {
                     <th className="p-3.5">ملاحظات التسليم</th>
                     <th className="p-3.5 text-center">واتساب</th>
                     <th className="p-3.5 text-center">الحالة</th>
+                    <th className="p-3.5 text-center">إجراءات</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -219,6 +221,18 @@ export default function PipelineDeliveryPage() {
                         }`}>
                           {job.status === 'في التركيبات' ? 'تم النقل للتركيبات ←' : 'تم التسليم للعميل بنجاح'}
                         </span>
+                      </td>
+                      <td className="p-3.5 text-center">
+                        <div className="flex justify-center">
+                          <OrderRowActions
+                            pageId="p_delivery"
+                            orderId={job.orderId || job.id}
+                            customerName={job.customerName}
+                            editHref={`/orders/${encodeURIComponent(job.orderId || job.id)}`}
+                            onDeleted={() => setJobs(prev => prev.filter(j => j.id !== job.id))}
+                            compact
+                          />
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -285,6 +299,15 @@ export default function PipelineDeliveryPage() {
                       ✓ تم تحويل الطلب للسجل ومغلق
                     </div>
                   )}
+                  <div className="flex justify-center pt-1">
+                    <OrderRowActions
+                      pageId="p_delivery"
+                      orderId={job.orderId || job.id}
+                      customerName={job.customerName}
+                      editHref={`/orders/${encodeURIComponent(job.orderId || job.id)}`}
+                      onDeleted={() => setJobs(prev => prev.filter(j => j.id !== job.id))}
+                    />
+                  </div>
                 </div>
               </div>
             ))}

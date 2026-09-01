@@ -63,11 +63,25 @@ export function getCurtainDefaults(): CurtainDefaults {
   if (typeof window === 'undefined') return BUILT_IN_DEFAULTS;
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
+    // triggerServerFetch — refresh فى الخلفية للتزامن بين الأجهزة
+    fetchCurtainDefaultsFromServer().catch(() => {});
     if (!raw) return BUILT_IN_DEFAULTS;
     return deepMerge(BUILT_IN_DEFAULTS, JSON.parse(raw));
   } catch {
     return BUILT_IN_DEFAULTS;
   }
+}
+
+async function fetchCurtainDefaultsFromServer(): Promise<void> {
+  try {
+    const res = await fetch(`/api/system-data?key=${encodeURIComponent(STORAGE_KEY)}`, { cache: 'no-store' });
+    if (!res.ok) return;
+    const data = await res.json();
+    const arr = Array.isArray(data?.data) ? data.data : [];
+    if (arr.length > 0 && typeof window !== 'undefined') {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(arr[0]));
+    }
+  } catch {}
 }
 
 export async function saveCurtainDefaults(next: CurtainDefaults): Promise<void> {

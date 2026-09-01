@@ -108,21 +108,38 @@ export default function BranchesAndPermissionsPage() {
   const [activePerms, setActivePerms] = useState<string[]>([]);
 
   useEffect(() => {
-    setEmployees(prev => prev.map(emp => {
-      try {
-        const storedPerms = localStorage.getItem(`user_perms_${emp.phone}`);
-        const storedBranch = localStorage.getItem(`user_branch_${emp.phone}`);
-        const storedRestrict = localStorage.getItem(`user_restrict_${emp.phone}`);
-        return {
-          ...emp,
-          branch: storedBranch || emp.branch,
-          restrictToBranch: storedRestrict !== null ? storedRestrict === 'true' : emp.restrictToBranch,
-          allowedPageIds: storedPerms ? JSON.parse(storedPerms) : emp.allowedPageIds,
-        };
-      } catch {
-        return emp;
-      }
-    }));
+    // اقرأ الصلاحيات من السيرفر (persistent per-user)، وقع على localStorage كـ fallback
+    (async () => {
+      const withServerPerms = await Promise.all(initialEmployees.map(async emp => {
+        try {
+          const res = await fetch(`/api/user-permissions?phone=${encodeURIComponent(emp.phone)}`, { cache: 'no-store' });
+          if (res.ok) {
+            const data = await res.json();
+            if (Array.isArray(data?.allowedPageIds) && data.allowedPageIds.length) {
+              return {
+                ...emp,
+                branch: data.branch || emp.branch,
+                restrictToBranch: typeof data.restrictToBranch === 'boolean' ? data.restrictToBranch : emp.restrictToBranch,
+                allowedPageIds: data.allowedPageIds,
+              };
+            }
+          }
+        } catch {}
+        // fallback إلى localStorage
+        try {
+          const storedPerms = localStorage.getItem(`user_perms_${emp.phone}`);
+          const storedBranch = localStorage.getItem(`user_branch_${emp.phone}`);
+          const storedRestrict = localStorage.getItem(`user_restrict_${emp.phone}`);
+          return {
+            ...emp,
+            branch: storedBranch || emp.branch,
+            restrictToBranch: storedRestrict !== null ? storedRestrict === 'true' : emp.restrictToBranch,
+            allowedPageIds: storedPerms ? JSON.parse(storedPerms) : emp.allowedPageIds,
+          };
+        } catch { return emp; }
+      }));
+      setEmployees(withServerPerms);
+    })();
   }, []);
 
   const openPermsModal = (emp: Employee) => {
@@ -142,12 +159,16 @@ export default function BranchesAndPermissionsPage() {
   const togglePagePerm = (pageId: string) => {
     setActivePerms(prev => {
       if (prev.includes(pageId)) {
-        // Remove page and its sub-permissions
-        return prev.filter(id => id !== pageId && id !== `${pageId}_edit_price`);
+        // شيل الصفحة + كل sub-perms المرتبطة بيها
+        return prev.filter(id =>
+          id !== pageId &&
+          id !== `${pageId}_edit_price` &&
+          id !== `${pageId}_edit` &&
+          id !== `${pageId}_delete`
+        );
       } else {
-        // Add page and enable price editing by default
-        const subPriceKey = `${pageId}_edit_price`;
-        return [...prev, pageId, subPriceKey];
+        // فعّل الصفحة + تعديل السعر افتراضياً (بس بدون حذف)
+        return [...prev, pageId, `${pageId}_edit_price`, `${pageId}_edit`];
       }
     });
   };
@@ -162,7 +183,9 @@ export default function BranchesAndPermissionsPage() {
     if (presetType === 'ALL') {
       const allPages = ALL_SYSTEM_PAGES.map(p => p.id);
       const allPrices = ALL_SYSTEM_PAGES.filter(p => p.hasPriceControl).map(p => `${p.id}_edit_price`);
-      setActivePerms([...allPages, ...allPrices]);
+      const allEdits = ALL_SYSTEM_PAGES.filter(p => p.hasEditControl).map(p => `${p.id}_edit`);
+      const allDeletes = ALL_SYSTEM_PAGES.filter(p => p.hasDeleteControl).map(p => `${p.id}_delete`);
+      setActivePerms([...allPages, ...allPrices, ...allEdits, ...allDeletes]);
     } else if (presetType === 'INSPECTOR') {
       setActivePerms(['p_inspections', 'p_inspections_edit_price', 'p_dashboard']);
     } else if (presetType === 'WORKSHOP') {
@@ -174,7 +197,7 @@ export default function BranchesAndPermissionsPage() {
     }
   };
 
-  const savePermissions = () => {
+  const savePermissions = async () => {
     if (!selectedEmp) return;
     setEmployees(prev => prev.map(e => e.id === selectedEmp.id ? {
       ...e,
@@ -183,11 +206,32 @@ export default function BranchesAndPermissionsPage() {
       allowedPageIds: activePerms,
     } : e));
 
+    // احفظ محلياً فوراً
     try {
       localStorage.setItem(`user_perms_${selectedEmp.phone}`, JSON.stringify(activePerms));
       localStorage.setItem(`user_branch_${selectedEmp.phone}`, activeBranch);
       localStorage.setItem(`user_restrict_${selectedEmp.phone}`, String(restrictToBranch));
     } catch {}
+
+    // مزامنة إلى السيرفر — يجعلها دائمة عبر الجلسات والأجهزة
+    try {
+      const res = await fetch('/api/user-permissions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone: selectedEmp.phone,
+          allowedPageIds: activePerms,
+          restrictToBranch,
+          branch: activeBranch,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert('تعذر حفظ الصلاحيات على السيرفر: ' + (err?.error || 'تحقق من صلاحيات المدير'));
+      }
+    } catch (e: any) {
+      alert('فشل الاتصال بالسيرفر لحفظ الصلاحيات: ' + (e?.message || ''));
+    }
 
     setShowPermsModal(false);
   };
@@ -407,6 +451,8 @@ export default function BranchesAndPermissionsPage() {
                       {pagesInCat.map(page => {
                         const isAllowed = activePerms.includes(page.id);
                         const priceEditAllowed = activePerms.includes(`${page.id}_edit_price`);
+                        const editAllowed = activePerms.includes(`${page.id}_edit`);
+                        const deleteAllowed = activePerms.includes(`${page.id}_delete`);
 
                         return (
                           <div
@@ -437,29 +483,33 @@ export default function BranchesAndPermissionsPage() {
                               </span>
                             </div>
 
-                            {/* Price Editing Sub-Permission Checkbox */}
-                            {page.hasPriceControl && isAllowed && (
-                              <div
-                                onClick={e => e.stopPropagation()}
-                                className="mt-1 pt-2 border-t border-slate-100 flex items-center justify-between bg-amber-50/50 p-2 rounded-lg border border-amber-200/60"
-                              >
-                                <label className="flex items-center gap-2 text-xs font-bold text-slate-900 cursor-pointer select-none">
-                                  <input
-                                    type="checkbox"
-                                    checked={priceEditAllowed}
-                                    onChange={() => toggleSubPerm(`${page.id}_edit_price`)}
-                                    className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
-                                  />
-                                  <span>💵 تفعيل إمكانية تعديل الأسعار</span>
-                                </label>
-
-                                <span className={`text-[10px] px-2.5 py-0.5 rounded-md font-bold ${
-                                  priceEditAllowed
-                                    ? 'bg-emerald-100 text-emerald-950 border border-emerald-300'
-                                    : 'bg-slate-200 text-slate-600'
-                                }`}>
-                                  {priceEditAllowed ? 'مسموح بتغيير السعر ✓' : 'الأسعار مغلقة (قراءة فقط) 🔒'}
-                                </span>
+                            {/* Sub-Permissions: تعديل السعر / تعديل السجل / حذف السجل */}
+                            {isAllowed && (page.hasPriceControl || page.hasEditControl || page.hasDeleteControl) && (
+                              <div onClick={e => e.stopPropagation()} className="mt-1 pt-2 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-3 gap-1.5">
+                                {page.hasPriceControl && (
+                                  <label className={`flex items-center gap-2 text-[11px] font-bold cursor-pointer select-none p-2 rounded-lg border ${priceEditAllowed ? 'bg-amber-50 border-amber-300 text-amber-950' : 'bg-slate-50 border-slate-200 text-slate-500'}`}>
+                                    <input type="checkbox" checked={priceEditAllowed}
+                                      onChange={() => toggleSubPerm(`${page.id}_edit_price`)}
+                                      className="w-3.5 h-3.5 rounded text-amber-600 cursor-pointer" />
+                                    <span>💵 تعديل الأسعار</span>
+                                  </label>
+                                )}
+                                {page.hasEditControl && (
+                                  <label className={`flex items-center gap-2 text-[11px] font-bold cursor-pointer select-none p-2 rounded-lg border ${editAllowed ? 'bg-blue-50 border-blue-300 text-blue-950' : 'bg-slate-50 border-slate-200 text-slate-500'}`}>
+                                    <input type="checkbox" checked={editAllowed}
+                                      onChange={() => toggleSubPerm(`${page.id}_edit`)}
+                                      className="w-3.5 h-3.5 rounded text-blue-600 cursor-pointer" />
+                                    <span>✏️ تعديل السجلات</span>
+                                  </label>
+                                )}
+                                {page.hasDeleteControl && (
+                                  <label className={`flex items-center gap-2 text-[11px] font-bold cursor-pointer select-none p-2 rounded-lg border ${deleteAllowed ? 'bg-red-50 border-red-300 text-red-950' : 'bg-slate-50 border-slate-200 text-slate-500'}`}>
+                                    <input type="checkbox" checked={deleteAllowed}
+                                      onChange={() => toggleSubPerm(`${page.id}_delete`)}
+                                      className="w-3.5 h-3.5 rounded text-red-600 cursor-pointer" />
+                                    <span>🗑️ حذف السجلات</span>
+                                  </label>
+                                )}
                               </div>
                             )}
                           </div>

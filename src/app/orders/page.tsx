@@ -163,20 +163,22 @@ export default function CentralOrdersLedgerPage() {
 
   const handleDelete = async (id: string, name: string) => {
     if (confirm(`هل أنت متأكد من حذف طلب العميل "${name}" نهائياً من النظام؟`)) {
-      deleteQuotationOrder(id);
-      
+      // إزالة فورية من الواجهة
+      const updated = orders.filter(o => o.id !== id && o.orderId !== id);
+      setOrders(updated);
+
+      // حذف حقيقى على السيرفر (يمر عبر deleteQuotationOrder → DELETE /api/system-data)
       try {
+        await deleteQuotationOrder(id);
+        // مسح احتياطى على أى endpoints قديمة لو موجودة
         await Promise.all([
-          fetch(`/api/pipeline-orders?id=${encodeURIComponent(id)}&name=${encodeURIComponent(name || '')}`, { method: 'DELETE' }),
-          fetch(`/api/orders?id=${encodeURIComponent(id)}`, { method: 'DELETE' }),
-          fetch(`/api/pricing?id=${encodeURIComponent(id)}`, { method: 'DELETE' }),
+          fetch(`/api/pipeline-orders?id=${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(() => {}),
+          fetch(`/api/orders?id=${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(() => {}),
+          fetch(`/api/pricing?id=${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(() => {}),
         ]);
       } catch (err) {
         console.error('Error deleting order from server:', err);
       }
-
-      const updated = orders.filter(o => o.id !== id && o.orderId !== id && o.customerName !== name);
-      setOrders(updated);
       saveStoredPipelineOrders(updated);
       if (activeEditingOrder?.id === id || activeEditingOrder?.customerName === name) setActiveEditingOrder(null);
     }

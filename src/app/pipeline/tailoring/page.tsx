@@ -7,6 +7,7 @@ import { fetchQuotations } from '@/lib/inspectionsStore';
 import { formatDateOnly } from '@/lib/dateUtils';
 import TailoringPrintModal from '@/components/TailoringPrintModal';
 import WhatsAppShareButton from '@/components/WhatsAppShareButton';
+import OrderRowActions from '@/components/OrderRowActions';
 
 interface RoomTailoringDetail {
   roomName: string;
@@ -333,6 +334,7 @@ export default function PipelineTailoringPage() {
                     <th className="p-3.5 text-center font-mono">إجمالي الأمتار والقطع</th>
                     <th className="p-3.5 text-center">واتساب</th>
                     <th className="p-3.5 text-center">الإجراء السريع</th>
+                    <th className="p-3.5 text-center">إجراءات المدير</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -407,6 +409,19 @@ export default function PipelineTailoringPage() {
                               {order.status}
                             </span>
                           )}
+                        </td>
+
+                        <td className="p-3.5 text-center" onClick={e => e.stopPropagation()}>
+                          <div className="flex justify-center">
+                            <OrderRowActions
+                              pageId="p_tailoring"
+                              orderId={(order as any).orderId || order.id}
+                              customerName={order.customerName}
+                              editHref={`/orders/${encodeURIComponent((order as any).orderId || order.id)}`}
+                              onDeleted={() => setOrders(prev => prev.filter((o: any) => o.id !== order.id && o.orderId !== (order as any).orderId))}
+                              compact
+                            />
+                          </div>
                         </td>
                       </tr>
                     );

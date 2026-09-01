@@ -40,6 +40,13 @@ export async function GET(request: Request) {
       const purchases = await prisma.purchaseInvoice.findMany({ orderBy: { updatedAt: 'desc' } });
       return NextResponse.json({ success: true, key, data: purchases });
     }
+    // Fallback: أى key غير معروف يُقرأ من SystemStore
+    if (key) {
+      const rec = await prisma.systemStore.findUnique({ where: { key } });
+      const raw = rec?.data as any;
+      const dataArr = Array.isArray(raw) ? raw : (raw ? [raw] : []);
+      return NextResponse.json({ success: true, key, data: dataArr });
+    }
 
     // Return all relational tables
     const [inspections, quotations, orders, customers, inventory, suppliers, sales, purchases] = await Promise.all([
@@ -246,11 +253,87 @@ export async function POST(request: Request) {
           });
         }
       }
+    } else {
+      // Fallback عام: أى key غير معروف يُخزَّن فى SystemStore كـ blob JSON
+      // (يستخدم للإعدادات مثل curtain defaults, supplier checks, ...).
+      await prisma.systemStore.upsert({
+        where: { key },
+        update: { data: data as any },
+        create: { key, data: data as any },
+      });
     }
 
     return NextResponse.json({ success: true, count: data.length });
   } catch (error: any) {
     console.error('Error persisting relational data to PostgreSQL:', error);
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+
+/**
+ * DELETE — يمسح صف/صفوف من الجدول المرتبط بالـ key.
+ * الاستخدام: DELETE /api/system-data?key=<KEY>&id=<ID>
+ * أو body JSON: { key, ids: [...] }
+ * هذا هو المفتاح لضمان أن حذف الأوردر/المعاينة/العميل ينتشر لقاعدة البيانات
+ * بدلاً من مجرد إزالته من localStorage.
+ */
+export async function DELETE(request: Request) {
+  try {
+    const url = new URL(request.url);
+    let key = url.searchParams.get('key') || '';
+    let ids: string[] = [];
+    const idParam = url.searchParams.get('id');
+    if (idParam) ids = [idParam];
+
+    if (!key || ids.length === 0) {
+      try {
+        const body = await request.json();
+        key = key || body?.key;
+        if (Array.isArray(body?.ids)) ids = body.ids;
+        else if (body?.id) ids = [body.id];
+      } catch {}
+    }
+
+    if (!key || ids.length === 0) {
+      return NextResponse.json({ success: false, error: 'key and id(s) required' }, { status: 400 });
+    }
+
+    const cleanIds = ids.map(String).filter(Boolean);
+    let deleted = 0;
+
+    if (key === 'ahmed_kishk_inspections_data_v4') {
+      const r = await prisma.inspectionRequest.deleteMany({ where: { id: { in: cleanIds } } });
+      deleted = r.count;
+    } else if (key === 'ahmed_kishk_quotations_data_v4') {
+      const r = await prisma.quotationOrder.deleteMany({ where: { id: { in: cleanIds } } });
+      deleted = r.count;
+    } else if (key === 'ahmed_kishk_pipeline_orders_v5') {
+      const r = await prisma.pipelineOrder.deleteMany({
+        where: { OR: [{ id: { in: cleanIds } }, { orderId: { in: cleanIds } }] },
+      });
+      deleted = r.count;
+    } else if (key === 'ahmed_kishk_customers_v3') {
+      const r = await prisma.customer.deleteMany({ where: { id: { in: cleanIds } } });
+      deleted = r.count;
+    } else if (key === 'ahmed_kishk_inventory_v3') {
+      const r = await prisma.inventoryItem.deleteMany({ where: { OR: [{ id: { in: cleanIds } }, { code: { in: cleanIds } }] } });
+      deleted = r.count;
+    } else if (key === 'ahmed_kishk_suppliers_v3') {
+      const r = await prisma.supplier.deleteMany({ where: { id: { in: cleanIds } } });
+      deleted = r.count;
+    } else if (key === 'ahmed_kishk_sales_invoices_v1') {
+      const r = await prisma.salesInvoice.deleteMany({ where: { OR: [{ id: { in: cleanIds } }, { invoiceNumber: { in: cleanIds } }] } });
+      deleted = r.count;
+    } else if (key === 'ahmed_kishk_purchases_v3') {
+      const r = await prisma.purchaseInvoice.deleteMany({ where: { OR: [{ id: { in: cleanIds } }, { invoiceNumber: { in: cleanIds } }] } });
+      deleted = r.count;
+    } else {
+      return NextResponse.json({ success: false, error: `unsupported key: ${key}` }, { status: 400 });
+    }
+
+    return NextResponse.json({ success: true, deleted, ids: cleanIds });
+  } catch (error: any) {
+    console.error('Error deleting from PostgreSQL:', error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }

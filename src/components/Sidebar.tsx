@@ -31,25 +31,41 @@ export default function Sidebar() {
   // Accordion state now lives in SidebarContext — removed from local state
 
   useEffect(() => {
-    // Purge old stale permission caches to prevent old sidebar items from appearing
-    if (typeof window !== 'undefined') {
-      try {
-        Object.keys(localStorage).forEach(key => {
-          if (key.startsWith('user_perms_')) {
-            localStorage.removeItem(key);
-          }
-        });
-      } catch {}
-    }
-
+    // #FIX: مبقاش نمسح صلاحيات المستخدمين على كل reload — كانت تُمحى فوراً وتفقد التخصيص.
     fetch('/api/auth/profile')
       .then((r) => r.json())
-      .then((d) => {
-        if (d.user) {
-          setUser(d.user);
-          // Always show all system pages to ADMIN and logged in staff
+      .then(async (d) => {
+        if (!d.user) return;
+        setUser(d.user);
+        // publish للـ localStorage حتى تعمل helpers مثل canUserEditPrices بشكل صحيح لكل الأدمنز
+        try {
+          localStorage.setItem('userRole', d.user.role === 'ADMIN' ? 'admin' : d.user.role || '');
+          localStorage.setItem('userPhone', d.user.phone || '');
+          localStorage.setItem('userBranch', d.user.branch || '');
+          localStorage.setItem('userName', d.user.name || '');
+        } catch {}
+        // ADMIN يشوف كل شئ. باقى الأدوار يقرأ صلاحياتهم من الـ API (persistent per-user).
+        if (d.user.role === 'ADMIN') {
           setAllowedPageIds(null);
+          return;
         }
+        try {
+          const res = await fetch(`/api/user-permissions?phone=${encodeURIComponent(d.user.phone)}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (Array.isArray(data?.allowedPageIds)) {
+              setAllowedPageIds(data.allowedPageIds);
+              try { localStorage.setItem(`user_perms_${d.user.phone}`, JSON.stringify(data.allowedPageIds)); } catch {}
+              return;
+            }
+          }
+        } catch {}
+        // Fallback إلى localStorage
+        try {
+          const raw = localStorage.getItem(`user_perms_${d.user.phone}`);
+          if (raw) setAllowedPageIds(JSON.parse(raw));
+          else setAllowedPageIds(null);
+        } catch { setAllowedPageIds(null); }
       })
       .catch(() => {});
   }, []);
