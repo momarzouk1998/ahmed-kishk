@@ -101,6 +101,9 @@ export default function SuppliersPage() {
   const [showAddPaymentModal, setShowAddPaymentModal] = useState(false);
   const [showBatchChecksModal, setShowBatchChecksModal] = useState(false);
 
+  // Edit existing supplier (نفس حقول مودال الإضافة — يحفظ عبر POST /api/suppliers)
+  const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
+
   // New Supplier Form
   const [supName, setSupName] = useState('');
   const [supPhone, setSupPhone] = useState('');
@@ -254,6 +257,54 @@ export default function SuppliersPage() {
       });
     } catch (err) {
       console.error('Failed to save new supplier to server:', err);
+    }
+  };
+
+  // Submit Edit Supplier — يعدّل البيانات الوصفية فقط (اسم/هاتف/عنوان/خامات/ملاحظات/رصيد
+  // افتتاحى). لا يمس totalPurchases أو paidAmount (مش مُرسَلين ⇒ الـ API يحافظ عليهم).
+  // لو اتغيّر الرصيد الافتتاحى، يُعدَّل balanceOwed بنفس الفارق لإبقاء كشف الحساب متسقاً.
+  const handleUpdateSupplier = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingSupplier || !editingSupplier.name.trim()) return;
+
+    const prev = suppliers.find(s => s.id === editingSupplier.id);
+    const openingDelta = (Number(editingSupplier.openingBalance) || 0) - (Number(prev?.openingBalance) || 0);
+    const newBalanceOwed = Math.max(0, (Number(editingSupplier.balanceOwed) || 0) + openingDelta);
+
+    const updatedObj: Supplier = {
+      ...editingSupplier,
+      name: editingSupplier.name.trim(),
+      phone: editingSupplier.phone.trim(),
+      address: editingSupplier.address.trim(),
+      notes: editingSupplier.notes.trim(),
+      categoriesSupplied: Array.isArray(editingSupplier.categoriesSupplied)
+        ? editingSupplier.categoriesSupplied.map(c => c.trim()).filter(Boolean)
+        : [],
+      balanceOwed: newBalanceOwed,
+    };
+
+    saveSuppliersState(suppliers.map(s => (s.id === updatedObj.id ? updatedObj : s)));
+    if (selectedSupplier?.id === updatedObj.id) setSelectedSupplier(updatedObj);
+    setEditingSupplier(null);
+
+    try {
+      await fetch('/api/suppliers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: updatedObj.id,
+          name: updatedObj.name,
+          phone: updatedObj.phone,
+          address: updatedObj.address,
+          branch: updatedObj.branch,
+          categoriesSupplied: updatedObj.categoriesSupplied,
+          openingBalance: updatedObj.openingBalance,
+          balance: updatedObj.balanceOwed,
+          notes: updatedObj.notes,
+        }),
+      });
+    } catch (err) {
+      console.error('Failed to update supplier on server:', err);
     }
   };
 
@@ -624,6 +675,15 @@ export default function SuppliersPage() {
                               className="bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer transition-colors"
                             >
                               💸 سداد
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => setEditingSupplier(sup)}
+                              className="bg-amber-100 text-amber-950 px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer hover:bg-amber-200 transition-colors"
+                              title="تعديل بيانات المورد"
+                            >
+                              ✏️ تعديل
                             </button>
 
                             <button
@@ -1299,6 +1359,105 @@ export default function SuppliersPage() {
                   حفظ المورد ✓
                 </button>
                 <button type="button" onClick={() => setShowAddSupplierModal(false)} className="flex-1 bg-slate-100 text-slate-700 py-2.5 rounded-xl font-bold text-xs cursor-pointer">
+                  إلغاء
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ✏️ Modal: Edit Supplier */}
+      {editingSupplier && (
+        <div className="modal-overlay fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-200 my-auto max-h-[92vh] overflow-y-auto">
+            <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+              <h3 className="font-bold text-slate-900 text-sm">تعديل بيانات المورد</h3>
+              <button onClick={() => setEditingSupplier(null)} className="w-7 h-7 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-xs cursor-pointer">✕</button>
+            </div>
+
+            <form onSubmit={handleUpdateSupplier} className="space-y-3 text-xs">
+              <div>
+                <label className="text-slate-700 font-bold block mb-1">اسم المورد / الشركة:</label>
+                <input
+                  type="text"
+                  required
+                  value={editingSupplier.name}
+                  onChange={e => setEditingSupplier({ ...editingSupplier, name: e.target.value })}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900 focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-slate-700 font-bold block mb-1">رقم الهاتف التواصل:</label>
+                <input
+                  type="text"
+                  value={editingSupplier.phone}
+                  onChange={e => setEditingSupplier({ ...editingSupplier, phone: e.target.value })}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 font-mono font-bold text-slate-900 focus:outline-none focus:border-amber-500"
+                  dir="ltr"
+                />
+              </div>
+
+              <div>
+                <label className="text-slate-700 font-bold block mb-1">عنوان المورد أو المصنع:</label>
+                <input
+                  type="text"
+                  value={editingSupplier.address}
+                  onChange={e => setEditingSupplier({ ...editingSupplier, address: e.target.value })}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-slate-900 focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-slate-700 font-bold block mb-1">الفرع:</label>
+                <BranchSelect
+                  value={editingSupplier.branch}
+                  onChange={b => setEditingSupplier({ ...editingSupplier, branch: b })}
+                  isAdmin={isAdmin}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900"
+                />
+              </div>
+
+              <div>
+                <label className="text-slate-700 font-bold block mb-1">الخامات الموردة (مفصولة بفارزة):</label>
+                <input
+                  type="text"
+                  value={Array.isArray(editingSupplier.categoriesSupplied) ? editingSupplier.categoriesSupplied.join(', ') : ''}
+                  onChange={e => setEditingSupplier({ ...editingSupplier, categoriesSupplied: e.target.value.split(',').map(c => c.trim()) })}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-slate-900 focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-slate-700 font-bold block mb-1">رصيد افتتاحى (مديونية سابقة):</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={editingSupplier.openingBalance || ''}
+                  onChange={e => setEditingSupplier({ ...editingSupplier, openingBalance: Number(e.target.value) })}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 font-mono font-bold text-slate-900 focus:outline-none focus:border-amber-500"
+                />
+                <span className="text-[10px] text-slate-400 font-bold block mt-1">
+                  تغيير الرصيد الافتتاحى يعدّل الرصيد المستحق بنفس الفارق. إجمالى المشتريات والمسدد لا يتأثران.
+                </span>
+              </div>
+
+              <div>
+                <label className="text-slate-700 font-bold block mb-1">شروط وملاحظات التوريد:</label>
+                <textarea
+                  rows={2}
+                  value={editingSupplier.notes}
+                  onChange={e => setEditingSupplier({ ...editingSupplier, notes: e.target.value })}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-slate-900 focus:outline-none"
+                />
+              </div>
+
+              <div className="pt-2 flex gap-2">
+                <button type="submit" className="flex-1 bg-brand-gold hover:bg-amber-400 text-slate-950 py-2.5 rounded-xl font-black text-xs shadow-gold cursor-pointer">
+                  حفظ التعديلات ✓
+                </button>
+                <button type="button" onClick={() => setEditingSupplier(null)} className="flex-1 bg-slate-100 text-slate-700 py-2.5 rounded-xl font-bold text-xs cursor-pointer">
                   إلغاء
                 </button>
               </div>
