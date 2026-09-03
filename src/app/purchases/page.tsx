@@ -106,18 +106,12 @@ export default function PurchasesPage() {
     loadPurchases();
   }, []);
 
-  const savePurchasesState = async (list: PurchaseInvoice[]) => {
+  // #FIX: كانت بتزامن مع /api/system-data بمفتاح غير متعرَّف عليه فى POST (blob ميت لا
+  // تقرأه صفحة القائمة أبداً — القائمة بتقرأ من /api/purchases الحقيقى). الآن state
+  // محلى فقط؛ الحفظ الحقيقى يتم صراحةً فى كل مكان يستدعيها (حذف حقيقى، أو POST لـ /api/purchases).
+  const savePurchasesState = (list: PurchaseInvoice[]) => {
     setPurchases(list);
     localStorage.setItem(PURCHASES_KEY, JSON.stringify(list));
-    try {
-      await fetch('/api/system-data', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key: PURCHASES_KEY, data: list }),
-      });
-    } catch (err) {
-      console.error('Failed to sync purchases with server:', err);
-    }
   };
 
   const saveReturnsState = (list: SupplierPurchaseReturn[]) => {
@@ -144,15 +138,28 @@ export default function PurchasesPage() {
     }
   };
 
-  const handleUpdatePurchase = (e: React.FormEvent) => {
+  const handleUpdatePurchase = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingPurchase) return;
 
     const remaining = Math.max(0, editingPurchase.totalAmount - editingPurchase.paidAmount);
     const statusLabel: PurchaseInvoice['status'] = remaining === 0 ? 'مسدد بالكامل' : editingPurchase.paidAmount > 0 ? 'مسدد جزئياً' : 'آجل / غير مسدد';
 
-    const updated = purchases.map(p => p.id === editingPurchase.id ? { ...editingPurchase, remainingAmount: remaining, status: statusLabel } : p);
+    const updatedObj = { ...editingPurchase, remainingAmount: remaining, status: statusLabel };
+    const updated = purchases.map(p => p.id === editingPurchase.id ? updatedObj : p);
     savePurchasesState(updated);
+
+    // #FIX: كان التعديل بيتحفظ فى blob ميت. دلوقتى بيتحفظ مباشرة فى جدول الفاتورة الحقيقى.
+    try {
+      await fetch('/api/purchases', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedObj),
+      });
+    } catch (err) {
+      console.error('Failed to save purchase update to server:', err);
+    }
+
     setEditingPurchase(null);
   };
 

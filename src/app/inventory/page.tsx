@@ -5,6 +5,7 @@ import PageShell from '@/components/PageShell';
 import { canUserEditPrices } from '@/lib/permissions';
 import { useManagerGate, isManagerUnlocked } from '@/components/ManagerUnlockGate';
 import { useCurrentUser } from '@/lib/useCurrentUser';
+import BranchSelect from '@/components/BranchSelect';
 
 interface InventoryItem {
   id: string;
@@ -314,18 +315,14 @@ export default function InventoryPage() {
             </div>
 
             <div className="flex items-center gap-3">
-              <select
+              <BranchSelect
                 value={selectedBranch}
-                onChange={(e) => setSelectedBranch(e.target.value)}
-                disabled={!isAdmin}
-                className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 disabled:opacity-70 disabled:cursor-not-allowed"
-              >
-                <option value="الكل">كل الفروع</option>
-                <option value="الفرع الرئيسي">الفرع الرئيسي</option>
-                <option value="فرع عرابي">فرع عرابي</option>
-                <option value="فرع الثلاثيني">فرع الثلاثيني</option>
-                <option value="فرع عمر أفندي">فرع عمر أفندي</option>
-              </select>
+                onChange={setSelectedBranch}
+                isAdmin={isAdmin}
+                allValue="الكل"
+                allLabel="كل الفروع"
+                className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700"
+              />
 
               <input
                 type="text"
@@ -457,12 +454,12 @@ export default function InventoryPage() {
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-bold text-slate-700">الفرع</label>
-                  <select value={branch} onChange={e => setBranch(e.target.value)} disabled={!isAdmin} className="border border-slate-200 rounded-xl p-2 text-sm text-slate-900 disabled:opacity-70 disabled:cursor-not-allowed">
-                    <option value="الفرع الرئيسي">الفرع الرئيسي</option>
-                    <option value="فرع عرابي">فرع عرابي</option>
-                    <option value="فرع الثلاثيني">فرع الثلاثيني</option>
-                    <option value="فرع عمر أفندي">فرع عمر أفندي</option>
-                  </select>
+                  <BranchSelect
+                    value={branch}
+                    onChange={setBranch}
+                    isAdmin={isAdmin}
+                    className="border border-slate-200 rounded-xl p-2 text-sm text-slate-900"
+                  />
                 </div>
               </div>
 
@@ -553,12 +550,12 @@ export default function InventoryPage() {
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-bold text-slate-700">الفرع</label>
-                  <select value={branch} onChange={e => setBranch(e.target.value)} disabled={!isAdmin} className="border border-slate-200 rounded-xl p-2 text-sm text-slate-900 disabled:opacity-70 disabled:cursor-not-allowed">
-                    <option value="الفرع الرئيسي">الفرع الرئيسي</option>
-                    <option value="فرع عرابي">فرع عرابي</option>
-                    <option value="فرع الثلاثيني">فرع الثلاثيني</option>
-                    <option value="فرع عمر أفندي">فرع عمر أفندي</option>
-                  </select>
+                  <BranchSelect
+                    value={branch}
+                    onChange={setBranch}
+                    isAdmin={isAdmin}
+                    className="border border-slate-200 rounded-xl p-2 text-sm text-slate-900"
+                  />
                 </div>
               </div>
 

@@ -145,15 +145,47 @@ model InventoryItem {
 }
 
 model Supplier {
-  id        String   @id @default(cuid())
-  name      String
-  phone     String?
-  address   String?
-  branch    String   @default("الفرع الرئيسي")
-  balance   Float    @default(0)
-  notes     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                 String   @id @default(cuid())
+  name               String
+  phone              String?
+  address            String?
+  branch             String   @default("الفرع الرئيسي")
+  categoriesSupplied String[] @default([])
+  totalPurchases     Float    @default(0)
+  paidAmount         Float    @default(0)
+  openingBalance     Float    @default(0)
+  balance            Float    @default(0) // = balanceOwed (موجب: علينا للمورد)
+  notes              String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model SupplierPayment {
+  id           String   @id @default(cuid())
+  date         String
+  supplierId   String
+  supplierName String
+  amount       Float    @default(0)
+  method       String   @default("نقدي")
+  treasury     String   @default("الخزينة الرئيسية")
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model SupplierCheck {
+  id           String   @id @default(cuid())
+  checkNumber  String
+  bankName     String
+  supplierId   String
+  supplierName String
+  amount       Float    @default(0)
+  issueDate    String
+  dueDate      String
+  status       String   @default("قيد الانتظار")
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 model SalesInvoice {
@@ -177,10 +209,15 @@ model PurchaseInvoice {
   id              String   @id @default(cuid())
   invoiceNumber   String   @unique
   supplierName    String
+  supplierPhone   String?
   branch          String   @default("الفرع الرئيسي")
+  subtotal        Float    @default(0)
+  discountAmount  Float    @default(0)
   totalAmount     Float    @default(0)
   paidAmount      Float    @default(0)
   remainingAmount Float    @default(0)
+  paymentMethod   String   @default("نقدي (كاش)")
+  status          String   @default("آجل / غير مسدد")
   date            String
   items           Json     @default("[]")
   notes           String?

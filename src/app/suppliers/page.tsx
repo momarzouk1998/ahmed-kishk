@@ -4,12 +4,15 @@ import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
 import { formatDateOnly } from '@/lib/dateUtils';
 import PdfPrintButton from '@/components/PdfPrintButton';
+import { useCurrentUser } from '@/lib/useCurrentUser';
+import BranchSelect from '@/components/BranchSelect';
 
 interface Supplier {
   id: string;
   name: string;
   phone: string;
   address: string;
+  branch: string;
   categoriesSupplied: string[];
   totalPurchases: number;
   paidAmount: number;
@@ -17,6 +20,24 @@ interface Supplier {
   balanceOwed: number; // positive = we owe supplier (علينا للمورد)
   notes: string;
   createdAt: string;
+}
+
+// يحوّل صف Supplier القادم من /api/suppliers (عمود balance) إلى الشكل المستخدم فى الواجهة (balanceOwed)
+function mapApiSupplier(raw: any): Supplier {
+  return {
+    id: raw.id,
+    name: raw.name,
+    phone: raw.phone || '',
+    address: raw.address || '',
+    branch: raw.branch || 'الفرع الرئيسي',
+    categoriesSupplied: Array.isArray(raw.categoriesSupplied) ? raw.categoriesSupplied : ['أقمشة'],
+    totalPurchases: Number(raw.totalPurchases) || 0,
+    paidAmount: Number(raw.paidAmount) || 0,
+    openingBalance: Number(raw.openingBalance) || 0,
+    balanceOwed: Number(raw.balance) || 0,
+    notes: raw.notes || '',
+    createdAt: raw.createdAt ? String(raw.createdAt).split('T')[0] : new Date().toISOString().split('T')[0],
+  };
 }
 
 interface SupplierPayment {
@@ -86,6 +107,12 @@ export default function SuppliersPage() {
   const [supAddress, setSupAddress] = useState('');
   const [supCategories, setSupCategories] = useState('');
   const [supNotes, setSupNotes] = useState('');
+  const [supBranch, setSupBranch] = useState('الفرع الرئيسي');
+  const [supOpeningBalance, setSupOpeningBalance] = useState<number>(0);
+  const { user: currentUser, isAdmin } = useCurrentUser();
+  useEffect(() => {
+    if (!isAdmin && currentUser?.branch) setSupBranch(currentUser.branch);
+  }, [isAdmin, currentUser]);
 
   // New Payment Form
   const [paySupplierId, setPaySupplierId] = useState('');
@@ -114,8 +141,9 @@ export default function SuppliersPage() {
         if (res.ok) {
           const json = await res.json();
           if (json.success && Array.isArray(json.suppliers) && json.suppliers.length > 0) {
-            setSuppliers(json.suppliers);
-            localStorage.setItem(SUPPLIERS_KEY, JSON.stringify(json.suppliers));
+            const mapped = json.suppliers.map(mapApiSupplier);
+            setSuppliers(mapped);
+            localStorage.setItem(SUPPLIERS_KEY, JSON.stringify(mapped));
           } else {
             const rawS = localStorage.getItem(SUPPLIERS_KEY);
             if (rawS) setSuppliers(JSON.parse(rawS));
@@ -125,30 +153,46 @@ export default function SuppliersPage() {
         console.error(e);
       }
 
+      // #FIX: مدفوعات وشيكات الموردين كانت localStorage فقط (مفيش أى مزامنة سيرفر
+      // إطلاقاً) — دلوقتى بتتحمل من الجداول الحقيقية.
       try {
+        const payRes = await fetch('/api/supplier-payments', { cache: 'no-store' });
+        if (payRes.ok) {
+          const payJson = await payRes.json();
+          if (payJson.success && Array.isArray(payJson.payments)) {
+            setPayments(payJson.payments);
+            localStorage.setItem(SPAYMENTS_KEY, JSON.stringify(payJson.payments));
+          }
+        }
+      } catch {
         const rawP = localStorage.getItem(SPAYMENTS_KEY);
-        if (rawP) setPayments(JSON.parse(rawP));
+        if (rawP) { try { setPayments(JSON.parse(rawP)); } catch {} }
+      }
 
+      try {
+        const chkRes = await fetch('/api/supplier-checks', { cache: 'no-store' });
+        if (chkRes.ok) {
+          const chkJson = await chkRes.json();
+          if (chkJson.success && Array.isArray(chkJson.checks)) {
+            setChecks(chkJson.checks);
+            localStorage.setItem(SCHECKS_KEY, JSON.stringify(chkJson.checks));
+          }
+        }
+      } catch {
         const rawC = localStorage.getItem(SCHECKS_KEY);
-        if (rawC) setChecks(JSON.parse(rawC));
-      } catch {}
+        if (rawC) { try { setChecks(JSON.parse(rawC)); } catch {} }
+      }
     }
 
     loadSuppliers();
   }, []);
 
-  const saveSuppliersState = async (list: Supplier[]) => {
+  // #FIX: كانت بتزامن مع /api/system-data بمفتاح غير متعرَّف عليه فى POST (blob ميت لا
+  // تقرأه صفحة القائمة أبداً — القائمة بتقرأ من /api/suppliers الحقيقى). الآن state
+  // محلى فقط؛ الحفظ الحقيقى يتم صراحةً فى كل دالة تستدعيها.
+  const saveSuppliersState = (list: Supplier[]) => {
     setSuppliers(list);
     localStorage.setItem(SUPPLIERS_KEY, JSON.stringify(list));
-    try {
-      await fetch('/api/system-data', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key: SUPPLIERS_KEY, data: list }),
-      });
-    } catch (err) {
-      console.error('Failed to sync suppliers with server:', err);
-    }
   };
 
   const savePaymentsState = (list: SupplierPayment[]) => {
@@ -162,20 +206,21 @@ export default function SuppliersPage() {
   };
 
   // Submit Add Supplier
-  const handleAddSupplier = (e: React.FormEvent) => {
+  const handleAddSupplier = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!supName.trim()) return;
 
     const newSup: Supplier = {
-      id: `SUP-${String(suppliers.length + 1).padStart(3, '0')}`,
+      id: `SUP-${Date.now()}`,
       name: supName.trim(),
       phone: supPhone.trim(),
       address: supAddress.trim(),
+      branch: supBranch,
       categoriesSupplied: supCategories ? supCategories.split(',').map(c => c.trim()) : ['أقمشة'],
       totalPurchases: 0,
       paidAmount: 0,
-      openingBalance: 0,
-      balanceOwed: 0,
+      openingBalance: supOpeningBalance || 0,
+      balanceOwed: supOpeningBalance || 0,
       notes: supNotes.trim(),
       createdAt: new Date().toISOString().split('T')[0],
     };
@@ -187,16 +232,39 @@ export default function SuppliersPage() {
     setSupAddress('');
     setSupCategories('');
     setSupNotes('');
+    setSupOpeningBalance(0);
+
+    // #FIX: كان المورد الجديد يُحفظ فى blob ميت فقط ويختفى بعد أى ريفريش. دلوقتى بيتحفظ
+    // مباشرة فى جدول Supplier الحقيقى.
+    try {
+      await fetch('/api/suppliers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: newSup.id,
+          name: newSup.name,
+          phone: newSup.phone,
+          address: newSup.address,
+          branch: newSup.branch,
+          categoriesSupplied: newSup.categoriesSupplied,
+          openingBalance: newSup.openingBalance,
+          balance: newSup.balanceOwed,
+          notes: newSup.notes,
+        }),
+      });
+    } catch (err) {
+      console.error('Failed to save new supplier to server:', err);
+    }
   };
 
   // Submit Add Payment
-  const handleAddPayment = (e: React.FormEvent) => {
+  const handleAddPayment = async (e: React.FormEvent) => {
     e.preventDefault();
     const targetSup = suppliers.find(s => s.id === paySupplierId);
     if (!targetSup || payAmount <= 0) return;
 
     const newPay: SupplierPayment = {
-      id: `SPAY-${100 + payments.length + 1}`,
+      id: `SPAY-${Date.now()}`,
       date: new Date().toISOString().split('T')[0],
       supplierId: targetSup.id,
       supplierName: targetSup.name,
@@ -209,10 +277,11 @@ export default function SuppliersPage() {
     savePaymentsState([newPay, ...payments]);
 
     // Deduct balance owed
+    const updatedPaid = targetSup.paidAmount + payAmount;
+    const updatedBalance = Math.max(0, targetSup.balanceOwed - payAmount);
     const updatedSuppliers = suppliers.map(s => {
       if (s.id === targetSup.id) {
-        const updatedB = Math.max(0, s.balanceOwed - payAmount);
-        const updatedObj = { ...s, paidAmount: s.paidAmount + payAmount, balanceOwed: updatedB };
+        const updatedObj = { ...s, paidAmount: updatedPaid, balanceOwed: updatedBalance };
         if (selectedSupplier?.id === s.id) setSelectedSupplier(updatedObj);
         return updatedObj;
       }
@@ -223,10 +292,26 @@ export default function SuppliersPage() {
     setShowAddPaymentModal(false);
     setPayAmount(1000);
     setPayNotes('');
+
+    // #FIX: سند السداد ورصيد المورد المُحدَّث كانا localStorage فقط بلا أى مزامنة سيرفر.
+    try {
+      await fetch('/api/supplier-payments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newPay),
+      });
+      await fetch('/api/suppliers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: targetSup.id, paidAmount: updatedPaid, balance: updatedBalance }),
+      });
+    } catch (err) {
+      console.error('Failed to sync payment to server:', err);
+    }
   };
 
   // Submit Multiple Batch Checks
-  const handleAddBatchChecksSubmit = (e: React.FormEvent) => {
+  const handleAddBatchChecksSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const targetSup = suppliers.find(s => s.id === batchSupplierId);
     if (!targetSup) return;
@@ -252,24 +337,41 @@ export default function SuppliersPage() {
     setBatchCheckRows([
       { checkNumber: '', bankName: 'QNB', amount: 5000, dueDate: '2026-09-30', notes: '' },
     ]);
+
+    // #FIX: الشيكات المجمّعة كانت localStorage فقط بلا أى مزامنة سيرفر.
+    try {
+      await fetch('/api/supplier-checks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ checks: createdChecks }),
+      });
+    } catch (err) {
+      console.error('Failed to sync checks to server:', err);
+    }
   };
 
-  const handleToggleCheckStatus = (chkId: string) => {
-    const updated = checks.map(c => {
-      if (c.id === chkId) {
-        const nextStatus: SupplierCheck['status'] = c.status === 'قيد الانتظار' ? 'تم الصرف' : 'قيد الانتظار';
-        return { ...c, status: nextStatus };
-      }
-      return c;
-    });
+  const handleToggleCheckStatus = async (chkId: string) => {
+    const target = checks.find(c => c.id === chkId);
+    if (!target) return;
+    const nextStatus: SupplierCheck['status'] = target.status === 'قيد الانتظار' ? 'تم الصرف' : 'قيد الانتظار';
+    const updated = checks.map(c => c.id === chkId ? { ...c, status: nextStatus } : c);
     saveChecksState(updated);
+    try {
+      await fetch('/api/supplier-checks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: chkId, checkNumber: target.checkNumber, status: nextStatus }),
+      });
+    } catch (err) {
+      console.error('Failed to sync check status to server:', err);
+    }
   };
 
   const handleDeleteSupplier = async (id: string, name: string) => {
     if (!confirm(`هل أنت متأكد من حذف المورد "${name}"؟`)) return;
     saveSuppliersState(suppliers.filter(s => s.id !== id));
     if (selectedSupplier?.id === id) setSelectedSupplier(null);
-    // #FIX: حذف حقيقى من قاعدة البيانات — كان يرجع بعد أى ريفريش
+    // حذف حقيقى من قاعدة البيانات — نفس المفتاح المُعرَّف فى DELETE /api/system-data
     try {
       await fetch(`/api/system-data?key=${SUPPLIERS_KEY}&id=${encodeURIComponent(id)}`, { method: 'DELETE' });
     } catch (err) {
@@ -1149,6 +1251,16 @@ export default function SuppliersPage() {
               </div>
 
               <div>
+                <label className="text-slate-700 font-bold block mb-1">الفرع:</label>
+                <BranchSelect
+                  value={supBranch}
+                  onChange={setSupBranch}
+                  isAdmin={isAdmin}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900"
+                />
+              </div>
+
+              <div>
                 <label className="text-slate-700 font-bold block mb-1">الخامات الموردة (مفصولة بفارزة):</label>
                 <input
                   type="text"
@@ -1156,6 +1268,18 @@ export default function SuppliersPage() {
                   value={supCategories}
                   onChange={e => setSupCategories(e.target.value)}
                   className="w-full border border-slate-200 rounded-xl px-3 py-2 text-slate-900 focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-slate-700 font-bold block mb-1">رصيد افتتاحى (مديونية سابقة، اختيارى):</label>
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  value={supOpeningBalance || ''}
+                  onChange={e => setSupOpeningBalance(Number(e.target.value))}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 font-mono font-bold text-slate-900 focus:outline-none focus:border-amber-500"
                 />
               </div>
 

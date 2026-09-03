@@ -9,6 +9,7 @@ import TailoringPrintModal from '@/components/TailoringPrintModal';
 import WhatsAppShareButton from '@/components/WhatsAppShareButton';
 import OrderRowActions from '@/components/OrderRowActions';
 import { useCurrentUser } from '@/lib/useCurrentUser';
+import BranchSelect from '@/components/BranchSelect';
 
 interface RoomTailoringDetail {
   roomName: string;
@@ -294,16 +295,14 @@ export default function PipelineTailoringPage() {
           </div>
 
           <div className="sm:col-span-4">
-            <select
+            <BranchSelect
               value={selectedBranch}
-              onChange={(e) => setSelectedBranch(e.target.value)}
-              disabled={!isAdmin}
-              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-brand-gold shadow-2xs cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
-            >
-              <option value="ALL">عوامل تصفية: جميع الفروع</option>
-              <option value="الفرع الرئيسي">الفرع الرئيسي</option>
-              <option value="فرع عرابي">فرع عرابي</option>
-            </select>
+              onChange={setSelectedBranch}
+              isAdmin={isAdmin}
+              allValue="ALL"
+              allLabel="عوامل تصفية: جميع الفروع"
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-brand-gold shadow-2xs cursor-pointer"
+            />
           </div>
         </div>
 

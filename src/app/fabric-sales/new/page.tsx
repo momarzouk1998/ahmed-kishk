@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { canUserEditPrices } from '@/lib/permissions';
 import { useManagerGate, isManagerUnlocked } from '@/components/ManagerUnlockGate';
 import { useCurrentUser } from '@/lib/useCurrentUser';
+import BranchSelect from '@/components/BranchSelect';
 
 interface InvoiceLineItem {
   id: string;
@@ -514,17 +515,12 @@ export default function NewSalesInvoicePOSPage() {
                   dir="ltr"
                 />
 
-                <select
+                <BranchSelect
                   value={branch}
-                  onChange={e => setBranch(e.target.value)}
-                  disabled={!isAdmin}
-                  className="w-full border border-slate-200 rounded-lg px-2 py-1 font-bold text-slate-900 bg-slate-50 text-[10.5px] focus:outline-none disabled:opacity-70 disabled:cursor-not-allowed"
-                >
-                  <option value="الفرع الرئيسي">الفرع الرئيسي (سعد زغلول)</option>
-                  <option value="فرع عرابي">فرع عرابي</option>
-                  <option value="فرع الثلاثيني">فرع الثلاثيني</option>
-                  <option value="فرع عمر أفندي">فرع عمر أفندي</option>
-                </select>
+                  onChange={setBranch}
+                  isAdmin={isAdmin}
+                  className="w-full border border-slate-200 rounded-lg px-2 py-1 font-bold text-slate-900 bg-slate-50 text-[10.5px] focus:outline-none"
+                />
               </div>
             </div>
 

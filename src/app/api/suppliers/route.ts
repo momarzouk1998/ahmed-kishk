@@ -21,13 +21,35 @@ export async function POST(request: Request) {
   try {
     const scope = await getBranchScope(request);
     const body = await request.json();
-    const { id, name, phone, address, branch, balance, notes } = body;
+    const {
+      id, name, phone, address, branch, notes,
+      categoriesSupplied, totalPurchases, paidAmount, openingBalance,
+      balance, // = balanceOwed على الواجهة
+    } = body;
 
-    if (!name) {
+    const isPartialUpdate = !!id && !name;
+    if (!isPartialUpdate && !name) {
       return NextResponse.json({ success: false, error: 'اسم المورد مطلوب' }, { status: 400 });
     }
 
     const supplierId = id || `SUP-${Date.now()}`;
+
+    if (isPartialUpdate) {
+      // تحديث جزئى (مثلاً بعد تسجيل سداد) — لا يمس الحقول غير المُرسَلة
+      const supplier = await prisma.supplier.update({
+        where: { id: supplierId },
+        data: {
+          categoriesSupplied: Array.isArray(categoriesSupplied) ? categoriesSupplied : undefined,
+          totalPurchases: totalPurchases !== undefined ? Number(totalPurchases) : undefined,
+          paidAmount: paidAmount !== undefined ? Number(paidAmount) : undefined,
+          openingBalance: openingBalance !== undefined ? Number(openingBalance) : undefined,
+          balance: balance !== undefined ? Number(balance) : undefined,
+          notes: notes !== undefined ? notes : undefined,
+        },
+      });
+      return NextResponse.json({ success: true, supplier });
+    }
+
     const supplier = await prisma.supplier.upsert({
       where: { id: supplierId },
       create: {
@@ -36,6 +58,10 @@ export async function POST(request: Request) {
         phone: phone || '',
         address: address || '',
         branch: effectiveCreateBranch(scope, branch),
+        categoriesSupplied: Array.isArray(categoriesSupplied) ? categoriesSupplied : [],
+        totalPurchases: Number(totalPurchases) || 0,
+        paidAmount: Number(paidAmount) || 0,
+        openingBalance: Number(openingBalance) || 0,
         balance: Number(balance) || 0,
         notes: notes || '',
       },
@@ -44,8 +70,12 @@ export async function POST(request: Request) {
         phone: phone || '',
         address: address || '',
         branch: scope && !scope.isAdmin ? scope.branch : (branch || undefined),
-        balance: Number(balance) || 0,
-        notes: notes || '',
+        categoriesSupplied: Array.isArray(categoriesSupplied) ? categoriesSupplied : undefined,
+        totalPurchases: totalPurchases !== undefined ? Number(totalPurchases) : undefined,
+        paidAmount: paidAmount !== undefined ? Number(paidAmount) : undefined,
+        openingBalance: openingBalance !== undefined ? Number(openingBalance) : undefined,
+        balance: balance !== undefined ? Number(balance) : undefined,
+        notes: notes !== undefined ? notes : undefined,
       },
     });
 

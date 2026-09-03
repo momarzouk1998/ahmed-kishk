@@ -7,6 +7,7 @@ import InspectionPrintModal from '@/components/InspectionPrintModal';
 import CuttingPrintModal from '@/components/CuttingPrintModal';
 import TailoringPrintModal from '@/components/TailoringPrintModal';
 import { useCurrentUser } from '@/lib/useCurrentUser';
+import BranchSelect from '@/components/BranchSelect';
 import {
   getStoredPipelineOrders,
   fetchPipelineOrders,
@@ -320,16 +321,14 @@ export default function CentralOrdersLedgerPage() {
             </div>
 
             <div className="sm:col-span-4">
-              <select
+              <BranchSelect
                 value={selectedBranch}
-                onChange={e => setSelectedBranch(e.target.value)}
-                disabled={!isAdmin}
-                className="w-full border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 font-bold text-slate-800 focus:outline-none shadow-2xs cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
-              >
-                <option value="الكل">جميع الفروع</option>
-                <option value="الفرع الرئيسي">الفرع الرئيسي</option>
-                <option value="فرع عرابي">فرع عرابي</option>
-              </select>
+                onChange={setSelectedBranch}
+                isAdmin={isAdmin}
+                allValue="الكل"
+                allLabel="جميع الفروع"
+                className="w-full border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 font-bold text-slate-800 focus:outline-none shadow-2xs cursor-pointer"
+              />
             </div>
           </div>
 

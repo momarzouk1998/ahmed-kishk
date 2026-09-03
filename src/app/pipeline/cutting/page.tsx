@@ -8,6 +8,7 @@ import { formatDateOnly } from '@/lib/dateUtils';
 import CuttingPrintModal from '@/components/CuttingPrintModal';
 import OrderRowActions from '@/components/OrderRowActions';
 import { useCurrentUser } from '@/lib/useCurrentUser';
+import BranchSelect from '@/components/BranchSelect';
 
 interface RoomFabricItem {
   roomName: string;
@@ -245,18 +246,14 @@ export default function PipelineCuttingPage() {
           </div>
 
           <div className="sm:col-span-4">
-            <select
+            <BranchSelect
               value={selectedBranch}
-              onChange={(e) => setSelectedBranch(e.target.value)}
-              disabled={!isAdmin}
-              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 font-bold text-slate-800 focus:outline-none focus:border-brand-gold shadow-2xs cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
-            >
-              <option value="ALL">جميع الفروع</option>
-              <option value="الفرع الرئيسي">الفرع الرئيسي (سعد زغلول)</option>
-              <option value="فرع عرابي">فرع عرابي</option>
-              <option value="فرع عمر أفندي">فرع عمر أفندي</option>
-              <option value="فرع الثلاثيني">فرع الثلاثيني</option>
-            </select>
+              onChange={setSelectedBranch}
+              isAdmin={isAdmin}
+              allValue="ALL"
+              allLabel="جميع الفروع"
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 font-bold text-slate-800 focus:outline-none focus:border-brand-gold shadow-2xs cursor-pointer"
+            />
           </div>
         </div>
 

@@ -5,6 +5,7 @@ import PageShell from '@/components/PageShell';
 import { formatDateOnly } from '@/lib/dateUtils';
 import PdfPrintButton from '@/components/PdfPrintButton';
 import { useCurrentUser } from '@/lib/useCurrentUser';
+import BranchSelect from '@/components/BranchSelect';
 
 interface SalesInvoice {
   id: string;
@@ -317,14 +318,14 @@ export default function ReportsPage() {
               label="طباعة PDF (A4)"
               paperSize="A4"
             />
-            <select value={selectedBranch} onChange={e => setSelectedBranch(e.target.value)} disabled={!isAdmin}
-              className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800 focus:outline-none cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed">
-              <option value="ALL">🌐 كل الفروع</option>
-              <option value="الفرع الرئيسي">الرئيسى (سعد زغلول)</option>
-              <option value="فرع عرابي">فرع عرابى</option>
-              <option value="فرع عمر أفندي">فرع عمر أفندى</option>
-              <option value="فرع الثلاثيني">فرع الثلاثينى</option>
-            </select>
+            <BranchSelect
+              value={selectedBranch}
+              onChange={setSelectedBranch}
+              isAdmin={isAdmin}
+              allValue="ALL"
+              allLabel="🌐 كل الفروع"
+              className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800 focus:outline-none cursor-pointer"
+            />
             <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200">
               {(['today', 'thisWeek', 'thisMonth', 'all'] as Period[]).map(p => (
                 <button key={p} onClick={() => setPeriod(p)}

@@ -10,6 +10,7 @@ import InspectionPrintModal from '@/components/InspectionPrintModal';
 import { CURTAIN_TECHNICIANS, DEFAULT_TECHNICIAN } from '@/lib/technicians';
 import OrderRowActions from '@/components/OrderRowActions';
 import { useCurrentUser } from '@/lib/useCurrentUser';
+import BranchSelect from '@/components/BranchSelect';
 
 export type InspectionSummary = InspectionData;
 
@@ -308,18 +309,14 @@ export default function PipelineInspectionsPage() {
 
           {/* Filter 2: Branch */}
           <div className="sm:col-span-2">
-            <select
+            <BranchSelect
               value={selectedBranch}
-              onChange={(e) => { setSelectedBranch(e.target.value); setCurrentPage(1); }}
-              disabled={!isAdmin}
-              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-brand-gold shadow-2xs disabled:opacity-70 disabled:cursor-not-allowed"
-            >
-              <option value="ALL">جميع الفروع</option>
-              <option value="الفرع الرئيسي">الفرع الرئيسي (سعد زغلول)</option>
-              <option value="فرع عرابي">فرع عرابي</option>
-              <option value="فرع عمر أفندي">فرع عمر أفندي</option>
-              <option value="فرع الثلاثيني">فرع الثلاثيني</option>
-            </select>
+              onChange={(v) => { setSelectedBranch(v); setCurrentPage(1); }}
+              isAdmin={isAdmin}
+              allValue="ALL"
+              allLabel="جميع الفروع"
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-brand-gold shadow-2xs"
+            />
           </div>
 
           {/* Filter 3: Status */}
@@ -638,15 +635,20 @@ export default function PipelineInspectionsPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-bold text-slate-700">
-                    الفرع {!isAdmin && <span className="text-[10px] text-slate-400 font-normal">🔒</span>}
-                  </label>
-                  <select value={branch} onChange={e => setBranch(e.target.value)} disabled={!isAdmin} className="border border-slate-200 rounded-xl p-2 text-xs font-bold disabled:opacity-70 disabled:cursor-not-allowed">
-                    <option value="الفرع الرئيسي">الفرع الرئيسي (سعد زغلول)</option>
-                    <option value="فرع عرابي">فرع عرابي</option>
-                    <option value="فرع عمر أفندي">فرع عمر أفندي</option>
-                    <option value="فرع الثلاثيني">فرع الثلاثيني</option>
-                  </select>
+                  <label className="text-xs font-bold text-slate-700">الفرع</label>
+                  {isAdmin ? (
+                    <select value={branch} onChange={e => setBranch(e.target.value)} className="border border-slate-200 rounded-xl p-2 text-xs font-bold">
+                      <option value="الفرع الرئيسي">الفرع الرئيسي (سعد زغلول)</option>
+                      <option value="فرع عرابي">فرع عرابي</option>
+                      <option value="فرع عمر أفندي">فرع عمر أفندي</option>
+                      <option value="فرع الثلاثيني">فرع الثلاثيني</option>
+                    </select>
+                  ) : (
+                    <div className="border border-slate-200 rounded-xl p-2 text-xs font-bold bg-slate-100 text-slate-700 flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[14px] text-slate-400">lock</span>
+                      {branch}
+                    </div>
+                  )}
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-bold text-slate-700">الفني المسؤول</label>

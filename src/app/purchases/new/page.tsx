@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
+import { useCurrentUser } from '@/lib/useCurrentUser';
+import BranchSelect from '@/components/BranchSelect';
 import { useRouter } from 'next/navigation';
 
 interface PurchaseLineItem {
@@ -22,6 +24,10 @@ export default function NewPurchaseInvoicePage() {
   const [supplierName, setSupplierName] = useState('شركة النيل للأقمشة والمنسوجات');
   const [supplierPhone, setSupplierPhone] = useState('01099988877');
   const [branch, setBranch] = useState('الفرع الرئيسي');
+  const { user: currentUser, isAdmin } = useCurrentUser();
+  useEffect(() => {
+    if (!isAdmin && currentUser?.branch) setBranch(currentUser.branch);
+  }, [isAdmin, currentUser]);
 
   // Dynamic Line Items
   const [items, setItems] = useState<PurchaseLineItem[]>([
@@ -138,39 +144,35 @@ export default function NewPurchaseInvoicePage() {
       const updated = [newPur, ...existingPurchases];
       localStorage.setItem(PURCHASES_KEY, JSON.stringify(updated));
 
-      // Sync to server
-      await fetch('/api/system-data', {
+      // #FIX: كانت الفاتورة تُحفظ حصريًا فى blob مفتاحه (ahmed_kishk_purchase_invoices_v1)
+      // غير متعرَّف عليه فى POST /api/system-data — يعنى فواتير المشتريات الجديدة كانت
+      // بتختفى نهائيًا من قاعدة البيانات الحقيقية بعد أى ريفريش لصفحة القائمة (اللى بتقرأ
+      // من /api/purchases مباشرة). دلوقتى بتتحفظ فى الجدول الحقيقى فورًا.
+      await fetch('/api/purchases', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key: PURCHASES_KEY, data: updated }),
-      }).catch(() => {});
+        body: JSON.stringify(newPur),
+      }).catch(err => console.error('Failed to save purchase invoice to server:', err));
 
-      // إذا شيكات بنكية → قيّدها فى سجل شيكات الموردين
+      // إذا شيكات بنكية → قيّدها فى سجل شيكات الموردين الحقيقى (نفس الجدول اللى صفحة
+      // الموردين بتقرأ منه — كانا قبل كده فى مكانين منفصلين لا يريان بعضهما).
       if (attachedChecks.length > 0) {
         try {
-          const CHECKS_KEY = 'ahmed_kishk_supplier_checks_v1';
-          const rawChecks = localStorage.getItem(CHECKS_KEY);
-          const existingChecks = rawChecks ? JSON.parse(rawChecks) : [];
-          const newChecks = attachedChecks.map((c, i) => ({
-            id: `CHK-${Date.now()}-${i}`,
-            supplierName: supplierName.trim(),
-            invoiceNumber: purNum,
-            branch,
+          const newChecks = attachedChecks.map(c => ({
             checkNumber: c.checkNumber.trim(),
             bankName: c.bankName,
+            supplierName: supplierName.trim(),
             amount: Number(c.amount) || 0,
+            issueDate: new Date().toISOString().split('T')[0],
             dueDate: c.dueDate,
-            notes: c.notes || '',
-            status: 'قيد الاستحقاق',
-            createdAt: new Date().toISOString(),
+            notes: c.notes || `شيك فاتورة ${purNum}`,
+            status: 'قيد الانتظار',
           }));
-          const combinedChecks = [...newChecks, ...existingChecks];
-          localStorage.setItem(CHECKS_KEY, JSON.stringify(combinedChecks));
-          await fetch('/api/system-data', {
+          await fetch('/api/supplier-checks', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ key: CHECKS_KEY, data: combinedChecks }),
-          }).catch(() => {});
+            body: JSON.stringify({ checks: newChecks }),
+          }).catch(err => console.error('Failed to save checks to server:', err));
         } catch (err) { console.error('check sync failed', err); }
       }
 
@@ -235,16 +237,12 @@ export default function NewPurchaseInvoicePage() {
 
               <div>
                 <label className="text-slate-700 font-bold block mb-1">فرع التوريد:</label>
-                <select
+                <BranchSelect
                   value={branch}
-                  onChange={e => setBranch(e.target.value)}
+                  onChange={setBranch}
+                  isAdmin={isAdmin}
                   className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 font-bold text-slate-900 focus:outline-none bg-slate-50 cursor-pointer"
-                >
-                  <option value="الفرع الرئيسي">الفرع الرئيسي (سعد زغلول)</option>
-                  <option value="فرع عرابي">فرع عرابي</option>
-                  <option value="فرع عمر أفندي">فرع عمر أفندي</option>
-                  <option value="فرع الثلاثيني">فرع الثلاثيني</option>
-                </select>
+                />
               </div>
             </div>
           </div>

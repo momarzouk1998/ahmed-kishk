@@ -113,18 +113,12 @@ export default function FabricSalesPage() {
     loadData();
   }, []);
 
-  const saveInvoicesState = async (list: SalesInvoice[]) => {
+  // #FIX: كانت بتزامن مع /api/system-data بمفتاح غير متعرَّف عليه فى POST (blob ميت
+  // لا تقرأه صفحة القائمة أبداً). الآن state محلى فقط — التحديث الحقيقى للسيرفر
+  // يتم بشكل مباشر فى كل مكان يستدعيها (حذف حقيقى، أو POST لـ /api/fabric-sales).
+  const saveInvoicesState = (list: SalesInvoice[]) => {
     setInvoices(list);
     localStorage.setItem(SALES_INVOICES_KEY, JSON.stringify(list));
-    try {
-      await fetch('/api/system-data', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key: SALES_INVOICES_KEY, data: list }),
-      });
-    } catch (err) {
-      console.error('Failed to sync sales with server:', err);
-    }
   };
 
   const saveReturnsState = (list: CustomerSalesReturn[]) => {
@@ -161,7 +155,22 @@ export default function FabricSalesPage() {
 
     const updatedObj = { ...editingInvoice, remainingAmount: remaining, status: statusLabel };
     const updatedList = invoices.map(i => i.id === editingInvoice.id ? updatedObj : i);
-    await saveInvoicesState(updatedList);
+    setInvoices(updatedList);
+    localStorage.setItem(SALES_INVOICES_KEY, JSON.stringify(updatedList));
+
+    // #FIX: كان التعديل بيتحفظ فى blob مفتاحه مش متعرَّف عليه فى POST /api/system-data
+    // فكان يرجع للحالة القديمة بعد أى ريفريش. دلوقتى بيتحفظ مباشرة فى جدول الفاتورة الحقيقى
+    // (نفس الـ endpoint اللى فاتورة جديدة بتتحفظ بيه من fabric-sales/new).
+    try {
+      await fetch('/api/fabric-sales', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedObj),
+      });
+    } catch (err) {
+      console.error('Failed to save invoice update to server:', err);
+    }
+
     setEditingInvoice(null);
     if (selectedInvoice?.id === editingInvoice.id) setSelectedInvoice(updatedObj);
   };
