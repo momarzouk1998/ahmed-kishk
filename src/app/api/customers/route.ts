@@ -1,16 +1,21 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getBranchScope, effectiveCreateBranch } from '@/lib/branchScope';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const scope = await getBranchScope(request);
+    const restricted = !!(scope && !scope.isAdmin);
+
+    // "الفرع" للعميل مُخزَّن فعلياً فى city (لا يوجد عمود branch منفصل — راجع تعليق الـ schema).
     const [rawCustomers, rawInspections, rawQuotations, rawPipelineOrders, rawSales, collectionsStore] = await Promise.all([
-      prisma.customer.findMany({ orderBy: { updatedAt: 'desc' } }),
-      prisma.inspectionRequest.findMany({ orderBy: { createdAt: 'desc' } }),
-      prisma.quotationOrder.findMany({ orderBy: { createdAt: 'desc' } }),
-      prisma.pipelineOrder.findMany({ orderBy: { createdAt: 'desc' } }),
-      prisma.salesInvoice.findMany({ orderBy: { createdAt: 'desc' } }),
+      prisma.customer.findMany({ where: restricted ? { city: scope!.branch } : {}, orderBy: { updatedAt: 'desc' } }),
+      prisma.inspectionRequest.findMany({ where: restricted ? { branch: scope!.branch } : {}, orderBy: { createdAt: 'desc' } }),
+      prisma.quotationOrder.findMany({ where: restricted ? { branch: scope!.branch } : {}, orderBy: { createdAt: 'desc' } }),
+      prisma.pipelineOrder.findMany({ where: restricted ? { branch: scope!.branch } : {}, orderBy: { createdAt: 'desc' } }),
+      prisma.salesInvoice.findMany({ where: restricted ? { branch: scope!.branch } : {}, orderBy: { createdAt: 'desc' } }),
       prisma.systemStore.findUnique({ where: { key: 'ahmed_kishk_collections_v3' } }).catch(() => null),
     ]);
 
@@ -139,12 +144,15 @@ export async function GET() {
       customerMap.get(key).sales.push(s);
     }
 
-    // 6. Match Collections
+    // 6. Match Collections — لا يوجد حقل branch على سند التحصيل نفسه؛ عزل الفرع
+    // يتم بالتبعية عبر مطابقته بعميل موجود بالفعل فى customerMap (المُفلترة أصلاً بالفرع).
+    const visibleCollections: any[] = [];
     for (const col of rawCollections) {
       const key = normPhone(col.phone) || normName(col.customerName);
       if (!key) continue;
       if (customerMap.has(key)) {
         customerMap.get(key).collections.push(col);
+        visibleCollections.push(col);
       }
     }
 
@@ -323,7 +331,7 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       customers: resultCustomers,
-      collections: rawCollections,
+      collections: restricted ? visibleCollections : rawCollections,
     });
   } catch (error: any) {
     console.error('Customers GET error:', error);
@@ -333,6 +341,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const scope = await getBranchScope(request);
     const body = await request.json();
     const { id, name, phone, address, city, balance, notes, collections } = body;
 
@@ -362,14 +371,14 @@ export async function POST(request: Request) {
         name: name.trim(),
         phone: phone.trim(),
         address: address || '',
-        city: city || 'غير مسجل',
+        city: effectiveCreateBranch(scope, city, 'غير مسجل'),
         balance: Number(balance) || 0,
         notes: notes || '',
       },
       update: {
         name: name.trim(),
         address: address || '',
-        city: city || 'غير مسجل',
+        city: scope && !scope.isAdmin ? scope.branch : (city || 'غير مسجل'),
         balance: Number(balance) || 0,
         notes: notes || '',
       },

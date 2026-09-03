@@ -8,6 +8,7 @@ import { formatDateOnly } from '@/lib/dateUtils';
 import TailoringPrintModal from '@/components/TailoringPrintModal';
 import WhatsAppShareButton from '@/components/WhatsAppShareButton';
 import OrderRowActions from '@/components/OrderRowActions';
+import { useCurrentUser } from '@/lib/useCurrentUser';
 
 interface RoomTailoringDetail {
   roomName: string;
@@ -62,6 +63,10 @@ export default function PipelineTailoringPage() {
   const [activeTab, setActiveTab] = useState<'SEWING' | 'IRONING' | 'HISTORY'>('SEWING');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBranch, setSelectedBranch] = useState<string>('ALL');
+  const { user: currentUser, isAdmin } = useCurrentUser();
+  useEffect(() => {
+    if (!isAdmin && currentUser?.branch) setSelectedBranch(currentUser.branch);
+  }, [isAdmin, currentUser]);
 
   // Selected Order for Detail View & Editable Heights Modal
   const [selectedOrderDetails, setSelectedOrderDetails] = useState<TailoringJobOrder | null>(null);
@@ -305,7 +310,8 @@ export default function PipelineTailoringPage() {
             <select
               value={selectedBranch}
               onChange={(e) => setSelectedBranch(e.target.value)}
-              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-brand-gold shadow-2xs cursor-pointer"
+              disabled={!isAdmin}
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-brand-gold shadow-2xs cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
             >
               <option value="ALL">عوامل تصفية: جميع الفروع</option>
               <option value="الفرع الرئيسي">الفرع الرئيسي</option>

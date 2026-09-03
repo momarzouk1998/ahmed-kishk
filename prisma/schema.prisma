@@ -56,6 +56,10 @@ model Customer {
   name      String
   phone     String   @unique
   address   String?
+  // ملحوظة: `city` تُستخدم فعلياً كحقل "الفرع" (القوائم المنسدلة فى الواجهة
+  // تعرض أسماء الفروع الأربعة وتحفظها هنا) — لا يوجد عمود city حقيقى منفصل،
+  // ولا عمود branch مستقل، تفادياً لتكرار نفس المعنى بقيمة افتراضية خاطئة
+  // للعملاء الحاليين. عزل الفرع لهذا الجدول يعتمد على `city`.
   city      String?
   balance   Float    @default(0)
   notes     String?
@@ -133,7 +137,7 @@ model InventoryItem {
   reservedQuantity Float    @default(0)
   costPrice        Float    @default(0)
   sellPrice        Float    @default(0)
-  branch           String   @default("الفرع الرئيسي — القاهرة")
+  branch           String   @default("الفرع الرئيسي")
   minAlert         Float    @default(20)
   supplier         String   @default("شركة النيل")
   createdAt        DateTime @default(now())
@@ -145,6 +149,7 @@ model Supplier {
   name      String
   phone     String?
   address   String?
+  branch    String   @default("الفرع الرئيسي")
   balance   Float    @default(0)
   notes     String?
   createdAt DateTime @default(now())

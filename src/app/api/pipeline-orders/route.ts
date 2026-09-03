@@ -1,11 +1,14 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getBranchScope, branchWhere, effectiveCreateBranch } from '@/lib/branchScope';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const scope = await getBranchScope(request);
     const orders = await prisma.pipelineOrder.findMany({
+      where: branchWhere(scope),
       orderBy: { updatedAt: 'desc' },
     });
 
@@ -18,6 +21,10 @@ export async function GET() {
         fallbackOrders = store.data as any[];
       }
     } catch {}
+
+    if (scope && !scope.isAdmin) {
+      fallbackOrders = fallbackOrders.filter((o: any) => o?.branch === scope.branch);
+    }
 
     const orderMap = new Map<string, any>();
     fallbackOrders.forEach(o => {
@@ -36,6 +43,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const scope = await getBranchScope(request);
     const body = await request.json();
     const rawList = Array.isArray(body.orders) ? body.orders : (Array.isArray(body) ? body : [body]);
 
@@ -44,6 +52,7 @@ export async function POST(request: Request) {
       if (!item) continue;
       const cleanOrderId = item.orderId || item.id || `ORD-${Date.now()}`;
       const targetId = item.id || `ORD-${cleanOrderId.replace(/^ORD-/, '')}`;
+      const effBranch = effectiveCreateBranch(scope, item.branch);
 
       // Check if existing record exists by id, orderId or customerName
       const existing = await prisma.pipelineOrder.findFirst({
@@ -68,7 +77,7 @@ export async function POST(request: Request) {
           customerName: item.customerName || '',
           phone: item.phone || '',
           address: item.address || '',
-          branch: item.branch || 'الفرع الرئيسي',
+          branch: effBranch,
           deliveryDate: item.deliveryDate ? String(item.deliveryDate) : null,
           cutterName: item.cutterName || null,
           tailorName: item.tailorName || null,
@@ -85,7 +94,7 @@ export async function POST(request: Request) {
           customerName: item.customerName || undefined,
           phone: item.phone || undefined,
           address: item.address || undefined,
-          branch: item.branch || undefined,
+          branch: scope && !scope.isAdmin ? scope.branch : (item.branch || undefined),
           status: item.status || undefined,
           localStatus: item.localStatus || undefined,
           cutterName: item.cutterName !== undefined ? item.cutterName : undefined,

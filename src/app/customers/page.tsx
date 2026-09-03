@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
 import { formatDateOnly } from '@/lib/dateUtils';
 import PdfPrintButton from '@/components/PdfPrintButton';
+import { useCurrentUser } from '@/lib/useCurrentUser';
 
 interface CustomerLedgerEntry {
   id: string;
@@ -71,6 +72,11 @@ export default function CustomersPage() {
   const [custPhone, setCustPhone] = useState('');
   const [custAddress, setCustAddress] = useState('');
   const [custCity, setCustCity] = useState('الفرع الرئيسي');
+  const { user: currentUser, isAdmin } = useCurrentUser();
+  // موظف مقيّد بفرع: أى عميل جديد يُسجَّل على فرعه هو فقط
+  useEffect(() => {
+    if (!isAdmin && currentUser?.branch) setCustCity(currentUser.branch);
+  }, [isAdmin, currentUser]);
   const [custNotes, setCustNotes] = useState('');
 
   // New Collection Form
@@ -824,11 +830,14 @@ export default function CustomersPage() {
               </div>
 
               <div>
-                <label className="text-slate-700 font-bold block mb-1">الفرع / المدينة:</label>
+                <label className="text-slate-700 font-bold block mb-1">
+                  الفرع / المدينة: {!isAdmin && <span className="text-[10px] text-slate-400 font-normal">🔒 مقفول على فرعك</span>}
+                </label>
                 <select
                   value={custCity}
                   onChange={e => setCustCity(e.target.value)}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900 bg-slate-50 focus:outline-none"
+                  disabled={!isAdmin}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900 bg-slate-50 focus:outline-none disabled:opacity-70 disabled:cursor-not-allowed"
                 >
                   <option value="الفرع الرئيسي">الفرع الرئيسي (سعد زغلول)</option>
                   <option value="فرع عرابي">فرع عرابي</option>

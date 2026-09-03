@@ -10,6 +10,7 @@ import {
   normalizeQuotationStatus,
 } from '@/lib/inspectionsStore';
 import OrderRowActions from '@/components/OrderRowActions';
+import { useCurrentUser } from '@/lib/useCurrentUser';
 function getBranchBadgeStyle(branchName: string) {
   switch (branchName) {
     case 'الفرع الرئيسي':
@@ -33,6 +34,10 @@ export default function PipelinePricingPage() {
 
   // Filters
   const [selectedBranch, setSelectedBranch] = useState<string>('ALL');
+  const { user: currentUser, isAdmin } = useCurrentUser();
+  useEffect(() => {
+    if (!isAdmin && currentUser?.branch) setSelectedBranch(currentUser.branch);
+  }, [isAdmin, currentUser]);
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
 
   useEffect(() => {
@@ -129,7 +134,8 @@ export default function PipelinePricingPage() {
             <select
               value={selectedBranch}
               onChange={(e) => setSelectedBranch(e.target.value)}
-              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-brand-gold shadow-2xs"
+              disabled={!isAdmin}
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-brand-gold shadow-2xs disabled:opacity-70 disabled:cursor-not-allowed"
             >
               <option value="ALL">جميع الفروع</option>
               <option value="الفرع الرئيسي">الفرع الرئيسي (سعد زغلول)</option>

@@ -1,46 +1,52 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getBranchScope, branchWhere } from '@/lib/branchScope';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   try {
+    const scope = await getBranchScope(request);
+    const bw = branchWhere(scope);
+    // Customer ليس له عمود branch — الفرع مُخزَّن فى city.
+    const customerWhere = scope && !scope.isAdmin ? { city: scope.branch } : {};
+
     const { searchParams } = new URL(request.url);
     const key = searchParams.get('key');
 
     if (key === 'ahmed_kishk_inspections_data_v4') {
-      const inspections = await prisma.inspectionRequest.findMany({ orderBy: { updatedAt: 'desc' } });
+      const inspections = await prisma.inspectionRequest.findMany({ where: bw, orderBy: { updatedAt: 'desc' } });
       return NextResponse.json({ success: true, key, data: inspections });
     }
     if (key === 'ahmed_kishk_quotations_data_v4') {
-      const quotations = await prisma.quotationOrder.findMany({ orderBy: { updatedAt: 'desc' } });
+      const quotations = await prisma.quotationOrder.findMany({ where: bw, orderBy: { updatedAt: 'desc' } });
       return NextResponse.json({ success: true, key, data: quotations });
     }
     if (key === 'ahmed_kishk_pipeline_orders_v5') {
-      const orders = await prisma.pipelineOrder.findMany({ orderBy: { updatedAt: 'desc' } });
+      const orders = await prisma.pipelineOrder.findMany({ where: bw, orderBy: { updatedAt: 'desc' } });
       return NextResponse.json({ success: true, key, data: orders });
     }
     if (key === 'ahmed_kishk_customers_v3') {
-      const customers = await prisma.customer.findMany({ orderBy: { updatedAt: 'desc' } });
+      const customers = await prisma.customer.findMany({ where: customerWhere, orderBy: { updatedAt: 'desc' } });
       return NextResponse.json({ success: true, key, data: customers });
     }
     if (key === 'ahmed_kishk_inventory_v3') {
-      const inventory = await prisma.inventoryItem.findMany({ orderBy: { updatedAt: 'desc' } });
+      const inventory = await prisma.inventoryItem.findMany({ where: bw, orderBy: { updatedAt: 'desc' } });
       return NextResponse.json({ success: true, key, data: inventory });
     }
     if (key === 'ahmed_kishk_suppliers_v3') {
-      const suppliers = await prisma.supplier.findMany({ orderBy: { updatedAt: 'desc' } });
+      const suppliers = await prisma.supplier.findMany({ where: bw, orderBy: { updatedAt: 'desc' } });
       return NextResponse.json({ success: true, key, data: suppliers });
     }
     if (key === 'ahmed_kishk_sales_invoices_v1') {
-      const sales = await prisma.salesInvoice.findMany({ orderBy: { updatedAt: 'desc' } });
+      const sales = await prisma.salesInvoice.findMany({ where: bw, orderBy: { updatedAt: 'desc' } });
       return NextResponse.json({ success: true, key, data: sales });
     }
     if (key === 'ahmed_kishk_purchases_v3') {
-      const purchases = await prisma.purchaseInvoice.findMany({ orderBy: { updatedAt: 'desc' } });
+      const purchases = await prisma.purchaseInvoice.findMany({ where: bw, orderBy: { updatedAt: 'desc' } });
       return NextResponse.json({ success: true, key, data: purchases });
     }
-    // Fallback: أى key غير معروف يُقرأ من SystemStore
+    // Fallback: أى key غير معروف يُقرأ من SystemStore (بلا عزل فرع — بيانات إعدادات عامة عادةً)
     if (key) {
       const rec = await prisma.systemStore.findUnique({ where: { key } });
       const raw = rec?.data as any;
@@ -50,14 +56,14 @@ export async function GET(request: Request) {
 
     // Return all relational tables
     const [inspections, quotations, orders, customers, inventory, suppliers, sales, purchases] = await Promise.all([
-      prisma.inspectionRequest.findMany({ orderBy: { updatedAt: 'desc' } }),
-      prisma.quotationOrder.findMany({ orderBy: { updatedAt: 'desc' } }),
-      prisma.pipelineOrder.findMany({ orderBy: { updatedAt: 'desc' } }),
-      prisma.customer.findMany({ orderBy: { updatedAt: 'desc' } }),
-      prisma.inventoryItem.findMany({ orderBy: { updatedAt: 'desc' } }),
-      prisma.supplier.findMany({ orderBy: { updatedAt: 'desc' } }),
-      prisma.salesInvoice.findMany({ orderBy: { updatedAt: 'desc' } }),
-      prisma.purchaseInvoice.findMany({ orderBy: { updatedAt: 'desc' } }),
+      prisma.inspectionRequest.findMany({ where: bw, orderBy: { updatedAt: 'desc' } }),
+      prisma.quotationOrder.findMany({ where: bw, orderBy: { updatedAt: 'desc' } }),
+      prisma.pipelineOrder.findMany({ where: bw, orderBy: { updatedAt: 'desc' } }),
+      prisma.customer.findMany({ where: customerWhere, orderBy: { updatedAt: 'desc' } }),
+      prisma.inventoryItem.findMany({ where: bw, orderBy: { updatedAt: 'desc' } }),
+      prisma.supplier.findMany({ where: bw, orderBy: { updatedAt: 'desc' } }),
+      prisma.salesInvoice.findMany({ where: bw, orderBy: { updatedAt: 'desc' } }),
+      prisma.purchaseInvoice.findMany({ where: bw, orderBy: { updatedAt: 'desc' } }),
     ]);
 
     const dataMap: Record<string, any> = {

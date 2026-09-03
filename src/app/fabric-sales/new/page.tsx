@@ -5,6 +5,7 @@ import PageShell from '@/components/PageShell';
 import { useRouter } from 'next/navigation';
 import { canUserEditPrices } from '@/lib/permissions';
 import { useManagerGate, isManagerUnlocked } from '@/components/ManagerUnlockGate';
+import { useCurrentUser } from '@/lib/useCurrentUser';
 
 interface InvoiceLineItem {
   id: string;
@@ -63,7 +64,10 @@ export default function NewSalesInvoicePOSPage() {
   const [customerType, setCustomerType] = useState<'WALK_IN' | 'REGISTERED'>('WALK_IN');
   const [custName, setCustName] = useState('عميل نقدي');
   const [custPhone, setCustPhone] = useState('');
-  const [branch, setBranch] = useState('الفرع الرئيسي — سعد زغلول');
+  // #FIX: كانت القيمة الافتراضية "الفرع الرئيسي — سعد زغلول" لا تطابق القيمة
+  // القياسية "الفرع الرئيسي" المستخدمة فى كل مكان آخر بالنظام (بما فيها الفلترة
+  // حسب الفرع فى الـ API)، فكانت فواتير الفرع الرئيسى تُسجَّل بقيمة فرع مختلفة فعلياً.
+  const [branch, setBranch] = useState('الفرع الرئيسي');
 
   // Invoice Line Items (Table rows)
   const [items, setItems] = useState<InvoiceLineItem[]>([]);
@@ -76,6 +80,12 @@ export default function NewSalesInvoicePOSPage() {
   // Discount States
   const [discountType, setDiscountType] = useState<'EGP' | 'PERCENT'>('EGP');
   const [discountValue, setDiscountValue] = useState<number>(0);
+
+  // موظف مقيّد بفرع: الفاتورة تُسجَّل على فرعه هو فقط
+  const { user: currentUser, isAdmin } = useCurrentUser();
+  useEffect(() => {
+    if (!isAdmin && currentUser?.branch) setBranch(currentUser.branch);
+  }, [isAdmin, currentUser]);
 
   // Manager unlock gate — للتحكم فى تعديل الأسعار والخصومات
   const { requestUnlock, Modal: MgrModal } = useManagerGate();
@@ -507,9 +517,10 @@ export default function NewSalesInvoicePOSPage() {
                 <select
                   value={branch}
                   onChange={e => setBranch(e.target.value)}
-                  className="w-full border border-slate-200 rounded-lg px-2 py-1 font-bold text-slate-900 bg-slate-50 text-[10.5px] focus:outline-none"
+                  disabled={!isAdmin}
+                  className="w-full border border-slate-200 rounded-lg px-2 py-1 font-bold text-slate-900 bg-slate-50 text-[10.5px] focus:outline-none disabled:opacity-70 disabled:cursor-not-allowed"
                 >
-                  <option value="الفرع الرئيسي — سعد زغلول">الفرع الرئيسي — سعد زغلول</option>
+                  <option value="الفرع الرئيسي">الفرع الرئيسي (سعد زغلول)</option>
                   <option value="فرع عرابي">فرع عرابي</option>
                   <option value="فرع الثلاثيني">فرع الثلاثيني</option>
                   <option value="فرع عمر أفندي">فرع عمر أفندي</option>

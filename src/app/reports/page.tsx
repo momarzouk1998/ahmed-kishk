@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import PageShell from '@/components/PageShell';
 import { formatDateOnly } from '@/lib/dateUtils';
 import PdfPrintButton from '@/components/PdfPrintButton';
+import { useCurrentUser } from '@/lib/useCurrentUser';
 
 interface SalesInvoice {
   id: string;
@@ -78,6 +79,10 @@ export default function ReportsPage() {
   const [reportType, setReportType] = useState<ReportTab>('sales');
   const [period, setPeriod] = useState<Period>('today');
   const [selectedBranch, setSelectedBranch] = useState<string>('ALL');
+  const { user: currentUser, isAdmin } = useCurrentUser();
+  useEffect(() => {
+    if (!isAdmin && currentUser?.branch) setSelectedBranch(currentUser.branch);
+  }, [isAdmin, currentUser]);
 
   const [invoices, setInvoices] = useState<SalesInvoice[]>([]);
   const [purchases, setPurchases] = useState<PurchaseInvoice[]>([]);
@@ -312,8 +317,8 @@ export default function ReportsPage() {
               label="طباعة PDF (A4)"
               paperSize="A4"
             />
-            <select value={selectedBranch} onChange={e => setSelectedBranch(e.target.value)}
-              className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800 focus:outline-none cursor-pointer">
+            <select value={selectedBranch} onChange={e => setSelectedBranch(e.target.value)} disabled={!isAdmin}
+              className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800 focus:outline-none cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed">
               <option value="ALL">🌐 كل الفروع</option>
               <option value="الفرع الرئيسي">الرئيسى (سعد زغلول)</option>
               <option value="فرع عرابي">فرع عرابى</option>

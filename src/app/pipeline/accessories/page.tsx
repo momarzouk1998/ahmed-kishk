@@ -6,6 +6,7 @@ import { fetchPipelineOrders, updatePipelineOrderStatus, PipelineMasterOrder } f
 import { fetchQuotations } from '@/lib/inspectionsStore';
 import AccessoriesPrintModal from '@/components/AccessoriesPrintModal';
 import OrderRowActions from '@/components/OrderRowActions';
+import { useCurrentUser } from '@/lib/useCurrentUser';
 
 interface AccessoryItemSpec {
   name: string;
@@ -36,6 +37,10 @@ export default function PipelineAccessoriesPage() {
   const [newItemDetail, setNewItemDetail] = useState('');
   const [newItemQty, setNewItemQty] = useState(1);
   const [selectedBranch, setSelectedBranch] = useState<string>('ALL');
+  const { user: currentUser, isAdmin } = useCurrentUser();
+  useEffect(() => {
+    if (!isAdmin && currentUser?.branch) setSelectedBranch(currentUser.branch);
+  }, [isAdmin, currentUser]);
 
   // Printable Kit Modal State
   const [printTargetKit, setPrintTargetKit] = useState<AccessoryKit | null>(null);
@@ -318,7 +323,8 @@ export default function PipelineAccessoriesPage() {
             <select
               value={selectedBranch}
               onChange={(e) => setSelectedBranch(e.target.value)}
-              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-brand-gold shadow-2xs cursor-pointer"
+              disabled={!isAdmin}
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-brand-gold shadow-2xs cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
             >
               <option value="ALL">عوامل تصفية: جميع الفروع</option>
               <option value="الفرع الرئيسي">الفرع الرئيسي</option>

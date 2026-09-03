@@ -9,6 +9,7 @@ import { formatDate } from '@/lib/dateUtils';
 import InspectionPrintModal from '@/components/InspectionPrintModal';
 import { CURTAIN_TECHNICIANS, DEFAULT_TECHNICIAN } from '@/lib/technicians';
 import OrderRowActions from '@/components/OrderRowActions';
+import { useCurrentUser } from '@/lib/useCurrentUser';
 
 export type InspectionSummary = InspectionData;
 
@@ -55,6 +56,13 @@ export default function PipelineInspectionsPage() {
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
   const [branch, setBranch] = useState('الفرع الرئيسي');
+  const { user: currentUser, isAdmin } = useCurrentUser();
+  useEffect(() => {
+    if (!isAdmin && currentUser?.branch) setBranch(currentUser.branch);
+  }, [isAdmin, currentUser]);
+  useEffect(() => {
+    if (!isAdmin && currentUser?.branch) setSelectedBranch(currentUser.branch);
+  }, [isAdmin, currentUser]);
   const [tech, setTech] = useState(DEFAULT_TECHNICIAN);
   const [schedule, setSchedule] = useState('');
 
@@ -303,7 +311,8 @@ export default function PipelineInspectionsPage() {
             <select
               value={selectedBranch}
               onChange={(e) => { setSelectedBranch(e.target.value); setCurrentPage(1); }}
-              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-brand-gold shadow-2xs"
+              disabled={!isAdmin}
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-brand-gold shadow-2xs disabled:opacity-70 disabled:cursor-not-allowed"
             >
               <option value="ALL">جميع الفروع</option>
               <option value="الفرع الرئيسي">الفرع الرئيسي (سعد زغلول)</option>
@@ -629,8 +638,10 @@ export default function PipelineInspectionsPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-bold text-slate-700">الفرع</label>
-                  <select value={branch} onChange={e => setBranch(e.target.value)} className="border border-slate-200 rounded-xl p-2 text-xs font-bold">
+                  <label className="text-xs font-bold text-slate-700">
+                    الفرع {!isAdmin && <span className="text-[10px] text-slate-400 font-normal">🔒</span>}
+                  </label>
+                  <select value={branch} onChange={e => setBranch(e.target.value)} disabled={!isAdmin} className="border border-slate-200 rounded-xl p-2 text-xs font-bold disabled:opacity-70 disabled:cursor-not-allowed">
                     <option value="الفرع الرئيسي">الفرع الرئيسي (سعد زغلول)</option>
                     <option value="فرع عرابي">فرع عرابي</option>
                     <option value="فرع عمر أفندي">فرع عمر أفندي</option>

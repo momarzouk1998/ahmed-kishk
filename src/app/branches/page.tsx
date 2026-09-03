@@ -347,7 +347,10 @@ export default function BranchesAndPermissionsPage() {
                     </td>
                     <td className="p-4 text-center">
                       <span className="font-mono font-black text-brand-gold-dark bg-amber-50 border border-amber-200 px-3 py-1 rounded-full">
-                        {emp.allowedPageIds.length} من {ALL_SYSTEM_PAGES.length} صفحة
+                        {/* #FIX: allowedPageIds كانت بتحتوى مفاتيح صلاحيات فرعية (_edit_price, _edit, _delete)
+                            بجانب معرّفات الصفحات الحقيقية، فكان العدد بيتجاوز 17 صفحة. العدّ هنا بيقتصر
+                            على المعرّفات الموجودة فعلاً فى ALL_SYSTEM_PAGES فقط. */}
+                        {ALL_SYSTEM_PAGES.filter(p => emp.allowedPageIds.includes(p.id)).length} من {ALL_SYSTEM_PAGES.length} صفحة
                       </span>
                     </td>
                     <td className="p-4 text-center">

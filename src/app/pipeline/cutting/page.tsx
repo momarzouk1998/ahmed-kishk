@@ -7,6 +7,7 @@ import { fetchQuotations } from '@/lib/inspectionsStore';
 import { formatDateOnly } from '@/lib/dateUtils';
 import CuttingPrintModal from '@/components/CuttingPrintModal';
 import OrderRowActions from '@/components/OrderRowActions';
+import { useCurrentUser } from '@/lib/useCurrentUser';
 
 interface RoomFabricItem {
   roomName: string;
@@ -33,6 +34,10 @@ export default function PipelineCuttingPage() {
   const [activeTab, setActiveTab] = useState<'OPEN' | 'SENT'>('OPEN');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBranch, setSelectedBranch] = useState<string>('ALL');
+  const { user: currentUser, isAdmin } = useCurrentUser();
+  useEffect(() => {
+    if (!isAdmin && currentUser?.branch) setSelectedBranch(currentUser.branch);
+  }, [isAdmin, currentUser]);
   const [selectedOrderForPrint, setSelectedOrderForPrint] = useState<CuttingOrder | null>(null);
 
   useEffect(() => {
@@ -254,7 +259,8 @@ export default function PipelineCuttingPage() {
             <select
               value={selectedBranch}
               onChange={(e) => setSelectedBranch(e.target.value)}
-              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 font-bold text-slate-800 focus:outline-none focus:border-brand-gold shadow-2xs cursor-pointer"
+              disabled={!isAdmin}
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 font-bold text-slate-800 focus:outline-none focus:border-brand-gold shadow-2xs cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
             >
               <option value="ALL">جميع الفروع</option>
               <option value="الفرع الرئيسي">الفرع الرئيسي (سعد زغلول)</option>

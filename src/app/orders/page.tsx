@@ -6,6 +6,7 @@ import ContractPrintModal, { PrintContractData } from '@/components/ContractPrin
 import InspectionPrintModal from '@/components/InspectionPrintModal';
 import CuttingPrintModal from '@/components/CuttingPrintModal';
 import TailoringPrintModal from '@/components/TailoringPrintModal';
+import { useCurrentUser } from '@/lib/useCurrentUser';
 import {
   getStoredPipelineOrders,
   fetchPipelineOrders,
@@ -45,6 +46,10 @@ export default function CentralOrdersLedgerPage() {
   const [search, setSearch] = useState('');
   const [selectedStage, setSelectedStage] = useState<GlobalMasterStage | 'الكل'>('الكل');
   const [selectedBranch, setSelectedBranch] = useState('الكل');
+  const { user: currentUser, isAdmin } = useCurrentUser();
+  useEffect(() => {
+    if (!isAdmin && currentUser?.branch) setSelectedBranch(currentUser.branch);
+  }, [isAdmin, currentUser]);
 
   // Full Order Editing Drawer State
   const [activeEditingOrder, setActiveEditingOrder] = useState<PipelineMasterOrder | null>(null);
@@ -318,7 +323,8 @@ export default function CentralOrdersLedgerPage() {
               <select
                 value={selectedBranch}
                 onChange={e => setSelectedBranch(e.target.value)}
-                className="w-full border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 font-bold text-slate-800 focus:outline-none shadow-2xs cursor-pointer"
+                disabled={!isAdmin}
+                className="w-full border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 font-bold text-slate-800 focus:outline-none shadow-2xs cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
               >
                 <option value="الكل">جميع الفروع</option>
                 <option value="الفرع الرئيسي">الفرع الرئيسي</option>

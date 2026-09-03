@@ -1,11 +1,14 @@
 ﻿import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getBranchScope, branchWhere, effectiveCreateBranch } from '@/lib/branchScope';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const scope = await getBranchScope(request);
     const purchases = await prisma.purchaseInvoice.findMany({
+      where: branchWhere(scope),
       orderBy: { updatedAt: 'desc' },
     });
     return NextResponse.json({ success: true, purchases });
@@ -16,6 +19,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const scope = await getBranchScope(request);
     const body = await request.json();
     const { id, invoiceNumber, supplierName, branch, totalAmount, paidAmount, remainingAmount, date, items, notes } = body;
 
@@ -26,7 +30,7 @@ export async function POST(request: Request) {
         id: id || invNum,
         invoiceNumber: invNum,
         supplierName: supplierName || 'مورد عام',
-        branch: branch || 'الفرع الرئيسي',
+        branch: effectiveCreateBranch(scope, branch),
         totalAmount: Number(totalAmount) || 0,
         paidAmount: Number(paidAmount) || 0,
         remainingAmount: Number(remainingAmount) || 0,

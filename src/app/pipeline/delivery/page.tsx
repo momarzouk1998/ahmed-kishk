@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
 import { getStoredPipelineOrders, fetchPipelineOrders, updatePipelineOrderStatus, isTodayOrOverdue } from '@/lib/pipelineStore';
 import OrderRowActions from '@/components/OrderRowActions';
+import { useCurrentUser } from '@/lib/useCurrentUser';
 
 interface DeliveryJob {
   id: string;
@@ -23,6 +24,10 @@ export default function PipelineDeliveryPage() {
   const [activeTab, setActiveTab] = useState<'TODAY' | 'SCHEDULED' | 'SENT'>('TODAY');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBranch, setSelectedBranch] = useState<string>('ALL');
+  const { user: currentUser, isAdmin } = useCurrentUser();
+  useEffect(() => {
+    if (!isAdmin && currentUser?.branch) setSelectedBranch(currentUser.branch);
+  }, [isAdmin, currentUser]);
 
   useEffect(() => {
     async function load() {
@@ -166,7 +171,8 @@ export default function PipelineDeliveryPage() {
             <select
               value={selectedBranch}
               onChange={(e) => setSelectedBranch(e.target.value)}
-              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-brand-gold shadow-2xs cursor-pointer"
+              disabled={!isAdmin}
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-brand-gold shadow-2xs cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
             >
               <option value="ALL">عوامل تصفية: جميع الفروع</option>
               <option value="الفرع الرئيسي">الفرع الرئيسي</option>

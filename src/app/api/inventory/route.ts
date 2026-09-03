@@ -1,11 +1,14 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getBranchScope, branchWhere, effectiveCreateBranch } from '@/lib/branchScope';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const scope = await getBranchScope(request);
     const items = await prisma.inventoryItem.findMany({
+      where: branchWhere(scope),
       orderBy: { updatedAt: 'desc' },
     });
     return NextResponse.json({ success: true, items });
@@ -16,11 +19,23 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const scope = await getBranchScope(request);
     const body = await request.json();
     const { id, code, name, category, unit, totalQuantity, reservedQuantity, costPrice, sellPrice, branch, minAlert, supplier } = body;
 
     if (!code || !name) {
       return NextResponse.json({ success: false, error: 'كود الصنف والاسم مطلوبان' }, { status: 400 });
+    }
+
+    const effBranch = effectiveCreateBranch(scope, branch);
+
+    // #GUARD: الكود فريد على مستوى النظام كله (لا لكل فرع). موظف مقيّد لا يستطيع
+    // الاستيلاء على صنف فرع آخر بمجرد كتابة نفس الكود.
+    if (scope && !scope.isAdmin) {
+      const existingByCode = await prisma.inventoryItem.findUnique({ where: { code: code.trim() } });
+      if (existingByCode && existingByCode.branch !== scope.branch) {
+        return NextResponse.json({ success: false, error: 'هذا الكود مستخدم بالفعل فى فرع آخر — اختر كوداً مختلفاً' }, { status: 409 });
+      }
     }
 
     const item = await prisma.inventoryItem.upsert({
@@ -35,7 +50,7 @@ export async function POST(request: Request) {
         reservedQuantity: Number(reservedQuantity) || 0,
         costPrice: Number(costPrice) || 0,
         sellPrice: Number(sellPrice) || 0,
-        branch: branch || 'الفرع الرئيسي',
+        branch: effBranch,
         minAlert: Number(minAlert) || 20,
         supplier: supplier || 'شركة النيل',
       },
@@ -47,7 +62,7 @@ export async function POST(request: Request) {
         reservedQuantity: reservedQuantity !== undefined ? Number(reservedQuantity) : undefined,
         costPrice: costPrice !== undefined ? Number(costPrice) : undefined,
         sellPrice: sellPrice !== undefined ? Number(sellPrice) : undefined,
-        branch: branch || undefined,
+        branch: scope && !scope.isAdmin ? scope.branch : (branch || undefined),
         minAlert: minAlert !== undefined ? Number(minAlert) : undefined,
         supplier: supplier || undefined,
       },
