@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
-import { getStoredPipelineOrders, fetchPipelineOrders, updatePipelineOrderStatus, saveStoredPipelineOrders } from '@/lib/pipelineStore';
+import { getStoredPipelineOrders, fetchPipelineOrders, updatePipelineOrderStatus, saveStoredPipelineOrders, normalizeMasterStage } from '@/lib/pipelineStore';
 import { fetchQuotations } from '@/lib/inspectionsStore';
 import { formatDateOnly } from '@/lib/dateUtils';
 import TailoringPrintModal from '@/components/TailoringPrintModal';
@@ -132,38 +132,25 @@ export default function PipelineTailoringPage() {
     return () => clearInterval(interval);
   }, []);
 
+  // #FIX: localStatus كان بيتحقق منه بمعزل عن status — أوردر رجع لمرحلة سابقة
+  // (مثلاً أُعيد للتسعير) لكن يحمل localStatus قديم زى "جاري الكي" كان يظهر
+  // خطأً هنا. الآن status (بعد التطبيع) هو الفيصل فى تحديد المرحلة العامة،
+  // وlocalStatus يُستخدم فقط للتمييز بين الخياطة/الكي داخل نفس مرحلة "الورشة".
   const isSewing = (o: any) => {
-    if (!o) return false;
-    const s = (o.status || '').trim();
-    const ls = (o.localStatus || '').trim();
-    return (s === 'في الورشة' || s === 'تم القص وجاهز للخياطة') && (!ls || ls === 'جاري الخياطة' || ls === 'بانتظار القص' || ls === 'بانتظار الخياطة');
+    if (normalizeMasterStage(o?.status || '') !== 'في الورشة') return false;
+    const ls = (o?.localStatus || '').trim();
+    return !ls || ls === 'جاري الخياطة' || ls === 'بانتظار القص' || ls === 'بانتظار الخياطة';
   };
 
   const isIroning = (o: any) => {
-    if (!o) return false;
-    const s = (o.status || '').trim();
-    const ls = (o.localStatus || '').trim();
-    return ls === 'جاري الكي' || ls === 'تمت الخياطة' || (s === 'في الورشة' && ls.includes('كي'));
+    if (normalizeMasterStage(o?.status || '') !== 'في الورشة') return false;
+    const ls = (o?.localStatus || '').trim();
+    return ls === 'جاري الكي' || ls === 'تمت الخياطة' || ls.includes('كي');
   };
 
   const isHistory = (o: any) => {
-    if (!o) return false;
-    const s = (o.status || '').trim();
-    const ls = (o.localStatus || '').trim();
-    return (
-      s === 'تجهيز الاكسسوارات' ||
-      s === 'جاهز للاستلام' ||
-      s === 'جاهز للتركيب' ||
-      s === 'في التسليمات' ||
-      s === 'في التركيبات' ||
-      s === 'مكتمل' ||
-      ls.includes('اكسسوار') ||
-      ls.includes('تسليم') ||
-      ls.includes('تركيب') ||
-      ls.includes('مكتمل') ||
-      ls === 'تم الكي وجاهز للاكسسوارات' ||
-      ls === 'تم التجهيز'
-    );
+    const stage = normalizeMasterStage(o?.status || '');
+    return ['تجهيز الاكسسوارات', 'جاهز للاستلام', 'جاهز للتركيب', 'مكتمل'].includes(stage);
   };
 
   const tabFiltered = orders.filter(o => {

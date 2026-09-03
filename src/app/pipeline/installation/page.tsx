@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
-import { getStoredPipelineOrders, fetchPipelineOrders, updatePipelineOrderStatus, isTodayOrOverdue } from '@/lib/pipelineStore';
+import { getStoredPipelineOrders, fetchPipelineOrders, updatePipelineOrderStatus, isTodayOrOverdue, normalizeMasterStage } from '@/lib/pipelineStore';
 import { formatDate } from '@/lib/dateUtils';
 import OrderRowActions from '@/components/OrderRowActions';
 import { useCurrentUser } from '@/lib/useCurrentUser';
@@ -38,13 +38,12 @@ export default function PipelineInstallationPage() {
         setJobs([]);
         return;
       }
-      const relevant = stored.filter(o => 
-        o.status === 'جاهز للتركيب' ||
-        o.status === 'في التركيبات' ||
-        o.status === 'مكتمل' ||
-        o.localStatus === 'مُجدول للتركيب' ||
-        o.localStatus === 'تم التركيب بنجاح ومغلق'
-      );
+      // #FIX: كان localStatus وحده كافياً لإظهار الأوردر هنا حتى لو status الحقيقى
+      // رجع لمرحلة سابقة. المرجع الآن هو المرحلة المُطبَّعة فقط.
+      const relevant = stored.filter(o => {
+        const stage = normalizeMasterStage(o.status || '');
+        return stage === 'جاهز للتركيب' || stage === 'مكتمل';
+      });
       setJobs(relevant as any);
     }
     load();

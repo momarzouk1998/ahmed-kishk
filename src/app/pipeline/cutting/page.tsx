@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
-import { getStoredPipelineOrders, fetchPipelineOrders, updatePipelineOrderStatus } from '@/lib/pipelineStore';
+import { getStoredPipelineOrders, fetchPipelineOrders, updatePipelineOrderStatus, normalizeMasterStage } from '@/lib/pipelineStore';
 import { fetchQuotations } from '@/lib/inspectionsStore';
 import { formatDateOnly } from '@/lib/dateUtils';
 import CuttingPrintModal from '@/components/CuttingPrintModal';
@@ -88,26 +88,15 @@ export default function PipelineCuttingPage() {
     return () => clearInterval(interval);
   }, []);
 
-  const isWaitingToCut = (o: any) => {
-    if (!o) return false;
-    const s = (o.status || '').trim();
-    const ls = (o.localStatus || '').trim();
-    return s === 'في المقص' || s === 'بانتظار القص' || s === 'قص القماش' || ls === 'بانتظار القص';
-  };
+  // #FIX: كان الاعتماد على localStatus وحده (ls === 'بانتظار القص') يُسرّب أوردرات
+  // رجعت لمرحلة سابقة (مثلاً أُعيدت للتسعير) لكن بقيت تحمل localStatus قديم من
+  // مرحلة قص سابقة، فتظهر خطأً هنا رغم إن status الحقيقى بيقول حاجة تانية.
+  // المرجع الوحيد المعتمد الآن هو المرحلة العامة المُطبَّعة (status)، مش localStatus.
+  const isWaitingToCut = (o: any) => normalizeMasterStage(o?.status || '') === 'في المقص';
 
   const isSentFromCutting = (o: any) => {
-    if (!o) return false;
-    const s = (o.status || '').trim();
-    const ls = (o.localStatus || '').trim();
-    return (
-      s === 'تم القص وجاهز للخياطة' ||
-      ls === 'تم القص وجاهز للخياطة' ||
-      s === 'في الورشة' ||
-      s === 'تجهيز الاكسسوارات' ||
-      s === 'جاهز للاستلام' ||
-      s === 'جاهز للتركيب' ||
-      s === 'مكتمل'
-    );
+    const stage = normalizeMasterStage(o?.status || '');
+    return ['في الورشة', 'تجهيز الاكسسوارات', 'جاهز للاستلام', 'جاهز للتركيب', 'مكتمل'].includes(stage);
   };
 
   const tabFiltered = orders.filter(o => activeTab === 'OPEN' ? isWaitingToCut(o) : isSentFromCutting(o));

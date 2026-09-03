@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
-import { fetchPipelineOrders, updatePipelineOrderStatus, PipelineMasterOrder } from '@/lib/pipelineStore';
+import { fetchPipelineOrders, updatePipelineOrderStatus, PipelineMasterOrder, normalizeMasterStage } from '@/lib/pipelineStore';
 import { fetchQuotations } from '@/lib/inspectionsStore';
 import AccessoriesPrintModal from '@/components/AccessoriesPrintModal';
 import OrderRowActions from '@/components/OrderRowActions';
@@ -71,20 +71,12 @@ export default function PipelineAccessoriesPage() {
 
       const combined = [...pipelineList, ...mappedQuotations];
 
+      // #FIX: كان الاعتماد على ls.includes('اكسسوار'/'تجهيز') يُسرّب أوردرات رجعت
+      // لمرحلة سابقة (مثلاً أُعيدت للتسعير) لكن احتفظت بـ localStatus قديم.
+      // المرجع الوحيد الآن هو المرحلة العامة المُطبَّعة من status الحقيقى.
       const relevant = combined.filter(o => {
-        const s = (o.status || '').trim();
-        const ls = (o.localStatus || '').trim();
-        return (
-          s === 'تجهيز الاكسسوارات' ||
-          s.includes('اكسسوار') ||
-          s === 'جاهز للاستلام' ||
-          s === 'جاهز للتركيب' ||
-          s === 'في التسليمات' ||
-          s === 'في التركيبات' ||
-          s === 'مكتمل' ||
-          ls.includes('اكسسوار') ||
-          ls.includes('تجهيز')
-        );
+        const stage = normalizeMasterStage(o.status || '');
+        return ['تجهيز الاكسسوارات', 'جاهز للاستلام', 'جاهز للتركيب', 'مكتمل'].includes(stage);
       });
 
       const mapped = relevant.map(o => {
