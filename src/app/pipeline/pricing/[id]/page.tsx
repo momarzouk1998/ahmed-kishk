@@ -22,6 +22,7 @@ import { canUserEditPrices } from '@/lib/permissions';
 import { useManagerGate, isManagerUnlocked } from '@/components/ManagerUnlockGate';
 import { getCurtainDefaults } from '@/lib/curtainDefaults';
 import SearchableFabricSelect from '@/components/SearchableFabricSelect';
+import { useCurrentUser } from '@/lib/useCurrentUser';
 
 interface InventoryFabric {
   id: string;
@@ -68,6 +69,8 @@ export default function PricingDetailPage() {
   const rawId = (params?.id as string) || '';
   const orderId = decodeURIComponent(rawId);
 
+  const { user: currentUser, isAdmin } = useCurrentUser();
+
   const [quotations, setQuotations] = useState<QuotationOrder[]>(() => getStoredQuotations());
   const [inventory, setInventory] = useState<InventoryFabric[]>(mockFabricsInventory);
   const [showPrintModal, setShowPrintModal] = useState(false);
@@ -92,6 +95,9 @@ export default function PricingDetailPage() {
   }, []);
 
   const quotation = quotations.find(q => q.id === orderId || q.inspectionId === orderId) || quotations[0];
+  // الموظف المقيّد يسعّر بأقمشة فرعه الفعلى دايمًا (المخزون اللي قدامه فى الفرع)،
+  // مش بفرع الأوردر المخزّن (ممكن يكون اتسجل بفرع تانى). الأدمن بيشوف فرع الأوردر.
+  const fabricBranch = isAdmin ? quotation?.branch : currentUser?.branch;
   const { requestUnlock: requestMgrUnlock, Modal: MgrModal } = useManagerGate();
   const [mgrUnlocked, setMgrUnlocked] = useState<boolean>(false);
   useEffect(() => { setMgrUnlocked(isManagerUnlocked()); }, []);
@@ -786,7 +792,7 @@ export default function PricingDetailPage() {
                                     onChange={(code) => handleFabricSelect('heavy', code)}
                                     options={inventory}
                                     placeholder="-- اختر أو ابحث عن قماش الجوانب --"
-                                    targetBranch={quotation?.branch}
+                                    targetBranch={fabricBranch}
                                     className="sm:col-span-2"
                                   />
                                   <div className={`flex items-center border rounded-xl px-3 py-2 ${!canEditPrices ? 'bg-slate-100 border-slate-200' : 'bg-white border-slate-300'}`}>
@@ -887,7 +893,7 @@ export default function PricingDetailPage() {
                                     onChange={(code) => handleFabricSelect('sheer', code)}
                                     options={inventory}
                                     placeholder="-- اختر أو ابحث عن قماش الشيفون --"
-                                    targetBranch={quotation?.branch}
+                                    targetBranch={fabricBranch}
                                     className="sm:col-span-2"
                                   />
 
@@ -1021,7 +1027,7 @@ export default function PricingDetailPage() {
                                     onChange={(code) => handleFabricSelect('blackout', code)}
                                     options={inventory}
                                     placeholder="-- اختر أو ابحث عن خامة البلاك آوت --"
-                                    targetBranch={quotation?.branch}
+                                    targetBranch={fabricBranch}
                                     className="sm:col-span-2"
                                   />
 
