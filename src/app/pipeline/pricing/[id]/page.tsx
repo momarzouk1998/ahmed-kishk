@@ -21,6 +21,7 @@ import { getStoredPipelineOrders, fetchPipelineOrders, saveStoredPipelineOrders,
 import { canUserEditPrices } from '@/lib/permissions';
 import { useManagerGate, isManagerUnlocked } from '@/components/ManagerUnlockGate';
 import { getCurtainDefaults } from '@/lib/curtainDefaults';
+import SearchableFabricSelect from '@/components/SearchableFabricSelect';
 
 interface InventoryFabric {
   id: string;
@@ -780,22 +781,14 @@ export default function PricingDetailPage() {
                                 </div>
 
                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs pt-1">
-                                  <select
+                                  <SearchableFabricSelect
                                     value={heavyCode}
-                                    onChange={e => handleFabricSelect('heavy', e.target.value)}
-                                    className="sm:col-span-2 border border-slate-300 rounded-xl p-2.5 bg-white font-bold text-slate-900"
-                                  >
-                                    <option value="">-- اختر قماش الجوانب من المخزون --</option>
-                                    {Object.entries(groupFabricsByCategory(inventory)).map(([cat, fabs]) => (
-                                      <optgroup key={cat} label={cat}>
-                                        {fabs.map(f => (
-                                          <option key={f.code} value={f.code}>
-                                            {f.name} ({f.branch})
-                                          </option>
-                                        ))}
-                                      </optgroup>
-                                    ))}
-                                  </select>
+                                    onChange={(code) => handleFabricSelect('heavy', code)}
+                                    options={inventory}
+                                    placeholder="-- اختر أو ابحث عن قماش الجوانب --"
+                                    targetBranch={quotation?.branch}
+                                    className="sm:col-span-2"
+                                  />
                                   <div className={`flex items-center border rounded-xl px-3 py-2 ${!canEditPrices ? 'bg-slate-100 border-slate-200' : 'bg-white border-slate-300'}`}>
                                     <span className="text-slate-500 font-bold pl-1">سعر المتر:</span>
                                     <input
@@ -889,22 +882,14 @@ export default function PricingDetailPage() {
                                 </div>
 
                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs pt-1">
-                                  <select
+                                  <SearchableFabricSelect
                                     value={sheerCode}
-                                    onChange={e => handleFabricSelect('sheer', e.target.value)}
-                                    className="sm:col-span-2 border border-slate-300 rounded-xl p-2.5 bg-white font-bold text-slate-900"
-                                  >
-                                    <option value="">-- اختر قماش الشيفون من المخزون --</option>
-                                    {Object.entries(groupFabricsByCategory(inventory)).map(([cat, fabs]) => (
-                                      <optgroup key={cat} label={cat}>
-                                        {fabs.map(f => (
-                                          <option key={f.code} value={f.code}>
-                                            {f.name} ({f.branch})
-                                          </option>
-                                        ))}
-                                      </optgroup>
-                                    ))}
-                                  </select>
+                                    onChange={(code) => handleFabricSelect('sheer', code)}
+                                    options={inventory}
+                                    placeholder="-- اختر أو ابحث عن قماش الشيفون --"
+                                    targetBranch={quotation?.branch}
+                                    className="sm:col-span-2"
+                                  />
 
                                   <div className={`flex items-center border rounded-xl px-3 py-2 ${!canEditPrices ? 'bg-slate-100 border-slate-200' : 'bg-white border-slate-300'}`}>
                                     <span className="text-slate-500 font-bold pl-1">سعر المتر:</span>
@@ -1031,22 +1016,14 @@ export default function PricingDetailPage() {
                                 </div>
 
                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs pt-1">
-                                  <select
+                                  <SearchableFabricSelect
                                     value={blackoutCode}
-                                    onChange={e => handleFabricSelect('blackout', e.target.value)}
-                                    className="sm:col-span-2 border border-slate-300 rounded-xl p-2.5 bg-white font-bold text-slate-900"
-                                  >
-                                    <option value="">-- اختر خامة البلاك آوت من المخزون --</option>
-                                    {Object.entries(groupFabricsByCategory(inventory)).map(([cat, fabs]) => (
-                                      <optgroup key={cat} label={cat}>
-                                        {fabs.map(f => (
-                                          <option key={f.code} value={f.code}>
-                                            {f.name} ({f.branch})
-                                          </option>
-                                        ))}
-                                      </optgroup>
-                                    ))}
-                                  </select>
+                                    onChange={(code) => handleFabricSelect('blackout', code)}
+                                    options={inventory}
+                                    placeholder="-- اختر أو ابحث عن خامة البلاك آوت --"
+                                    targetBranch={quotation?.branch}
+                                    className="sm:col-span-2"
+                                  />
 
                                   <div className={`flex items-center border rounded-xl px-3 py-2 ${!canEditPrices ? 'bg-slate-100 border-slate-200' : 'bg-white border-slate-300'}`}>
                                     <span className="text-slate-500 font-bold pl-1">سعر المتر:</span>

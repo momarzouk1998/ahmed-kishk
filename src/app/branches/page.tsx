@@ -142,6 +142,27 @@ export default function BranchesAndPermissionsPage() {
     })();
   }, []);
 
+  const quickChangeBranch = async (emp: Employee, newBranch: string) => {
+    setEmployees(prev => prev.map(e => e.id === emp.id ? { ...e, branch: newBranch } : e));
+    try {
+      localStorage.setItem(`user_branch_${emp.phone}`, newBranch);
+    } catch {}
+    try {
+      await fetch('/api/user-permissions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone: emp.phone,
+          allowedPageIds: emp.allowedPageIds,
+          restrictToBranch: emp.restrictToBranch,
+          branch: newBranch,
+        }),
+      });
+    } catch (e: any) {
+      alert('فشل حفظ الفرع الجديد بالسيرفر: ' + (e?.message || ''));
+    }
+  };
+
   const openPermsModal = (emp: Employee) => {
     setSelectedEmp(emp);
     setActiveBranch(emp.branch);
@@ -330,9 +351,16 @@ export default function BranchesAndPermissionsPage() {
                     </td>
                     <td className="p-4 font-bold text-slate-800">{emp.role}</td>
                     <td className="p-4">
-                      <span className="font-bold text-slate-900 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg">
-                        {emp.branch}
-                      </span>
+                      <select
+                        value={emp.branch}
+                        onChange={(e) => quickChangeBranch(emp, e.target.value)}
+                        className="bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-900 cursor-pointer focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-xs"
+                        title="انقر لتغيير فرع الموظف فوراً"
+                      >
+                        {branches.map(b => (
+                          <option key={b.id} value={b.name}>{b.name}</option>
+                        ))}
+                      </select>
                     </td>
                     <td className="p-4 text-center">
                       {emp.restrictToBranch ? (

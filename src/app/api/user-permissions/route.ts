@@ -60,12 +60,24 @@ export async function POST(request: Request) {
     if (!phone) return NextResponse.json({ error: 'phone required' }, { status: 400 });
 
     const map = await readAllPerms();
+    const targetBranch = String(body?.branch || 'الفرع الرئيسي');
     map[phone] = {
       allowedPageIds: Array.isArray(body?.allowedPageIds) ? body.allowedPageIds.map(String) : [],
       restrictToBranch: !!body?.restrictToBranch,
-      branch: String(body?.branch || 'الفرع الرئيسي'),
+      branch: targetBranch,
     };
     await writeAllPerms(map);
+
+    // تحديث فرع الموظف فى جدول المستخدمين
+    try {
+      await prisma.user.updateMany({
+        where: { phone },
+        data: { branch: targetBranch },
+      });
+    } catch (e) {
+      console.error('Error updating user branch in Prisma:', e);
+    }
+
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });
