@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import { normalizeBranchName } from '@/lib/branches';
 
 export interface FabricItem {
   id?: string;
@@ -49,11 +50,13 @@ export default function SearchableFabricSelect({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Filter options by target branch unless user chooses to show all branches
+  const activeBranch = normalizeBranchName(targetBranch || 'الفرع الرئيسي');
+
+  // Strict branch filtering: only show items matching the target branch unless showAllBranches is checked
   const filteredByBranch = options.filter(item => {
-    if (showAllBranches || !targetBranch || targetBranch === 'الكل') return true;
-    if (!item.branch) return true;
-    return item.branch.trim() === targetBranch.trim();
+    if (showAllBranches || activeBranch === 'الكل') return true;
+    const itemBranch = normalizeBranchName(item.branch);
+    return itemBranch === activeBranch;
   });
 
   // Search filter
@@ -85,13 +88,13 @@ export default function SearchableFabricSelect({
   return (
     <div ref={containerRef} className={`relative ${className}`}>
       {/* Branch Scoping Info */}
-      {targetBranch && targetBranch !== 'الكل' && (
+      {activeBranch && activeBranch !== 'الكل' && (
         <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 mb-1">
           <span className="flex items-center gap-1">
             <span className="material-symbols-outlined text-[14px] text-amber-600">location_on</span>
-            <span>أصناف فرع: <strong className="text-slate-900">{targetBranch}</strong></span>
+            <span>أصناف فرع: <strong className="text-slate-900">{activeBranch}</strong></span>
             {!showAllBranches && filteredByBranch.length === 0 && (
-              <span className="text-rose-600 font-bold mr-1">(لا تتوفر أقمشة لهذا الفرع بالمخزون)</span>
+              <span className="text-rose-600 font-bold mr-1">(لا تتوفر أقمشة متناسبة بمخزون هذا الفرع)</span>
             )}
           </span>
           <button
@@ -99,7 +102,7 @@ export default function SearchableFabricSelect({
             onClick={() => setShowAllBranches(!showAllBranches)}
             className="text-[11px] text-blue-700 hover:underline font-bold"
           >
-            {showAllBranches ? 'تصفية لفرع الطلب' : 'إظهار كل الفروع'}
+            {showAllBranches ? `تصفية لـ (${activeBranch})` : 'إظهار كل الفروع'}
           </button>
         </div>
       )}

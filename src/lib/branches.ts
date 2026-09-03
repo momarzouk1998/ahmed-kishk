@@ -50,5 +50,17 @@ export function branchLabel(value: string): string {
   return value;
 }
 
+// Normalizes any branch name variant to standard 4 canonical branch values
+export function normalizeBranchName(raw?: string | null): string {
+  if (!raw) return 'الفرع الرئيسي';
+  const s = String(raw).trim();
+  if (s === 'الكل' || s === 'ALL') return 'الكل';
+  if (s.includes('رئيسي') || s.includes('سعد زغلول') || s.includes('القاهرة')) return 'الفرع الرئيسي';
+  if (s.includes('عرابي') || s.includes('عدلي')) return 'فرع عرابي';
+  if (s.includes('عمر أفندي')) return 'فرع عمر أفندي';
+  if (s.includes('الثلاثيني')) return 'فرع الثلاثيني';
+  return s;
+}
+
 // Renders <option> elements for a branch <select> using the canonical 4-branch list.
 // Callers should map: BRANCHES_LIST.map(b => <option value={b.name}>{b.isMain ? MAIN_BRANCH_LABEL : b.name}</option>)
