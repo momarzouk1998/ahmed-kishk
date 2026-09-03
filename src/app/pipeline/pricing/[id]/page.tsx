@@ -69,7 +69,7 @@ export default function PricingDetailPage() {
   const rawId = (params?.id as string) || '';
   const orderId = decodeURIComponent(rawId);
 
-  const { user: currentUser, isAdmin } = useCurrentUser();
+  const { user: currentUser } = useCurrentUser();
 
   const [quotations, setQuotations] = useState<QuotationOrder[]>(() => getStoredQuotations());
   const [inventory, setInventory] = useState<InventoryFabric[]>(mockFabricsInventory);
@@ -95,9 +95,10 @@ export default function PricingDetailPage() {
   }, []);
 
   const quotation = quotations.find(q => q.id === orderId || q.inspectionId === orderId) || quotations[0];
-  // الموظف المقيّد يسعّر بأقمشة فرعه الفعلى دايمًا (المخزون اللي قدامه فى الفرع)،
-  // مش بفرع الأوردر المخزّن (ممكن يكون اتسجل بفرع تانى). الأدمن بيشوف فرع الأوردر.
-  const fabricBranch = isAdmin ? quotation?.branch : currentUser?.branch;
+  // الكل (أدمن أو موظف) يسعّر افتراضيًا بأقمشة فرعه هو (المخزون اللي قدامه فعليًا)،
+  // مش بفرع الأوردر المخزّن (ممكن يكون اتسجل بفرع تانى). لو الأدمن عايز يتصفح فرع
+  // تانى فعليًا، عنده زر "إظهار كل الفروع" جوه القائمة نفسها.
+  const fabricBranch = currentUser?.branch || quotation?.branch;
   const { requestUnlock: requestMgrUnlock, Modal: MgrModal } = useManagerGate();
   const [mgrUnlocked, setMgrUnlocked] = useState<boolean>(false);
   useEffect(() => { setMgrUnlocked(isManagerUnlocked()); }, []);
