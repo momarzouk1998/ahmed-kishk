@@ -24,6 +24,8 @@ interface SearchableFabricSelectProps {
   targetBranch?: string;
   disabled?: boolean;
   className?: string;
+  /** الأدمن فقط يقدر يتصفح فروع تانية غير فرعه — الموظف المقيّد يفضل مقفول على فرعه بدون تجاوز. */
+  isAdmin?: boolean;
 }
 
 export default function SearchableFabricSelect({
@@ -34,6 +36,7 @@ export default function SearchableFabricSelect({
   targetBranch,
   disabled = false,
   className = '',
+  isAdmin = false,
 }: SearchableFabricSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -52,9 +55,10 @@ export default function SearchableFabricSelect({
 
   const activeBranch = normalizeBranchName(targetBranch || 'الفرع الرئيسي');
 
-  // Strict branch filtering: only show items matching the target branch unless showAllBranches is checked
+  // Strict branch filtering: only show items matching the target branch unless showAllBranches is checked.
+  // غير الأدمن ممنوع يتجاوز فرعه إطلاقًا — الزر نفسه بيظهر للأدمن بس.
   const filteredByBranch = options.filter(item => {
-    if (showAllBranches || activeBranch === 'الكل') return true;
+    if ((isAdmin && showAllBranches) || activeBranch === 'الكل') return true;
     const itemBranch = normalizeBranchName(item.branch);
     return itemBranch === activeBranch;
   });
@@ -97,13 +101,15 @@ export default function SearchableFabricSelect({
               <span className="text-rose-600 font-bold mr-1">(لا تتوفر أقمشة متناسبة بمخزون هذا الفرع)</span>
             )}
           </span>
-          <button
-            type="button"
-            onClick={() => setShowAllBranches(!showAllBranches)}
-            className="text-[11px] text-blue-700 hover:underline font-bold"
-          >
-            {showAllBranches ? `تصفية لـ (${activeBranch})` : 'إظهار كل الفروع'}
-          </button>
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={() => setShowAllBranches(!showAllBranches)}
+              className="text-[11px] text-blue-700 hover:underline font-bold"
+            >
+              {showAllBranches ? `تصفية لـ (${activeBranch})` : 'إظهار كل الفروع'}
+            </button>
+          )}
         </div>
       )}
 

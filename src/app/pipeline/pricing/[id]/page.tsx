@@ -69,7 +69,7 @@ export default function PricingDetailPage() {
   const rawId = (params?.id as string) || '';
   const orderId = decodeURIComponent(rawId);
 
-  const { user: currentUser } = useCurrentUser();
+  const { user: currentUser, isAdmin } = useCurrentUser();
 
   const [quotations, setQuotations] = useState<QuotationOrder[]>(() => getStoredQuotations());
   const [inventory, setInventory] = useState<InventoryFabric[]>(mockFabricsInventory);
@@ -794,6 +794,7 @@ export default function PricingDetailPage() {
                                     options={inventory}
                                     placeholder="-- اختر أو ابحث عن قماش الجوانب --"
                                     targetBranch={fabricBranch}
+                                    isAdmin={isAdmin}
                                     className="sm:col-span-2"
                                   />
                                   <div className={`flex items-center border rounded-xl px-3 py-2 ${!canEditPrices ? 'bg-slate-100 border-slate-200' : 'bg-white border-slate-300'}`}>
@@ -895,6 +896,7 @@ export default function PricingDetailPage() {
                                     options={inventory}
                                     placeholder="-- اختر أو ابحث عن قماش الشيفون --"
                                     targetBranch={fabricBranch}
+                                    isAdmin={isAdmin}
                                     className="sm:col-span-2"
                                   />
 
@@ -1029,6 +1031,7 @@ export default function PricingDetailPage() {
                                     options={inventory}
                                     placeholder="-- اختر أو ابحث عن خامة البلاك آوت --"
                                     targetBranch={fabricBranch}
+                                    isAdmin={isAdmin}
                                     className="sm:col-span-2"
                                   />
 

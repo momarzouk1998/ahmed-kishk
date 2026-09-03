@@ -153,14 +153,15 @@ export default function NewSalesInvoicePOSPage() {
     }
   }, [totalAmount, isFullPaid]);
 
-  // Filtered Products
+  // Filtered Products — الفاتورة تعرض الأصناف المتوفرة فعليًا بالمخزون فقط (منعًا لبيع صنف خلص).
   const filteredProducts = products.filter(p => {
+    const inStock = (p.totalQuantity ?? 0) > 0;
     const matchesCat = selectedCategory === 'الكل' || p.category === selectedCategory;
     const matchesSearch =
       !searchQuery.trim() ||
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.code.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCat && matchesSearch;
+    return inStock && matchesCat && matchesSearch;
   });
 
   // Add Item to Invoice Table
@@ -382,7 +383,8 @@ export default function NewSalesInvoicePOSPage() {
               <div className="w-[64px] shrink-0 flex flex-col gap-1 overflow-y-auto pl-1.5 border-l border-slate-100">
                 {categories.map(cat => {
                   const isActive = selectedCategory === cat;
-                  const count = cat === 'الكل' ? products.length : products.filter(p => p.category === cat).length;
+                  const inStockProducts = products.filter(p => (p.totalQuantity ?? 0) > 0);
+                  const count = cat === 'الكل' ? inStockProducts.length : inStockProducts.filter(p => p.category === cat).length;
                   return (
                     <button
                       key={cat}
