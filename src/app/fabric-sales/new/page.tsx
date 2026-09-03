@@ -352,8 +352,8 @@ export default function NewSalesInvoicePOSPage() {
           {/* ------------------------------------------------------------- */}
           <div className="lg:col-span-4 order-1 flex flex-col gap-2">
             
-            {/* Search & Category Filter Bar */}
-            <div className="bg-white p-2 rounded-2xl border border-slate-200 shadow-soft space-y-1.5 flex-shrink-0">
+            {/* Search Bar */}
+            <div className="bg-white p-2 rounded-2xl border border-slate-200 shadow-soft flex-shrink-0">
               <div className="relative">
                 <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-base">
                   search
@@ -374,9 +374,12 @@ export default function NewSalesInvoicePOSPage() {
                   </button>
                 )}
               </div>
+            </div>
 
-              {/* Category Pills */}
-              <div className="flex items-center gap-1 overflow-x-auto pb-0.5 scrollbar-none">
+            {/* Categories (right column) + Products Grid (left) — flex-1 to fill remaining height */}
+            <div className="bg-white p-2 rounded-2xl border border-slate-200 shadow-soft flex-1 flex gap-2 min-h-0">
+              {/* Category Column */}
+              <div className="w-[64px] shrink-0 flex flex-col gap-1 overflow-y-auto pl-1.5 border-l border-slate-100">
                 {categories.map(cat => {
                   const isActive = selectedCategory === cat;
                   const count = cat === 'الكل' ? products.length : products.filter(p => p.category === cat).length;
@@ -385,7 +388,7 @@ export default function NewSalesInvoicePOSPage() {
                       key={cat}
                       type="button"
                       onClick={() => setSelectedCategory(cat)}
-                      className={`px-2 py-0.5 rounded-xl text-[10.5px] font-black whitespace-nowrap transition-all flex items-center gap-1 cursor-pointer border ${
+                      className={`px-1 py-1.5 rounded-xl text-[9.5px] font-black transition-all flex flex-col items-center justify-center gap-0.5 cursor-pointer border text-center ${
                         isActive
                           ? 'bg-amber-600 text-white border-amber-700 shadow-xs'
                           : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
@@ -395,7 +398,7 @@ export default function NewSalesInvoicePOSPage() {
                       {cat === 'ستائر' && <span>🪟</span>}
                       {cat === 'تراكات ومواسير' && <span>🛠️</span>}
                       {cat === 'أشرطة وإكسسوارات' && <span>🎀</span>}
-                      <span>{cat}</span>
+                      <span className="leading-tight break-words whitespace-normal">{cat}</span>
                       <span className={`text-[9px] px-1 py-0.2 rounded-full font-mono font-bold ${
                         isActive ? 'bg-amber-700 text-amber-100' : 'bg-slate-200 text-slate-600'
                       }`}>
@@ -405,43 +408,43 @@ export default function NewSalesInvoicePOSPage() {
                   );
                 })}
               </div>
-            </div>
 
-            {/* Products Grid — flex-1 to fill remaining height */}
-            <div className="bg-white p-2.5 rounded-2xl border border-slate-200 shadow-soft flex-1 flex flex-col min-h-0">
-              <div className="flex justify-between items-center mb-1.5 flex-shrink-0">
-                <h3 className="font-black text-slate-900 text-[11.5px] flex items-center gap-1">
-                  <span className="material-symbols-outlined text-amber-500 text-base">grid_view</span>
-                  <span>الأصناف المتاحة ({filteredProducts.length}) — اضغط على الصنف لإضافته فوراً:</span>
-                </h3>
-              </div>
+              {/* Products Grid */}
+              <div className="flex-1 flex flex-col min-h-0">
+                <div className="flex justify-between items-center mb-1.5 flex-shrink-0">
+                  <h3 className="font-black text-slate-900 text-[11.5px] flex items-center gap-1">
+                    <span className="material-symbols-outlined text-amber-500 text-base">grid_view</span>
+                    <span>الأصناف المتاحة ({filteredProducts.length}) — اضغط على الصنف لإضافته فوراً:</span>
+                  </h3>
+                </div>
 
-              {filteredProducts.length === 0 ? (
-                <div className="flex-1 flex items-center justify-center text-slate-400">
-                  <div className="text-center">
-                    <span className="material-symbols-outlined text-3xl block mb-1 text-slate-300">inventory_2</span>
-                    <p className="text-xs font-bold">لا توجد أقمشة مطابقة للتصنيف أو البحث الحالي</p>
+                {filteredProducts.length === 0 ? (
+                  <div className="flex-1 flex items-center justify-center text-slate-400">
+                    <div className="text-center">
+                      <span className="material-symbols-outlined text-3xl block mb-1 text-slate-300">inventory_2</span>
+                      <p className="text-xs font-bold">لا توجد أقمشة مطابقة للتصنيف أو البحث الحالي</p>
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-1.5 flex-1 overflow-y-auto pr-1 content-start">
-                  {filteredProducts.map(prod => (
-                    <button
-                      key={prod.id}
-                      type="button"
-                      onClick={() => handleAddProduct(prod)}
-                      className="text-right p-1.5 rounded-xl border border-slate-200 bg-white hover:bg-amber-50/90 hover:border-amber-400 transition-all group cursor-pointer flex flex-col gap-0.5 shadow-3xs h-fit"
-                    >
-                      <span className="font-bold text-slate-900 text-[10px] leading-snug group-hover:text-amber-900 break-words whitespace-normal w-full">
-                        {prod.name}
-                      </span>
-                      <span className="font-mono font-black text-[10px] text-emerald-700 bg-emerald-50 px-1 py-0.5 rounded border border-emerald-200 self-start">
-                        {prod.sellPrice.toLocaleString()}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              )}
+                ) : (
+                  <div className="grid grid-cols-2 gap-1.5 flex-1 overflow-y-auto pr-1 content-start">
+                    {filteredProducts.map(prod => (
+                      <button
+                        key={prod.id}
+                        type="button"
+                        onClick={() => handleAddProduct(prod)}
+                        className="text-right p-1.5 rounded-xl border border-slate-200 bg-white hover:bg-amber-50/90 hover:border-amber-400 transition-all group cursor-pointer flex items-start justify-between gap-1.5 shadow-3xs h-fit"
+                      >
+                        <span className="font-bold text-slate-900 text-[10px] leading-snug group-hover:text-amber-900 break-words whitespace-normal min-w-0 flex-1">
+                          {prod.name}
+                        </span>
+                        <span className="font-mono font-black text-[10px] text-emerald-700 bg-emerald-50 px-1 py-0.5 rounded border border-emerald-200 shrink-0">
+                          {prod.sellPrice.toLocaleString()}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
           </div>
