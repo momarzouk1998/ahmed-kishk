@@ -26,9 +26,29 @@ interface InventoryFabric {
   id: string;
   code: string;
   name: string;
-  category: 'شيفون / تول' | 'قطيفة / ثقيل' | 'بلاك آوت عازل' | 'كتان / درابيري';
-  pricePerMeter: number;
-  stockMeters: number;
+  // التصنيف نص حر (يكتبه المستخدم فى صفحة المخزون) — لا يوجد enum ثابت.
+  category: string;
+  unit: string;
+  branch: string;
+  sellPrice: number;
+  totalQuantity: number;
+}
+
+/**
+ * يجمّع قائمة الأقمشة حسب التصنيف الحقيقى المخزّن (نص حر)، مع تضمين اسم الفرع
+ * فى تسمية كل صنف. لا يوجد أى فلترة بتصنيفات ثابتة — أى صنف تمت إضافته
+ * فى صفحة المخزون بوحدة "متر" يظهر هنا مباشرة.
+ */
+function groupFabricsByCategory(list: InventoryFabric[]): Record<string, InventoryFabric[]> {
+  const groups: Record<string, InventoryFabric[]> = {};
+  list
+    .filter(f => (f.unit || 'متر') === 'متر')
+    .forEach(f => {
+      const cat = f.category || 'غير مصنّف';
+      if (!groups[cat]) groups[cat] = [];
+      groups[cat].push(f);
+    });
+  return groups;
 }
 
 const TAPE_OPTIONS: { name: string; defaultMultiplier: number }[] = [
@@ -276,15 +296,16 @@ export default function PricingDetailPage() {
     const fab = inventory.find(f => f.code === code);
     if (!fab) return;
 
+    // #FIX: الحقل الحقيقى القادم من /api/inventory هو sellPrice، وليس pricePerMeter
     if (layer === 'heavy') {
       setHeavyCode(code);
-      setHeavyP(fab.pricePerMeter);
+      setHeavyP(fab.sellPrice);
     } else if (layer === 'sheer') {
       setSheerCode(code);
-      setSheerP(fab.pricePerMeter);
+      setSheerP(fab.sellPrice);
     } else if (layer === 'blackout') {
       setBlackoutCode(code);
-      setBlackoutP(fab.pricePerMeter);
+      setBlackoutP(fab.sellPrice);
     }
   };
 
@@ -765,10 +786,14 @@ export default function PricingDetailPage() {
                                     className="sm:col-span-2 border border-slate-300 rounded-xl p-2.5 bg-white font-bold text-slate-900"
                                   >
                                     <option value="">-- اختر قماش الجوانب من المخزون --</option>
-                                    {inventory.filter(f => f.category === 'قطيفة / ثقيل' || f.category === 'كتان / درابيري').map(f => (
-                                      <option key={f.code} value={f.code}>
-                                        {f.name}
-                                      </option>
+                                    {Object.entries(groupFabricsByCategory(inventory)).map(([cat, fabs]) => (
+                                      <optgroup key={cat} label={cat}>
+                                        {fabs.map(f => (
+                                          <option key={f.code} value={f.code}>
+                                            {f.name} ({f.branch})
+                                          </option>
+                                        ))}
+                                      </optgroup>
                                     ))}
                                   </select>
                                   <div className={`flex items-center border rounded-xl px-3 py-2 ${!canEditPrices ? 'bg-slate-100 border-slate-200' : 'bg-white border-slate-300'}`}>
@@ -870,10 +895,14 @@ export default function PricingDetailPage() {
                                     className="sm:col-span-2 border border-slate-300 rounded-xl p-2.5 bg-white font-bold text-slate-900"
                                   >
                                     <option value="">-- اختر قماش الشيفون من المخزون --</option>
-                                    {inventory.filter(f => f.category === 'شيفون / تول').map(f => (
-                                      <option key={f.code} value={f.code}>
-                                        {f.name}
-                                      </option>
+                                    {Object.entries(groupFabricsByCategory(inventory)).map(([cat, fabs]) => (
+                                      <optgroup key={cat} label={cat}>
+                                        {fabs.map(f => (
+                                          <option key={f.code} value={f.code}>
+                                            {f.name} ({f.branch})
+                                          </option>
+                                        ))}
+                                      </optgroup>
                                     ))}
                                   </select>
 
@@ -1008,10 +1037,14 @@ export default function PricingDetailPage() {
                                     className="sm:col-span-2 border border-slate-300 rounded-xl p-2.5 bg-white font-bold text-slate-900"
                                   >
                                     <option value="">-- اختر خامة البلاك آوت من المخزون --</option>
-                                    {inventory.filter(f => f.category === 'بلاك آوت عازل').map(f => (
-                                      <option key={f.code} value={f.code}>
-                                        {f.name}
-                                      </option>
+                                    {Object.entries(groupFabricsByCategory(inventory)).map(([cat, fabs]) => (
+                                      <optgroup key={cat} label={cat}>
+                                        {fabs.map(f => (
+                                          <option key={f.code} value={f.code}>
+                                            {f.name} ({f.branch})
+                                          </option>
+                                        ))}
+                                      </optgroup>
                                     ))}
                                   </select>
 

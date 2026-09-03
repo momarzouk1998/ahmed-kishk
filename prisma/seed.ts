@@ -15,33 +15,11 @@ const REAL_USERS: { name: string; phone: string; role: Role; branch: string }[] 
 ];
 
 async function main() {
-  console.log('🧹 Purging all old test transactions...');
-  try {
-    await prisma.inspectionRequest.deleteMany({});
-    await prisma.quotationOrder.deleteMany({});
-    await prisma.pipelineOrder.deleteMany({});
-    await prisma.customer.deleteMany({});
-    await prisma.inventoryItem.deleteMany({});
-    await prisma.supplier.deleteMany({});
-    await prisma.salesInvoice.deleteMany({});
-    await prisma.purchaseInvoice.deleteMany({});
-    await prisma.systemStore.deleteMany({});
-    console.log('✅ All old test data purged successfully.');
-  } catch (err) {
-    console.error('Error purging operational data:', err);
-  }
-
-  // Remove dummy test users if any exist
-  const validPhones = REAL_USERS.map(u => u.phone);
-  try {
-    await prisma.user.deleteMany({
-      where: {
-        phone: { notIn: validPhones }
-      }
-    });
-  } catch (err) {
-    console.error('Error deleting dummy users:', err);
-  }
+  // ⚠️ تمت إزالة كل عمليات deleteMany() نهائياً من هذا الملف.
+  // كان يمسح كل بيانات المعاينات/العقود/العملاء/المخزون/الموردين/الفواتير
+  // بمجرد تشغيل `npm run db:seed` — نفس فئة الخطر التى طلب صاحب النظام
+  // إزالتها صراحة من زر "تصفير البيانات" فى الإعدادات. هذا الملف الآن
+  // Upsert فقط للمستخدمين الرسميين — لا يحذف أى شئ إطلاقاً.
 
   console.log('🌱 Seeding database with official 8 users across 4 branches...');
   const hashedPassword = await bcrypt.hash('123456', 10);

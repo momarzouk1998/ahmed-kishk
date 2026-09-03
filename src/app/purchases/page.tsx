@@ -125,9 +125,16 @@ export default function PurchasesPage() {
     localStorage.setItem(PRETURNS_KEY, JSON.stringify(list));
   };
 
-  const handleDeletePurchase = (id: string, num: string) => {
-    if (confirm(`هل أنت أسر بالتأكيد من حذف فاتورة الشراء (${num})؟`)) {
-      savePurchasesState(purchases.filter(p => p.id !== id));
+  const handleDeletePurchase = async (id: string, num: string) => {
+    if (!confirm(`هل أنت متأكد من حذف فاتورة الشراء (${num})؟`)) return;
+    savePurchasesState(purchases.filter(p => p.id !== id));
+    // #FIX: الحذف كان بيروح لمفتاح system-data خاطئ (ahmed_kishk_purchase_invoices_v1)
+    // مختلف عن المصدر الحقيقى اللى الصفحة بتقرأ منه (/api/purchases → جدول PurchaseInvoice)،
+    // فكان بيرجع بعد أى ريفريش. دلوقتى بيحذف من الجدول الحقيقى مباشرة.
+    try {
+      await fetch(`/api/purchases?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+    } catch (err) {
+      console.error('Failed to delete purchase invoice from server:', err);
     }
   };
 

@@ -133,10 +133,15 @@ export default function FabricSalesPage() {
   };
 
   const handleDeleteInvoice = async (id: string, num: string) => {
-    if (confirm(`هل أنت متأكد من حذف فاتورة المبيعات (${num})؟`)) {
-      const updated = invoices.filter(i => i.id !== id);
-      await saveInvoicesState(updated);
-      if (selectedInvoice?.id === id) setSelectedInvoice(null);
+    if (!confirm(`هل أنت متأكد من حذف فاتورة المبيعات (${num})؟`)) return;
+    const updated = invoices.filter(i => i.id !== id);
+    await saveInvoicesState(updated);
+    if (selectedInvoice?.id === id) setSelectedInvoice(null);
+    // #FIX: حذف حقيقى من قاعدة البيانات — كان يرجع بعد أى ريفريش
+    try {
+      await fetch(`/api/system-data?key=${SALES_INVOICES_KEY}&id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+    } catch (err) {
+      console.error('Failed to delete invoice from server:', err);
     }
   };
 

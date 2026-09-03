@@ -214,11 +214,16 @@ export default function CustomersPage() {
     setColNotes('');
   };
 
-  const handleDeleteCustomer = (id: string, name: string) => {
-    if (confirm(`هل أنت متأكد من حذف العميل "${name}"؟`)) {
-      const filteredC = customers.filter(c => c.id !== id);
-      saveCustomersState(filteredC);
-      if (selectedCustomer?.id === id) setSelectedCustomer(null);
+  const handleDeleteCustomer = async (id: string, name: string) => {
+    if (!confirm(`هل أنت متأكد من حذف العميل "${name}"؟`)) return;
+    const filteredC = customers.filter(c => c.id !== id);
+    saveCustomersState(filteredC);
+    if (selectedCustomer?.id === id) setSelectedCustomer(null);
+    // #FIX: حذف حقيقى من قاعدة البيانات — كان يُحذف من الواجهة فقط ويرجع بعد أى ريفريش
+    try {
+      await fetch(`/api/system-data?key=${CUSTOMERS_KEY}&id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+    } catch (err) {
+      console.error('Failed to delete customer from server:', err);
     }
   };
 

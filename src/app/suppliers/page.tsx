@@ -265,10 +265,15 @@ export default function SuppliersPage() {
     saveChecksState(updated);
   };
 
-  const handleDeleteSupplier = (id: string, name: string) => {
-    if (confirm(`هل أنت أسر بالتأكيد من حذف المورد "${name}"؟`)) {
-      saveSuppliersState(suppliers.filter(s => s.id !== id));
-      if (selectedSupplier?.id === id) setSelectedSupplier(null);
+  const handleDeleteSupplier = async (id: string, name: string) => {
+    if (!confirm(`هل أنت متأكد من حذف المورد "${name}"؟`)) return;
+    saveSuppliersState(suppliers.filter(s => s.id !== id));
+    if (selectedSupplier?.id === id) setSelectedSupplier(null);
+    // #FIX: حذف حقيقى من قاعدة البيانات — كان يرجع بعد أى ريفريش
+    try {
+      await fetch(`/api/system-data?key=${SUPPLIERS_KEY}&id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+    } catch (err) {
+      console.error('Failed to delete supplier from server:', err);
     }
   };
 
