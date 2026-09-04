@@ -11,9 +11,10 @@ interface PageShellProps {
   badge?: string;
   action?: React.ReactNode;
   children: React.ReactNode;
+  fullWidth?: boolean;
 }
 
-function ShellContent({ title, badge, action, children }: PageShellProps) {
+function ShellContent({ title, badge, action, children, fullWidth }: PageShellProps) {
   const { isCollapsed } = useSidebar();
 
   // Track whether the first server→localStorage sync has completed
@@ -33,7 +34,7 @@ function ShellContent({ title, badge, action, children }: PageShellProps) {
       <Sidebar />
       <Header title={title} badge={badge} action={action} />
       <div className={`pt-16 transition-all duration-300 ${isCollapsed ? 'lg:pr-20' : 'lg:pr-64'}`}>
-        <main className="px-4 sm:px-6 lg:px-8 py-6 lg:py-8 max-w-full overflow-x-hidden">
+        <main className={fullWidth ? "p-2 sm:p-3 lg:p-3.5 w-full max-w-full overflow-x-hidden" : "px-4 sm:px-6 lg:px-8 py-6 lg:py-8 max-w-full overflow-x-hidden"}>
           {children}
         </main>
       </div>
@@ -41,10 +42,10 @@ function ShellContent({ title, badge, action, children }: PageShellProps) {
   );
 }
 
-export default function PageShell({ title, badge, action, children }: PageShellProps) {
+export default function PageShell({ title, badge, action, children, fullWidth }: PageShellProps) {
   return (
     <SidebarProvider>
-      <ShellContent title={title} badge={badge} action={action}>{children}</ShellContent>
+      <ShellContent title={title} badge={badge} action={action} fullWidth={fullWidth}>{children}</ShellContent>
     </SidebarProvider>
   );
 }

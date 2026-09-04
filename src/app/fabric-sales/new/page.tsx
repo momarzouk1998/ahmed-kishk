@@ -340,11 +340,10 @@ export default function NewSalesInvoicePOSPage() {
   const activeSelectedItem = items.find(it => it.id === selectedRowId) || (items.length > 0 ? items[0] : null);
 
   return (
-    <PageShell title="نقطة البيع والكاشير — فواتير المبيعات">
-      {/* -mt/-mx/-mb يقلّل من هوامش الـ PageShell عشان شاشة الكاشير تستغل عرض الشاشة كله (POS يحتاج مساحة قصوى) */}
-      <div className="w-full -mt-4 lg:-mt-6 -mx-4 sm:-mx-6 lg:-mx-8 -mb-6 lg:-mb-8 px-2 sm:px-3 py-2">
+    <PageShell title="نقطة البيع والكاشير — فواتير المبيعات" fullWidth>
+      <div className="w-full">
         {/* 3-Column POS Layout (Col 1: Catalog / Col 2: Customer & Touch / Col 3: Invoice Items & Actions) */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-2.5 items-stretch">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-stretch w-full">
           
           {/* ------------------------------------------------------------- */}
           {/* COLUMN 1 (4 cols - RIGHT): Products Catalog */}
@@ -794,7 +793,7 @@ export default function NewSalesInvoicePOSPage() {
                             }`}
                           >
                             <td className="px-2 py-1.5">
-                              <span className="font-bold text-slate-900 block truncate text-[11px] max-w-[110px]" title={it.name}>
+                              <span className="font-bold text-slate-900 block truncate text-[11px]" title={it.name}>
                                 {it.name}
                               </span>
                             </td>
