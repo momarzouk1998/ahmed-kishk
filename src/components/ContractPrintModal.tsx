@@ -49,6 +49,7 @@ export interface PrintContractData {
   deliveryDate?: string;
   estimatorName: string;
   totalAmount: number;
+  discountAmount?: number;
   depositPaid: number;
   remainingAmount: number;
   rooms: PrintRoomItem[];
@@ -454,6 +455,12 @@ export default function ContractPrintModal({ isOpen, onClose, data }: ContractPr
                 <span class="fin-label">إجمالي مقايسة العقد</span>
                 <span class="fin-val">${data.totalAmount.toLocaleString()} <span style="font-size:8pt;">ج.م</span></span>
               </div>
+              ${(data.discountAmount || 0) > 0 ? `
+              <div class="fin-box">
+                <span class="fin-label">الخصم الممنوح</span>
+                <span class="fin-val">${(data.discountAmount || 0).toLocaleString()} <span style="font-size:8pt;">ج.م</span></span>
+              </div>
+              ` : ''}
               <div class="fin-box fin-box-paid">
                 <span class="fin-label">العربون المسدد (المدفوع)</span>
                 <span class="fin-val">${data.depositPaid.toLocaleString()} <span style="font-size:8pt;">ج.م</span></span>
@@ -683,11 +690,17 @@ export default function ContractPrintModal({ isOpen, onClose, data }: ContractPr
                 ✓ العقد معتمد ومسدد العربون
               </span>
             </div>
-            <div className="grid grid-cols-3 gap-2 text-center">
+            <div className={`grid ${(data.discountAmount || 0) > 0 ? 'grid-cols-4' : 'grid-cols-3'} gap-2 text-center`}>
               <div className="bg-white border border-slate-200 p-2 rounded-lg">
                 <span className="text-[10px] text-slate-500 font-bold block mb-0.5">إجمالي مقايسة العقد</span>
                 <span className="font-mono font-black text-base text-slate-900 block">{calculatedTotal.toLocaleString()} ج.م</span>
               </div>
+              {(data.discountAmount || 0) > 0 && (
+                <div className="bg-rose-50/80 border border-rose-200 p-2 rounded-lg">
+                  <span className="text-[10px] text-rose-700 font-bold block mb-0.5">الخصم الممنوح</span>
+                  <span className="font-mono font-black text-base text-rose-800 block">{(data.discountAmount || 0).toLocaleString()} ج.م</span>
+                </div>
+              )}
               <div className="bg-emerald-50/80 border border-emerald-200 p-2 rounded-lg">
                 <span className="text-[10px] text-emerald-800 font-bold block mb-0.5">العربون المسدد</span>
                 <span className="font-mono font-black text-base text-emerald-950 block">{(data.depositPaid || 0).toLocaleString()} ج.م</span>

@@ -435,13 +435,15 @@ export default function PricingDetailPage() {
         };
       });
 
-      const totalSum = updatedRooms.reduce((sum, r) => sum + r.totalSellPrice, 0);
+      const roomsSubtotal = updatedRooms.reduce((sum, r) => sum + r.totalSellPrice, 0);
+      const discount = Math.min(q.discountAmount || 0, roomsSubtotal);
+      const totalSum = roomsSubtotal - discount;
 
       return {
         ...q,
         rooms: updatedRooms,
         totalAmount: totalSum,
-        remainingAmount: totalSum - q.depositPaid,
+        remainingAmount: Math.max(0, totalSum - q.depositPaid),
         estimatorName: estimator,
         deliveryDate,
         status: q.status === 'بانتظار التسعير' ? ('تم إرسال المقايسة' as const) : q.status,
@@ -451,6 +453,24 @@ export default function PricingDetailPage() {
     setQuotations(updatedList);
     saveAllQuotations(updatedList);
     setEditingRoomId(null);
+  };
+
+  const handleDiscountChange = (amount: number) => {
+    if (!quotation) return;
+    const updatedList = quotations.map(q => {
+      if (q.id !== quotation.id) return q;
+      const roomsSubtotal = q.rooms.reduce((sum, r) => sum + r.totalSellPrice, 0);
+      const discount = Math.max(0, Math.min(amount, roomsSubtotal));
+      const totalSum = roomsSubtotal - discount;
+      return {
+        ...q,
+        discountAmount: discount,
+        totalAmount: totalSum,
+        remainingAmount: Math.max(0, totalSum - q.depositPaid),
+      };
+    });
+    setQuotations(updatedList);
+    saveAllQuotations(updatedList);
   };
 
   const handleDepositChange = (amount: number) => {
@@ -1409,6 +1429,33 @@ export default function PricingDetailPage() {
               <strong className="text-2xl font-mono font-black text-amber-950">
                 {quotation.totalAmount.toLocaleString()} ج.م
               </strong>
+            </div>
+          </div>
+
+          {/* الخصم: يُطرح من إجمالي أسعار الغرف قبل العربون والمتبقي */}
+          <div className="flex flex-wrap items-center justify-between gap-3 bg-rose-50/60 border border-rose-200 rounded-xl px-3.5 py-2.5">
+            <div className="flex items-center gap-2 text-xs">
+              <span className="material-symbols-outlined text-rose-500 text-[18px]">sell</span>
+              <div>
+                <span className="text-slate-600 font-bold block">الإجمالي قبل الخصم:</span>
+                <span className="font-mono font-bold text-slate-700">
+                  {quotation.rooms.reduce((s, r) => s + r.totalSellPrice, 0).toLocaleString()} ج.م
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-slate-600 font-bold text-xs">قيمة الخصم:</span>
+              <div className={`flex items-center border rounded-xl px-3 py-1.5 ${!canEditPrices ? 'bg-slate-100 border-slate-200' : 'bg-white border-rose-300'}`}>
+                <input
+                  type="number"
+                  min={0}
+                  value={quotation.discountAmount || 0}
+                  disabled={!canEditPrices}
+                  onChange={e => handleDiscountChange(Number(e.target.value))}
+                  className="w-24 font-mono font-bold text-center text-sm text-rose-700 disabled:text-slate-500 disabled:cursor-not-allowed"
+                />
+                <span className="text-slate-500 font-bold text-xs">ج.م</span>
+              </div>
             </div>
           </div>
 

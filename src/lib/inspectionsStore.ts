@@ -154,6 +154,7 @@ export interface QuotationOrder {
   branch?: string;
   status: QuotationStatus;
   totalAmount: number;
+  discountAmount?: number; // خصم يدوي بالجنيه يُطرح من إجمالي الغرف (subtotal) للحصول على totalAmount
   depositPaid: number;
   remainingAmount: number;
   date: string;

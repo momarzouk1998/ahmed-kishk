@@ -55,7 +55,7 @@ export default function TailoringPrintModal({ isOpen, onClose, data }: Tailoring
             <td style="font-weight:bold; font-size:11pt;">${room.heavyFabric.name}</td>
             <td style="text-align:center; font-family:monospace; font-weight:700; font-size:11.5pt;">${room.heavyFabric.meters} م (${room.heavyFabric.pieces || 'جنبين'})</td>
             <td style="text-align:center; font-size:11pt;">${room.heavyFabric.tapeType || '٣ فتلة'}</td>
-            <td style="text-align:center; font-family:monospace; font-weight:900; font-size:12pt; color:#0f172a;">${room.heavyFabric.heightCm || 270} سم</td>
+            <td style="text-align:center; font-family:monospace; font-weight:900; font-size:12pt; color:#0f172a;">${room.heavyFabric.netHeight || 280} سم</td>
           </tr>
         `;
       }
@@ -68,7 +68,7 @@ export default function TailoringPrintModal({ isOpen, onClose, data }: Tailoring
             <td style="font-weight:bold; font-size:11pt;">${room.sheerFabric.name}</td>
             <td style="text-align:center; font-family:monospace; font-weight:700; font-size:11.5pt;">${room.sheerFabric.meters} م (${room.sheerFabric.pieces || 'قطعة واحدة'})</td>
             <td style="text-align:center; font-size:11pt;">${room.sheerFabric.tapeType || 'ويفي'}</td>
-            <td style="text-align:center; font-family:monospace; font-weight:900; font-size:12pt; color:#0f172a;">${room.sheerFabric.heightCm || 270} سم</td>
+            <td style="text-align:center; font-family:monospace; font-weight:900; font-size:12pt; color:#0f172a;">${room.sheerFabric.netHeight || 278} سم</td>
           </tr>
         `;
       }
@@ -80,7 +80,7 @@ export default function TailoringPrintModal({ isOpen, onClose, data }: Tailoring
             <td style="font-weight:bold; font-size:11pt;">${room.blackoutFabric.name}</td>
             <td style="text-align:center; font-family:monospace; font-weight:700; font-size:11.5pt;">${room.blackoutFabric.meters} م (${room.blackoutFabric.pieces || 'قطعة واحدة'})</td>
             <td style="text-align:center; font-size:11pt;">${room.blackoutFabric.tapeType || 'جراب'}</td>
-            <td style="text-align:center; font-family:monospace; font-weight:900; font-size:12pt; color:#0f172a;">${room.blackoutFabric.heightCm || 270} سم</td>
+            <td style="text-align:center; font-family:monospace; font-weight:900; font-size:12pt; color:#0f172a;">${room.blackoutFabric.netHeight || 275} سم</td>
           </tr>
         `;
       }
@@ -441,7 +441,7 @@ export default function TailoringPrintModal({ isOpen, onClose, data }: Tailoring
                         <td className="p-2 font-bold text-slate-900">{room.heavyFabric.name}</td>
                         <td className="p-2 text-center font-mono font-bold">{room.heavyFabric.meters} م ({room.heavyFabric.pieces || 'جنبين'})</td>
                         <td className="p-2 text-center">{room.heavyFabric.tapeType || '٣ فتلة'}</td>
-                        <td className="p-2 text-center font-mono font-black text-slate-950">{room.heavyFabric.heightCm || 270} سم</td>
+                        <td className="p-2 text-center font-mono font-black text-slate-950">{room.heavyFabric.netHeight || 280} سم</td>
                       </tr>
                     )}
 
@@ -451,7 +451,7 @@ export default function TailoringPrintModal({ isOpen, onClose, data }: Tailoring
                         <td className="p-2 font-bold text-slate-900">{room.sheerFabric.name}</td>
                         <td className="p-2 text-center font-mono font-bold">{room.sheerFabric.meters} م ({room.sheerFabric.pieces || 'قطعة واحدة'})</td>
                         <td className="p-2 text-center">{room.sheerFabric.tapeType || 'ويفي'}</td>
-                        <td className="p-2 text-center font-mono font-black text-slate-950">{room.sheerFabric.heightCm || 270} سم</td>
+                        <td className="p-2 text-center font-mono font-black text-slate-950">{room.sheerFabric.netHeight || 278} سم</td>
                       </tr>
                     )}
 
@@ -461,7 +461,7 @@ export default function TailoringPrintModal({ isOpen, onClose, data }: Tailoring
                         <td className="p-2 font-bold text-slate-900">{room.blackoutFabric.name}</td>
                         <td className="p-2 text-center font-mono font-bold">{room.blackoutFabric.meters} م ({room.blackoutFabric.pieces || 'قطعة واحدة'})</td>
                         <td className="p-2 text-center">{room.blackoutFabric.tapeType || 'جراب'}</td>
-                        <td className="p-2 text-center font-mono font-black text-slate-950">{room.blackoutFabric.heightCm || 270} سم</td>
+                        <td className="p-2 text-center font-mono font-black text-slate-950">{room.blackoutFabric.netHeight || 275} سم</td>
                       </tr>
                     )}
                   </React.Fragment>
