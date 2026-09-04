@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import PageShell from '@/components/PageShell';
 import { useRouter } from 'next/navigation';
 import { canUserEditPrices } from '@/lib/permissions';
@@ -57,7 +57,6 @@ export default function NewSalesInvoicePOSPage() {
 
   // Products and Categories
   const [products, setProducts] = useState<InventoryProduct[]>(DEFAULT_CATALOG);
-  const [categories, setCategories] = useState<string[]>(['الكل', 'سواريه', 'ستائر', 'تراكات ومواسير', 'أشرطة وإكسسوارات']);
   const [selectedCategory, setSelectedCategory] = useState<string>('الكل');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
@@ -126,8 +125,6 @@ export default function NewSalesInvoicePOSPage() {
           const json = await res.json();
           if (json.success && Array.isArray(json.items) && json.items.length > 0) {
             setProducts(json.items);
-            const cats = Array.from(new Set(['الكل', ...json.items.map((i: any) => i.category || 'عام')]));
-            setCategories(cats);
           }
         }
       } catch (err) {
@@ -140,6 +137,28 @@ export default function NewSalesInvoicePOSPage() {
     }
     initData();
   }, []);
+
+  // Dynamic categories strictly belonging to the active branch's available inventory
+  const dynamicCategories = useMemo(() => {
+    const branchScoped = products.filter(p =>
+      !branch || branch === 'الكل' || normalizeBranchName(p.branch) === normalizeBranchName(branch)
+    );
+    const uniqueCats = Array.from(
+      new Set(
+        branchScoped
+          .map(p => (p.category || '').trim())
+          .filter(Boolean)
+      )
+    );
+    return ['الكل', ...uniqueCats];
+  }, [products, branch]);
+
+  // Keep selectedCategory valid if branch changes
+  useEffect(() => {
+    if (selectedCategory !== 'الكل' && !dynamicCategories.includes(selectedCategory)) {
+      setSelectedCategory('الكل');
+    }
+  }, [dynamicCategories, selectedCategory]);
 
   // Calculations
   const subtotal = items.reduce((sum, it) => sum + (it.meters * it.pricePerMeter), 0);
@@ -377,36 +396,25 @@ export default function NewSalesInvoicePOSPage() {
             {/* Categories (right column) + Products Grid (left) — flex-1 to fill remaining height */}
             <div className="bg-white p-2 rounded-2xl border border-slate-200 shadow-soft flex-1 flex gap-2 min-h-0">
               {/* Category Column */}
-              <div className="w-[64px] shrink-0 flex flex-col gap-1 overflow-y-auto pl-1.5 border-l border-slate-100">
-                {categories.map(cat => {
+              <div className="w-[76px] shrink-0 flex flex-col gap-1.5 overflow-y-auto pl-1 border-l border-slate-100">
+                {dynamicCategories.map(cat => {
                   const isActive = selectedCategory === cat;
-                  // العدد بيعكس أصناف الفرع المعروض دلوقتى (بما فيها اللى كميتها صفر —
-                  // الأصناف الخالصة بتظهر مقفولة فى الجريد جنبها)
-                  const branchScopedProducts = products.filter(p =>
-                    !branch || branch === 'الكل' || normalizeBranchName(p.branch) === normalizeBranchName(branch)
-                  );
-                  const count = cat === 'الكل' ? branchScopedProducts.length : branchScopedProducts.filter(p => p.category === cat).length;
                   return (
                     <button
                       key={cat}
                       type="button"
                       onClick={() => setSelectedCategory(cat)}
-                      className={`px-1 py-1.5 rounded-xl text-[9.5px] font-black transition-all flex flex-col items-center justify-center gap-0.5 cursor-pointer border text-center ${
+                      className={`px-1 py-2 rounded-xl text-xs font-black transition-all flex flex-col items-center justify-center gap-1 cursor-pointer border text-center ${
                         isActive
-                          ? 'bg-amber-600 text-white border-amber-700 shadow-xs'
-                          : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                          ? 'bg-amber-600 text-white border-amber-700 shadow-xs ring-2 ring-amber-400/50'
+                          : 'bg-slate-50 hover:bg-slate-100 text-slate-800 border-slate-200'
                       }`}
                     >
-                      {cat === 'سواريه' && <span>✨</span>}
-                      {cat === 'ستائر' && <span>🪟</span>}
-                      {cat === 'تراكات ومواسير' && <span>🛠️</span>}
-                      {cat === 'أشرطة وإكسسوارات' && <span>🎀</span>}
-                      <span className="leading-tight break-words whitespace-normal">{cat}</span>
-                      <span className={`text-[9px] px-1 py-0.2 rounded-full font-mono font-bold ${
-                        isActive ? 'bg-amber-700 text-amber-100' : 'bg-slate-200 text-slate-600'
-                      }`}>
-                        {count}
-                      </span>
+                      {cat === 'سواريه' && <span className="text-sm">✨</span>}
+                      {cat === 'ستائر' && <span className="text-sm">🪟</span>}
+                      {cat === 'تراكات ومواسير' && <span className="text-sm">🛠️</span>}
+                      {cat === 'أشرطة وإكسسوارات' && <span className="text-sm">🎀</span>}
+                      <span className="leading-snug break-words whitespace-normal font-black">{cat}</span>
                     </button>
                   );
                 })}
@@ -415,9 +423,9 @@ export default function NewSalesInvoicePOSPage() {
               {/* Products Grid */}
               <div className="flex-1 flex flex-col min-h-0">
                 <div className="flex justify-between items-center mb-1.5 flex-shrink-0">
-                  <h3 className="font-black text-slate-900 text-[11.5px] flex items-center gap-1">
+                  <h3 className="font-black text-slate-900 text-xs sm:text-[13px] flex items-center gap-1">
                     <span className="material-symbols-outlined text-amber-500 text-base">grid_view</span>
-                    <span>الأصناف المتاحة ({filteredProducts.length}) — اضغط على الصنف لإضافته فوراً:</span>
+                    <span>الأصناف المتاحة ({filteredProducts.length}) — اضغط على الصنف لإضافته:</span>
                   </h3>
                 </div>
 
@@ -429,7 +437,7 @@ export default function NewSalesInvoicePOSPage() {
                     </div>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 gap-1.5 flex-1 overflow-y-auto pr-1 content-start">
+                  <div className="grid grid-cols-2 gap-2 flex-1 overflow-y-auto pr-1 content-start">
                     {filteredProducts.map(prod => {
                       const stock = Number(prod.totalQuantity) || 0;
                       const outOfStock = stock <= 0;
@@ -440,20 +448,20 @@ export default function NewSalesInvoicePOSPage() {
                           onClick={() => !outOfStock && handleAddProduct(prod)}
                           disabled={outOfStock}
                           title={outOfStock ? 'الصنف خلص من المخزون — مايتضافش للفاتورة' : ''}
-                          className={`text-right p-1.5 rounded-xl border transition-all group flex items-start justify-between gap-1.5 shadow-3xs h-fit ${
+                          className={`text-right p-2 rounded-xl border transition-all group flex items-start justify-between gap-1.5 shadow-3xs h-fit ${
                             outOfStock
                               ? 'border-slate-200 bg-slate-50 cursor-not-allowed opacity-60'
-                              : 'border-slate-200 bg-white hover:bg-amber-50/90 hover:border-amber-400 cursor-pointer'
+                              : 'border-slate-200 bg-white hover:bg-amber-50/90 hover:border-amber-400 hover:shadow-xs cursor-pointer'
                           }`}
                         >
-                          <span className={`font-bold text-[10px] leading-snug break-words whitespace-normal min-w-0 flex-1 ${
-                            outOfStock ? 'text-slate-500 line-through decoration-slate-400' : 'text-slate-900 group-hover:text-amber-900'
+                          <span className={`font-black text-xs leading-snug break-words whitespace-normal min-w-0 flex-1 ${
+                            outOfStock ? 'text-slate-400 line-through decoration-slate-400' : 'text-slate-900 group-hover:text-amber-950'
                           }`}>
                             {prod.name}
-                            {outOfStock && <span className="block text-[9px] font-black text-rose-600 no-underline mt-0.5">🔒 خلص</span>}
+                            {outOfStock && <span className="block text-[10px] font-black text-rose-600 no-underline mt-0.5">🔒 خلص</span>}
                           </span>
-                          <span className={`font-mono font-black text-[10px] px-1 py-0.5 rounded border shrink-0 ${
-                            outOfStock ? 'text-slate-400 bg-slate-100 border-slate-200' : 'text-emerald-700 bg-emerald-50 border-emerald-200'
+                          <span className={`font-mono font-black text-xs px-1.5 py-0.5 rounded-lg border shrink-0 ${
+                            outOfStock ? 'text-slate-400 bg-slate-100 border-slate-200' : 'text-emerald-800 bg-emerald-50 border-emerald-300'
                           }`}>
                             {prod.sellPrice.toLocaleString()}
                           </span>
