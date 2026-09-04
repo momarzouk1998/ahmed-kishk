@@ -361,7 +361,7 @@ export default function NewSalesInvoicePOSPage() {
   const activeSelectedItem = items.find(it => it.id === selectedRowId) || (items.length > 0 ? items[0] : null);
 
   return (
-    <PageShell title="نقطة البيع والكاشير — فواتير المبيعات" fullWidth>
+    <PageShell title="نقطة البيع والكاشير — فواتير المبيعات" fullWidth noHeader>
       <div className="w-full">
         {/* 3-Column POS Layout (Col 1: Catalog / Col 2: Customer & Touch / Col 3: Invoice Items & Actions) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-stretch w-full">
@@ -369,7 +369,7 @@ export default function NewSalesInvoicePOSPage() {
           {/* ------------------------------------------------------------- */}
           {/* COLUMN 1 (4 cols - RIGHT): Products Catalog */}
           {/* ------------------------------------------------------------- */}
-          <div className="lg:col-span-4 order-1 flex flex-col gap-2">
+          <div className="lg:col-span-4 order-1 flex flex-col gap-2" style={{height: 'calc(100vh - 24px)'}}>
             
             {/* Search Bar */}
             <div className="bg-white p-2 rounded-2xl border border-slate-200 shadow-soft flex-shrink-0">
@@ -480,7 +480,7 @@ export default function NewSalesInvoicePOSPage() {
           {/* ------------------------------------------------------------- */}
           {/* COLUMN 2 (4 cols - MIDDLE): Customer Info, Discount & Touch Keypad */}
           {/* ------------------------------------------------------------- */}
-          <div className="lg:col-span-4 order-2 flex flex-col gap-2">
+          <div className="lg:col-span-4 order-2 flex flex-col gap-2" style={{height: 'calc(100vh - 24px)'}}>
             
             {/* Customer & Branch Header Card */}
             <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-soft space-y-2.5">
@@ -758,7 +758,7 @@ export default function NewSalesInvoicePOSPage() {
           {/* ------------------------------------------------------------- */}
           <div className="lg:col-span-4 order-3">
             {/* Fixed-height card — same size always regardless of item count */}
-            <div className="bg-white rounded-2xl border-2 border-slate-300/80 shadow-soft flex flex-col" style={{height: 'calc(100vh - 80px)'}}>
+            <div className="bg-white rounded-2xl border-2 border-slate-300/80 shadow-soft flex flex-col" style={{height: 'calc(100vh - 24px)'}}>
 
               {/* Header */}
               <div className="px-3 pt-3 pb-1.5 border-b border-slate-100 flex justify-between items-center flex-shrink-0">
