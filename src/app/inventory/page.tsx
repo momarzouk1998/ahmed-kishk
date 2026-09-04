@@ -656,18 +656,19 @@ export default function InventoryPage() {
             <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-soft hidden md:block">
               <div className="overflow-x-auto">
                 <table className="w-full text-right text-xs min-w-[950px]">
-                  <thead className="bg-slate-100/80 text-slate-700 font-bold uppercase border-b border-slate-200">
+                  <thead className="bg-slate-100/90 text-slate-700 font-bold uppercase border-b border-slate-200">
                     <tr>
-                      <th className="p-3.5">الكود والاسم</th>
-                      <th className="p-3.5">التصنيف والوحدة</th>
-                      <th className="p-3.5 text-center text-emerald-900 bg-emerald-50/50">الرصيد الكلي</th>
-                      <th className="p-3.5 text-center text-amber-800 bg-amber-50/30">المحجوز للورشة</th>
-                      <th className="p-3.5 text-center text-emerald-800">المتاح للبيع</th>
-                      <th className="p-3.5 text-left">التكلفة</th>
-                      <th className="p-3.5 text-left">سعر البيع</th>
-                      <th className="p-3.5 text-left">توقع الربح الكلي</th>
-                      <th className="p-3.5">الفرع</th>
-                      <th className="p-3.5 text-center">الإجراءات الجردية</th>
+                      <th className="py-2.5 px-3">الكود والاسم</th>
+                      <th className="py-2.5 px-3">التصنيف</th>
+                      <th className="py-2.5 px-3 text-center">الوحدة</th>
+                      <th className="py-2.5 px-3 text-center text-slate-900 bg-slate-200/50">الرصيد</th>
+                      <th className="py-2.5 px-3 text-center text-amber-800 bg-amber-50/50">المحجوز</th>
+                      <th className="py-2.5 px-3 text-center text-emerald-800 bg-emerald-50/50">المتاح</th>
+                      <th className="py-2.5 px-3 text-left">التكلفة</th>
+                      <th className="py-2.5 px-3 text-left">سعر البيع</th>
+                      <th className="py-2.5 px-3 text-left">توقع الربح</th>
+                      <th className="py-2.5 px-3">الفرع</th>
+                      <th className="py-2.5 px-3 text-center">الإجراءات</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -681,73 +682,77 @@ export default function InventoryPage() {
                       if (isEditing && inlineForm) {
                         return (
                           <tr key={item.id} className="bg-amber-50/90 ring-2 ring-amber-400">
-                            <td className="p-2">
-                              <div className="font-mono text-[10px] text-amber-900 font-bold mb-0.5">{inlineForm.code}</div>
-                              <input
-                                type="text"
-                                value={inlineForm.name}
-                                onChange={e => setInlineForm({ ...inlineForm, name: e.target.value })}
-                                className="w-full bg-white border border-amber-300 rounded-lg p-1.5 text-xs font-bold text-slate-900"
-                                autoFocus
-                              />
+                            <td className="p-1.5">
+                              <div className="flex items-center gap-1">
+                                <span className="font-mono text-[10px] text-amber-900 font-bold shrink-0">{inlineForm.code}</span>
+                                <input
+                                  type="text"
+                                  value={inlineForm.name}
+                                  onChange={e => setInlineForm({ ...inlineForm, name: e.target.value })}
+                                  className="w-full bg-white border border-amber-300 rounded-lg p-1 text-xs font-bold text-slate-900"
+                                  autoFocus
+                                />
+                              </div>
                             </td>
-                            <td className="p-2">
+                            <td className="p-1.5">
                               <select
                                 value={inlineForm.category}
                                 onChange={e => setInlineForm({ ...inlineForm, category: e.target.value })}
-                                className="w-full bg-white border border-slate-300 rounded-lg p-1 text-xs font-bold text-slate-900 mb-1"
+                                className="w-full bg-white border border-slate-300 rounded-lg p-1 text-xs font-bold text-slate-900"
                               >
                                 {categories.filter(c => c !== 'الكل').map(c => <option key={c} value={c}>{c}</option>)}
                               </select>
+                            </td>
+                            <td className="p-1.5 text-center">
                               <select
                                 value={inlineForm.unit}
                                 onChange={e => setInlineForm({ ...inlineForm, unit: e.target.value as any })}
-                                className="w-full bg-white border border-slate-300 rounded-lg p-1 text-xs font-bold text-slate-900"
+                                className="bg-white border border-slate-300 rounded-lg p-1 text-xs font-bold text-slate-900 text-center"
                               >
                                 <option value="متر">متر</option>
                                 <option value="قطعة">قطعة</option>
                                 <option value="طقم">طقم</option>
                               </select>
                             </td>
-                            <td className="p-2 text-center">
+                            <td className="p-1.5 text-center">
                               <input
                                 type="number"
                                 value={inlineForm.totalQuantity}
                                 onChange={e => setInlineForm({ ...inlineForm, totalQuantity: Number(e.target.value) })}
-                                className="w-20 bg-white border-2 border-emerald-500 rounded-lg p-1 text-center font-mono font-black text-emerald-950 text-sm"
+                                className="w-16 bg-white border-2 border-emerald-500 rounded-lg p-1 text-center font-mono font-black text-emerald-950 text-xs"
                               />
                             </td>
-                            <td className="p-2 text-center">
+                            <td className="p-1.5 text-center">
                               <input
                                 type="number"
                                 value={inlineForm.reservedQuantity}
                                 onChange={e => setInlineForm({ ...inlineForm, reservedQuantity: Number(e.target.value) })}
-                                className="w-16 bg-white border border-amber-300 rounded-lg p-1 text-center font-mono font-bold text-amber-950"
+                                className="w-14 bg-white border border-amber-300 rounded-lg p-1 text-center font-mono font-bold text-amber-950 text-xs"
                               />
                             </td>
-                            <td className="p-2 text-center font-mono font-bold text-emerald-800">
-                              {inlineForm.totalQuantity - inlineForm.reservedQuantity} {inlineForm.unit}
+                            <td className="p-1.5 text-center font-mono font-bold text-emerald-800 text-xs">
+                              {inlineForm.totalQuantity - inlineForm.reservedQuantity}
                             </td>
-                            <td className="p-2">
+                            <td className="p-1.5">
                               <input
                                 type="number"
                                 value={inlineForm.costPrice}
                                 onChange={e => setInlineForm({ ...inlineForm, costPrice: Number(e.target.value) })}
-                                className="w-16 bg-white border border-slate-300 rounded-lg p-1 text-center font-mono font-bold text-slate-900"
+                                className="w-14 bg-white border border-slate-300 rounded-lg p-1 text-center font-mono font-bold text-slate-900 text-xs"
                               />
                             </td>
-                            <td className="p-2">
+                            <td className="p-1.5">
                               <input
                                 type="number"
                                 value={inlineForm.sellPrice}
                                 onChange={e => setInlineForm({ ...inlineForm, sellPrice: Number(e.target.value) })}
-                                className="w-16 bg-white border border-slate-300 rounded-lg p-1 text-center font-mono font-bold text-slate-900"
+                                className="w-14 bg-white border border-slate-300 rounded-lg p-1 text-center font-mono font-bold text-slate-900 text-xs"
                               />
                             </td>
-                            <td className="p-2 font-mono font-bold text-purple-700 text-left">
+                            <td className="p-1.5 font-mono font-bold text-purple-700 text-left text-xs whitespace-nowrap">
                               +{(inlineForm.totalQuantity * (inlineForm.sellPrice - inlineForm.costPrice)).toLocaleString()} ج
                             </td>
-                            <td className="p-2">
+                            <td className="p-1.5">
                               <select
                                 value={inlineForm.branch}
                                 onChange={e => setInlineForm({ ...inlineForm, branch: e.target.value })}
@@ -758,13 +763,13 @@ export default function InventoryPage() {
                                 ))}
                               </select>
                             </td>
-                            <td className="p-2 text-center whitespace-nowrap">
+                            <td className="p-1.5 text-center whitespace-nowrap">
                               <div className="flex items-center justify-center gap-1">
                                 <button
                                   type="button"
                                   onClick={() => saveInlineEdit(item)}
                                   disabled={savingId === item.id}
-                                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 rounded-lg font-bold text-xs shadow-xs"
+                                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-2 py-1 rounded-lg font-bold text-xs shadow-xs cursor-pointer"
                                   title="حفظ التعديلات وتوثيق الجرد"
                                 >
                                   {savingId === item.id ? '⏳' : '✓ حفظ'}
@@ -772,7 +777,7 @@ export default function InventoryPage() {
                                 <button
                                   type="button"
                                   onClick={cancelInlineEdit}
-                                  className="bg-white border border-slate-300 text-slate-700 px-2 py-1 rounded-lg font-bold text-xs"
+                                  className="bg-white border border-slate-300 text-slate-700 px-1.5 py-1 rounded-lg font-bold text-xs cursor-pointer"
                                   title="إلغاء التعديل"
                                 >
                                   ✕
@@ -784,52 +789,57 @@ export default function InventoryPage() {
                       }
 
                       return (
-                        <tr key={item.id} className={`hover:bg-slate-50/80 transition-colors ${isLow ? 'bg-rose-50/40' : ''}`}>
-                          <td className="p-3.5">
-                            <div className="font-bold text-sm text-slate-900">{item.name}</div>
-                            <div className="text-xs text-slate-400 font-mono">{item.code} • {item.supplier}</div>
+                        <tr key={item.id} className={`hover:bg-slate-50/80 transition-colors border-b border-slate-100 ${isLow ? 'bg-rose-50/40' : ''}`}>
+                          <td className="py-2.5 px-3 whitespace-nowrap">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-mono text-[11px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-bold border border-slate-200 shrink-0">
+                                {item.code}
+                              </span>
+                              <span className="font-bold text-xs text-slate-900 truncate max-w-[220px]" title={item.name}>
+                                {item.name}
+                              </span>
+                            </div>
                           </td>
-                          <td className="p-3.5">
-                            <div className="font-bold text-slate-800">{item.category}</div>
-                            <span className="inline-block text-[10px] bg-slate-100 px-1.5 py-0.5 rounded font-mono font-bold text-slate-600 mt-0.5">
+                          <td className="py-2.5 px-3 text-xs font-bold text-slate-700 whitespace-nowrap">
+                            {item.category}
+                          </td>
+                          <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                            <span className="inline-block text-[11px] bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-lg font-bold text-slate-700">
                               {item.unit}
                             </span>
                           </td>
-                          <td className="p-3.5 text-center font-mono font-black text-slate-900 bg-slate-50/50 text-sm">
-                            {item.totalQuantity} {item.unit}
+                          <td className="py-2.5 px-3 text-center font-mono font-black text-slate-900 bg-slate-50/50 text-xs whitespace-nowrap">
+                            {item.totalQuantity}
                           </td>
-                          <td className="p-3.5 text-center font-mono font-bold text-amber-800 bg-amber-50/40">
-                            {item.reservedQuantity} {item.unit}
+                          <td className="py-2.5 px-3 text-center font-mono font-bold text-amber-800 bg-amber-50/40 text-xs whitespace-nowrap">
+                            {item.reservedQuantity}
                           </td>
-                          <td className="p-3.5 text-center font-mono font-bold text-emerald-800 bg-emerald-50/40">
-                            {available} {item.unit}
+                          <td className="py-2.5 px-3 text-center font-mono font-bold text-emerald-800 bg-emerald-50/40 text-xs whitespace-nowrap">
+                            <span>{available}</span>
                             {isLow && (
-                              <span className="block text-[10px] text-rose-600 font-bold">⚠️ منخفض</span>
+                              <span className="mr-1 text-[9px] text-rose-600 font-bold bg-rose-100 px-1 py-0.2 rounded">منخفض</span>
                             )}
                           </td>
-                          <td className="p-3.5 text-left font-mono text-xs text-slate-500">{item.costPrice} ج</td>
-                          <td className="p-3.5 text-left font-mono font-bold text-slate-900 text-sm">{item.sellPrice} ج</td>
-                          <td className="p-3.5 text-left">
-                            <div className="font-mono font-black text-purple-700 text-xs">+{totalProfit.toLocaleString()} ج</div>
-                            <div className="text-[10px] text-slate-400 font-bold font-mono">
-                              ({profitPerUnit} ج / {item.unit})
-                            </div>
+                          <td className="py-2.5 px-3 text-left font-mono text-xs text-slate-600 whitespace-nowrap">{item.costPrice} ج</td>
+                          <td className="py-2.5 px-3 text-left font-mono font-bold text-slate-900 text-xs whitespace-nowrap">{item.sellPrice} ج</td>
+                          <td className="py-2.5 px-3 text-left font-mono font-black text-purple-700 text-xs whitespace-nowrap">
+                            +{totalProfit.toLocaleString()} ج
                           </td>
-                          <td className="p-3.5 text-xs text-slate-700 font-bold">{item.branch}</td>
-                          <td className="p-3.5 text-center">
+                          <td className="py-2.5 px-3 text-xs text-slate-700 font-bold whitespace-nowrap">{item.branch}</td>
+                          <td className="py-2.5 px-3 text-center whitespace-nowrap">
                             <div className="flex items-center justify-center gap-1.5">
                               <button
                                 type="button"
                                 onClick={() => startInlineEdit(item)}
-                                className="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer transition-colors flex items-center gap-1"
+                                className="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-2 py-1 rounded-lg text-xs font-bold cursor-pointer transition-colors flex items-center gap-1"
                                 title="تعديل مباشر في الجدول"
                               >
-                                <span>✏️</span> جرد/تعديل
+                                <span>✏️</span> تعديل
                               </button>
                               <button
                                 type="button"
                                 onClick={() => handleDeleteItem(item.id, item.name)}
-                                className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 p-1.5 rounded-lg text-xs font-bold cursor-pointer transition-colors"
+                                className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 p-1 rounded-lg text-xs font-bold cursor-pointer transition-colors"
                                 title="حذف الصنف"
                               >
                                 🗑️
