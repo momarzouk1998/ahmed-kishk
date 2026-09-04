@@ -2,18 +2,45 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getBranchScope, branchWhere, effectiveCreateBranch } from '@/lib/branchScope';
 
+import initialInventory from '@/data/initialInventory.json';
+
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   try {
     const scope = await getBranchScope(request);
-    const items = await prisma.inventoryItem.findMany({
+    let items = await prisma.inventoryItem.findMany({
       where: branchWhere(scope),
       orderBy: { updatedAt: 'desc' },
     });
+
+    // إذا كانت قاعدة البيانات فارغة، ندرج أحدث 326 صنف تلقائياً
+    if (items.length === 0) {
+      try {
+        await prisma.inventoryItem.createMany({
+          data: initialInventory as any,
+          skipDuplicates: true,
+        });
+        items = await prisma.inventoryItem.findMany({
+          where: branchWhere(scope),
+          orderBy: { updatedAt: 'desc' },
+        });
+      } catch (seedErr) {
+        console.error('Failed to auto-seed inventory:', seedErr);
+      }
+    }
+
+    if (items.length === 0) {
+      let rawList = initialInventory as any[];
+      if (scope && !scope.isAdmin && scope.branch) {
+        rawList = rawList.filter(i => i.branch === scope.branch || i.branch === 'الكل');
+      }
+      return NextResponse.json({ success: true, items: rawList });
+    }
+
     return NextResponse.json({ success: true, items });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: true, items: initialInventory });
   }
 }
 

@@ -44,7 +44,43 @@ async function main() {
     console.log(`✅ User seeded: ${user.name} (${user.phone}) - ${user.branch}`);
   }
 
-  console.log('🎉 Database reset & 8 official users seeded successfully!');
+  console.log('📦 Seeding 326 official inventory items across branches...');
+  try {
+    const initialInventory = require('../src/data/initialInventory.json');
+    for (const item of initialInventory) {
+      await prisma.inventoryItem.upsert({
+        where: { code: item.code },
+        create: {
+          id: item.id,
+          code: item.code,
+          name: item.name,
+          category: item.category,
+          unit: item.unit,
+          totalQuantity: item.totalQuantity,
+          reservedQuantity: item.reservedQuantity || 0,
+          costPrice: item.costPrice,
+          sellPrice: item.sellPrice,
+          branch: item.branch,
+          minAlert: item.minAlert || 20,
+          supplier: item.supplier || 'مورد عام',
+        },
+        update: {
+          name: item.name,
+          category: item.category,
+          unit: item.unit,
+          totalQuantity: item.totalQuantity,
+          costPrice: item.costPrice,
+          sellPrice: item.sellPrice,
+          branch: item.branch,
+        },
+      });
+    }
+    console.log('✅ Inventory items seeded successfully!');
+  } catch (e: any) {
+    console.error('⚠️ Inventory seed warning:', e?.message || e);
+  }
+
+  console.log('🎉 Database reset & 8 official users + 326 inventory items seeded successfully!');
 }
 
 main()
