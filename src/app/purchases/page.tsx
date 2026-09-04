@@ -80,9 +80,8 @@ export default function PurchasesPage() {
   const [retMethod, setRetMethod] = useState<SupplierPurchaseReturn['refundMethod']>('خصم من حساب المورد');
 
   // #FIX: كانت بترجع لنسخة قديمة محفوظة على قرص الجهاز (localStorage) لو الطلب فشل أو
-  // رجّع فاضى — ده اللي بيسبب ظهور بيانات قديمة/غلط. دلوقتى مفيش أى تخزين على القرص
-  // لفواتير المشتريات؛ القائمة بتفضل فاضية بدل ما تعرض بيانات مضلِّلة.
-  // (مرتجعات المشتريات لسه localStorage فقط مؤقتاً — مفيش جدول Prisma مخصص لها بعد.)
+  // رجّع فاضى — ده اللي بيسبب ظهور بيانات قديمة/غلط. دلوقتى مفيش أى تخزين على القرص،
+  // والمرتجعات بقى لها جدول Prisma حقيقى (PurchaseReturn) بدل localStorage.
   useEffect(() => {
     async function loadPurchases() {
       try {
@@ -98,9 +97,16 @@ export default function PurchasesPage() {
       }
 
       try {
-        const rawR = localStorage.getItem(PRETURNS_KEY);
-        if (rawR) setReturns(JSON.parse(rawR));
-      } catch {}
+        const retRes = await fetch('/api/purchase-returns', { cache: 'no-store' });
+        if (retRes.ok) {
+          const retJson = await retRes.json();
+          if (retJson.success && Array.isArray(retJson.returns)) {
+            setReturns(retJson.returns);
+          }
+        }
+      } catch (e) {
+        console.error(e);
+      }
     }
 
     loadPurchases();
@@ -114,7 +120,6 @@ export default function PurchasesPage() {
 
   const saveReturnsState = (list: SupplierPurchaseReturn[]) => {
     setReturns(list);
-    localStorage.setItem(PRETURNS_KEY, JSON.stringify(list));
   };
 
   const handleDeletePurchase = async (id: string, num: string) => {
@@ -130,9 +135,13 @@ export default function PurchasesPage() {
     }
   };
 
-  const handleDeleteReturn = (id: string, num: string) => {
-    if (confirm(`هل أنت أسر بالتأكيد من حذف إذن مرتجع المشتريات (${num})؟`)) {
-      saveReturnsState(returns.filter(r => r.id !== id));
+  const handleDeleteReturn = async (id: string, num: string) => {
+    if (!confirm(`هل أنت أسر بالتأكيد من حذف إذن مرتجع المشتريات (${num})؟`)) return;
+    saveReturnsState(returns.filter(r => r.id !== id));
+    try {
+      await fetch(`/api/purchase-returns?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+    } catch (err) {
+      console.error('Failed to delete purchase return from server:', err);
     }
   };
 
@@ -161,17 +170,26 @@ export default function PurchasesPage() {
     setEditingPurchase(null);
   };
 
-  const handleUpdateReturn = (e: React.FormEvent) => {
+  const handleUpdateReturn = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingReturn) return;
 
     const updated = returns.map(r => r.id === editingReturn.id ? editingReturn : r);
     saveReturnsState(updated);
+    try {
+      await fetch('/api/purchase-returns', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editingReturn),
+      });
+    } catch (err) {
+      console.error('Failed to save purchase return update to server:', err);
+    }
     setEditingReturn(null);
   };
 
   // Submit Supplier Return
-  const handleCreateReturn = (e: React.FormEvent) => {
+  const handleCreateReturn = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!retSupplierName.trim() || retAmount <= 0) return;
 
@@ -190,6 +208,15 @@ export default function PurchasesPage() {
     };
 
     saveReturnsState([newRet, ...returns]);
+    try {
+      await fetch('/api/purchase-returns', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newRet),
+      });
+    } catch (err) {
+      console.error('Failed to save purchase return to server:', err);
+    }
     setShowAddReturnModal(false);
     setRetSupplierName('');
     setRetItemsDetail('');

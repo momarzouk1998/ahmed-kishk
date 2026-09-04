@@ -225,6 +225,40 @@ model PurchaseInvoice {
   updatedAt       DateTime @updatedAt
 }
 
+model SalesReturn {
+  id            String   @id @default(cuid())
+  returnNumber  String   @unique
+  date          String
+  invoiceNumber String
+  customerName  String
+  customerPhone String?
+  branch        String   @default("الفرع الرئيسي")
+  reason        String?
+  itemsDetail   String?
+  refundAmount  Float    @default(0)
+  refundMethod  String   @default("نقدي")
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model PurchaseReturn {
+  id            String   @id @default(cuid())
+  returnNumber  String   @unique
+  date          String
+  invoiceNumber String
+  supplierName  String
+  supplierPhone String?
+  branch        String   @default("الفرع الرئيسي")
+  reason        String?
+  itemsDetail   String?
+  refundAmount  Float    @default(0)
+  refundMethod  String   @default("نقدي (كاش)")
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
 model SystemStore {
   key       String   @id
   data      Json

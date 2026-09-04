@@ -83,9 +83,8 @@ export default function FabricSalesPage() {
   const [retMethod, setRetMethod] = useState<CustomerSalesReturn['refundMethod']>('نقدي');
 
   // #FIX: كانت بترجع لنسخة قديمة محفوظة على قرص الجهاز (localStorage) لو الطلب فشل —
-  // ده اللي بيسبب ظهور بيانات قديمة/غلط. دلوقتى مفيش أى تخزين على القرص لفواتير
-  // المبيعات؛ القائمة بتفضل فاضية بدل ما تعرض بيانات مضلِّلة.
-  // (مرتجعات المبيعات لسه localStorage فقط مؤقتاً — مفيش جدول Prisma مخصص لها بعد.)
+  // ده اللي بيسبب ظهور بيانات قديمة/غلط. دلوقتى مفيش أى تخزين على القرص، والمرتجعات
+  // بقى لها جدول Prisma حقيقى (PurchaseReturn/SalesReturn) بدل localStorage.
   const loadData = async () => {
     try {
       setLoading(true);
@@ -101,9 +100,16 @@ export default function FabricSalesPage() {
     }
 
     try {
-      const rawR = localStorage.getItem(SALES_RETURNS_KEY);
-      if (rawR) setReturns(JSON.parse(rawR));
-    } catch {}
+      const retRes = await fetch('/api/sales-returns', { cache: 'no-store' });
+      if (retRes.ok) {
+        const retJson = await retRes.json();
+        if (retJson.success && Array.isArray(retJson.returns)) {
+          setReturns(retJson.returns);
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    }
     setLoading(false);
   };
 
@@ -119,7 +125,6 @@ export default function FabricSalesPage() {
 
   const saveReturnsState = (list: CustomerSalesReturn[]) => {
     setReturns(list);
-    localStorage.setItem(SALES_RETURNS_KEY, JSON.stringify(list));
   };
 
   const handleDeleteInvoice = async (id: string, num: string) => {
@@ -135,9 +140,13 @@ export default function FabricSalesPage() {
     }
   };
 
-  const handleDeleteReturn = (id: string, num: string) => {
-    if (confirm(`هل أنت متأكد من حذف إذن مرتجع المبيعات (${num})؟`)) {
-      saveReturnsState(returns.filter(r => r.id !== id));
+  const handleDeleteReturn = async (id: string, num: string) => {
+    if (!confirm(`هل أنت متأكد من حذف إذن مرتجع المبيعات (${num})؟`)) return;
+    saveReturnsState(returns.filter(r => r.id !== id));
+    try {
+      await fetch(`/api/sales-returns?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+    } catch (err) {
+      console.error('Failed to delete sales return from server:', err);
     }
   };
 
@@ -171,7 +180,7 @@ export default function FabricSalesPage() {
   };
 
   // Submit Sales Return
-  const handleCreateReturn = (e: React.FormEvent) => {
+  const handleCreateReturn = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!retCustName.trim() || retAmount <= 0) return;
 
@@ -190,6 +199,15 @@ export default function FabricSalesPage() {
     };
 
     saveReturnsState([newRet, ...returns]);
+    try {
+      await fetch('/api/sales-returns', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newRet),
+      });
+    } catch (err) {
+      console.error('Failed to save sales return to server:', err);
+    }
     setShowAddReturnModal(false);
     setRetCustName('');
     setRetCustPhone('');
