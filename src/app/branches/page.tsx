@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
 import { ALL_SYSTEM_PAGES } from '@/lib/permissions';
 import { BRANCHES_LIST, BranchConfig } from '@/lib/branches';
-import ManagerPasswordCard from '@/components/ManagerPasswordCard';
+import BranchPricePasswordsCard from '@/components/BranchPricePasswordsCard';
 import { useCurrentUser } from '@/lib/useCurrentUser';
 
 interface Employee {
@@ -340,7 +340,7 @@ export default function BranchesAndPermissionsPage() {
         </div>
 
         {/* Manager Password Change Card */}
-        <ManagerPasswordCard />
+        <BranchPricePasswordsCard />
 
         {/* Employees & Permissions Table */}
         <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-soft">

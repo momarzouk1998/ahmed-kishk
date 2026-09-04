@@ -83,13 +83,13 @@ export function useManagerGate() {
             <span className="material-symbols-outlined text-amber-800">lock</span>
           </div>
           <div>
-            <h3 className="font-black text-slate-900 text-base">طلب صلاحية المدير</h3>
-            <p className="text-xs text-slate-500 mt-0.5">أنت غير مسرح بتعديل الأسعار أو الخصومات — أدخل باسورد المدير للمتابعة</p>
+            <h3 className="font-black text-slate-900 text-base">طلب صلاحية مدير الفرع</h3>
+            <p className="text-xs text-slate-500 mt-0.5">أنت غير مسرح بتعديل الأسعار أو الخصومات — اطلب من مدير فرعك يدخل باسوردة للمتابعة</p>
           </div>
         </div>
 
         <div>
-          <label className="text-xs font-bold text-slate-700 block mb-1.5">كلمة سر المدير:</label>
+          <label className="text-xs font-bold text-slate-700 block mb-1.5">باسورد مدير الفرع:</label>
           <input
             type="password"
             autoFocus
@@ -121,7 +121,7 @@ export function useManagerGate() {
             إلغاء
           </button>
         </div>
-        <p className="text-[11px] text-slate-400 text-center">الفتح صالح لهذه الجلسة فقط. الافتراضى: 1234</p>
+        <p className="text-[11px] text-slate-400 text-center">الفتح صالح لهذه الجلسة فقط، وباسورد فرعك تحديدًا</p>
       </form>
     </div>
   ) : null;
