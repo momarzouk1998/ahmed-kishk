@@ -1,23 +1,9 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
 import { verifyAuthCookie } from '@/lib/auth';
 import { BRANCHES_LIST } from '@/lib/branches';
+import { getBranchPricePasswords, setBranchPricePassword } from '@/lib/branchPricePasswords';
 
 export const dynamic = 'force-dynamic';
-
-const STORE_KEY = 'branch_price_passwords_v1';
-const DEFAULT_PWD = '1234';
-
-/** يرجّع خريطة {فرع: كلمة السر} — أي فرع لسه ما اتغيّرش باسورده بياخد الافتراضى. */
-export async function getBranchPricePasswords(): Promise<Record<string, string>> {
-  const rec = await prisma.systemStore.findUnique({ where: { key: STORE_KEY } });
-  const raw = (rec?.data as any) || {};
-  const map: Record<string, string> = {};
-  for (const b of BRANCHES_LIST) {
-    map[b.name] = typeof raw[b.name] === 'string' && raw[b.name] ? raw[b.name] : DEFAULT_PWD;
-  }
-  return map;
-}
 
 // GET — الأدمن بس يشوف باسورد كل الفروع
 export async function GET(request: Request) {
@@ -53,15 +39,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'كلمة السر قصيرة جداً' }, { status: 400 });
     }
 
-    const rec = await prisma.systemStore.findUnique({ where: { key: STORE_KEY } });
-    const current = (rec?.data as any) || {};
-    const updated = { ...current, [branch]: password };
-    await prisma.systemStore.upsert({
-      where: { key: STORE_KEY },
-      update: { data: updated },
-      create: { key: STORE_KEY, data: updated },
-    });
-
+    await setBranchPricePassword(branch, password);
     return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

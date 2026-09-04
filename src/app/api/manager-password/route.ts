@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { verifyAuthCookie } from '@/lib/auth';
-import { getBranchPricePasswords } from '@/app/api/branch-price-passwords/route';
+import { getBranchPricePasswords } from '@/lib/branchPricePasswords';
 
 export const dynamic = 'force-dynamic';
 
