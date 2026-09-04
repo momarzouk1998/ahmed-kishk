@@ -753,7 +753,7 @@ export default function NewSalesInvoicePOSPage() {
             </div>
 
           </div>
-
+          {/* ------------------------------------------------------------- */}
           {/* COLUMN 3 (4 cols - LEFT): Cart Items Table, Totals & Save Actions */}
           {/* ------------------------------------------------------------- */}
           <div className="lg:col-span-4 order-3">
@@ -761,18 +761,22 @@ export default function NewSalesInvoicePOSPage() {
             <div className="bg-white rounded-2xl border-2 border-slate-300/80 shadow-soft flex flex-col" style={{height: 'calc(100vh - 24px)'}}>
 
               {/* Header */}
-              <div className="px-3 pt-3 pb-1.5 border-b border-slate-100 flex justify-between items-center flex-shrink-0">
-                <h3 className="font-black text-slate-900 text-xs flex items-center gap-1">
-                  <span className="material-symbols-outlined text-amber-500 text-sm">receipt_long</span>
-                  <span>أصناف الفاتورة ({items.length})</span>
+              <div className="px-3 py-2.5 border-b border-slate-100 flex justify-between items-center flex-shrink-0 bg-slate-50/50 rounded-t-2xl">
+                <h3 className="font-black text-slate-900 text-sm sm:text-base flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-amber-500 text-lg">receipt_long</span>
+                  <span>أصناف الفاتورة</span>
+                  <span className="bg-amber-100 text-amber-900 text-xs px-2 py-0.5 rounded-full font-black font-mono border border-amber-300">
+                    {items.length}
+                  </span>
                 </h3>
                 {items.length > 0 && (
                   <button
                     type="button"
                     onClick={handleClearCart}
-                    className="text-[9px] text-rose-600 hover:text-rose-700 font-bold bg-rose-50 hover:bg-rose-100 px-1.5 py-0.5 rounded transition-colors cursor-pointer"
+                    className="text-xs text-rose-600 hover:text-rose-700 font-black bg-rose-50 hover:bg-rose-100 border border-rose-200 px-2.5 py-1 rounded-xl transition-colors cursor-pointer flex items-center gap-1"
                   >
-                    مسح 🗑️
+                    <span>مسح الكل</span>
+                    <span className="material-symbols-outlined text-sm">delete</span>
                   </button>
                 )}
               </div>
@@ -780,21 +784,21 @@ export default function NewSalesInvoicePOSPage() {
               {/* Items Table — scrollable, takes all remaining vertical space */}
               <div className="flex-1 overflow-y-auto min-h-0">
                 <table className="w-full text-right border-collapse">
-                  <thead className="bg-slate-100 text-slate-600 font-bold border-b border-slate-200 sticky top-0 z-10 text-[11px]">
+                  <thead className="bg-slate-100/90 text-slate-700 font-black border-b border-slate-200 sticky top-0 z-10 text-xs">
                     <tr>
-                      <th className="px-2 py-1.5">الصنف</th>
-                      <th className="px-1 py-1.5 font-mono text-center w-[55px]">السعر</th>
-                      <th className="px-1 py-1.5 font-mono text-center w-[80px]">الأمتار</th>
-                      <th className="px-1 py-1.5 font-mono text-center w-[60px]">الإجمالي</th>
-                      <th className="px-1 py-1.5 text-center w-[24px]"></th>
+                      <th className="px-3 py-2">الصنف</th>
+                      <th className="px-1.5 py-2 font-mono text-center w-[65px]">السعر</th>
+                      <th className="px-1.5 py-2 font-mono text-center w-[95px]">الأمتار</th>
+                      <th className="px-2 py-2 font-mono text-center w-[75px]">الإجمالي</th>
+                      <th className="px-1 py-2 text-center w-[30px]"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {items.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="py-10 text-center text-slate-400 font-bold text-xs">
-                          <span className="material-symbols-outlined text-3xl block mb-1 text-slate-300">shopping_cart</span>
-                          لا توجد أصناف مضافة
+                        <td colSpan={5} className="py-12 text-center text-slate-400 font-bold text-sm">
+                          <span className="material-symbols-outlined text-4xl block mb-2 text-slate-300">shopping_cart</span>
+                          لا توجد أصناف مضافة بعد
                         </td>
                       </tr>
                     ) : (
@@ -805,16 +809,16 @@ export default function NewSalesInvoicePOSPage() {
                             key={it.id}
                             onClick={() => { setSelectedRowId(it.id); setKeypadBuffer(''); }}
                             className={`cursor-pointer transition-colors ${
-                              isSelected ? 'bg-amber-50/90 font-black ring-1 ring-inset ring-amber-400' : 'hover:bg-slate-50'
+                              isSelected ? 'bg-amber-50/95 font-black ring-1 ring-inset ring-amber-400' : 'hover:bg-slate-50'
                             }`}
                           >
-                            <td className="px-2 py-1.5">
-                              <span className="font-bold text-slate-900 block truncate text-[11px]" title={it.name}>
+                            <td className="px-3 py-2">
+                              <span className="font-black text-slate-900 block truncate text-xs sm:text-sm" title={it.name}>
                                 {it.name}
                               </span>
                             </td>
 
-                            <td className="px-1 py-1.5 text-center font-mono font-bold text-slate-700">
+                            <td className="px-1.5 py-2 text-center font-mono font-bold text-slate-800">
                               <input
                                 type="number"
                                 min="1"
@@ -823,17 +827,17 @@ export default function NewSalesInvoicePOSPage() {
                                 onFocus={async () => { if (priceLocked) await requirePriceUnlock(); }}
                                 onClick={async (e) => { e.stopPropagation(); if (priceLocked) await requirePriceUnlock(); }}
                                 onChange={e => { if (!priceLocked) handleUpdateItem(it.id, 'pricePerMeter', Number(e.target.value)); }}
-                                className={`w-full text-center rounded py-0.5 font-mono font-bold text-[11px] focus:outline-none focus:border-amber-500 ${priceLocked ? 'bg-amber-50 border border-amber-200 cursor-pointer' : 'bg-white border border-slate-200'}`}
+                                className={`w-full text-center rounded-lg py-1 font-mono font-black text-xs sm:text-sm focus:outline-none focus:border-amber-500 ${priceLocked ? 'bg-amber-50 border border-amber-200 cursor-pointer' : 'bg-white border border-slate-200 shadow-3xs'}`}
                                 title={priceLocked ? 'تغيير السعر يتطلب باسورد المدير' : ''}
                               />
                             </td>
 
-                            <td className="px-1 py-1.5 text-center">
-                              <div className="flex items-center justify-center gap-0.5" onClick={e => e.stopPropagation()}>
+                            <td className="px-1.5 py-2 text-center">
+                              <div className="flex items-center justify-center gap-1" onClick={e => e.stopPropagation()}>
                                 <button
                                   type="button"
                                   onClick={() => handleUpdateItem(it.id, 'meters', Math.max(0.25, it.meters - 0.25))}
-                                  className="w-4 h-4 rounded bg-slate-200 hover:bg-slate-300 text-slate-800 font-black text-[11px] flex items-center justify-center cursor-pointer"
+                                  className="w-5 h-5 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-900 font-black text-xs flex items-center justify-center cursor-pointer active:scale-95 transition-all shadow-3xs"
                                 >
                                   -
                                 </button>
@@ -843,27 +847,27 @@ export default function NewSalesInvoicePOSPage() {
                                   min="0.1"
                                   value={it.meters}
                                   onChange={e => handleUpdateItem(it.id, 'meters', Number(e.target.value))}
-                                  className="w-10 text-center border border-slate-300 rounded py-0.5 font-mono font-black text-[11px] focus:outline-none focus:border-amber-500 bg-white text-slate-950"
+                                  className="w-12 text-center border border-slate-300 rounded-lg py-1 font-mono font-black text-xs sm:text-sm focus:outline-none focus:border-amber-500 bg-white text-slate-950 shadow-3xs"
                                 />
                                 <button
                                   type="button"
                                   onClick={() => handleUpdateItem(it.id, 'meters', it.meters + 0.25)}
-                                  className="w-4 h-4 rounded bg-slate-200 hover:bg-slate-300 text-slate-800 font-black text-[11px] flex items-center justify-center cursor-pointer"
+                                  className="w-5 h-5 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-900 font-black text-xs flex items-center justify-center cursor-pointer active:scale-95 transition-all shadow-3xs"
                                 >
                                   +
                                 </button>
                               </div>
                             </td>
 
-                            <td className="px-1 py-1.5 text-center font-mono font-black text-slate-950 text-[11px]">
+                            <td className="px-2 py-2 text-center font-mono font-black text-slate-950 text-xs sm:text-sm">
                               {it.totalPrice.toLocaleString()}
                             </td>
 
-                            <td className="px-1 py-1.5 text-center">
+                            <td className="px-1 py-2 text-center">
                               <button
                                 type="button"
                                 onClick={(e) => { e.stopPropagation(); handleRemoveItem(it.id); }}
-                                className="text-rose-500 hover:text-rose-700 font-black p-0.5 hover:bg-rose-50 rounded cursor-pointer text-[11px]"
+                                className="text-rose-500 hover:text-rose-700 font-black p-1 hover:bg-rose-50 rounded-lg cursor-pointer text-sm transition-colors"
                               >
                                 ✕
                               </button>
@@ -876,13 +880,13 @@ export default function NewSalesInvoicePOSPage() {
                 </table>
               </div>
 
-              {/* Bottom fixed section: Payment + Totals + Buttons */}
+              {/* Bottom fixed section: Payment + Totals + Dedicated Paid Box + Buttons */}
               <div className="flex-shrink-0 px-3 pb-3 pt-2 space-y-2 border-t border-slate-100">
 
                 {/* Payment Methods */}
                 <div className="space-y-1">
-                  <span className="text-[10px] font-black text-slate-700 block">طريقة الدفع:</span>
-                  <div className="grid grid-cols-3 gap-1 text-center">
+                  <span className="text-xs font-black text-slate-800 block">طريقة الدفع:</span>
+                  <div className="grid grid-cols-3 gap-1.5 text-center">
                     {[
                       { id: 'نقدي', label: '💵 كاش' },
                       { id: 'فيزا / كارت', label: '💳 فيزا' },
@@ -895,10 +899,10 @@ export default function NewSalesInvoicePOSPage() {
                         key={m.id}
                         type="button"
                         onClick={() => setPaymentMethod(m.id as any)}
-                        className={`py-1 px-1 rounded-lg text-[10px] font-black transition-all border cursor-pointer ${
+                        className={`py-1.5 px-1.5 rounded-xl text-xs sm:text-[13px] font-black transition-all border cursor-pointer ${
                           paymentMethod === m.id
-                            ? 'bg-amber-500 text-white border-amber-600 shadow-xs'
-                            : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                            ? 'bg-amber-500 text-white border-amber-600 shadow-xs ring-2 ring-amber-300'
+                            : 'bg-slate-50 hover:bg-slate-100 text-slate-800 border-slate-200'
                         }`}
                       >
                         {m.label}
@@ -908,8 +912,8 @@ export default function NewSalesInvoicePOSPage() {
 
                   {/* Split Payment inputs if selected */}
                   {paymentMethod === 'دفع متعدد / مزيج' && (
-                    <div className="bg-amber-50 border border-amber-300 p-1.5 rounded-xl mt-1">
-                      <div className="grid grid-cols-2 gap-1">
+                    <div className="bg-amber-50 border border-amber-300 p-2 rounded-xl mt-1.5">
+                      <div className="grid grid-cols-2 gap-1.5">
                         {[
                           { label: '💵 كاش', val: splitCash, setter: setSplitCash },
                           { label: '⚡ إنستا', val: splitInstapay, setter: setSplitInstapay },
@@ -917,7 +921,7 @@ export default function NewSalesInvoicePOSPage() {
                           { label: '💳 فيزا', val: splitVisa, setter: setSplitVisa },
                         ].map(({ label, val, setter }) => (
                           <div key={label}>
-                            <label className="text-[9px] font-bold text-slate-700 block">{label}:</label>
+                            <label className="text-[10px] font-black text-slate-700 block">{label}:</label>
                             <input
                               type="number"
                               min="0"
@@ -932,7 +936,7 @@ export default function NewSalesInvoicePOSPage() {
                                   (setter === setSplitVisa ? v : (splitVisa || 0));
                                 setPaidAmount(sum);
                               }}
-                              className="w-full bg-white border rounded px-1 py-0.5 font-mono font-bold text-[10px]"
+                              className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1 font-mono font-black text-xs"
                             />
                           </div>
                         ))}
@@ -942,59 +946,84 @@ export default function NewSalesInvoicePOSPage() {
                 </div>
 
                 {/* Totals Summary */}
-                <div className="bg-slate-900 text-white px-2.5 py-2 rounded-xl space-y-1 text-xs font-bold shadow-md">
-                  <div className="flex justify-between text-slate-300">
+                <div className="bg-slate-900 text-white p-2.5 sm:p-3 rounded-2xl space-y-1.5 shadow-md border border-slate-800">
+                  <div className="flex justify-between items-center text-slate-300 text-xs font-bold">
                     <span>المجموع الفرعي:</span>
-                    <span className="font-mono">{subtotal.toLocaleString()} ج.م</span>
+                    <span className="font-mono text-sm">{subtotal.toLocaleString()} ج.م</span>
                   </div>
 
                   {calculatedDiscount > 0 && (
-                    <div className="flex justify-between text-amber-400">
+                    <div className="flex justify-between items-center text-amber-400 text-xs font-bold">
                       <span>الخصم:</span>
-                      <span className="font-mono">- {calculatedDiscount.toLocaleString()} ج.م</span>
+                      <span className="font-mono text-sm">- {calculatedDiscount.toLocaleString()} ج.م</span>
                     </div>
                   )}
 
-                  <div className="flex justify-between text-white border-t border-slate-800 pt-1 font-black">
-                    <span>الصافي المستحق:</span>
-                    <span className="font-mono text-sm text-emerald-400">{totalAmount.toLocaleString()} ج.م</span>
+                  <div className="flex justify-between items-center text-white border-t border-slate-800 pt-1.5 font-black">
+                    <span className="text-xs sm:text-sm">الصافي المستحق:</span>
+                    <span className="font-mono text-lg sm:text-xl text-emerald-400">{totalAmount.toLocaleString()} ج.م</span>
                   </div>
+                </div>
 
-                  <div className="border-t border-slate-800 pt-1 grid grid-cols-2 gap-1.5">
-                    <div className="flex items-center gap-1">
-                      <span className="text-[9.5px] text-slate-400 whitespace-nowrap">المدفوع:</span>
+                {/* Dedicated Paid & Remaining Box */}
+                <div className="bg-amber-50/70 border-2 border-amber-200 p-2.5 rounded-2xl space-y-2 shadow-soft">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs sm:text-sm font-black text-amber-950 whitespace-nowrap">
+                      المبلغ المدفوع:
+                    </span>
+                    <div className="flex items-center gap-1.5 flex-1 max-w-[210px]">
                       <input
                         type="number"
                         min="0"
                         value={paidAmount}
                         onChange={e => { setPaidAmount(Number(e.target.value)); setIsFullPaid(false); }}
-                        className="w-full bg-slate-800 border border-slate-700 rounded px-1 py-0.5 font-mono font-black text-amber-300 text-[11px] text-center focus:outline-none"
+                        className="w-full bg-white border-2 border-amber-400 focus:border-amber-600 rounded-xl px-2.5 py-1.5 font-mono font-black text-slate-950 text-base sm:text-lg text-center focus:outline-none shadow-inner"
+                        placeholder="0"
                       />
                       <button
                         type="button"
                         onClick={() => { setPaidAmount(totalAmount); setIsFullPaid(true); }}
-                        className="bg-emerald-600 hover:bg-emerald-500 text-white text-[9px] px-1 py-0.5 rounded font-bold cursor-pointer whitespace-nowrap"
+                        className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-2.5 py-2 rounded-xl font-black cursor-pointer whitespace-nowrap shadow-xs active:scale-95 transition-all"
+                        title="سداد المبلغ كاملاً"
                       >
-                        كامل
+                        كامل ⚡
                       </button>
                     </div>
+                  </div>
 
-                    <div className="bg-slate-800/80 border border-slate-700 rounded px-2 py-0.5 font-mono font-black text-[11px] text-rose-400 flex items-center justify-between">
-                      <span className="text-[9px] text-slate-400 font-sans">المتبقي:</span>
-                      <span>{remainingAmount.toLocaleString()} ج</span>
-                    </div>
+                  {/* Remaining / Balance Status Indicator */}
+                  <div className="pt-0.5">
+                    {remainingAmount === 0 ? (
+                      <div className="bg-emerald-100/90 border border-emerald-300 text-emerald-950 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-black flex justify-between items-center shadow-3xs">
+                        <span className="flex items-center gap-1">
+                          <span className="material-symbols-outlined text-base text-emerald-700">check_circle</span>
+                          <span>الحالة: تم السداد بالكامل</span>
+                        </span>
+                        <span className="font-mono font-black text-sm text-emerald-800">0 ج.م</span>
+                      </div>
+                    ) : (
+                      <div className="bg-rose-100/90 border border-rose-300 text-rose-950 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-black flex justify-between items-center shadow-3xs">
+                        <span className="flex items-center gap-1">
+                          <span className="material-symbols-outlined text-base text-rose-700">pending</span>
+                          <span>المتبقي (آجل / دفعات):</span>
+                        </span>
+                        <span className="font-mono font-black text-sm sm:text-base text-rose-700">
+                          {remainingAmount.toLocaleString()} ج.م
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
                 {/* 2 Save Buttons — side by side */}
-                <div className="grid grid-cols-2 gap-1.5">
+                <div className="grid grid-cols-2 gap-2 pt-0.5">
                   <button
                     type="button"
                     disabled={items.length === 0}
                     onClick={() => handleSaveInvoice(true)}
-                    className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white py-2 rounded-xl text-xs font-black shadow-xs flex items-center justify-center gap-1 cursor-pointer transition-all active:scale-[0.99]"
+                    className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-black shadow-md flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-[0.98]"
                   >
-                    <span className="material-symbols-outlined text-[15px]">print</span>
+                    <span className="material-symbols-outlined text-base sm:text-lg">print</span>
                     <span>حفظ وطباعة 🖨️</span>
                   </button>
 
@@ -1002,9 +1031,9 @@ export default function NewSalesInvoicePOSPage() {
                     type="button"
                     disabled={items.length === 0}
                     onClick={() => handleSaveInvoice(false)}
-                    className="bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white py-2 rounded-xl text-xs font-black transition-colors cursor-pointer flex items-center justify-center gap-1"
+                    className="bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-md active:scale-[0.98]"
                   >
-                    <span className="material-symbols-outlined text-[15px]">save</span>
+                    <span className="material-symbols-outlined text-base sm:text-lg">save</span>
                     <span>حفظ فقط</span>
                   </button>
                 </div>
