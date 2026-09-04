@@ -33,7 +33,10 @@ export default function DashboardPage() {
         const orders = (resOrd.success && Array.isArray(resOrd.orders)) ? resOrd.orders : getStoredPipelineOrders();
         const invItems = (resInv.success && Array.isArray(resInv.items)) ? resInv.items : [];
         const customers = (resCust.success && Array.isArray(resCust.customers)) ? resCust.customers : [];
-        const sales = (resSales.success && Array.isArray(resSales.invoices)) ? resSales.invoices : [];
+        // #FIX: كان بيقرأ resSales.invoices، لكن GET /api/fabric-sales بيرجع المصفوفة
+        // تحت اسم "sales" مش "invoices" — يعني فواتير البيع بالمتر (الكاشير) كانت دايمًا
+        // بتتحسب صفر فى كل كروت وتقارير الشاشة الرئيسية، لأي مستخدم ولأي فرع.
+        const sales = (resSales.success && Array.isArray(resSales.sales)) ? resSales.sales : [];
 
         setRawInspections(ins || []);
         setRawQuotations(qot || []);
