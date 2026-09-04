@@ -556,9 +556,18 @@ export default function InventoryPage() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-3 gap-2">
                         <div>
-                          <label className="text-[11px] font-bold text-slate-700 block mb-1">سعر التكلفة (ج)</label>
+                          <label className="text-[11px] font-bold text-rose-800 block mb-1">الحد الأدنى</label>
+                          <input
+                            type="number"
+                            value={inlineForm.minAlert ?? 20}
+                            onChange={e => setInlineForm({ ...inlineForm, minAlert: Number(e.target.value) })}
+                            className="w-full bg-white border border-rose-300 rounded-xl p-2 text-xs font-mono font-bold text-rose-950 text-center"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[11px] font-bold text-slate-700 block mb-1">التكلفة (ج)</label>
                           <input
                             type="number"
                             value={inlineForm.costPrice}
@@ -567,7 +576,7 @@ export default function InventoryPage() {
                           />
                         </div>
                         <div>
-                          <label className="text-[11px] font-bold text-slate-700 block mb-1">سعر البيع (ج)</label>
+                          <label className="text-[11px] font-bold text-slate-700 block mb-1">البيع (ج)</label>
                           <input
                             type="number"
                             value={inlineForm.sellPrice}
@@ -664,9 +673,9 @@ export default function InventoryPage() {
                       <th className="py-2.5 px-3 text-center text-slate-900 bg-slate-200/50">الرصيد</th>
                       <th className="py-2.5 px-3 text-center text-amber-800 bg-amber-50/50">المحجوز</th>
                       <th className="py-2.5 px-3 text-center text-emerald-800 bg-emerald-50/50">المتاح</th>
+                      <th className="py-2.5 px-3 text-center text-rose-800 bg-rose-50/50">الحد الأدنى</th>
                       <th className="py-2.5 px-3 text-left">التكلفة</th>
                       <th className="py-2.5 px-3 text-left">سعر البيع</th>
-                      <th className="py-2.5 px-3 text-left">توقع الربح</th>
                       <th className="py-2.5 px-3">الفرع</th>
                       <th className="py-2.5 px-3 text-center">الإجراءات</th>
                     </tr>
@@ -674,8 +683,6 @@ export default function InventoryPage() {
                   <tbody className="divide-y divide-slate-100">
                     {filteredItems.map(item => {
                       const available = item.totalQuantity - item.reservedQuantity;
-                      const profitPerUnit = item.sellPrice - item.costPrice;
-                      const totalProfit = profitPerUnit * item.totalQuantity;
                       const isLow = available <= (item.minAlert || 20);
                       const isEditing = editingId === item.id;
 
@@ -733,6 +740,14 @@ export default function InventoryPage() {
                             <td className="p-1.5 text-center font-mono font-bold text-emerald-800 text-xs">
                               {inlineForm.totalQuantity - inlineForm.reservedQuantity}
                             </td>
+                            <td className="p-1.5 text-center">
+                              <input
+                                type="number"
+                                value={inlineForm.minAlert ?? 20}
+                                onChange={e => setInlineForm({ ...inlineForm, minAlert: Number(e.target.value) })}
+                                className="w-14 bg-white border border-rose-300 rounded-lg p-1 text-center font-mono font-bold text-rose-950 text-xs"
+                              />
+                            </td>
                             <td className="p-1.5">
                               <input
                                 type="number"
@@ -748,9 +763,6 @@ export default function InventoryPage() {
                                 onChange={e => setInlineForm({ ...inlineForm, sellPrice: Number(e.target.value) })}
                                 className="w-14 bg-white border border-slate-300 rounded-lg p-1 text-center font-mono font-bold text-slate-900 text-xs"
                               />
-                            </td>
-                            <td className="p-1.5 font-mono font-bold text-purple-700 text-left text-xs whitespace-nowrap">
-                              +{(inlineForm.totalQuantity * (inlineForm.sellPrice - inlineForm.costPrice)).toLocaleString()} ج
                             </td>
                             <td className="p-1.5">
                               <select
@@ -820,11 +832,11 @@ export default function InventoryPage() {
                               <span className="mr-1 text-[9px] text-rose-600 font-bold bg-rose-100 px-1 py-0.2 rounded">منخفض</span>
                             )}
                           </td>
+                          <td className="py-2.5 px-3 text-center font-mono font-bold text-slate-700 bg-rose-50/30 text-xs whitespace-nowrap">
+                            {item.minAlert ?? 20}
+                          </td>
                           <td className="py-2.5 px-3 text-left font-mono text-xs text-slate-600 whitespace-nowrap">{item.costPrice} ج</td>
                           <td className="py-2.5 px-3 text-left font-mono font-bold text-slate-900 text-xs whitespace-nowrap">{item.sellPrice} ج</td>
-                          <td className="py-2.5 px-3 text-left font-mono font-black text-purple-700 text-xs whitespace-nowrap">
-                            +{totalProfit.toLocaleString()} ج
-                          </td>
                           <td className="py-2.5 px-3 text-xs text-slate-700 font-bold whitespace-nowrap">{item.branch}</td>
                           <td className="py-2.5 px-3 text-center whitespace-nowrap">
                             <div className="flex items-center justify-center gap-1.5">
@@ -851,7 +863,7 @@ export default function InventoryPage() {
                     })}
                     {filteredItems.length === 0 && (
                       <tr>
-                        <td colSpan={10} className="p-12 text-center text-slate-400 font-bold">
+                        <td colSpan={11} className="p-12 text-center text-slate-400 font-bold">
                           لا توجد أصناف مطابقة للبحث أو التصفية الحالية
                         </td>
                       </tr>
