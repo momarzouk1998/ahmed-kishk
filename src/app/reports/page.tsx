@@ -92,6 +92,7 @@ export default function ReportsPage() {
   const [suppliers, setSuppliers] = useState<SupplierRow[]>([]);
   const [inspections, setInspections] = useState<any[]>([]);
   const [quotations, setQuotations] = useState<any[]>([]);
+  const [collections, setCollections] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // ─── Load all data ───────────────────────────────────────────
@@ -125,6 +126,7 @@ export default function ReportsPage() {
         if (custRes?.ok) {
           const j = await custRes.json();
           if (Array.isArray(j?.customers)) setCustomers(j.customers);
+          if (Array.isArray(j?.collections)) setCollections(j.collections);
         }
         if (supRes?.ok) {
           const j = await supRes.json();
@@ -168,7 +170,25 @@ export default function ReportsPage() {
     [purchases, selectedBranch, period]
   );
 
-  // ─── Sales KPIs & cash-drawer breakdown (FIXED) ──────────────
+  const fCollections = useMemo(
+    () => collections.filter(c => {
+      const matchPeriod = inPeriod(c.date);
+      if (!matchPeriod) return false;
+      if (selectedBranch === 'ALL') return true;
+      const treasury = c.treasury || '';
+      if (treasury.includes(selectedBranch)) return true;
+      if (selectedBranch === 'فرع عمر أفندي' && (treasury.includes('عمر أفندي') || treasury.includes('عمر افندي'))) return true;
+      if (selectedBranch === 'فرع عرابي' && treasury.includes('عرابي')) return true;
+      if (selectedBranch === 'فرع الثلاثيني' && treasury.includes('الثلاثيني')) return true;
+      if (selectedBranch === 'الفرع الرئيسي' && (treasury.includes('الرئيسية') || treasury.includes('سعد زغلول'))) return true;
+      const cust = customers.find(cust => cust.phone === c.phone || cust.name === c.customerName);
+      if (cust && cust.branch && inBranch(cust.branch)) return true;
+      return false;
+    }),
+    [collections, selectedBranch, period, customers]
+  );
+
+  // ─── Sales KPIs & cash-drawer breakdown (Including Collections) ──────────────
   const salesKpis = useMemo(() => {
     let cash = 0, instapay = 0, vodafone = 0, visa = 0, deferred = 0, other = 0;
     let grand = 0, remaining = 0;
@@ -187,7 +207,6 @@ export default function ReportsPage() {
       }
 
       const m = (inv.paymentMethod || '').trim();
-      // #FIX: لم يعد أى نص غير معروف يقع تلقائياً فى الكاش — يذهب لـ "أخرى" أو "آجل"
       if (m === 'نقدي' || m === 'كاش' || m === 'نقدي (كاش)') cash += paid;
       else if (m.includes('إنستا') || m.toLowerCase().includes('insta')) instapay += paid;
       else if (m.includes('فودافون') || m.toLowerCase().includes('vodafone')) vodafone += paid;
@@ -196,9 +215,21 @@ export default function ReportsPage() {
       else other += paid;
     });
 
+    let totalDirectCollections = 0;
+    fCollections.forEach(col => {
+      const amt = Number(col.amount || 0);
+      totalDirectCollections += amt;
+      const m = (col.method || '').trim();
+      if (m.includes('إنستا') || m.toLowerCase().includes('insta')) instapay += amt;
+      else if (m.includes('فودافون') || m.toLowerCase().includes('vodafone')) vodafone += amt;
+      else if (m.includes('فيزا') || m.toLowerCase().includes('visa') || m.includes('كارت')) visa += amt;
+      else if (m === 'نقدي' || m === 'كاش') cash += amt;
+      else other += amt;
+    });
+
     const totalCollected = cash + instapay + vodafone + visa + other;
-    return { cash, instapay, vodafone, visa, deferred, other, grand, remaining, totalCollected };
-  }, [fInvoices]);
+    return { cash, instapay, vodafone, visa, deferred, other, grand, remaining, totalCollected, totalDirectCollections };
+  }, [fInvoices, fCollections]);
 
   // ─── Profits (real cost from inventory) ──────────────────────
   const profitStats = useMemo(() => {
@@ -371,7 +402,7 @@ export default function ReportsPage() {
             <div className="bg-white rounded-2xl border border-slate-200 p-10 text-center text-slate-500 text-sm">جارٍ تحميل التقارير...</div>
           ) : (
             <>
-              {reportType === 'sales' && <SalesReport kpis={salesKpis} invoices={fInvoices} branchLabel={branchLabel} periodLabel={periodLabel} />}
+              {reportType === 'sales' && <SalesReport kpis={salesKpis} invoices={fInvoices} collections={fCollections} branchLabel={branchLabel} periodLabel={periodLabel} />}
               {reportType === 'profits' && <ProfitsReport stats={profitStats} topItems={topItems} branchLabel={branchLabel} periodLabel={periodLabel} />}
               {reportType === 'inventory' && <InventoryReport alerts={invAlerts} branchLabel={branchLabel} />}
               {reportType === 'curtains' && <CurtainsReport stats={curtainStats} branchLabel={branchLabel} periodLabel={periodLabel} />}
@@ -399,20 +430,25 @@ function KpiStrip({ items }: { items: { label: string; value: string; color?: st
   );
 }
 
-function SalesReport({ kpis, invoices, branchLabel, periodLabel }: any) {
+function SalesReport({ kpis, invoices, collections, branchLabel, periodLabel }: any) {
   return (
     <>
       <KpiStrip items={[
         { label: 'إجمالى المبيعات', value: `${kpis.grand.toLocaleString()} ج`, color: 'bg-amber-100 border-amber-400' },
-        { label: '💵 كاش بالدرج', value: `${kpis.cash.toLocaleString()} ج`, color: 'bg-emerald-50 border-emerald-300' },
+        { label: '💵 كاش بالدرج / الخزائن', value: `${kpis.cash.toLocaleString()} ج`, color: 'bg-emerald-50 border-emerald-300' },
         { label: '⚡ إنستاباى', value: `${kpis.instapay.toLocaleString()} ج`, color: 'bg-purple-50 border-purple-300' },
-        { label: '📱 فودافون', value: `${kpis.vodafone.toLocaleString()} ج`, color: 'bg-rose-50 border-rose-300' },
+        { label: '📱 فودافون كاش', value: `${kpis.vodafone.toLocaleString()} ج`, color: 'bg-rose-50 border-rose-300' },
         { label: '💳 فيزا/كارت', value: `${kpis.visa.toLocaleString()} ج`, color: 'bg-blue-50 border-blue-300' },
         { label: '⏳ آجل/متبقى', value: `${kpis.remaining.toLocaleString()} ج`, color: 'bg-amber-50 border-amber-300' },
       ]} />
 
-      {(kpis.deferred > 0 || kpis.other > 0) && (
-        <div className="text-[11px] font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-lg p-2 flex gap-4">
+      {(kpis.deferred > 0 || kpis.other > 0 || (kpis.totalDirectCollections || 0) > 0) && (
+        <div className="text-[11px] font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-lg p-2 flex flex-wrap gap-4">
+          {(kpis.totalDirectCollections || 0) > 0 && (
+            <span className="text-purple-900 bg-purple-100 px-2 py-0.5 rounded font-black">
+              💰 سندات تحصيل عملاء مباشرة: <span className="font-mono">{kpis.totalDirectCollections.toLocaleString()} ج</span>
+            </span>
+          )}
           {kpis.deferred > 0 && <span>مسجل كآجل: <span className="font-mono text-amber-700">{kpis.deferred.toLocaleString()} ج</span></span>}
           {kpis.other > 0 && <span>طرق دفع أخرى: <span className="font-mono text-slate-700">{kpis.other.toLocaleString()} ج</span></span>}
         </div>
@@ -420,8 +456,8 @@ function SalesReport({ kpis, invoices, branchLabel, periodLabel }: any) {
 
       <div className="card bg-white rounded-2xl border border-slate-200 p-3">
         <div className="flex justify-between items-center pb-2 mb-2 border-b border-slate-100">
-          <h3 className="font-black text-xs text-slate-900">تفاصيل الفواتير ({invoices.length}) — {branchLabel} • {periodLabel}</h3>
-          <span className="text-[11px] font-mono font-bold text-emerald-700">مقبوضات: {kpis.totalCollected.toLocaleString()} ج</span>
+          <h3 className="font-black text-xs text-slate-900">تفاصيل فواتير المبيعات ({invoices.length}) — {branchLabel} • {periodLabel}</h3>
+          <span className="text-[11px] font-mono font-bold text-emerald-700">مقبوضات الفواتير: {(kpis.totalCollected - (kpis.totalDirectCollections || 0)).toLocaleString()} ج</span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-right text-[11px] border-collapse">
@@ -439,7 +475,7 @@ function SalesReport({ kpis, invoices, branchLabel, periodLabel }: any) {
             </thead>
             <tbody>
               {invoices.length === 0 ? (
-                <tr><td colSpan={8} className="p-6 text-center text-slate-400 font-bold">لا توجد فواتير فى الفترة المحددة</td></tr>
+                <tr><td colSpan={8} className="p-6 text-center text-slate-400 font-bold">لا توجد فواتير مبيعات فى الفترة المحددة</td></tr>
               ) : invoices.map((inv: SalesInvoice) => (
                 <tr key={inv.id} className="border-b border-slate-100 hover:bg-slate-50">
                   <td className="p-2 font-mono font-bold text-slate-900">{inv.invoiceNumber}</td>
@@ -466,6 +502,76 @@ function SalesReport({ kpis, invoices, branchLabel, periodLabel }: any) {
                   <td className="p-2 text-left font-mono">{kpis.grand.toLocaleString()}</td>
                   <td className="p-2 text-left font-mono text-emerald-700">{(kpis.grand - kpis.remaining).toLocaleString()}</td>
                   <td className="p-2 text-left font-mono text-rose-700">{kpis.remaining.toLocaleString()}</td>
+                </tr>
+              </tfoot>
+            )}
+          </table>
+        </div>
+      </div>
+
+      {/* 💰 Direct Customer Collections Table */}
+      <div className="card bg-white rounded-2xl border border-slate-200 p-3">
+        <div className="flex justify-between items-center pb-2 mb-2 border-b border-slate-100">
+          <h3 className="font-black text-xs text-slate-900 flex items-center gap-1.5">
+            <span className="material-symbols-outlined text-amber-500 text-sm">payments</span>
+            <span>سندات التحصيل والمقبوضات المباشرة ({collections?.length || 0}) — {branchLabel} • {periodLabel}</span>
+          </h3>
+          <span className="text-[11px] font-mono font-black text-emerald-700">
+            إجمالي سندات التحصيل: {(kpis.totalDirectCollections || 0).toLocaleString()} ج.م
+          </span>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-right text-[11px] border-collapse">
+            <thead className="bg-slate-100 text-slate-700 border-b border-slate-300">
+              <tr>
+                <th className="p-2">رقم السند</th>
+                <th className="p-2">التاريخ</th>
+                <th className="p-2">العميل</th>
+                <th className="p-2 text-center">طريقة الدفع</th>
+                <th className="p-2">الخزينة المستلمة</th>
+                <th className="p-2 text-left font-mono">المبلغ المحصل</th>
+                <th className="p-2">البيان / ملاحظات</th>
+              </tr>
+            </thead>
+            <tbody>
+              {!collections || collections.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="p-6 text-center text-slate-400 font-bold">
+                    لا توجد سندات تحصيل مباشرة فى الفترة المحددة
+                  </td>
+                </tr>
+              ) : collections.map((col: any) => {
+                const methodBadge = col.method === 'إنستاباي' ? 'bg-purple-100 text-purple-900 border-purple-300'
+                  : col.method === 'فيزا' ? 'bg-blue-100 text-blue-900 border-blue-300'
+                  : col.method === 'فودافون كاش' ? 'bg-rose-100 text-rose-900 border-rose-300'
+                  : 'bg-emerald-100 text-emerald-900 border-emerald-300';
+                return (
+                  <tr key={col.id} className="border-b border-slate-100 hover:bg-slate-50">
+                    <td className="p-2 font-mono font-bold text-slate-900">{col.id}</td>
+                    <td className="p-2 font-mono text-slate-600">{col.date ? formatDateOnly(col.date) : '—'}</td>
+                    <td className="p-2 font-bold text-slate-900">{col.customerName}</td>
+                    <td className="p-2 text-center">
+                      <span className={`px-2 py-0.5 rounded font-bold border text-[10px] ${methodBadge}`}>
+                        {col.method || 'نقدي'}
+                      </span>
+                    </td>
+                    <td className="p-2 font-bold text-slate-700">{col.treasury || 'الخزينة الرئيسية'}</td>
+                    <td className="p-2 text-left font-mono font-black text-emerald-700">
+                      {(Number(col.amount) || 0).toLocaleString()} ج
+                    </td>
+                    <td className="p-2 text-slate-500 text-[10.5px]">{col.notes || '—'}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+            {collections && collections.length > 0 && (
+              <tfoot className="bg-slate-50 border-t-2 border-slate-300 font-black">
+                <tr>
+                  <td colSpan={5} className="p-2 text-slate-900">إجمالي سندات التحصيل</td>
+                  <td className="p-2 text-left font-mono text-emerald-700">
+                    {(kpis.totalDirectCollections || 0).toLocaleString()} ج
+                  </td>
+                  <td></td>
                 </tr>
               </tfoot>
             )}
