@@ -54,7 +54,7 @@ export default function BranchPricePasswordsCard() {
       {loading ? (
         <p className="text-xs text-slate-400 font-bold">جارِ التحميل...</p>
       ) : (
-        <div className="space-y-2 max-w-md">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
           {BRANCHES_LIST.map(b => (
             <div key={b.id} className="flex items-center gap-2.5 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
               <span className="text-xs font-bold text-slate-700 flex-1 truncate">{branchLabel(b.name)}</span>
