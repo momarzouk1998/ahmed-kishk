@@ -28,6 +28,7 @@ import {
   fetchInspections,
   deleteQuotationOrder,
   QuotationOrder,
+  InspectionData,
 } from '@/lib/inspectionsStore';
 import { formatDate, formatDateOnly } from '@/lib/dateUtils';
 
@@ -45,6 +46,11 @@ const GLOBAL_STAGES: { key: GlobalMasterStage | 'الكل'; label: string; badge
 
 export default function CentralOrdersLedgerPage() {
   const [orders, setOrders] = useState<PipelineMasterOrder[]>([]);
+  // #FIX: نحتفظ بنسخة حقيقية من العقود والمعاينات فى الـ state (مش بس محلياً جوه
+  // loadData) — عشان أزرار الطباعة تقدر تستخدم البيانات الحقيقية (الأسعار الفعلية،
+  // مقاسات المعاينة) بدل ما تخترع أرقام افتراضية أو تبعت شكل بيانات غلط للمودال.
+  const [quotations, setQuotations] = useState<QuotationOrder[]>([]);
+  const [inspections, setInspections] = useState<InspectionData[]>([]);
   const [search, setSearch] = useState('');
   const [selectedStage, setSelectedStage] = useState<GlobalMasterStage | 'الكل'>('الكل');
   const [selectedBranch, setSelectedBranch] = useState('الكل');
@@ -154,6 +160,8 @@ export default function CentralOrdersLedgerPage() {
 
     const combined = [...dedupedPipelineOrders, ...quotationMasterItems, ...inspectionMasterItems];
     setOrders(combined);
+    setQuotations(quotations || []);
+    setInspections(inspections || []);
   };
 
   useEffect(() => {
@@ -247,7 +255,55 @@ export default function CentralOrdersLedgerPage() {
   const totalPaid = filteredOrders.reduce((sum, o) => sum + (o.depositPaid || 0), 0);
   const totalRemaining = filteredOrders.reduce((sum, o) => sum + (o.remainingAmount || 0), 0);
 
+  // يدور على العقد الحقيقى (بأسعاره الفعلية) المرتبط بأوردر خط الإنتاج
+  const findQuotationForOrder = (order: PipelineMasterOrder): QuotationOrder | undefined => {
+    const rawId = (order.orderId || order.id || '').replace(/^ORD-/, '');
+    return quotations.find(q =>
+      q.id === order.orderId || q.id === order.id || q.id === rawId ||
+      (q.customerName && order.customerName && q.customerName.trim().toLowerCase() === order.customerName.trim().toLowerCase())
+    );
+  };
+
+  const findInspectionForOrder = (order: PipelineMasterOrder): InspectionData | undefined => {
+    return inspections.find(i =>
+      i.id === order.id || i.id === order.orderId ||
+      (i.customerName && order.customerName && i.customerName.trim().toLowerCase() === order.customerName.trim().toLowerCase())
+    );
+  };
+
+  // #FIX: كان بيبني عقد طباعة بأسعار وهمية ثابتة (380/160/100/50/125 ج) لأى أوردر
+  // — لأن rooms على مستوى خط الإنتاج بتتحول لشكل "القص" (اسم/أمتار بس، من غير أسعار)
+  // بمجرد ما الأوردر يتحول من التسعير. النتيجة كانت عقد مطبوع بإجمالي عشوائي مالوش
+  // أى علاقة بالسعر الحقيقي المتفق عليه مع العميل. دلوقتى بيدور على العقد الحقيقى
+  // (QuotationOrder) بنفس الأسعار المحفوظة فعلياً، ومايستخدمش أسعار افتراضية إلا لو
+  // مفيش عقد أصلاً (حالة نادرة لأوردر اتعمل يدوى بدون تسعير).
   const openContractPrint = (order: PipelineMasterOrder) => {
+    const realQuotation = findQuotationForOrder(order);
+
+    if (realQuotation) {
+      const printData: PrintContractData = {
+        id: realQuotation.id,
+        inspectionId: realQuotation.inspectionId,
+        customerName: realQuotation.customerName,
+        phone: realQuotation.phone,
+        address: realQuotation.address,
+        branch: realQuotation.branch,
+        date: realQuotation.date,
+        deliveryDate: realQuotation.deliveryDate,
+        estimatorName: realQuotation.estimatorName || 'أحمد كشك',
+        totalAmount: realQuotation.totalAmount || 0,
+        discountAmount: realQuotation.discountAmount || 0,
+        depositPaid: realQuotation.depositPaid || 0,
+        remainingAmount: realQuotation.remainingAmount || 0,
+        rooms: realQuotation.rooms as any,
+      };
+      setPrintContractData(printData);
+      setIsContractPrintOpen(true);
+      return;
+    }
+
+    // Fallback نادر: أوردر بدون عقد تسعير مرتبط — نعرض تقدير تقريبى واضح إنه غير رسمي
+    console.warn(`No matching QuotationOrder found for order ${order.id} — printing an estimate only.`);
     const printData: PrintContractData = {
       id: order.orderId || order.id,
       inspectionId: order.id,
@@ -263,29 +319,42 @@ export default function CentralOrdersLedgerPage() {
       rooms: (order.rooms || []).map((r, idx) => ({
         id: `rm-${idx}`,
         name: r.roomName || r.name || `غرفة ${idx + 1}`,
-        widthCm: r.widthCm || 350,
-        heightCm: r.heightCm || 280,
+        widthCm: r.widthCm || 0,
+        heightCm: r.heightCm || 0,
         sides: r.sides || 2,
-        heavyFabricName: r.heavyFabric?.name || 'قطيفة تركي',
-        heavyMeters: r.heavyFabric?.meters || 6.3,
-        heavyPrice: 380,
-        sheerFabricName: r.sheerFabric?.name || 'تول مطرز',
-        sheerMeters: r.sheerFabric?.meters || 8.75,
-        sheerPrice: 160,
+        heavyFabricName: r.heavyFabric?.name || '',
+        heavyMeters: r.heavyFabric?.meters || 0,
+        heavyPrice: 0,
+        sheerFabricName: r.sheerFabric?.name || '',
+        sheerMeters: r.sheerFabric?.meters || 0,
+        sheerPrice: 0,
         blackoutFabricName: r.blackoutFabric?.name || '',
         blackoutMeters: r.blackoutFabric?.meters || 0,
         blackoutPrice: 0,
-        trackMeters: 7,
-        trackPrice: 100,
-        tapeMeters: 15,
-        tapePrice: 50,
+        trackMeters: 0,
+        trackPrice: 0,
+        tapeMeters: 0,
+        tapePrice: 0,
         tailorPricePerSide: 0,
-        installFee: 125,
-        totalSellPrice: (r.heavyFabric?.meters || 6.3) * 380 + (r.sheerFabric?.meters || 8.75) * 160,
+        installFee: 0,
+        totalSellPrice: order.totalAmount ? Math.round((order.totalAmount || 0) / Math.max(1, (order.rooms || []).length)) : 0,
       })),
     };
     setPrintContractData(printData);
     setIsContractPrintOpen(true);
+  };
+
+  // #FIX: كان بيبعت الأوردر نفسه (شكل بيانات القص: heavyFabric/sheerFabric بلا مقاسات
+  // حائط) لمودال "كشف المقاسات" اللى بيستنى شكل بيانات المعاينة (widthCm/heightCm/
+  // installationType) — فكانت الورقة تطلع فاضية تمامًا لأى أوردر بعد مرحلة التسعير.
+  // دلوقتى بيدور على سجل المعاينة الحقيقى ويطبعه هو.
+  const openInspectionPrint = (order: PipelineMasterOrder) => {
+    const realInspection = findInspectionForOrder(order);
+    if (realInspection) {
+      setPrintInspectionData(realInspection);
+    } else {
+      alert('لا يوجد سجل معاينة أصلي مرتبط بهذا الطلب لطباعته.');
+    }
   };
 
   return (
@@ -493,7 +562,7 @@ export default function CentralOrdersLedgerPage() {
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
-                  onClick={() => setPrintInspectionData(activeEditingOrder)}
+                  onClick={() => openInspectionPrint(activeEditingOrder)}
                   className="bg-amber-600 hover:bg-amber-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors"
                 >
                   <span className="material-symbols-outlined text-[16px]">square_foot</span>
@@ -569,14 +638,12 @@ export default function CentralOrdersLedgerPage() {
 
                 <div>
                   <label className="text-slate-500 font-bold block mb-1">الفرع:</label>
-                  <select
+                  <BranchSelect
                     value={activeEditingOrder.branch}
-                    onChange={(e) => setActiveEditingOrder({ ...activeEditingOrder, branch: e.target.value })}
+                    onChange={(b) => setActiveEditingOrder({ ...activeEditingOrder, branch: b })}
+                    isAdmin={isAdmin}
                     className="w-full bg-white border border-slate-300 rounded-xl px-3 py-1.5 font-bold text-slate-900 focus:outline-none"
-                  >
-                    <option value="الفرع الرئيسي">الفرع الرئيسي</option>
-                    <option value="فرع عرابي">فرع عرابي</option>
-                  </select>
+                  />
                 </div>
               </div>
 
