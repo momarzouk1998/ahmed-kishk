@@ -13,7 +13,6 @@ import {
   getInspectionById,
   QuotationOrder,
   RoomPricing,
-  TAPE_PRICES,
   TAPE_MULTIPLIERS,
   PipeAccessories
 } from '@/lib/inspectionsStore';
@@ -21,6 +20,7 @@ import { getStoredPipelineOrders, fetchPipelineOrders, saveStoredPipelineOrders,
 import { canUserEditPrices } from '@/lib/permissions';
 import { useManagerGate, isManagerUnlocked } from '@/components/ManagerUnlockGate';
 import { getCurtainDefaults } from '@/lib/curtainDefaults';
+import { getTapeTypePrices, saveTapeTypePrices } from '@/lib/tapeTypePrices';
 import SearchableFabricSelect from '@/components/SearchableFabricSelect';
 import { useCurrentUser } from '@/lib/useCurrentUser';
 
@@ -112,6 +112,8 @@ export default function PricingDetailPage() {
 
   // القيم الافتراضية لتسعير الستائر (تُقرأ من /settings/curtain-defaults)
   const curtainDefaults = getCurtainDefaults();
+  // سعر افتراضى لكل نوع شريط — يتحدّث تلقائياً كلما حفظ أى موظف سعر شريط فى أى أوردر
+  const tapeTypePrices = getTapeTypePrices();
 
   const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
   const [deliveryDate, setDeliveryDate] = useState<string>('');
@@ -226,7 +228,9 @@ export default function PricingDetailPage() {
     const hMul = room.heavyMultiplier ?? (TAPE_MULTIPLIERS[hTape] || 2.0);
     const hM = room.heavyMeters || Math.round(widthM * hMul * 100) / 100;
     setHeavyTapeType(hTape);
-    setHeavyTapePrice(TAPE_PRICES[hTape] || 0);
+    // #FIX: كان بيرجع السعر لصفر عند إعادة فتح الغرفة (TAPE_PRICES كانت كلها صفر) —
+    // دلوقتي بيقرأ السعر المحفوظ فعلياً على الغرفة، وبيرجع لافتراضى نوع الشريط بس لو مفيش سعر محفوظ.
+    setHeavyTapePrice(room.heavyTapePrice ?? tapeTypePrices[hTape] ?? 0);
     setHeavyMultiplier(hMul);
     setHeavyMeters(hM);
     setHeavyCode(room.heavyFabricCode || '');
@@ -236,7 +240,7 @@ export default function PricingDetailPage() {
     const sMul = room.sheerMultiplier ?? (TAPE_MULTIPLIERS[sTape] || 2.5);
     const sM = room.sheerMeters || Math.round(widthM * sMul * 100) / 100;
     setSheerTapeType(sTape);
-    setSheerTapePrice(TAPE_PRICES[sTape] || 0);
+    setSheerTapePrice(room.sheerTapePrice ?? tapeTypePrices[sTape] ?? 0);
     setSheerMultiplier(sMul);
     setSheerMeters(sM);
     setSheerCode(room.sheerFabricCode || '');
@@ -250,7 +254,7 @@ export default function PricingDetailPage() {
     const bkMul = room.blackoutMultiplier ?? 1.20;
     const bkM = room.blackoutMeters || Math.round(widthM * bkMul * 100) / 100;
     setBlackoutTapeType(bkTape);
-    setBlackoutTapePrice(TAPE_PRICES[bkTape] || 0);
+    setBlackoutTapePrice(room.blackoutTapePrice ?? tapeTypePrices[bkTape] ?? 0);
     setBlackoutMultiplier(bkMul);
     setBlackoutMeters(bkM);
     setBlackoutCode(room.blackoutFabricCode || '');
@@ -278,7 +282,7 @@ export default function PricingDetailPage() {
 
   const handleHeavyTapeSelect = (tapeName: string) => {
     setHeavyTapeType(tapeName);
-    setHeavyTapePrice(TAPE_PRICES[tapeName] || 0);
+    setHeavyTapePrice(tapeTypePrices[tapeName] ?? 0);
     const mul = TAPE_MULTIPLIERS[tapeName] || 2.0;
     setHeavyMultiplier(mul);
     setHeavyMeters(Math.round(editingWidthM * mul * 100) / 100);
@@ -286,7 +290,7 @@ export default function PricingDetailPage() {
 
   const handleSheerTapeSelect = (tapeName: string) => {
     setSheerTapeType(tapeName);
-    setSheerTapePrice(TAPE_PRICES[tapeName] || 0);
+    setSheerTapePrice(tapeTypePrices[tapeName] ?? 0);
     const mul = TAPE_MULTIPLIERS[tapeName] || 2.5;
     setSheerMultiplier(mul);
     setSheerMeters(Math.round(editingWidthM * mul * 100) / 100);
@@ -294,7 +298,7 @@ export default function PricingDetailPage() {
 
   const handleBlackoutTapeSelect = (tapeName: string) => {
     setBlackoutTapeType(tapeName);
-    setBlackoutTapePrice(TAPE_PRICES[tapeName] || 0);
+    setBlackoutTapePrice(tapeTypePrices[tapeName] ?? 0);
     const mul = blackoutMultiplier || 1.20;
     setBlackoutMultiplier(mul);
     setBlackoutMeters(Math.round(editingWidthM * mul * 100) / 100);
@@ -394,6 +398,7 @@ export default function PricingDetailPage() {
           heavyFabricCode: heavyEnabled ? heavyCode : '',
           heavyFabricName: heavyEnabled ? (heavyFab?.name || 'قطيفة جاجوار تركيات') : 'غير محدد',
           heavyTapeType,
+          heavyTapePrice, // #FIX: يُحفظ سعر شريط الجوانب على الغرفة نفسها بدل ما يتصفّر عند إعادة الفتح
           heavyMultiplier,
           heavyMeters: effectiveHeavyMeters,
           heavyPrice: heavyP,
@@ -401,6 +406,7 @@ export default function PricingDetailPage() {
           sheerFabricCode: sheerEnabled ? sheerCode : '',
           sheerFabricName: sheerEnabled ? (sheerFab?.name || 'شيفون حرير فاخر') : 'غير محدد',
           sheerTapeType,
+          sheerTapePrice,
           sheerMultiplier,
           sheerMeters: effectiveSheerMeters,
           sheerPrice: sheerP,
@@ -411,6 +417,7 @@ export default function PricingDetailPage() {
           blackoutFabricCode: blackoutEnabled ? blackoutCode : '',
           blackoutFabricName: blackoutEnabled ? (blackoutFab?.name || 'بلاك آوت عازل ثلاثي') : undefined,
           blackoutTapeType,
+          blackoutTapePrice,
           blackoutMultiplier,
           blackoutMeters: effectiveBlackoutMeters,
           blackoutPrice: blackoutEnabled ? blackoutP : 0,
@@ -453,6 +460,13 @@ export default function PricingDetailPage() {
     setQuotations(updatedList);
     saveAllQuotations(updatedList);
     setEditingRoomId(null);
+
+    // #FEATURE: كل نوع شريط له سعر افتراضى مشترك — أي تعديل يدوى هنا يحدّثه لكل الأوردرات الجديدة
+    const nextTapeTypePrices = { ...tapeTypePrices };
+    if (heavyEnabled) nextTapeTypePrices[heavyTapeType] = heavyTapePrice;
+    if (sheerEnabled) nextTapeTypePrices[sheerTapeType] = sheerTapePrice;
+    if (blackoutEnabled) nextTapeTypePrices[blackoutTapeType] = blackoutTapePrice;
+    saveTapeTypePrices(nextTapeTypePrices);
   };
 
   const handleDiscountChange = (amount: number) => {

@@ -54,6 +54,7 @@ export interface RoomPricing {
   heavyFabricCode?: string;
   heavyFabricName?: string;
   heavyTapeType?: string;
+  heavyTapePrice?: number; // سعر متر شريط الجوانب المحفوظ فعلياً على الغرفة (منفصل عن السعر الافتراضى لنوع الشريط)
   heavyMultiplier?: number;
   heavyMeters: number;
   heavyPrice: number;
@@ -62,6 +63,7 @@ export interface RoomPricing {
   sheerFabricCode?: string;
   sheerFabricName?: string;
   sheerTapeType?: string;
+  sheerTapePrice?: number;
   sheerMultiplier?: number;
   sheerMeters: number;
   sheerPrice: number;
@@ -73,6 +75,7 @@ export interface RoomPricing {
   blackoutFabricCode?: string;
   blackoutFabricName?: string;
   blackoutTapeType?: string;
+  blackoutTapePrice?: number;
   blackoutMultiplier?: number;
   blackoutMeters: number;
   blackoutPrice: number;
