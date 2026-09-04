@@ -54,29 +54,27 @@ export default function BranchPricePasswordsCard() {
       {loading ? (
         <p className="text-xs text-slate-400 font-bold">جارِ التحميل...</p>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2 max-w-md">
           {BRANCHES_LIST.map(b => (
-            <div key={b.id} className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-2 items-center bg-slate-50 p-3 rounded-xl border border-slate-200">
-              <div>
-                <label className="text-[11px] font-bold text-slate-700 block mb-1">{branchLabel(b.name)}</label>
-                <input
-                  type="text"
-                  value={passwords[b.name] || ''}
-                  onChange={e => setPasswords(prev => ({ ...prev, [b.name]: e.target.value }))}
-                  className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm font-bold font-mono text-slate-900 focus:outline-none focus:border-amber-500"
-                  placeholder="1234"
-                />
-              </div>
+            <div key={b.id} className="flex items-center gap-2.5 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+              <span className="text-xs font-bold text-slate-700 flex-1 truncate">{branchLabel(b.name)}</span>
+              <input
+                type="text"
+                value={passwords[b.name] || ''}
+                onChange={e => setPasswords(prev => ({ ...prev, [b.name]: e.target.value }))}
+                className="w-20 shrink-0 border border-slate-300 rounded-lg px-2 py-1.5 text-sm text-center font-bold font-mono text-slate-900 focus:outline-none focus:border-amber-500"
+                placeholder="1234"
+              />
               <button
                 type="button"
                 onClick={() => saveBranch(b.name)}
                 disabled={savingBranch === b.name}
-                className="bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-slate-950 py-2.5 px-4 rounded-xl font-bold text-xs shadow self-end"
+                className="shrink-0 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-slate-950 py-1.5 px-3 rounded-lg font-bold text-xs shadow"
               >
-                {savingBranch === b.name ? 'جارِ الحفظ...' : 'حفظ'}
+                {savingBranch === b.name ? '...' : 'حفظ'}
               </button>
               {msg && msg.branch === b.name && (
-                <span className={`text-xs font-bold self-end ${msg.ok ? 'text-emerald-700' : 'text-red-600'}`}>{msg.text}</span>
+                <span className={`text-[11px] font-bold shrink-0 ${msg.ok ? 'text-emerald-700' : 'text-red-600'}`}>{msg.text}</span>
               )}
             </div>
           ))}
