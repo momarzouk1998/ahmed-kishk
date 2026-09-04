@@ -481,12 +481,13 @@ export default function NewSalesInvoicePOSPage() {
           <div className="lg:col-span-4 order-2 flex flex-col gap-2">
             
             {/* Customer & Branch Header Card */}
-            <div className="bg-white p-2.5 rounded-2xl border border-slate-200 shadow-soft space-y-2">
-              <div className="flex justify-between items-center pb-1 border-b border-slate-100">
-                <div className="flex items-center gap-1 text-[11px] font-black text-slate-900">
-                  <span className="material-symbols-outlined text-amber-500 text-base">receipt_long</span>
+            <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-soft space-y-2.5">
+              {/* Top Row: Invoice Number & Back to List */}
+              <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                <div className="flex items-center gap-1.5 text-xs sm:text-sm font-black text-slate-900">
+                  <span className="material-symbols-outlined text-amber-500 text-lg">receipt_long</span>
                   <span>الفاتورة:</span>
-                  <span className="bg-amber-100 text-amber-900 text-[10px] px-1 py-0.2 rounded font-mono font-black border border-amber-300">
+                  <span className="bg-amber-100 text-amber-950 text-xs sm:text-sm px-2 py-0.5 rounded-lg font-mono font-black border border-amber-300">
                     {invoiceNumber}
                   </span>
                 </div>
@@ -494,74 +495,78 @@ export default function NewSalesInvoicePOSPage() {
                 <button
                   type="button"
                   onClick={() => router.push('/fabric-sales')}
-                  className="text-[9.5px] font-bold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-1.5 py-0.5 rounded-lg transition-colors cursor-pointer border border-slate-200"
+                  className="text-xs font-bold text-slate-700 hover:text-slate-950 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-xl transition-colors cursor-pointer border border-slate-200 flex items-center gap-1"
                 >
-                  ↩️ سجل الفواتير
+                  <span>↩️</span>
+                  <span>سجل الفواتير</span>
                 </button>
               </div>
 
-              {/* Customer Type Toggle */}
-              <div className="flex justify-between items-center gap-1 text-[10px] font-bold">
-                <span className="text-slate-500">نوع العميل:</span>
-                <div className="flex gap-1">
-                  <button
-                    type="button"
-                    onClick={() => { setCustomerType('WALK_IN'); setCustName('عميل نقدي'); }}
-                    className={`px-2 py-0.5 rounded-lg transition-colors cursor-pointer ${
-                      customerType === 'WALK_IN' ? 'bg-amber-500 text-white font-black' : 'bg-slate-100 text-slate-600'
-                    }`}
-                  >
-                    عميل نقدي
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setCustomerType('REGISTERED'); setCustName(''); }}
-                    className={`px-2 py-0.5 rounded-lg transition-colors cursor-pointer ${
-                      customerType === 'REGISTERED' ? 'bg-amber-500 text-white font-black' : 'bg-slate-100 text-slate-600'
-                    }`}
-                  >
-                    عميل آخر
-                  </button>
-                </div>
+              {/* Customer Type Toggle: 2 Large Touch Buttons */}
+              <div className="grid grid-cols-2 gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => { setCustomerType('WALK_IN'); setCustName('عميل نقدي'); }}
+                  className={`py-2 px-3 rounded-xl text-xs sm:text-[13px] font-black transition-all cursor-pointer border text-center ${
+                    customerType === 'WALK_IN'
+                      ? 'bg-amber-500 text-white border-amber-600 shadow-xs'
+                      : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                  }`}
+                >
+                  عميل نقدي 💵
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setCustomerType('REGISTERED'); setCustName(''); }}
+                  className={`py-2 px-3 rounded-xl text-xs sm:text-[13px] font-black transition-all cursor-pointer border text-center ${
+                    customerType === 'REGISTERED'
+                      ? 'bg-amber-500 text-white border-amber-600 shadow-xs'
+                      : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                  }`}
+                >
+                  عميل مسجل / بالاسم 👤
+                </button>
               </div>
 
-              {/* Customer Name, Phone & Branch */}
-              <div className="space-y-1.5 text-xs">
-                <input
-                  type="text"
-                  placeholder="اسم العميل..."
-                  value={custName}
-                  onChange={e => setCustName(e.target.value)}
-                  className="w-full border border-slate-200 rounded-lg px-2 py-1 font-bold text-slate-900 bg-slate-50 focus:bg-white focus:outline-none focus:border-amber-500 text-[11px]"
-                />
+              {/* Customer Name, Phone (2 cols) & Branch */}
+              <div className="space-y-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                  <input
+                    type="text"
+                    placeholder="اسم العميل..."
+                    value={custName}
+                    onChange={e => setCustName(e.target.value)}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900 bg-slate-50 focus:bg-white focus:outline-none focus:border-amber-500 text-xs sm:text-sm"
+                  />
 
-                <input
-                  type="text"
-                  placeholder="رقم الهاتف..."
-                  value={custPhone}
-                  onChange={e => setCustPhone(e.target.value)}
-                  className="w-full border border-slate-200 rounded-lg px-2 py-1 font-mono font-bold text-slate-900 bg-slate-50 focus:bg-white focus:outline-none focus:border-amber-500 text-[11px]"
-                  dir="ltr"
-                />
+                  <input
+                    type="text"
+                    placeholder="رقم الهاتف..."
+                    value={custPhone}
+                    onChange={e => setCustPhone(e.target.value)}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 font-mono font-bold text-slate-900 bg-slate-50 focus:bg-white focus:outline-none focus:border-amber-500 text-xs sm:text-sm"
+                    dir="ltr"
+                  />
+                </div>
 
                 <BranchSelect
                   value={branch}
                   onChange={setBranch}
                   isAdmin={isAdmin}
-                  className="w-full border border-slate-200 rounded-lg px-2 py-1 font-bold text-slate-900 bg-slate-50 text-[10.5px] focus:outline-none"
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900 bg-slate-50 text-xs sm:text-sm focus:outline-none"
                 />
               </div>
             </div>
 
             {/* Discount Box — moved here above keypad */}
-            <div className="bg-slate-50 p-2 rounded-2xl border border-slate-200 shadow-soft space-y-1.5 text-xs">
+            <div className="bg-slate-50 p-2.5 rounded-2xl border border-slate-200 shadow-soft space-y-2">
               <div className="flex justify-between items-center">
-                <span className="font-black text-slate-800 text-[10.5px]">خصم الفاتورة:</span>
-                <div className="flex bg-slate-200 p-0.5 rounded text-[9px] font-bold">
+                <span className="font-black text-slate-900 text-xs sm:text-sm">خصم الفاتورة:</span>
+                <div className="flex bg-slate-200 p-0.5 rounded-lg text-xs font-black">
                   <button
                     type="button"
                     onClick={() => setDiscountType('EGP')}
-                    className={`px-1.5 py-0.5 rounded transition-colors cursor-pointer ${
+                    className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
                       discountType === 'EGP' ? 'bg-white text-slate-900 font-black shadow-xs' : 'text-slate-600'
                     }`}
                   >
@@ -570,7 +575,7 @@ export default function NewSalesInvoicePOSPage() {
                   <button
                     type="button"
                     onClick={() => setDiscountType('PERCENT')}
-                    className={`px-1.5 py-0.5 rounded transition-colors cursor-pointer ${
+                    className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
                       discountType === 'PERCENT' ? 'bg-white text-slate-900 font-black shadow-xs' : 'text-slate-600'
                     }`}
                   >
@@ -578,7 +583,23 @@ export default function NewSalesInvoicePOSPage() {
                   </button>
                 </div>
               </div>
-              <div className="flex items-center gap-1">
+
+              <div className="flex items-center gap-1.5">
+                <div className="flex gap-1 shrink-0">
+                  {[5, 10, 15, 20].map(pct => (
+                    <button
+                      key={pct}
+                      type="button"
+                      onClick={async () => {
+                        if (priceLocked && !(await requirePriceUnlock())) return;
+                        setDiscountType('PERCENT'); setDiscountValue(pct);
+                      }}
+                      className="bg-amber-100 hover:bg-amber-500 hover:text-white text-amber-950 px-2 py-1.5 rounded-xl text-xs font-black border border-amber-300 cursor-pointer transition-colors"
+                    >
+                      {pct}%
+                    </button>
+                  ))}
+                </div>
                 <input
                   type="number"
                   min="0"
@@ -588,55 +609,40 @@ export default function NewSalesInvoicePOSPage() {
                   onFocus={async () => { if (priceLocked) await requirePriceUnlock(); }}
                   onClick={async () => { if (priceLocked) await requirePriceUnlock(); }}
                   onChange={e => { if (!priceLocked) setDiscountValue(Number(e.target.value)); }}
-                  className={`w-full rounded-lg px-2 py-1 font-mono font-bold text-slate-900 text-[11px] focus:outline-none focus:border-amber-500 ${priceLocked ? 'bg-amber-50 border border-amber-200 cursor-pointer' : 'bg-white border border-slate-200'}`}
+                  className={`w-full rounded-xl px-3 py-1.5 font-mono font-black text-slate-950 text-sm sm:text-base focus:outline-none focus:border-amber-500 ${priceLocked ? 'bg-amber-50 border border-amber-200 cursor-pointer' : 'bg-white border border-slate-200'}`}
                   title={priceLocked ? 'الخصم يتطلب باسورد المدير' : ''}
                 />
-                <div className="flex gap-0.5">
-                  {[5, 10, 15, 20].map(pct => (
-                    <button
-                      key={pct}
-                      type="button"
-                      onClick={async () => {
-                        if (priceLocked && !(await requirePriceUnlock())) return;
-                        setDiscountType('PERCENT'); setDiscountValue(pct);
-                      }}
-                      className="bg-amber-100 hover:bg-amber-200 text-amber-900 px-1.5 py-0.5 rounded text-[9px] font-bold border border-amber-300 cursor-pointer"
-                    >
-                      {pct}%
-                    </button>
-                  ))}
-                </div>
               </div>
             </div>
 
             {/* Light Touch Keypad Panel — flex-1 to fill remaining height */}
             <div className="bg-slate-50 text-slate-900 p-2.5 rounded-2xl border border-slate-200 shadow-soft space-y-1.5 flex-1">
-              <div className="flex justify-between items-center border-b border-slate-200 pb-1">
-                <div className="flex items-center gap-1">
+              <div className="flex justify-between items-center border-b border-slate-200 pb-1.5">
+                <div className="flex items-center gap-1.5">
                   <button
                     type="button"
                     onClick={() => setTouchMode(!touchMode)}
-                    className={`px-1.5 py-0.5 rounded-lg text-[9.5px] font-black transition-all flex items-center gap-0.5 cursor-pointer border ${
+                    className={`px-2 py-1 rounded-xl text-xs font-black transition-all flex items-center gap-1 cursor-pointer border ${
                       touchMode
                         ? 'bg-amber-500 text-white border-amber-600 shadow-xs'
                         : 'bg-slate-200 hover:bg-slate-300 text-slate-700 border-slate-300'
                     }`}
                   >
-                    <span className="material-symbols-outlined text-[12px]">touch_app</span>
+                    <span className="material-symbols-outlined text-sm">touch_app</span>
                     <span>تاتش {touchMode ? '✓' : '✕'}</span>
                   </button>
-                  <span className="text-[10px] font-black text-slate-700">تعديل الأمتار:</span>
+                  <span className="text-xs font-black text-slate-800">تعديل الأمتار:</span>
                 </div>
 
                 {activeSelectedItem ? (
-                  <div className="bg-white border border-slate-200 px-1.5 py-0.5 rounded-lg text-[10px] flex items-center gap-1 shadow-3xs">
-                    <span className="font-black text-amber-800 max-w-[100px] truncate">{activeSelectedItem.name}</span>
-                    <span className="bg-emerald-100 text-emerald-900 font-mono font-black px-1 rounded text-[9.5px]">
+                  <div className="bg-white border border-slate-200 px-2 py-1 rounded-xl text-xs flex items-center gap-1.5 shadow-3xs">
+                    <span className="font-black text-amber-900 max-w-[130px] truncate">{activeSelectedItem.name}</span>
+                    <span className="bg-emerald-100 text-emerald-950 font-mono font-black px-1.5 py-0.5 rounded-lg text-xs">
                       {activeSelectedItem.meters}م
                     </span>
                   </div>
                 ) : (
-                  <span className="text-[9.5px] text-slate-400 font-bold">اختر صنفاً</span>
+                  <span className="text-xs text-slate-400 font-bold">اختر صنفاً</span>
                 )}
               </div>
 
