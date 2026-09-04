@@ -7,6 +7,7 @@ import { canUserEditPrices } from '@/lib/permissions';
 import { useManagerGate, isManagerUnlocked } from '@/components/ManagerUnlockGate';
 import { useCurrentUser } from '@/lib/useCurrentUser';
 import BranchSelect from '@/components/BranchSelect';
+import { normalizeBranchName } from '@/lib/branches';
 
 interface InvoiceLineItem {
   id: string;
@@ -156,12 +157,13 @@ export default function NewSalesInvoicePOSPage() {
   // Filtered Products — الفاتورة تعرض الأصناف المتوفرة فعليًا بالمخزون فقط (منعًا لبيع صنف خلص).
   const filteredProducts = products.filter(p => {
     const inStock = (p.totalQuantity ?? 0) > 0;
+    const matchesBranch = !branch || branch === 'الكل' || normalizeBranchName(p.branch) === normalizeBranchName(branch);
     const matchesCat = selectedCategory === 'الكل' || p.category === selectedCategory;
     const matchesSearch =
       !searchQuery.trim() ||
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.code.toLowerCase().includes(searchQuery.toLowerCase());
-    return inStock && matchesCat && matchesSearch;
+    return inStock && matchesBranch && matchesCat && matchesSearch;
   });
 
   // Add Item to Invoice Table

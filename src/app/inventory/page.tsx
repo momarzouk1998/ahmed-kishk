@@ -6,7 +6,8 @@ import { canUserEditPrices } from '@/lib/permissions';
 import { useManagerGate, isManagerUnlocked } from '@/components/ManagerUnlockGate';
 import { useCurrentUser } from '@/lib/useCurrentUser';
 import BranchSelect from '@/components/BranchSelect';
-import { BRANCHES_LIST } from '@/lib/branches';
+import { BRANCHES_LIST, normalizeBranchName } from '@/lib/branches';
+import initialInventory from '@/data/initialInventory.json';
 
 interface InventoryItem {
   id: string;
@@ -45,8 +46,19 @@ type TabKey = typeof TABS[number]['key'];
 
 export default function InventoryPage() {
   const [tab, setTab] = useState<TabKey>('stock');
-  const [items, setItems] = useState<InventoryItem[]>([]);
-  const [categories, setCategories] = useState<string[]>(['الكل', 'سواريه', 'ستائر', 'تراكات ومواسير', 'أشرطة وإكسسوارات']);
+  const [items, setItems] = useState<InventoryItem[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const raw = localStorage.getItem('ahmed_kishk_inventory_v3');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed) && parsed.length >= 300) return parsed;
+        }
+      } catch {}
+    }
+    return initialInventory as InventoryItem[];
+  });
+  const [categories, setCategories] = useState<string[]>(() => ['الكل', ...Array.from(new Set(initialInventory.map(i => i.category).filter(Boolean)))]);
   const [activeCategory, setActiveCategory] = useState('الكل');
   const [selectedBranch, setSelectedBranch] = useState('الكل');
   const [search, setSearch] = useState('');
@@ -170,10 +182,16 @@ export default function InventoryPage() {
   }, []);
 
   // Filter items
+  const branchScopedItems = items.filter(item => 
+    selectedBranch === 'الكل' || normalizeBranchName(item.branch) === normalizeBranchName(selectedBranch)
+  );
+  const dynamicCategories = ['الكل', ...Array.from(new Set(branchScopedItems.map(i => i.category).filter(Boolean)))];
+
   const filteredItems = items.filter((item) => {
     const matchesCat = activeCategory === 'الكل' || item.category === activeCategory;
-    const matchesBranch = selectedBranch === 'الكل' || item.branch === selectedBranch;
+    const matchesBranch = selectedBranch === 'الكل' || normalizeBranchName(item.branch) === normalizeBranchName(selectedBranch);
     const matchesSearch =
+      !search.trim() ||
       item.name.toLowerCase().includes(search.toLowerCase()) ||
       (item.code && item.code.toLowerCase().includes(search.toLowerCase())) ||
       (item.supplier && item.supplier.toLowerCase().includes(search.toLowerCase()));
@@ -441,7 +459,7 @@ export default function InventoryPage() {
             <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-soft flex flex-wrap items-center justify-between gap-4">
               <div className="flex gap-2 flex-wrap items-center">
                 <span className="text-xs font-bold text-slate-400">التصنيف:</span>
-                {categories.map((cat) => (
+                {dynamicCategories.map((cat) => (
                   <button
                     key={cat}
                     onClick={() => setActiveCategory(cat)}
@@ -469,7 +487,10 @@ export default function InventoryPage() {
 
                 <BranchSelect
                   value={selectedBranch}
-                  onChange={setSelectedBranch}
+                  onChange={(b) => {
+                    setSelectedBranch(b);
+                    setActiveCategory('الكل');
+                  }}
                   isAdmin={isAdmin}
                   allValue="الكل"
                   allLabel="كل الفروع"
