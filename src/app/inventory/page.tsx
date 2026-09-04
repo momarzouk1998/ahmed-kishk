@@ -6,7 +6,7 @@ import { canUserEditPrices } from '@/lib/permissions';
 import { useManagerGate, isManagerUnlocked } from '@/components/ManagerUnlockGate';
 import { useCurrentUser } from '@/lib/useCurrentUser';
 import BranchSelect from '@/components/BranchSelect';
-import { BRANCHES_LIST, normalizeBranchName } from '@/lib/branches';
+import { BRANCHES_LIST, normalizeBranchName, branchLabel } from '@/lib/branches';
 import initialInventory from '@/data/initialInventory.json';
 
 interface InventoryItem {
@@ -351,15 +351,18 @@ export default function InventoryPage() {
     }
   };
 
-  // Summary Metrics
-  const totalCostValue = items.reduce((sum, i) => sum + i.totalQuantity * i.costPrice, 0);
-  const totalExpectedProfit = items.reduce((sum, i) => sum + (i.totalQuantity * (i.sellPrice - i.costPrice)), 0);
-  const totalReservedMeters = items.reduce((sum, i) => sum + i.reservedQuantity, 0);
-  const totalAvailableMeters = items.reduce((sum, i) => sum + (i.totalQuantity - i.reservedQuantity), 0);
-  const lowStockCount = items.filter(i => (i.totalQuantity - i.reservedQuantity) <= (i.minAlert || 20)).length;
+  // Summary Metrics (Scoped to the selected branch)
+  const statsItems = branchScopedItems;
+  const totalCostValue = statsItems.reduce((sum, i) => sum + i.totalQuantity * i.costPrice, 0);
+  const totalExpectedProfit = statsItems.reduce((sum, i) => sum + (i.totalQuantity * (i.sellPrice - i.costPrice)), 0);
+  const totalReservedMeters = statsItems.reduce((sum, i) => sum + i.reservedQuantity, 0);
+  const totalAvailableMeters = statsItems.reduce((sum, i) => sum + (i.totalQuantity - i.reservedQuantity), 0);
+  const lowStockCount = statsItems.filter(i => (i.totalQuantity - i.reservedQuantity) <= (i.minAlert || 20)).length;
 
   // Filtered Adjustments
   const filteredAdjustments = adjustmentLogs.filter(log => {
+    const matchesBranch = selectedBranch === 'الكل' || normalizeBranchName(log.branch) === normalizeBranchName(selectedBranch);
+    if (!matchesBranch) return false;
     if (!logSearch.trim()) return true;
     const q = logSearch.toLowerCase().trim();
     return (
@@ -427,7 +430,7 @@ export default function InventoryPage() {
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4">
               <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-soft">
                 <div className="text-xs text-slate-500 font-bold">إجمالي الأصناف</div>
-                <div className="font-display font-black text-xl text-slate-900 mt-1">{items.length} صنف</div>
+                <div className="font-display font-black text-xl text-slate-900 mt-1">{statsItems.length} صنف</div>
               </div>
               <div className="bg-white p-4 rounded-2xl border border-amber-200 bg-amber-50/40 shadow-soft">
                 <div className="text-xs text-amber-800 font-bold">المحجوز للورشة</div>
@@ -487,6 +490,7 @@ export default function InventoryPage() {
 
                 <BranchSelect
                   value={selectedBranch}
+                  displayValue={branchLabel(selectedBranch)}
                   onChange={(b) => {
                     setSelectedBranch(b);
                     setActiveCategory('الكل');

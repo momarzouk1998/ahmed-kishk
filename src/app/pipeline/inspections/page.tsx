@@ -11,6 +11,7 @@ import { CURTAIN_TECHNICIANS, DEFAULT_TECHNICIAN } from '@/lib/technicians';
 import OrderRowActions from '@/components/OrderRowActions';
 import { useCurrentUser } from '@/lib/useCurrentUser';
 import BranchSelect from '@/components/BranchSelect';
+import { normalizeBranchName, branchLabel } from '@/lib/branches';
 
 export type InspectionSummary = InspectionData;
 
@@ -107,6 +108,11 @@ export default function PipelineInspectionsPage() {
     }
   });
 
+  const branchScopedInspections = inspections.filter(item => 
+    selectedBranch === 'ALL' || selectedBranch === 'الكل' || 
+    normalizeBranchName(item.branch) === normalizeBranchName(selectedBranch)
+  );
+
   const filtered = tabFiltered.filter(item => {
     const matchesSearch =
       item.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -115,7 +121,7 @@ export default function PipelineInspectionsPage() {
       item.technician.includes(searchQuery);
 
     const matchesTech = selectedTech === 'ALL' || item.technician === selectedTech;
-    const matchesBranch = selectedBranch === 'ALL' || item.branch === selectedBranch;
+    const matchesBranch = selectedBranch === 'ALL' || selectedBranch === 'الكل' || normalizeBranchName(item.branch) === normalizeBranchName(selectedBranch);
     const matchesStatus = selectedStatus === 'ALL' || item.status === selectedStatus;
 
     return matchesSearch && matchesTech && matchesBranch && matchesStatus;
@@ -124,9 +130,9 @@ export default function PipelineInspectionsPage() {
   const totalPages = Math.ceil(filtered.length / pageSize) || 1;
   const paginatedItems = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
-  const todayCount = inspections.filter(i => !isSent(i.status) && isTodayItem(i)).length;
-  const scheduledCount = inspections.filter(i => !isSent(i.status) && !isTodayItem(i)).length;
-  const historyCount = inspections.filter(i => isSent(i.status)).length;
+  const todayCount = branchScopedInspections.filter(i => !isSent(i.status) && isTodayItem(i)).length;
+  const scheduledCount = branchScopedInspections.filter(i => !isSent(i.status) && !isTodayItem(i)).length;
+  const historyCount = branchScopedInspections.filter(i => isSent(i.status)).length;
 
   const syncCustomerToDirectory = (custName: string, custPhone: string, custAddress: string) => {
     if (typeof window === 'undefined' || !custName.trim()) return;

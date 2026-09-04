@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyAuthCookie } from '@/lib/auth';
+import { getBranchScope, effectiveCreateBranch } from '@/lib/branchScope';
+import { normalizeBranchName } from '@/lib/branches';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,9 +38,13 @@ async function writeAdjustments(logs: InventoryAdjustmentLog[]): Promise<void> {
 }
 
 // GET /api/inventory/adjustments — جلب سجل التعديلات والجرد
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const logs = await readAdjustments();
+    const scope = await getBranchScope(request);
+    let logs = await readAdjustments();
+    if (scope && !scope.isAdmin) {
+      logs = logs.filter(l => normalizeBranchName(l.branch) === normalizeBranchName(scope.branch));
+    }
     return NextResponse.json({ success: true, logs });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -48,6 +54,7 @@ export async function GET() {
 // POST /api/inventory/adjustments — إضافة حركة تعديل جرد جديدة
 export async function POST(request: Request) {
   try {
+    const scope = await getBranchScope(request);
     const user = await verifyAuthCookie(request);
     const body = await request.json();
 
@@ -56,6 +63,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'بيانات الحركة غير مكتملة' }, { status: 400 });
     }
 
+    const effBranch = effectiveCreateBranch(scope, branch);
     const prev = Number(previousStock) || 0;
     const next = Number(newStock) || 0;
     const diff = next - prev;
@@ -65,7 +73,7 @@ export async function POST(request: Request) {
       timestamp: new Date().toISOString(),
       itemCode,
       itemName,
-      branch: branch || 'الفرع الرئيسي',
+      branch: effBranch,
       previousStock: prev,
       newStock: next,
       difference: diff,

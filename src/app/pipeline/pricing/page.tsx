@@ -12,6 +12,7 @@ import {
 import OrderRowActions from '@/components/OrderRowActions';
 import { useCurrentUser } from '@/lib/useCurrentUser';
 import BranchSelect from '@/components/BranchSelect';
+import { normalizeBranchName, branchLabel } from '@/lib/branches';
 function getBranchBadgeStyle(branchName: string) {
   switch (branchName) {
     case 'الفرع الرئيسي':
@@ -55,6 +56,10 @@ export default function PipelinePricingPage() {
     'تجهيز الاكسسوارات', 'جاهز للاستلام', 'جاهز للتركيب', 'مكتمل',
   ]);
   const isSent = (status: any) => SENT_STATUSES.has(normalizeQuotationStatus(status));
+  const branchScopedQuotations = quotations.filter(q => 
+    selectedBranch === 'ALL' || selectedBranch === 'الكل' || 
+    normalizeBranchName((q as any).branch) === normalizeBranchName(selectedBranch)
+  );
 
   const tabFiltered = quotations.filter(q => activeTab === 'OPEN' ? !isSent(q.status) : isSent(q.status));
   const filtered = tabFiltered.filter(q => {
@@ -64,15 +69,15 @@ export default function PipelinePricingPage() {
       q.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
       q.id.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const matchesBranch = selectedBranch === 'ALL' || (q as any).branch === selectedBranch;
+    const matchesBranch = selectedBranch === 'ALL' || selectedBranch === 'الكل' || normalizeBranchName((q as any).branch) === normalizeBranchName(selectedBranch);
     const normalized = normalizeQuotationStatus(q.status);
     const matchesStatus = selectedStatus === 'ALL' || normalized === selectedStatus;
 
     return matchesSearch && matchesBranch && matchesStatus;
   });
 
-  const openCount = quotations.filter(q => !isSent(q.status)).length;
-  const sentCount = quotations.filter(q => isSent(q.status)).length;
+  const openCount = branchScopedQuotations.filter(q => !isSent(q.status)).length;
+  const sentCount = branchScopedQuotations.filter(q => isSent(q.status)).length;
 
   return (
     <PageShell title="2. التسعير والعقد" badge="2">

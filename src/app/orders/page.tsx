@@ -8,6 +8,7 @@ import CuttingPrintModal from '@/components/CuttingPrintModal';
 import TailoringPrintModal from '@/components/TailoringPrintModal';
 import { useCurrentUser } from '@/lib/useCurrentUser';
 import BranchSelect from '@/components/BranchSelect';
+import { normalizeBranchName, branchLabel } from '@/lib/branches';
 import {
   getStoredPipelineOrders,
   fetchPipelineOrders,
@@ -223,6 +224,10 @@ export default function CentralOrdersLedgerPage() {
     }
   };
 
+  const branchScopedOrders = orders.filter(o => 
+    selectedBranch === 'الكل' || normalizeBranchName(o.branch) === normalizeBranchName(selectedBranch)
+  );
+
   const filteredOrders = orders.filter(o => {
     const matchSearch =
       o.customerName.toLowerCase().includes(search.toLowerCase()) ||
@@ -232,7 +237,7 @@ export default function CentralOrdersLedgerPage() {
 
     const masterStage = normalizeMasterStage(o.status);
     const matchStage = selectedStage === 'الكل' || masterStage === selectedStage;
-    const matchBranch = selectedBranch === 'الكل' || o.branch === selectedBranch;
+    const matchBranch = selectedBranch === 'الكل' || normalizeBranchName(o.branch) === normalizeBranchName(selectedBranch);
 
     return matchSearch && matchStage && matchBranch;
   });
@@ -323,6 +328,7 @@ export default function CentralOrdersLedgerPage() {
             <div className="sm:col-span-4">
               <BranchSelect
                 value={selectedBranch}
+                displayValue={selectedBranch === 'الكل' ? 'جميع الفروع' : selectedBranch}
                 onChange={setSelectedBranch}
                 isAdmin={isAdmin}
                 allValue="الكل"
@@ -337,8 +343,8 @@ export default function CentralOrdersLedgerPage() {
             <span className="text-slate-500 font-bold pl-2">تصفية بالمرحلة العامة:</span>
             {GLOBAL_STAGES.map(stg => {
               const count = stg.key === 'الكل'
-                ? orders.length
-                : orders.filter(o => normalizeMasterStage(o.status) === stg.key).length;
+                ? branchScopedOrders.length
+                : branchScopedOrders.filter(o => normalizeMasterStage(o.status) === stg.key).length;
 
               return (
                 <button

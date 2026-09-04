@@ -1,11 +1,14 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getBranchScope, branchWhere, effectiveCreateBranch } from '@/lib/branchScope';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const scope = await getBranchScope(request);
     const orders = await prisma.pipelineOrder.findMany({
+      where: branchWhere(scope),
       orderBy: { updatedAt: 'desc' },
     });
 
@@ -18,6 +21,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const scope = await getBranchScope(request);
     const body = await request.json();
     const { customerName, phone, address, totalAmount, depositPaid, status, localStatus, technicianName, branch, rooms } = body;
 
@@ -25,13 +29,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'اسم العميل ورقم الهاتف مطلوبان' }, { status: 400 });
     }
 
+    const effBranch = effectiveCreateBranch(scope, branch);
+
     const order = await prisma.pipelineOrder.create({
       data: {
         orderId: `ORD-${Date.now()}`,
         customerName: customerName.trim(),
         phone: phone.trim(),
         address: address || '',
-        branch: branch || 'الفرع الرئيسي',
+        branch: effBranch,
         totalAmount: Number(totalAmount) || 0,
         depositPaid: Number(depositPaid) || 0,
         remainingAmount: Math.max(0, (Number(totalAmount) || 0) - (Number(depositPaid) || 0)),

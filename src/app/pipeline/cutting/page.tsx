@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
@@ -9,6 +9,7 @@ import CuttingPrintModal from '@/components/CuttingPrintModal';
 import OrderRowActions from '@/components/OrderRowActions';
 import { useCurrentUser } from '@/lib/useCurrentUser';
 import BranchSelect from '@/components/BranchSelect';
+import { normalizeBranchName, branchLabel } from '@/lib/branches';
 
 interface RoomFabricItem {
   roomName: string;
@@ -100,13 +101,18 @@ export default function PipelineCuttingPage() {
     return ['في الورشة', 'تجهيز الاكسسوارات', 'جاهز للاستلام', 'جاهز للتركيب', 'مكتمل'].includes(stage);
   };
 
+  const branchScopedOrders = orders.filter(o => 
+    selectedBranch === 'ALL' || selectedBranch === 'الكل' || 
+    normalizeBranchName(o.branch) === normalizeBranchName(selectedBranch)
+  );
+
   const tabFiltered = orders.filter(o => activeTab === 'OPEN' ? isWaitingToCut(o) : isSentFromCutting(o));
   const filtered = tabFiltered.filter(o => {
     const matchesSearch =
       (o.customerName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       (o.phone || '').includes(searchQuery) ||
       (o.id || '').toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesBranch = selectedBranch === 'ALL' || (o.branch && o.branch.includes(selectedBranch)) || (!o.branch && selectedBranch === 'الفرع الرئيسي');
+    const matchesBranch = selectedBranch === 'ALL' || selectedBranch === 'الكل' || normalizeBranchName(o.branch) === normalizeBranchName(selectedBranch);
     return matchesSearch && matchesBranch;
   });
 
@@ -165,8 +171,8 @@ export default function PipelineCuttingPage() {
     setOrders(combined as any);
   };
 
-  const openCount = orders.filter(o => isWaitingToCut(o)).length;
-  const sentCount = orders.filter(o => isSentFromCutting(o)).length;
+  const openCount = branchScopedOrders.filter(o => isWaitingToCut(o)).length;
+  const sentCount = branchScopedOrders.filter(o => isSentFromCutting(o)).length;
 
   // Calculate Fabric Summary for an Order
   const getFabricTotals = (rooms: any[]) => {

@@ -1,7 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSidebar } from '@/components/SidebarContext';
+import { branchLabel } from '@/lib/branches';
 
 interface HeaderProps {
   title?: string;
@@ -11,6 +12,36 @@ interface HeaderProps {
 
 export default function Header({ title, badge, action }: HeaderProps) {
   const { toggle, isCollapsed } = useSidebar();
+  const [userBranch, setUserBranch] = useState<string>('');
+  const [isSuperAdmin, setIsSuperAdmin] = useState<boolean>(false);
+
+  useEffect(() => {
+    try {
+      const savedBranch = localStorage.getItem('userBranch');
+      const savedPhone = localStorage.getItem('userPhone') || '';
+      if (savedBranch) setUserBranch(savedBranch);
+      if (savedPhone === '01063821000' || savedPhone === '01558282760' || savedBranch === 'المدير العام') {
+        setIsSuperAdmin(true);
+      }
+    } catch {}
+
+    fetch('/api/auth/profile')
+      .then(r => r.json())
+      .then(data => {
+        if (data?.user) {
+          setUserBranch(data.user.branch || 'الفرع الرئيسي');
+          const p = (data.user.phone || '').trim().replace(/\s/g, '');
+          const norm = p.replace(/^0/, '');
+          const isSuper = norm === '1063821000' || norm === '1558282760' || p === '01063821000' || p === '01558282760' || data.user.branch === 'المدير العام' || data.user.role === 'SUPER_ADMIN';
+          setIsSuperAdmin(isSuper);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const displayBranchText = isSuperAdmin
+    ? (userBranch && userBranch !== 'المدير العام' ? `👑 ${branchLabel(userBranch)}` : '👑 الإدارة العامة')
+    : `📍 ${branchLabel(userBranch || 'الفرع الرئيسي')}`;
 
   return (
     <header className={`fixed top-0 right-0 left-0 transition-all duration-300 h-16 bg-white/95 backdrop-blur-md border-b border-slate-200/80 z-40 flex items-center justify-between px-4 sm:px-6 lg:px-8 shadow-xs ${
@@ -43,8 +74,12 @@ export default function Header({ title, badge, action }: HeaderProps) {
 
       <div className="flex items-center gap-2 sm:gap-3">
         {action}
-        <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200 font-mono hidden sm:inline-block">
-          الفرع الرئيسي
+        <span className={`px-2.5 py-1 rounded-full text-xs font-bold border font-mono hidden sm:inline-block shadow-2xs ${
+          isSuperAdmin
+            ? 'bg-amber-50 text-amber-900 border-amber-300'
+            : 'bg-blue-50 text-blue-900 border-blue-200'
+        }`}>
+          {displayBranchText}
         </span>
       </div>
     </header>
