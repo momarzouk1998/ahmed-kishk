@@ -31,28 +31,38 @@ export default function Sidebar() {
   // Accordion state now lives in SidebarContext — removed from local state
 
   useEffect(() => {
-    // #FIX: مبقاش نمسح صلاحيات المستخدمين على كل reload — كانت تُمحى فوراً وتفقد التخصيص.
-    fetch('/api/auth/profile')
-      .then((r) => r.json())
-      .then(async (d) => {
-        if (!d.user) return;
+    // #FIX: كانت الصلاحيات (خصوصًا قفل تعديل الأسعار) بتتقرأ مرة واحدة بس عند فتح
+    // التاب لأول مرة — لو الأدمن قفل صلاحية موظف وهو شغال فعليًا (تاب مفتوح من قبل)،
+    // التاب ده كان يفضل شغال بالصلاحيات القديمة (المفتوحة) لحد ما يعمل تسجيل خروج
+    // ودخول تانى. دلوقتى بتتحدّث دوريًا كل 30 ثانية عشان أي قفل يطبّقه الأدمن ينفّذ
+    // فعليًا خلال نص دقيقة على الأكتر، من غير ما نحتاج نفس آلية الـ localStorage
+    // الخطرة اللي شلناها من النظام الليلة دي (هنا بس بنقرأ من السيرفر، مفيش أي كتابة
+    // بترجع بيانات قديمة فوق الجديدة).
+    let cancelled = false;
+
+    async function loadUserAndPermissions() {
+      try {
+        const r = await fetch('/api/auth/profile');
+        const d = await r.json();
+        if (cancelled || !d.user) return;
         setUser(d.user);
-        // publish للـ localStorage حتى تعمل helpers مثل canUserEditPrices بشكل صحيح لكل الأدمنز
         try {
           localStorage.setItem('userRole', d.user.role === 'ADMIN' ? 'admin' : d.user.role || '');
           localStorage.setItem('userPhone', d.user.phone || '');
           localStorage.setItem('userBranch', d.user.branch || '');
           localStorage.setItem('userName', d.user.name || '');
         } catch {}
-        // ADMIN يشوف كل شئ. باقى الأدوار يقرأ صلاحياتهم من الـ API (persistent per-user).
+
         if (d.user.role === 'ADMIN') {
           setAllowedPageIds(null);
           return;
         }
+
         try {
-          const res = await fetch(`/api/user-permissions?phone=${encodeURIComponent(d.user.phone)}`);
+          const res = await fetch(`/api/user-permissions?phone=${encodeURIComponent(d.user.phone)}`, { cache: 'no-store' });
           if (res.ok) {
             const data = await res.json();
+            if (cancelled) return;
             if (Array.isArray(data?.allowedPageIds)) {
               setAllowedPageIds(data.allowedPageIds);
               try { localStorage.setItem(`user_perms_${d.user.phone}`, JSON.stringify(data.allowedPageIds)); } catch {}
@@ -60,14 +70,16 @@ export default function Sidebar() {
             }
           }
         } catch {}
-        // Fallback إلى localStorage
-        try {
-          const raw = localStorage.getItem(`user_perms_${d.user.phone}`);
-          if (raw) setAllowedPageIds(JSON.parse(raw));
-          else setAllowedPageIds(null);
-        } catch { setAllowedPageIds(null); }
-      })
-      .catch(() => {});
+        // مفيش سجل صلاحيات محفوظ للموظف — يفضل زي ما هو (nav تظل ظاهرة كاملة)، لكن
+        // hasSubPerm فى permissions.ts بقى افتراضيًا يمنع تعديل الأسعار/التعديل/الحذف
+        // لغير الأدمن لحد ما يتحدد صراحة.
+        if (!cancelled) setAllowedPageIds(null);
+      } catch {}
+    }
+
+    loadUserAndPermissions();
+    const interval = setInterval(loadUserAndPermissions, 30_000);
+    return () => { cancelled = true; clearInterval(interval); };
   }, []);
 
   useEffect(() => {

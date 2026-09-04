@@ -42,6 +42,11 @@ export async function PUT(request: Request) {
   try {
     const user = await verifyAuthCookie(request);
     if (!user) return NextResponse.json({ ok: false, error: 'غير مصرح' }, { status: 401 });
+    // #GUARD: كان أي موظف مسجّل دخول يقدر يغيّر باسورد المدير طالما عارف الباسورد
+    // الحالي — دلوقتى الأدمن بس (مدير الفرع/المؤسسة) اللي يقدر يغيّرها.
+    if (user.role !== 'ADMIN') {
+      return NextResponse.json({ ok: false, error: 'تغيير باسورد المدير متاح للأدمن فقط' }, { status: 403 });
+    }
 
     const body = await request.json();
     const cur = String(body?.currentPassword || '').trim();

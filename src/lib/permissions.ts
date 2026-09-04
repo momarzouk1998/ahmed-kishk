@@ -43,26 +43,35 @@ export const subPermKey = {
 };
 
 function isCurrentUserAdmin(): boolean {
-  if (typeof window === 'undefined') return true;
+  // #FIX: كانت بترجع true (أدمن) فى أى حالة غموض — SSR، أو لو localStorage رمى
+  // استثناء — يعني أي خطأ بسيط كان بيديك صلاحيات أدمن كاملة بالغلط. دلوقتى الافتراضى
+  // الآمن هو "مش أدمن" لحد ما نتأكد فعليًا.
+  if (typeof window === 'undefined') return false;
   try {
     const role = localStorage.getItem('userRole') || localStorage.getItem('user_role');
     if (role === 'admin' || role === 'ADMIN') return true;
     const phone = localStorage.getItem('userPhone') || localStorage.getItem('user_phone') || '';
     // fallback للـ super admins حتى قبل ما يتحمل الـ profile
     return phone === '01558282760' || phone === '01063821000';
-  } catch { return true; }
+  } catch { return false; }
 }
 
+// #FIX: كانت الدالة دي بترجع true (مسموح) افتراضيًا فى أي حالة غموض — مفيش سجل
+// صلاحيات محفوظ للموظف على جهازه (وهي الحالة الطبيعية لأي موظف، لأن الأدمن بيحفظ
+// الصلاحيات على جهازه هو، مش جهاز الموظف)، أو لو القراءة فشلت لأي سبب. النتيجة كانت
+// إن أي موظف مقيّد بدون سجل صلاحيات محلى (يعني كل الموظفين تقريبًا فى الحياة العملية)
+// كان عنده صلاحية تعديل الأسعار الكاملة بدون أي باسورد. الافتراضى الآمن دلوقتى:
+// "ممنوع" لغير الأدمن لحد ما يتأكد صراحة إن الصلاحية ممنوحة.
 function hasSubPerm(pageId: string, subKey: string): boolean {
-  if (typeof window === 'undefined') return true;
+  if (typeof window === 'undefined') return false;
   if (isCurrentUserAdmin()) return true;
   try {
     const phone = localStorage.getItem('userPhone') || localStorage.getItem('user_phone') || '';
     const raw = localStorage.getItem(`user_perms_${phone}`);
-    if (!raw) return true; // بلا قيود مخصصة = مسموح
+    if (!raw) return false;
     const perms: string[] = JSON.parse(raw);
     return perms.includes(pageId) && perms.includes(subKey);
-  } catch { return true; }
+  } catch { return false; }
 }
 
 /** يمكن للمستخدم تعديل الأسعار على هذه الصفحة (بدون باسورد مدير). */
