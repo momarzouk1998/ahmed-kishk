@@ -138,7 +138,7 @@ export default function NewSalesInvoicePOSPage() {
     initData();
   }, []);
 
-  // Dynamic categories strictly belonging to the active branch's available inventory
+  // Dynamic categories strictly belonging to the active branch's available inventory (بدون "الكل")
   const dynamicCategories = useMemo(() => {
     const branchScoped = products.filter(p =>
       !branch || branch === 'الكل' || normalizeBranchName(p.branch) === normalizeBranchName(branch)
@@ -150,13 +150,15 @@ export default function NewSalesInvoicePOSPage() {
           .filter(Boolean)
       )
     );
-    return ['الكل', ...uniqueCats];
+    return uniqueCats;
   }, [products, branch]);
 
-  // Keep selectedCategory valid if branch changes
+  // تعيين أول تصنيف كافتراضي للفرع، وإعادة التعيين لو الفرع اتغير
   useEffect(() => {
-    if (selectedCategory !== 'الكل' && !dynamicCategories.includes(selectedCategory)) {
-      setSelectedCategory('الكل');
+    if (dynamicCategories.length > 0) {
+      if (!selectedCategory || !dynamicCategories.includes(selectedCategory)) {
+        setSelectedCategory(dynamicCategories[0]);
+      }
     }
   }, [dynamicCategories, selectedCategory]);
 
@@ -173,13 +175,13 @@ export default function NewSalesInvoicePOSPage() {
     }
   }, [totalAmount, isFullPaid]);
 
-  // #FIX: كنّا بنخفى الأصناف اللى كميتها صفر تمامًا — لكن الأفضل نعرضها للموظف عشان
-  // يعرف إنها موجودة فى الفهرس، مع قفلها وعدم السماح بإضافتها لفاتورة (منعًا لبيع صنف خلص).
+  // تصفية الأصناف: عند كتابة نص فى البحث يتم البحث فى كل أصناف الفرع، وبدون بحث يتم عرض أصناف التصنيف المختار فقط
   const filteredProducts = products.filter(p => {
     const matchesBranch = !branch || branch === 'الكل' || normalizeBranchName(p.branch) === normalizeBranchName(branch);
-    const matchesCat = selectedCategory === 'الكل' || p.category === selectedCategory;
+    const isSearching = !!searchQuery.trim();
+    const matchesCat = isSearching || p.category === selectedCategory;
     const matchesSearch =
-      !searchQuery.trim() ||
+      !isSearching ||
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.code.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesBranch && matchesCat && matchesSearch;
