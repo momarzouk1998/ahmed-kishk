@@ -133,6 +133,11 @@ export async function POST(request: Request) {
 
 export async function DELETE(req: Request) {
   try {
+    const scope = await getBranchScope(req);
+    if (!scope) {
+      return NextResponse.json({ success: false, error: 'غير مصرح' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
     const name = searchParams.get('name');
@@ -154,9 +159,10 @@ export async function DELETE(req: Request) {
       conditions.push({ customerName: name.trim() });
     }
 
+    // #GUARD: موظف مقيّد ميقدرش يمسح أوردر من فرع تاني حتى لو عرف الـ id/الاسم.
     await prisma.pipelineOrder.deleteMany({
       where: {
-        OR: conditions,
+        AND: [{ OR: conditions }, branchWhere(scope)],
       },
     });
 

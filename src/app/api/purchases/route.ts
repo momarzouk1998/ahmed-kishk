@@ -134,18 +134,21 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    const scope = await getBranchScope(request);
+    if (!scope) {
+      return NextResponse.json({ success: false, error: 'غير مصرح' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     if (!id) {
       return NextResponse.json({ success: false, error: 'المعرف مطلوب للحذف' }, { status: 400 });
     }
     // اقرأ الفواتير المستهدفة قبل الحذف لعكس أثرها على رصيد المورد
-    const toDelete = await prisma.purchaseInvoice.findMany({
-      where: { OR: [{ id }, { invoiceNumber: id }] },
-    });
-    await prisma.purchaseInvoice.deleteMany({
-      where: { OR: [{ id }, { invoiceNumber: id }] },
-    });
+    // #GUARD: موظف مقيّد ميقدرش يمسح فاتورة من فرع تاني حتى لو عرف الـ id.
+    const deleteWhere = { AND: [{ OR: [{ id }, { invoiceNumber: id }] }, branchWhere(scope)] };
+    const toDelete = await prisma.purchaseInvoice.findMany({ where: deleteWhere });
+    await prisma.purchaseInvoice.deleteMany({ where: deleteWhere });
     for (const inv of toDelete) {
       await adjustSupplierAggregate(
         inv.supplierName,

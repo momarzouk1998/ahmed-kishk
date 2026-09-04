@@ -33,6 +33,9 @@ async function writeAllPerms(map: PermsMap): Promise<void> {
 // GET ?phone=xxx  → returns { allowedPageIds, restrictToBranch, branch } for that user
 export async function GET(request: Request) {
   try {
+    const user = await verifyAuthCookie(request);
+    if (!user) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
+
     const url = new URL(request.url);
     const phone = url.searchParams.get('phone');
     if (!phone) return NextResponse.json({ error: 'phone required' }, { status: 400 });

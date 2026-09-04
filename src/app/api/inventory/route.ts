@@ -101,11 +101,25 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    const scope = await getBranchScope(request);
+    if (!scope) {
+      return NextResponse.json({ success: false, error: 'غير مصرح' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     if (!id) {
       return NextResponse.json({ success: false, error: 'المعرف مطلوب للحذف' }, { status: 400 });
     }
+
+    // #GUARD: موظف مقيّد ميقدرش يمسح صنف من فرع تاني حتى لو عرف الـ id.
+    if (!scope.isAdmin) {
+      const existing = await prisma.inventoryItem.findUnique({ where: { id } });
+      if (existing && existing.branch !== scope.branch) {
+        return NextResponse.json({ success: false, error: 'غير مصرح بحذف صنف من فرع آخر' }, { status: 403 });
+      }
+    }
+
     await prisma.inventoryItem.delete({
       where: { id },
     });

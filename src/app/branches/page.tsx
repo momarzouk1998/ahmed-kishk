@@ -5,6 +5,7 @@ import PageShell from '@/components/PageShell';
 import { ALL_SYSTEM_PAGES } from '@/lib/permissions';
 import { BRANCHES_LIST, BranchConfig } from '@/lib/branches';
 import ManagerPasswordCard from '@/components/ManagerPasswordCard';
+import { useCurrentUser } from '@/lib/useCurrentUser';
 
 interface Employee {
   id: string;
@@ -97,6 +98,7 @@ const initialEmployees: Employee[] = [
 ];
 
 export default function BranchesAndPermissionsPage() {
+  const { isAdmin, loading: userLoading } = useCurrentUser();
   const [branches] = useState<BranchConfig[]>(BRANCHES_LIST);
   const [employees, setEmployees] = useState<Employee[]>(initialEmployees);
   const [selectedEmp, setSelectedEmp] = useState<Employee | null>(null);
@@ -256,6 +258,25 @@ export default function BranchesAndPermissionsPage() {
 
     setShowPermsModal(false);
   };
+
+  // #GUARD: الصفحة دي بتتحكم فى فروع وصلاحيات كل الموظفين — الأدمن بس.
+  if (userLoading) {
+    return (
+      <PageShell title="الفروع وصلاحيات الموظفين وعزل البيانات">
+        <div className="flex items-center justify-center py-24 text-slate-400 font-bold text-sm">جارِ التحقق...</div>
+      </PageShell>
+    );
+  }
+  if (!isAdmin) {
+    return (
+      <PageShell title="الفروع وصلاحيات الموظفين وعزل البيانات">
+        <div className="flex flex-col items-center justify-center py-24 gap-3 text-center">
+          <span className="material-symbols-outlined text-5xl text-rose-400">lock</span>
+          <p className="text-slate-700 font-bold">هذه الصفحة متاحة للأدمن فقط</p>
+        </div>
+      </PageShell>
+    );
+  }
 
   return (
     <PageShell title="الفروع وصلاحيات الموظفين وعزل البيانات">

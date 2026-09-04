@@ -285,6 +285,14 @@ export async function POST(request: Request) {
  */
 export async function DELETE(request: Request) {
   try {
+    const scope = await getBranchScope(request);
+    if (!scope) {
+      return NextResponse.json({ success: false, error: 'غير مصرح' }, { status: 401 });
+    }
+    const bw = branchWhere(scope);
+    // Customer ليس له عمود branch — الفرع مُخزَّن فى city.
+    const customerWhere = scope.isAdmin ? {} : { city: scope.branch };
+
     const url = new URL(request.url);
     let key = url.searchParams.get('key') || '';
     let ids: string[] = [];
@@ -307,31 +315,33 @@ export async function DELETE(request: Request) {
     const cleanIds = ids.map(String).filter(Boolean);
     let deleted = 0;
 
+    // #GUARD: كل حذف هنا بيضيف شرط الفرع (bw/customerWhere) كـ AND إضافي —
+    // موظف مقيّد ميقدرش يمسح سجل من فرع تاني حتى لو عرف الـ id بالظبط.
     if (key === 'ahmed_kishk_inspections_data_v4') {
-      const r = await prisma.inspectionRequest.deleteMany({ where: { id: { in: cleanIds } } });
+      const r = await prisma.inspectionRequest.deleteMany({ where: { AND: [{ id: { in: cleanIds } }, bw] } });
       deleted = r.count;
     } else if (key === 'ahmed_kishk_quotations_data_v4') {
-      const r = await prisma.quotationOrder.deleteMany({ where: { id: { in: cleanIds } } });
+      const r = await prisma.quotationOrder.deleteMany({ where: { AND: [{ id: { in: cleanIds } }, bw] } });
       deleted = r.count;
     } else if (key === 'ahmed_kishk_pipeline_orders_v5') {
       const r = await prisma.pipelineOrder.deleteMany({
-        where: { OR: [{ id: { in: cleanIds } }, { orderId: { in: cleanIds } }] },
+        where: { AND: [{ OR: [{ id: { in: cleanIds } }, { orderId: { in: cleanIds } }] }, bw] },
       });
       deleted = r.count;
     } else if (key === 'ahmed_kishk_customers_v3') {
-      const r = await prisma.customer.deleteMany({ where: { id: { in: cleanIds } } });
+      const r = await prisma.customer.deleteMany({ where: { AND: [{ id: { in: cleanIds } }, customerWhere] } });
       deleted = r.count;
     } else if (key === 'ahmed_kishk_inventory_v3') {
-      const r = await prisma.inventoryItem.deleteMany({ where: { OR: [{ id: { in: cleanIds } }, { code: { in: cleanIds } }] } });
+      const r = await prisma.inventoryItem.deleteMany({ where: { AND: [{ OR: [{ id: { in: cleanIds } }, { code: { in: cleanIds } }] }, bw] } });
       deleted = r.count;
     } else if (key === 'ahmed_kishk_suppliers_v3') {
-      const r = await prisma.supplier.deleteMany({ where: { id: { in: cleanIds } } });
+      const r = await prisma.supplier.deleteMany({ where: { AND: [{ id: { in: cleanIds } }, bw] } });
       deleted = r.count;
     } else if (key === 'ahmed_kishk_sales_invoices_v1') {
-      const r = await prisma.salesInvoice.deleteMany({ where: { OR: [{ id: { in: cleanIds } }, { invoiceNumber: { in: cleanIds } }] } });
+      const r = await prisma.salesInvoice.deleteMany({ where: { AND: [{ OR: [{ id: { in: cleanIds } }, { invoiceNumber: { in: cleanIds } }] }, bw] } });
       deleted = r.count;
     } else if (key === 'ahmed_kishk_purchases_v3') {
-      const r = await prisma.purchaseInvoice.deleteMany({ where: { OR: [{ id: { in: cleanIds } }, { invoiceNumber: { in: cleanIds } }] } });
+      const r = await prisma.purchaseInvoice.deleteMany({ where: { AND: [{ OR: [{ id: { in: cleanIds } }, { invoiceNumber: { in: cleanIds } }] }, bw] } });
       deleted = r.count;
     } else {
       return NextResponse.json({ success: false, error: `unsupported key: ${key}` }, { status: 400 });

@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useSidebar } from '@/components/SidebarContext';
 import { branchLabel } from '@/lib/branches';
+import { useCurrentUser } from '@/lib/useCurrentUser';
 
 interface HeaderProps {
   title?: string;
@@ -12,32 +13,8 @@ interface HeaderProps {
 
 export default function Header({ title, badge, action }: HeaderProps) {
   const { toggle, isCollapsed } = useSidebar();
-  const [userBranch, setUserBranch] = useState<string>('');
-  const [isSuperAdmin, setIsSuperAdmin] = useState<boolean>(false);
-
-  useEffect(() => {
-    try {
-      const savedBranch = localStorage.getItem('userBranch');
-      const savedPhone = localStorage.getItem('userPhone') || '';
-      if (savedBranch) setUserBranch(savedBranch);
-      if (savedPhone === '01063821000' || savedPhone === '01558282760' || savedBranch === 'المدير العام') {
-        setIsSuperAdmin(true);
-      }
-    } catch {}
-
-    fetch('/api/auth/profile')
-      .then(r => r.json())
-      .then(data => {
-        if (data?.user) {
-          setUserBranch(data.user.branch || 'الفرع الرئيسي');
-          const p = (data.user.phone || '').trim().replace(/\s/g, '');
-          const norm = p.replace(/^0/, '');
-          const isSuper = norm === '1063821000' || norm === '1558282760' || p === '01063821000' || p === '01558282760' || data.user.branch === 'المدير العام' || data.user.role === 'SUPER_ADMIN';
-          setIsSuperAdmin(isSuper);
-        }
-      })
-      .catch(() => {});
-  }, []);
+  const { user, isAdmin: isSuperAdmin } = useCurrentUser();
+  const userBranch = user?.branch || '';
 
   const displayBranchText = isSuperAdmin
     ? (userBranch && userBranch !== 'المدير العام' ? `👑 ${branchLabel(userBranch)}` : '👑 الإدارة العامة')

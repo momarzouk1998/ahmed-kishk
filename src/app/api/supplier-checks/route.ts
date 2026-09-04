@@ -1,11 +1,29 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getBranchScope, branchWhere } from '@/lib/branchScope';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const checks = await prisma.supplierCheck.findMany({ orderBy: { createdAt: 'desc' } });
+    const scope = await getBranchScope(request);
+    if (!scope) {
+      return NextResponse.json({ success: false, error: 'غير مصرح' }, { status: 401 });
+    }
+
+    // #GUARD: SupplierCheck مالوش عمود branch مباشر — الفلترة عن طريق فروع
+    // الموردين المسموح لموظف الفرع يشوفهم فقط (join يدوي بـ supplierId).
+    let where = {};
+    if (!scope.isAdmin) {
+      const scopedSuppliers = await prisma.supplier.findMany({
+        where: branchWhere(scope),
+        select: { id: true },
+      });
+      const supplierIds = scopedSuppliers.map(s => s.id);
+      where = { supplierId: { in: supplierIds } };
+    }
+
+    const checks = await prisma.supplierCheck.findMany({ where, orderBy: { createdAt: 'desc' } });
     return NextResponse.json({ success: true, checks });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

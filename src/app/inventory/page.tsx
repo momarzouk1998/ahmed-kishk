@@ -99,6 +99,11 @@ export default function InventoryPage() {
     setMgrUnlocked(isManagerUnlocked());
   }, []);
 
+  // #GUARD: تاب "إحصائيات الفروع" للأدمن فقط — لو الحالة محفوظة من قبل لغير أدمن نرجّعه لتاب المخزون.
+  useEffect(() => {
+    if (tab === 'stores' && !isAdmin) setTab('stock');
+  }, [tab, isAdmin]);
+
   const priceLocked = !canUserEditPrices('p_inventory') && !mgrUnlocked;
 
   const gatePriceEdit = async (): Promise<boolean> => {
@@ -398,9 +403,9 @@ export default function InventoryPage() {
           </button>
         </div>
 
-        {/* Tab Navigation */}
+        {/* Tab Navigation — تاب إحصائيات الفروع للأدمن فقط */}
         <div className="flex gap-2 border-b border-slate-200 overflow-x-auto pb-px">
-          {TABS.map(t => (
+          {TABS.filter(t => t.key !== 'stores' || isAdmin).map(t => (
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
@@ -766,15 +771,13 @@ export default function InventoryPage() {
                               />
                             </td>
                             <td className="p-1.5">
-                              <select
+                              <BranchSelect
                                 value={inlineForm.branch}
-                                onChange={e => setInlineForm({ ...inlineForm, branch: e.target.value })}
+                                onChange={b => setInlineForm({ ...inlineForm, branch: b })}
+                                isAdmin={isAdmin}
                                 className="bg-white border border-slate-300 rounded-lg p-1 text-xs font-bold text-slate-900"
-                              >
-                                {BRANCHES_LIST.map(b => (
-                                  <option key={b.id} value={b.name}>{b.name}</option>
-                                ))}
-                              </select>
+                                lockedClassName="text-xs px-1 py-1"
+                              />
                             </td>
                             <td className="p-1.5 text-center whitespace-nowrap">
                               <div className="flex items-center justify-center gap-1">
