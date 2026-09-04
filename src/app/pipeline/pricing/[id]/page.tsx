@@ -94,7 +94,9 @@ export default function PricingDetailPage() {
     load();
   }, []);
 
-  const quotation = quotations.find(q => q.id === orderId || q.inspectionId === orderId) || quotations[0];
+  // #FIX: كان بيرجع لأول عقد فى القائمة (quotations[0]) لو مفيش عقد مطابق للـ orderId —
+  // يعني فتح رابط عقد غير موجود كان بيعرض بيانات عميل تاني تمامًا بالغلط بدل رسالة "غير موجود".
+  const quotation = quotations.find(q => q.id === orderId || q.inspectionId === orderId);
   // الكل (أدمن أو موظف) يسعّر افتراضيًا بأقمشة فرعه هو (المخزون اللي قدامه فعليًا)،
   // مش بفرع الأوردر المخزّن (ممكن يكون اتسجل بفرع تانى). لو الأدمن عايز يتصفح فرع
   // تانى فعليًا، عنده زر "إظهار كل الفروع" جوه القائمة نفسها.
