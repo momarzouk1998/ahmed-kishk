@@ -79,18 +79,18 @@ export default function PurchasesPage() {
   const [retAmount, setRetAmount] = useState<number>(1000);
   const [retMethod, setRetMethod] = useState<SupplierPurchaseReturn['refundMethod']>('خصم من حساب المورد');
 
+  // #FIX: كانت بترجع لنسخة قديمة محفوظة على قرص الجهاز (localStorage) لو الطلب فشل أو
+  // رجّع فاضى — ده اللي بيسبب ظهور بيانات قديمة/غلط. دلوقتى مفيش أى تخزين على القرص
+  // لفواتير المشتريات؛ القائمة بتفضل فاضية بدل ما تعرض بيانات مضلِّلة.
+  // (مرتجعات المشتريات لسه localStorage فقط مؤقتاً — مفيش جدول Prisma مخصص لها بعد.)
   useEffect(() => {
     async function loadPurchases() {
       try {
         const res = await fetch('/api/purchases', { cache: 'no-store' });
         if (res.ok) {
           const json = await res.json();
-          if (json.success && Array.isArray(json.purchases) && json.purchases.length > 0) {
+          if (json.success && Array.isArray(json.purchases)) {
             setPurchases(json.purchases);
-            localStorage.setItem(PURCHASES_KEY, JSON.stringify(json.purchases));
-          } else {
-            const rawP = localStorage.getItem(PURCHASES_KEY);
-            if (rawP) setPurchases(JSON.parse(rawP));
           }
         }
       } catch (e) {
@@ -106,12 +106,10 @@ export default function PurchasesPage() {
     loadPurchases();
   }, []);
 
-  // #FIX: كانت بتزامن مع /api/system-data بمفتاح غير متعرَّف عليه فى POST (blob ميت لا
-  // تقرأه صفحة القائمة أبداً — القائمة بتقرأ من /api/purchases الحقيقى). الآن state
-  // محلى فقط؛ الحفظ الحقيقى يتم صراحةً فى كل مكان يستدعيها (حذف حقيقى، أو POST لـ /api/purchases).
+  // state محلى فقط (فى ذاكرة الصفحة، مش على القرص)؛ الحفظ الحقيقى يتم صراحةً فى كل
+  // مكان يستدعيها (حذف حقيقى، أو POST لـ /api/purchases).
   const savePurchasesState = (list: PurchaseInvoice[]) => {
     setPurchases(list);
-    localStorage.setItem(PURCHASES_KEY, JSON.stringify(list));
   };
 
   const saveReturnsState = (list: SupplierPurchaseReturn[]) => {

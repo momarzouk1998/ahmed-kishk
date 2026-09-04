@@ -81,11 +81,8 @@ export default function PipelineInspectionsPage() {
           const json = await res.json();
           if (json.success && Array.isArray(json.customers)) {
             setRegisteredCustomers(json.customers);
-            return;
           }
         }
-        const raw = localStorage.getItem('ahmed_kishk_customers_v3');
-        if (raw) setRegisteredCustomers(JSON.parse(raw));
       } catch {}
     }
     loadCustomers();
@@ -134,36 +131,28 @@ export default function PipelineInspectionsPage() {
   const scheduledCount = branchScopedInspections.filter(i => !isSent(i.status) && !isTodayItem(i)).length;
   const historyCount = branchScopedInspections.filter(i => isSent(i.status)).length;
 
-  const syncCustomerToDirectory = (custName: string, custPhone: string, custAddress: string) => {
-    if (typeof window === 'undefined' || !custName.trim()) return;
+  // #FIX: كانت بتحفظ العميل الجديد فى localStorage بس — أبداً مش بتوصل لقاعدة البيانات
+  // الحقيقية (blob ميت زى نفس نمط الأخطاء اللى صلحناها فى صفحات تانية). يعني أي عميل
+  // جديد يتسجّل من نموذج المعاينة كان بيختفي من صفحة "العملاء" الحقيقية بعد أي ريفريش.
+  const syncCustomerToDirectory = async (custName: string, custPhone: string, custAddress: string) => {
+    if (!custName.trim()) return;
+    const existing = registeredCustomers.find((c: any) =>
+      c.phone === custPhone.trim() || (c.name || '').toLowerCase() === custName.trim().toLowerCase()
+    );
     try {
-      const raw = localStorage.getItem('ahmed_kishk_customers_v3');
-      let list = raw ? JSON.parse(raw) : [];
-      const idx = list.findIndex((c: any) => 
-        c.phone === custPhone.trim() || c.name.toLowerCase() === custName.trim().toLowerCase()
-      );
-
-      if (idx >= 0) {
-        list[idx].inspectionsCount = (list[idx].inspectionsCount || 0) + 1;
-        if (custAddress.trim()) list[idx].address = custAddress.trim();
-      } else {
-        const newCust = {
-          id: `CUST-${String(list.length + 1).padStart(3, '0')}`,
+      await fetch('/api/customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: existing?.id,
           name: custName.trim(),
-          phone: custPhone.trim() || '—',
-          address: custAddress.trim() || '—',
-          city: 'غير مسجل',
-          inspectionsCount: 1,
-          ordersCount: 0,
-          totalSpent: 0,
-          openingBalance: 0,
-          balance: 0,
-          notes: 'تمت إضافته تلقائياً عند تسجيل طلب معاينة',
-          createdAt: new Date().toISOString().split('T')[0],
-        };
-        list = [newCust, ...list];
-      }
-      localStorage.setItem('ahmed_kishk_customers_v3', JSON.stringify(list));
+          phone: custPhone.trim() || existing?.phone || '',
+          address: custAddress.trim() || existing?.address || '',
+          city: existing?.city || (isAdmin ? undefined : currentUser?.branch),
+          balance: existing?.balance || 0,
+          notes: existing?.notes || 'تمت إضافته تلقائياً عند تسجيل طلب معاينة',
+        }),
+      });
     } catch (err) {
       console.error('Failed to sync customer to directory:', err);
     }

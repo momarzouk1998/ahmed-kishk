@@ -306,11 +306,6 @@ export default function NewSalesInvoicePOSPage() {
     };
 
     try {
-      const rawInvoices = localStorage.getItem(SALES_INVOICES_KEY);
-      const existingInvoices = rawInvoices ? JSON.parse(rawInvoices) : [];
-      const updated = [invoicePayload, ...existingInvoices];
-      localStorage.setItem(SALES_INVOICES_KEY, JSON.stringify(updated));
-
       await fetch('/api/fabric-sales', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

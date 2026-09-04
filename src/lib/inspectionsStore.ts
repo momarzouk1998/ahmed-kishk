@@ -1,5 +1,3 @@
-import { saveServerData } from '@/lib/syncService';
-
 export interface Room {
   id: string;
   name: string;
@@ -200,22 +198,29 @@ export const defaultQuotationsList: QuotationOrder[] = [];
 const INSPECTIONS_STORAGE_KEY = 'ahmed_kishk_inspections_data_v4';
 const QUOTATIONS_STORAGE_KEY = 'ahmed_kishk_quotations_data_v4';
 
+// #FIX: كانت كل دوال القراءة دي بتحفظ/بترجع نسخة على قرص جهاز المستخدم (localStorage)،
+// وبترجعها كـ fallback لو السيرفر فشل أو رجّع فاضى — وده اللي سبب ظهور بيانات عميل
+// تاني/قديمة بالغلط الليلة (خصوصًا وقت إعادة نشر السيرفر، أو لو الجهاز فيه نسخة قديمة
+// من قبل كده). دلوقتى مفيش أى تخزين على القرص إطلاقًا. بدل كده فيه ذاكرة مؤقتة فى
+// المتصفح نفسه (تتصفّر تلقائيًا لو عملت Refresh أو قفلت التاب) — بتتملى بس من نتيجة
+// طلب حقيقى ناجح للسيرفر، فمفيش احتمال تعرض بيانات عميل تاني قديمة كانت متخزنة من زمان.
+let inspectionsMemoryCache: InspectionData[] = [];
+let quotationsMemoryCache: QuotationOrder[] = [];
+
 export async function fetchInspections(): Promise<InspectionData[]> {
   try {
     const res = await fetch('/api/inspections', { cache: 'no-store' });
     if (res.ok) {
       const json = await res.json();
       if (json.success && Array.isArray(json.inspections)) {
-        if (typeof window !== 'undefined') {
-          localStorage.setItem(INSPECTIONS_STORAGE_KEY, JSON.stringify(json.inspections));
-        }
+        inspectionsMemoryCache = json.inspections;
         return json.inspections;
       }
     }
   } catch (err) {
     console.error('Error fetching inspections from server:', err);
   }
-  return getStoredInspections();
+  return [];
 }
 
 export async function fetchQuotations(): Promise<QuotationOrder[]> {
@@ -224,41 +229,23 @@ export async function fetchQuotations(): Promise<QuotationOrder[]> {
     if (res.ok) {
       const json = await res.json();
       if (json.success && Array.isArray(json.quotations)) {
-        if (typeof window !== 'undefined') {
-          localStorage.setItem(QUOTATIONS_STORAGE_KEY, JSON.stringify(json.quotations));
-        }
+        quotationsMemoryCache = json.quotations;
         return json.quotations;
       }
     }
   } catch (err) {
     console.error('Error fetching quotations from server:', err);
   }
-  return getStoredQuotations();
+  return [];
 }
 
+/** بترجع آخر نسخة اتجابت فعليًا من السيرفر فى نفس جلسة المتصفح دي بس (مفيش تخزين على القرص). */
 export function getStoredInspections(): InspectionData[] {
-  if (typeof window === 'undefined') {
-    return defaultInspectionsList;
-  }
-  try {
-    const raw = localStorage.getItem(INSPECTIONS_STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return parsed;
-    }
-    fetchInspections().catch(() => {});
-    return defaultInspectionsList;
-  } catch {
-    return defaultInspectionsList;
-  }
+  return inspectionsMemoryCache;
 }
 
 export async function saveAllInspections(list: InspectionData[]): Promise<void> {
-  if (typeof window !== 'undefined') {
-    try {
-      localStorage.setItem(INSPECTIONS_STORAGE_KEY, JSON.stringify(list));
-    } catch {}
-  }
+  inspectionsMemoryCache = list;
   try {
     await fetch('/api/system-data', {
       method: 'POST',
@@ -271,23 +258,13 @@ export async function saveAllInspections(list: InspectionData[]): Promise<void> 
 }
 
 export function getInspectionById(id: string): InspectionData | null {
-  const list = getStoredInspections();
-  return list.find(item => item.id.toUpperCase() === id.toUpperCase()) || null;
+  return inspectionsMemoryCache.find(item => item.id.toUpperCase() === id.toUpperCase()) || null;
 }
 
 export async function saveOrUpdateInspection(item: InspectionData): Promise<void> {
-  const list = getStoredInspections();
-  const index = list.findIndex(i => i.id.toUpperCase() === item.id.toUpperCase());
-  let updated: InspectionData[];
-  if (index >= 0) {
-    updated = [...list];
-    updated[index] = item;
-  } else {
-    updated = [item, ...list];
-  }
-  if (typeof window !== 'undefined') {
-    localStorage.setItem(INSPECTIONS_STORAGE_KEY, JSON.stringify(updated));
-  }
+  const idx = inspectionsMemoryCache.findIndex(i => i.id.toUpperCase() === item.id.toUpperCase());
+  if (idx >= 0) inspectionsMemoryCache = [...inspectionsMemoryCache.slice(0, idx), item, ...inspectionsMemoryCache.slice(idx + 1)];
+  else inspectionsMemoryCache = [item, ...inspectionsMemoryCache];
   try {
     await fetch('/api/inspections', {
       method: 'POST',
@@ -299,33 +276,13 @@ export async function saveOrUpdateInspection(item: InspectionData): Promise<void
   }
 }
 
+/** بترجع آخر نسخة اتجابت فعليًا من السيرفر فى نفس جلسة المتصفح دي بس (مفيش تخزين على القرص). */
 export function getStoredQuotations(): QuotationOrder[] {
-  if (typeof window === 'undefined') {
-    return defaultQuotationsList;
-  }
-  try {
-    const raw = localStorage.getItem(QUOTATIONS_STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) {
-        return parsed;
-      }
-    }
-    // localStorage is empty — trigger a background server fetch to hydrate it.
-    fetchQuotations().catch(() => {});
-    return defaultQuotationsList;
-  } catch {
-    return defaultQuotationsList;
-  }
+  return quotationsMemoryCache;
 }
 
 export async function saveAllQuotations(list: QuotationOrder[]): Promise<void> {
-  if (typeof window !== 'undefined') {
-    try {
-      localStorage.setItem(QUOTATIONS_STORAGE_KEY, JSON.stringify(list));
-    } catch {}
-  }
-
+  quotationsMemoryCache = list;
   try {
     await fetch('/api/pricing', {
       method: 'POST',
@@ -334,16 +291,6 @@ export async function saveAllQuotations(list: QuotationOrder[]): Promise<void> {
     });
   } catch (err) {
     console.error('Failed to save quotations to database:', err);
-  }
-
-  try {
-    await fetch('/api/system-data', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ key: QUOTATIONS_STORAGE_KEY, data: list }),
-    });
-  } catch (err) {
-    console.error('Failed to save quotations to server:', err);
   }
 }
 
@@ -382,9 +329,7 @@ export async function saveOrUpdateQuotation(item: QuotationOrder): Promise<void>
   } else {
     updated = [withTs, ...list];
   }
-  if (typeof window !== 'undefined') {
-    localStorage.setItem(QUOTATIONS_STORAGE_KEY, JSON.stringify(updated));
-  }
+  quotationsMemoryCache = updated;
   try {
     await fetch('/api/pricing', {
       method: 'POST',
@@ -545,35 +490,9 @@ export async function deleteQuotationOrder(orderId: string): Promise<void> {
   const inspectionId = targetQot?.inspectionId || orderId;
   const quotationId = targetQot?.id || orderId;
 
-  // 1) امسح من الـ localStorage فوراً (UI تحديث سريع)
-  if (typeof window !== 'undefined') {
-    try {
-      const rawQ = localStorage.getItem('ahmed_kishk_quotations_data_v4');
-      if (rawQ) {
-        const arr = JSON.parse(rawQ);
-        if (Array.isArray(arr)) {
-          const nx = arr.filter((q: any) => q.id !== quotationId && q.inspectionId !== inspectionId);
-          localStorage.setItem('ahmed_kishk_quotations_data_v4', JSON.stringify(nx));
-        }
-      }
-      const rawI = localStorage.getItem('ahmed_kishk_inspections_data_v4');
-      if (rawI) {
-        const arr = JSON.parse(rawI);
-        if (Array.isArray(arr)) {
-          const nx = arr.filter((i: any) => i.id !== inspectionId);
-          localStorage.setItem('ahmed_kishk_inspections_data_v4', JSON.stringify(nx));
-        }
-      }
-      const rawP = localStorage.getItem('ahmed_kishk_pipeline_orders_v5');
-      if (rawP) {
-        const arr = JSON.parse(rawP);
-        if (Array.isArray(arr)) {
-          const nx = arr.filter((p: any) => p.id !== quotationId && p.orderId !== quotationId && p.id !== `ORD-${quotationId}`);
-          localStorage.setItem('ahmed_kishk_pipeline_orders_v5', JSON.stringify(nx));
-        }
-      }
-    } catch {}
-  }
+  // 1) حدّث الذاكرة المؤقتة فوراً (UI تحديث سريع) — بدون أى لمس لتخزين القرص
+  quotationsMemoryCache = quotationsMemoryCache.filter(q => q.id !== quotationId && q.inspectionId !== inspectionId);
+  inspectionsMemoryCache = inspectionsMemoryCache.filter(i => i.id !== inspectionId);
 
   // 2) امسح من قاعدة البيانات (بالتوازى)
   const del = (key: string, id: string) =>

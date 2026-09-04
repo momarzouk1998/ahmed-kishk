@@ -137,39 +137,33 @@ export default function SuppliersPage() {
     { checkNumber: '', bankName: 'QNB', amount: 3000, dueDate: '2026-10-15', notes: '' },
   ]);
 
+  // #FIX: كانت بترجع لنسخة قديمة محفوظة على قرص الجهاز (localStorage) لو الطلب فشل أو
+  // رجّع فاضى — ده اللي بيسبب ظهور بيانات قديمة/غلط. دلوقتى مفيش أى تخزين على القرص،
+  // القوائم بتفضل فاضية بدل ما تعرض بيانات مضلِّلة.
   useEffect(() => {
     async function loadSuppliers() {
       try {
         const res = await fetch('/api/suppliers', { cache: 'no-store' });
         if (res.ok) {
           const json = await res.json();
-          if (json.success && Array.isArray(json.suppliers) && json.suppliers.length > 0) {
-            const mapped = json.suppliers.map(mapApiSupplier);
-            setSuppliers(mapped);
-            localStorage.setItem(SUPPLIERS_KEY, JSON.stringify(mapped));
-          } else {
-            const rawS = localStorage.getItem(SUPPLIERS_KEY);
-            if (rawS) setSuppliers(JSON.parse(rawS));
+          if (json.success && Array.isArray(json.suppliers)) {
+            setSuppliers(json.suppliers.map(mapApiSupplier));
           }
         }
       } catch (e) {
         console.error(e);
       }
 
-      // #FIX: مدفوعات وشيكات الموردين كانت localStorage فقط (مفيش أى مزامنة سيرفر
-      // إطلاقاً) — دلوقتى بتتحمل من الجداول الحقيقية.
       try {
         const payRes = await fetch('/api/supplier-payments', { cache: 'no-store' });
         if (payRes.ok) {
           const payJson = await payRes.json();
           if (payJson.success && Array.isArray(payJson.payments)) {
             setPayments(payJson.payments);
-            localStorage.setItem(SPAYMENTS_KEY, JSON.stringify(payJson.payments));
           }
         }
-      } catch {
-        const rawP = localStorage.getItem(SPAYMENTS_KEY);
-        if (rawP) { try { setPayments(JSON.parse(rawP)); } catch {} }
+      } catch (e) {
+        console.error(e);
       }
 
       try {
@@ -178,34 +172,27 @@ export default function SuppliersPage() {
           const chkJson = await chkRes.json();
           if (chkJson.success && Array.isArray(chkJson.checks)) {
             setChecks(chkJson.checks);
-            localStorage.setItem(SCHECKS_KEY, JSON.stringify(chkJson.checks));
           }
         }
-      } catch {
-        const rawC = localStorage.getItem(SCHECKS_KEY);
-        if (rawC) { try { setChecks(JSON.parse(rawC)); } catch {} }
+      } catch (e) {
+        console.error(e);
       }
     }
 
     loadSuppliers();
   }, []);
 
-  // #FIX: كانت بتزامن مع /api/system-data بمفتاح غير متعرَّف عليه فى POST (blob ميت لا
-  // تقرأه صفحة القائمة أبداً — القائمة بتقرأ من /api/suppliers الحقيقى). الآن state
-  // محلى فقط؛ الحفظ الحقيقى يتم صراحةً فى كل دالة تستدعيها.
+  // state محلى فقط (فى ذاكرة الصفحة، مش على القرص)؛ الحفظ الحقيقى يتم صراحةً فى كل دالة تستدعيها.
   const saveSuppliersState = (list: Supplier[]) => {
     setSuppliers(list);
-    localStorage.setItem(SUPPLIERS_KEY, JSON.stringify(list));
   };
 
   const savePaymentsState = (list: SupplierPayment[]) => {
     setPayments(list);
-    localStorage.setItem(SPAYMENTS_KEY, JSON.stringify(list));
   };
 
   const saveChecksState = (list: SupplierCheck[]) => {
     setChecks(list);
-    localStorage.setItem(SCHECKS_KEY, JSON.stringify(list));
   };
 
   // Submit Add Supplier

@@ -1,7 +1,6 @@
 'use client';
 
-import { saveServerData } from '@/lib/syncService';
-import { getStoredQuotations, saveAllQuotations, fetchQuotations } from '@/lib/inspectionsStore';
+import { saveAllQuotations, fetchQuotations } from '@/lib/inspectionsStore';
 
 // Master Pipeline Stage Enum/Union
 export type GlobalMasterStage =
@@ -38,7 +37,6 @@ export interface PipelineMasterOrder {
 }
 
 const STORAGE_KEY = 'ahmed_kishk_pipeline_orders_v5';
-const DELETED_IDS_KEY = 'ahmed_kishk_deleted_order_ids_v1';
 
 // #1: تم إلغاء القائمة السوداء تماماً — العملاء المحذوفون تُدار حذفهم فى قاعدة البيانات فقط.
 export const DEFAULT_PIPELINE_ORDERS: PipelineMasterOrder[] = [];
@@ -55,12 +53,7 @@ export function getDeletedOrderIds(): string[] {
 }
 
 export function registerDeletedOrderId(id: string) {
-  // DB is now the source of truth for deletion
-  if (typeof window !== 'undefined') {
-    try {
-      localStorage.removeItem(DELETED_IDS_KEY);
-    } catch {}
-  }
+  // DB is now the source of truth للحذف — لا يوجد أى تخزين محلى.
 }
 
 /**
@@ -80,52 +73,35 @@ export function normalizeMasterStage(statusStr: string): GlobalMasterStage {
   return 'المعاينات';
 }
 
+// #FIX: كان بيخزّن نسخة فى localStorage (على قرص الجهاز) وبيرجعها لو فشل الطلب من
+// السيرفر — ده اللي بيسبب ظهور بيانات قديمة/غلط لما السيرفر يبقى فاضى أو مؤقتًا مش
+// متاح (مثلاً وقت إعادة نشر). دلوقتى فيه ذاكرة مؤقتة فى المتصفح نفسه بس (تتصفّر لو
+// عملت Refresh)، بتتملى فقط من نتيجة طلب حقيقى ناجح للسيرفر — مفيش أى تخزين على القرص.
+let pipelineOrdersMemoryCache: PipelineMasterOrder[] = [];
+
 export async function fetchPipelineOrders(): Promise<PipelineMasterOrder[]> {
   try {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem(DELETED_IDS_KEY);
-    }
     const res = await fetch('/api/pipeline-orders', { cache: 'no-store' });
     if (res.ok) {
       const json = await res.json();
       if (json.success && Array.isArray(json.orders)) {
-        if (typeof window !== 'undefined') {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(json.orders));
-        }
+        pipelineOrdersMemoryCache = json.orders;
         return json.orders;
       }
     }
   } catch (err) {
     console.error('Error fetching pipeline orders from server:', err);
   }
-  return getStoredPipelineOrders();
+  return [];
 }
 
+/** بترجع آخر نسخة اتجابت فعليًا من السيرفر فى نفس جلسة المتصفح دي بس (مفيش تخزين على القرص). */
 export function getStoredPipelineOrders(): PipelineMasterOrder[] {
-  if (typeof window === 'undefined') return DEFAULT_PIPELINE_ORDERS;
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    let list: PipelineMasterOrder[] = [];
-    if (!raw) {
-      fetchPipelineOrders().catch(() => {});
-      return DEFAULT_PIPELINE_ORDERS;
-    } else {
-      list = JSON.parse(raw);
-    }
-    return list;
-  } catch (err) {
-    console.error('Error reading pipeline orders:', err);
-    return DEFAULT_PIPELINE_ORDERS;
-  }
+  return pipelineOrdersMemoryCache;
 }
 
 export async function saveStoredPipelineOrders(orders: PipelineMasterOrder[]) {
-  if (typeof window !== 'undefined') {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(orders));
-    } catch {}
-  }
-
+  pipelineOrdersMemoryCache = orders;
   try {
     await fetch('/api/pipeline-orders', {
       method: 'POST',

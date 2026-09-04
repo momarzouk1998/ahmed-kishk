@@ -112,10 +112,18 @@ export default function NewPurchaseInvoicePage() {
     }
 
     try {
-      const rawPurchases = localStorage.getItem(PURCHASES_KEY);
-      const existingPurchases = rawPurchases ? JSON.parse(rawPurchases) : [];
+      // #FIX: كان بيقرأ عدد الفواتير من نسخة قديمة محفوظة على قرص الجهاز (localStorage)
+      // لتوليد رقم الفاتورة — دلوقتى بيجيب العدد الحقيقى من السيرفر مباشرة.
+      let existingCount = 0;
+      try {
+        const countRes = await fetch('/api/purchases', { cache: 'no-store' });
+        if (countRes.ok) {
+          const countJson = await countRes.json();
+          if (Array.isArray(countJson.purchases)) existingCount = countJson.purchases.length;
+        }
+      } catch {}
 
-      const purNum = `PUR-2026-${String(existingPurchases.length + 1).padStart(3, '0')}`;
+      const purNum = `PUR-2026-${String(existingCount + 1).padStart(3, '0')}`;
       const statusLabel = remainingAmount === 0 ? 'مسدد بالكامل' : paidAmount > 0 ? 'مسدد جزئياً' : 'آجل / غير مسدد';
 
       const attachedChecks = paymentMethod === 'شيكات بنكية' ? checkRows : [];
@@ -140,9 +148,6 @@ export default function NewPurchaseInvoicePage() {
         notes: purNotes.trim(),
         checks: attachedChecks,
       };
-
-      const updated = [newPur, ...existingPurchases];
-      localStorage.setItem(PURCHASES_KEY, JSON.stringify(updated));
 
       // #FIX: كانت الفاتورة تُحفظ حصريًا فى blob مفتاحه (ahmed_kishk_purchase_invoices_v1)
       // غير متعرَّف عليه فى POST /api/system-data — يعنى فواتير المشتريات الجديدة كانت

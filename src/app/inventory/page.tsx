@@ -46,18 +46,11 @@ type TabKey = typeof TABS[number]['key'];
 
 export default function InventoryPage() {
   const [tab, setTab] = useState<TabKey>('stock');
-  const [items, setItems] = useState<InventoryItem[]>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const raw = localStorage.getItem('ahmed_kishk_inventory_v3');
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          if (Array.isArray(parsed) && parsed.length >= 300) return parsed;
-        }
-      } catch {}
-    }
-    return initialInventory as InventoryItem[];
-  });
+  // #FIX: كانت بتبدأ بنسخة قديمة محفوظة على قرص الجهاز (localStorage) قبل ما تتأكد من
+  // السيرفر — ممكن تعرض بيانات مخزون قديمة/غلط لثوانى (أو أكتر لو الطلب فشل). دلوقتى
+  // البداية دايمًا من الكتالوج الافتراضى المُجهَّز مع النظام، وبيتم استبداله فورًا
+  // بالبيانات الحقيقية من قاعدة البيانات فى أول تحميل.
+  const [items, setItems] = useState<InventoryItem[]>(initialInventory as InventoryItem[]);
   const [categories, setCategories] = useState<string[]>(() => ['الكل', ...Array.from(new Set(initialInventory.map(i => i.category).filter(Boolean)))]);
   const [activeCategory, setActiveCategory] = useState('الكل');
   const [selectedBranch, setSelectedBranch] = useState('الكل');
@@ -128,19 +121,13 @@ export default function InventoryPage() {
         const json = await res.json();
         if (json.success && Array.isArray(json.items) && json.items.length > 0) {
           setItems(json.items);
-          localStorage.setItem('ahmed_kishk_inventory_v3', JSON.stringify(json.items));
           // Extract unique categories dynamically
           const cats = Array.from(new Set(json.items.map((i: InventoryItem) => i.category).filter(Boolean)));
           setCategories(['الكل', ...cats as string[]]);
-        } else {
-          const raw = localStorage.getItem('ahmed_kishk_inventory_v3');
-          if (raw) setItems(JSON.parse(raw));
         }
       }
     } catch (e) {
       console.error(e);
-      const raw = localStorage.getItem('ahmed_kishk_inventory_v3');
-      if (raw) setItems(JSON.parse(raw));
     }
   };
 
@@ -154,18 +141,9 @@ export default function InventoryPage() {
           if (json.suppliers.length > 0 && !supplier) {
             setSupplier(json.suppliers[0].name);
           }
-          return;
         }
       }
     } catch (e) {}
-    try {
-      const raw = localStorage.getItem('ahmed_kishk_suppliers_v3');
-      if (raw) {
-        const list = JSON.parse(raw);
-        setSuppliersList(list);
-        if (list.length > 0 && !supplier) setSupplier(list[0].name);
-      }
-    } catch {}
   };
 
   const loadAdjustments = async () => {
@@ -238,7 +216,6 @@ export default function InventoryPage() {
     // Optimistic UI update
     const updatedItems = items.map(it => it.id === item.id ? { ...inlineForm } : it);
     setItems(updatedItems);
-    localStorage.setItem('ahmed_kishk_inventory_v3', JSON.stringify(updatedItems));
     setEditingId(null);
 
     try {
@@ -306,7 +283,6 @@ export default function InventoryPage() {
 
     const updated = [newItem, ...items];
     setItems(updated);
-    localStorage.setItem('ahmed_kishk_inventory_v3', JSON.stringify(updated));
     setShowAddModal(false);
     setName('');
     setNewCatInput('');
@@ -346,7 +322,6 @@ export default function InventoryPage() {
     if (confirm(`هل أنت متأكد من حذف الصنف "${itemName}" من المخزن نهائياً؟`)) {
       const updated = items.filter(it => it.id !== id);
       setItems(updated);
-      localStorage.setItem('ahmed_kishk_inventory_v3', JSON.stringify(updated));
 
       try {
         await fetch(`/api/inventory?id=${id}`, { method: 'DELETE' });

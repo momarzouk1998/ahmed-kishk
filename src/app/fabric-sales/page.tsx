@@ -82,6 +82,10 @@ export default function FabricSalesPage() {
   const [retAmount, setRetAmount] = useState<number>(500);
   const [retMethod, setRetMethod] = useState<CustomerSalesReturn['refundMethod']>('نقدي');
 
+  // #FIX: كانت بترجع لنسخة قديمة محفوظة على قرص الجهاز (localStorage) لو الطلب فشل —
+  // ده اللي بيسبب ظهور بيانات قديمة/غلط. دلوقتى مفيش أى تخزين على القرص لفواتير
+  // المبيعات؛ القائمة بتفضل فاضية بدل ما تعرض بيانات مضلِّلة.
+  // (مرتجعات المبيعات لسه localStorage فقط مؤقتاً — مفيش جدول Prisma مخصص لها بعد.)
   const loadData = async () => {
     try {
       setLoading(true);
@@ -90,16 +94,10 @@ export default function FabricSalesPage() {
         const json = await res.json();
         if (json.success && Array.isArray(json.sales)) {
           setInvoices(json.sales);
-          localStorage.setItem(SALES_INVOICES_KEY, JSON.stringify(json.sales));
         }
-      } else {
-        const rawI = localStorage.getItem(SALES_INVOICES_KEY);
-        if (rawI) setInvoices(JSON.parse(rawI));
       }
     } catch (e) {
       console.error(e);
-      const rawI = localStorage.getItem(SALES_INVOICES_KEY);
-      if (rawI) setInvoices(JSON.parse(rawI));
     }
 
     try {
@@ -113,12 +111,10 @@ export default function FabricSalesPage() {
     loadData();
   }, []);
 
-  // #FIX: كانت بتزامن مع /api/system-data بمفتاح غير متعرَّف عليه فى POST (blob ميت
-  // لا تقرأه صفحة القائمة أبداً). الآن state محلى فقط — التحديث الحقيقى للسيرفر
-  // يتم بشكل مباشر فى كل مكان يستدعيها (حذف حقيقى، أو POST لـ /api/fabric-sales).
+  // state محلى فقط (فى ذاكرة الصفحة، مش على القرص) — التحديث الحقيقى للسيرفر يتم
+  // بشكل مباشر فى كل مكان يستدعيها (حذف حقيقى، أو POST لـ /api/fabric-sales).
   const saveInvoicesState = (list: SalesInvoice[]) => {
     setInvoices(list);
-    localStorage.setItem(SALES_INVOICES_KEY, JSON.stringify(list));
   };
 
   const saveReturnsState = (list: CustomerSalesReturn[]) => {
@@ -156,7 +152,6 @@ export default function FabricSalesPage() {
     const updatedObj = { ...editingInvoice, remainingAmount: remaining, status: statusLabel };
     const updatedList = invoices.map(i => i.id === editingInvoice.id ? updatedObj : i);
     setInvoices(updatedList);
-    localStorage.setItem(SALES_INVOICES_KEY, JSON.stringify(updatedList));
 
     // #FIX: كان التعديل بيتحفظ فى blob مفتاحه مش متعرَّف عليه فى POST /api/system-data
     // فكان يرجع للحالة القديمة بعد أى ريفريش. دلوقتى بيتحفظ مباشرة فى جدول الفاتورة الحقيقى

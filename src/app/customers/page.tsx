@@ -86,6 +86,9 @@ export default function CustomersPage() {
   const [colTreasury, setColTreasury] = useState('الخزينة الرئيسية');
   const [colNotes, setColNotes] = useState('');
 
+  // #FIX: كان بيرجع لنسخة قديمة محفوظة على قرص الجهاز (localStorage) لو فشل الطلب —
+  // ده اللي بيسبب ظهور بيانات قديمة/غلط. دلوقتى لو الطلب فشل، القائمة تفضل فاضية
+  // (مع رسالة تحميل واضحة) بدل ما تعرض بيانات مضلِّلة.
   const loadData = async () => {
     try {
       setLoading(true);
@@ -94,25 +97,13 @@ export default function CustomersPage() {
         const json = await res.json();
         if (json.success && Array.isArray(json.customers)) {
           setCustomers(json.customers);
-          localStorage.setItem(CUSTOMERS_KEY, JSON.stringify(json.customers));
-          
           if (Array.isArray(json.collections)) {
             setCollections(json.collections);
-            localStorage.setItem(COLLECTIONS_KEY, JSON.stringify(json.collections));
           }
         }
-      } else {
-        const rawC = localStorage.getItem(CUSTOMERS_KEY);
-        if (rawC) setCustomers(JSON.parse(rawC));
-        const rawCol = localStorage.getItem(COLLECTIONS_KEY);
-        if (rawCol) setCollections(JSON.parse(rawCol));
       }
     } catch (e) {
       console.error('Failed to load customers from API:', e);
-      const rawC = localStorage.getItem(CUSTOMERS_KEY);
-      if (rawC) setCustomers(JSON.parse(rawC));
-      const rawCol = localStorage.getItem(COLLECTIONS_KEY);
-      if (rawCol) setCollections(JSON.parse(rawCol));
     } finally {
       setLoading(false);
     }
@@ -124,7 +115,6 @@ export default function CustomersPage() {
 
   const saveCustomersState = async (list: Customer[]) => {
     setCustomers(list);
-    localStorage.setItem(CUSTOMERS_KEY, JSON.stringify(list));
     try {
       await fetch('/api/system-data', {
         method: 'POST',
@@ -138,7 +128,6 @@ export default function CustomersPage() {
 
   const saveCollectionsState = async (list: CustomerCollection[]) => {
     setCollections(list);
-    localStorage.setItem(COLLECTIONS_KEY, JSON.stringify(list));
     try {
       await fetch('/api/customers', {
         method: 'POST',
