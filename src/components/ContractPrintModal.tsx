@@ -15,17 +15,20 @@ export interface PrintRoomItem {
   sides: number;
   heavyFabricName?: string;
   heavyTapeType?: string;
+  heavyTapePrice?: number;
   heavyMultiplier?: number;
   heavyMeters: number;
   heavyPrice: number;
   sheerFabricName?: string;
   sheerTapeType?: string;
+  sheerTapePrice?: number;
   sheerMultiplier?: number;
   sheerMeters: number;
   sheerPrice: number;
   sheerLiningEnabled?: boolean;
   sheerLiningPricePerMeter?: number;
   blackoutFabricName?: string;
+  blackoutTapePrice?: number;
   blackoutMultiplier?: number;
   blackoutMeters: number;
   blackoutPrice: number;
@@ -61,21 +64,38 @@ interface ContractPrintModalProps {
   data: PrintContractData | null;
 }
 
+// #FIX: كانت بتحسب سعر الشريط بضرب "سعر شريط واحد مشترك" (tapePrice) فى إجمالي أمتار
+// كل الطبقات مع بعض (tapeMeters) — يعني لو الجوانب شريط ويفي (140ج) والخلفية شريط ٣
+// فتلة (50ج)، كانت بتطبّق سعر واحد بس على الأمتار كلها فبتطلع رقم غلط تمامًا (وبيفرق
+// عن الإجمالي الصحيح المعروض فى صفحة التسعير نفسها). دلوقتى بتستخدم إجمالي الغرفة
+// المحفوظ فعليًا (totalSellPrice — نفس الرقم اللي فى صفحة التسعير) كمصدر الحقيقة،
+// وبس بتحسب "التجهيزات" كالفرق المتبقي، مع عرض سعر شريط كل طبقة على حدة فى الوصف.
+function getRoomBreakdown(room: PrintRoomItem) {
+  const heavyFabricCost = room.heavyMeters * (room.heavyPrice || 0);
+  const sheerFabricCost = room.sheerMeters * (room.sheerPrice || 0);
+  const blackoutFabricCost = room.blackoutMeters * (room.blackoutPrice || 0);
+  const liningCost = (room.sheerLiningEnabled && room.sheerLiningPricePerMeter) ? room.sheerMeters * room.sheerLiningPricePerMeter : 0;
+  const roomTotal = room.totalSellPrice;
+  const fittingsTotal = Math.max(0, roomTotal - heavyFabricCost - sheerFabricCost - blackoutFabricCost - liningCost);
+  const heavyTapeP = room.heavyTapePrice ?? room.tapePrice ?? 0;
+  const sheerTapeP = room.sheerTapePrice ?? room.tapePrice ?? 0;
+  const blackoutTapeP = room.blackoutTapePrice ?? 0;
+  const tapeParts: string[] = [];
+  if (room.heavyMeters > 0) tapeParts.push(`${room.heavyMeters}م×${heavyTapeP}ج`);
+  if (room.sheerMeters > 0) tapeParts.push(`${room.sheerMeters}م×${sheerTapeP}ج`);
+  if (room.blackoutMeters > 0 && blackoutTapeP > 0) tapeParts.push(`${room.blackoutMeters}م×${blackoutTapeP}ج`);
+  const tapeDescription = tapeParts.join(' + ') || `${room.tapeMeters}م × ${room.tapePrice || 0}ج`;
+  return { fittingsTotal, roomTotal, tapeDescription };
+}
+
 export default function ContractPrintModal({ isOpen, onClose, data }: ContractPrintModalProps) {
   if (!isOpen || !data) return null;
   const brand = getBrandSettings();
 
-  const calculatedTotal = (data.rooms || []).reduce((sum, r) => {
-    const tP = r.tapePrice || 0;
-    const trP = r.trackPrice || 0;
-    const instF = r.installFee || 0;
-    const tailP = r.tailorPricePerSide || 0;
-    const accT = (r.trackMeters * trP) + (r.tapeMeters * tP) + (r.sides * tailP) + instF;
-    const liningCost = (r.sheerLiningEnabled && r.sheerLiningPricePerMeter) ? (r.sheerMeters * r.sheerLiningPricePerMeter) : 0;
-    const roomT = (r.heavyMeters * (r.heavyPrice || 0)) + (r.sheerMeters * (r.sheerPrice || 0)) + (r.blackoutMeters * (r.blackoutPrice || 0)) + accT + liningCost;
-    return sum + roomT;
-  }, 0);
-  const calculatedRemaining = Math.max(0, calculatedTotal - (data.depositPaid || 0));
+  // #FIX: مبقاش بيعيد حساب الإجمالي من الصفر (كان بيتجاهل الخصم كمان) — بيستخدم
+  // totalAmount/remainingAmount المحفوظين فعليًا، نفس الأرقام الظاهرة فى صفحة التسعير.
+  const calculatedTotal = data.totalAmount;
+  const calculatedRemaining = data.remainingAmount;
 
   const handlePrint = () => {
     const printWindow = window.open('', '_blank');
@@ -143,27 +163,17 @@ export default function ContractPrintModal({ isOpen, onClose, data }: ContractPr
       }
 
       // Accessories
-      const tapeP = room.tapePrice || 0;
       const trackP = room.trackPrice || 0;
       const installF = room.installFee || 0;
-      const tailorP = room.tailorPricePerSide || 0;
-      const accTotal = (room.trackMeters * trackP) +
-        (room.tapeMeters * tapeP) +
-        (room.sides * tailorP) +
-        installF;
-
-      const roomTotal = (room.heavyMeters * (room.heavyPrice || 0)) +
-        (room.sheerMeters * (room.sheerPrice || 0)) +
-        (room.blackoutMeters * (room.blackoutPrice || 0)) +
-        accTotal;
+      const { fittingsTotal, roomTotal, tapeDescription } = getRoomBreakdown(room);
 
       roomsRowsHtml += `
         <tr style="background:#f8fafc; font-size:10pt; color:#475569;">
           <td style="font-weight:700;">التجهيزات والمصنعيات</td>
           <td colspan="3">
-            مجرى (${room.trackMeters}م × ${trackP}ج) + شريط (${room.tapeMeters}م × ${tapeP}ج) + تركيب (${installF}ج)
+            مجرى (${room.trackMeters}م × ${trackP}ج) + شريط (${tapeDescription}) + تركيب (${installF}ج)
           </td>
-          <td style="text-align:center; font-family:monospace; font-weight:700; color:#0f172a; font-size:11pt;">${accTotal.toLocaleString()} ج</td>
+          <td style="text-align:center; font-family:monospace; font-weight:700; color:#0f172a; font-size:11pt;">${fittingsTotal.toLocaleString()} ج</td>
         </tr>
         <tr style="background:#f1f5f9; font-weight:900; border-bottom:2px solid #cbd5e1;">
           <td colspan="4" style="text-align:left; padding-left:10px; color:#0f172a; font-size:11pt;">إجمالي تكلفة ${room.name}:</td>
@@ -649,29 +659,25 @@ export default function ContractPrintModal({ isOpen, onClose, data }: ContractPr
                     )}
 
                     {(() => {
-                      const tP = room.tapePrice || 0;
                       const trP = room.trackPrice || 0;
                       const instF = room.installFee || 0;
-                      const tailP = room.tailorPricePerSide || 0;
-                      const accT = (room.trackMeters * trP) + (room.tapeMeters * tP) + (room.sides * tailP) + instF;
-                      const liningC = (room.sheerLiningEnabled && room.sheerLiningPricePerMeter) ? (room.sheerMeters * room.sheerLiningPricePerMeter) : 0;
-                      const roomT = (room.heavyMeters * (room.heavyPrice || 0)) + (room.sheerMeters * (room.sheerPrice || 0)) + (room.blackoutMeters * (room.blackoutPrice || 0)) + accT + liningC;
+                      const { fittingsTotal, roomTotal, tapeDescription } = getRoomBreakdown(room);
 
                       return (
                         <>
                           <tr className="border-b border-slate-200 text-xs bg-slate-50/50">
                             <td className="p-2 font-bold text-slate-600">التجهيزات والمصنعيات</td>
                             <td colSpan={3} className="p-2 text-slate-600">
-                              مجرى ({room.trackMeters}م × {trP}ج) + شريط ({room.tapeMeters}م × {tP}ج) + تركيب ({instF}ج)
+                              مجرى ({room.trackMeters}م × {trP}ج) + شريط ({tapeDescription}) + تركيب ({instF}ج)
                             </td>
                             <td className="p-2 text-center font-mono font-bold text-slate-900">
-                              {accT.toLocaleString()} ج
+                              {fittingsTotal.toLocaleString()} ج
                             </td>
                           </tr>
 
                           <tr className="bg-slate-100 font-black border-b-2 border-slate-300">
                             <td colSpan={4} className="p-2 text-left pl-4 text-slate-900">إجمالي تكلفة {room.name}:</td>
-                            <td className="p-2 text-center font-mono text-amber-950 bg-amber-100/60 font-bold">{roomT.toLocaleString()} ج</td>
+                            <td className="p-2 text-center font-mono text-amber-950 bg-amber-100/60 font-bold">{roomTotal.toLocaleString()} ج</td>
                           </tr>
                         </>
                       );
