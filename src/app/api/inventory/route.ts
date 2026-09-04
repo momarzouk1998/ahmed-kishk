@@ -9,26 +9,24 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: Request) {
   try {
     const scope = await getBranchScope(request);
-    let items = await prisma.inventoryItem.findMany({
-      where: branchWhere(scope),
-      orderBy: { updatedAt: 'desc' },
-    });
 
-    // إذا كانت قاعدة البيانات فارغة، ندرج أحدث 326 صنف تلقائياً
-    if (items.length === 0) {
-      try {
+    // إذا كانت قاعدة البيانات تحتوي على أقل من 300 صنف، نقوم بإدراج الـ 326 صنف فوراً
+    try {
+      const count = await prisma.inventoryItem.count();
+      if (count < 300) {
         await prisma.inventoryItem.createMany({
           data: initialInventory as any,
           skipDuplicates: true,
         });
-        items = await prisma.inventoryItem.findMany({
-          where: branchWhere(scope),
-          orderBy: { updatedAt: 'desc' },
-        });
-      } catch (seedErr) {
-        console.error('Failed to auto-seed inventory:', seedErr);
       }
+    } catch (e) {
+      console.error('Error auto-populating inventory in GET:', e);
     }
+
+    let items = await prisma.inventoryItem.findMany({
+      where: branchWhere(scope),
+      orderBy: { updatedAt: 'desc' },
+    });
 
     if (items.length === 0) {
       let rawList = initialInventory as any[];
