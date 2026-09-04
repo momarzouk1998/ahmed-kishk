@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
@@ -41,7 +41,7 @@ interface CustomerCollection {
   customerName: string;
   phone: string;
   amount: number;
-  method: 'نقدي' | 'إنستاباي' | 'فودافون كاش' | 'تحويل بنكي' | 'شيك';
+  method: 'نقدي' | 'إنستاباي' | 'فيزا' | 'فودافون كاش' | 'تحويل بنكي' | 'شيك';
   treasury: string;
   notes: string;
 }
@@ -82,7 +82,7 @@ export default function CustomersPage() {
   // New Collection Form
   const [colCustomerId, setColCustomerId] = useState('');
   const [colAmount, setColAmount] = useState<number>(1000);
-  const [colMethod, setColMethod] = useState<'نقدي' | 'إنستاباي' | 'فودافون كاش' | 'تحويل بنكي' | 'شيك'>('نقدي');
+  const [colMethod, setColMethod] = useState<'نقدي' | 'إنستاباي' | 'فيزا' | 'فودافون كاش' | 'تحويل بنكي' | 'شيك'>('نقدي');
   const [colTreasury, setColTreasury] = useState('الخزينة الرئيسية');
   const [colNotes, setColNotes] = useState('');
 
@@ -901,6 +901,21 @@ export default function CustomersPage() {
                 </select>
               </div>
 
+              {colCustomerId && (() => {
+                const target = customers.find(c => c.id === colCustomerId);
+                return target ? (
+                  <div className="bg-amber-50/80 border border-amber-200/80 rounded-2xl p-2.5 text-[11px] space-y-1">
+                    <div className="flex justify-between items-center text-amber-950 font-black">
+                      <span>إجمالي رصيد العميل المستحق:</span>
+                      <span className="font-mono text-xs font-bold text-rose-700">{(Number(target.balance) || 0).toLocaleString()} ج.م</span>
+                    </div>
+                    <div className="text-slate-600 font-medium">
+                      ✨ يتم تحديث طلبات الستائر والتسعير وأمر الشغل تلقائياً وتنزيل هذا المبلغ من المتبقي.
+                    </div>
+                  </div>
+                ) : null;
+              })()}
+
               <div>
                 <label className="text-slate-700 font-bold block mb-1">المبلغ المحصل (ج.م):</label>
                 <input
@@ -916,7 +931,7 @@ export default function CustomersPage() {
               <div>
                 <label className="text-slate-700 font-bold block mb-1">طريقة السداد والتحصيل:</label>
                 <div className="grid grid-cols-3 gap-1.5 text-center">
-                  {(['نقدي', 'إنستاباي', 'فودافون كاش', 'تحويل بنكي', 'شيك'] as const).map(m => (
+                  {(['نقدي', 'إنستاباي', 'فيزا', 'فودافون كاش', 'تحويل بنكي', 'شيك'] as const).map(m => (
                     <button
                       key={m}
                       type="button"
@@ -939,11 +954,13 @@ export default function CustomersPage() {
                   className="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900 bg-slate-50 focus:outline-none"
                 >
                   <option value="الخزينة الرئيسية">الخزينة الرئيسية — سعد زغلول</option>
+                  <option value="محفظة إنستاباي">محفظة إنستاباي المؤسسة</option>
+                  <option value="محفظة فودافون كاش">محفظة فودافون كاش</option>
                   <option value="خزينة فرع عرابي">خزينة فرع عرابي</option>
+                  <option value="خزينة فرع الثلاثيني">خزينة فرع الثلاثيني</option>
                   <option value="خزينة فرع عمر أفندي">خزينة فرع عمر أفندي</option>
                   <option value="حساب بنك QNB">حساب بنك QNB</option>
                   <option value="حساب بنك مصر">حساب بنك مصر</option>
-                  <option value="محفظة إنستاباي">محفظة إنستاباي المؤسسة</option>
                 </select>
               </div>
 

@@ -35,7 +35,43 @@ export async function GET(request: Request) {
     });
 
     const combined = Array.from(orderMap.values());
-    return NextResponse.json({ success: true, orders: combined });
+
+    // مزامنة المبالغ المسددة من سندات التحصيل فى شاشة العملاء
+    let collectionsList: any[] = [];
+    try {
+      const colStore = await prisma.systemStore.findUnique({
+        where: { key: 'ahmed_kishk_collections_v3' },
+      });
+      if (colStore && Array.isArray(colStore.data)) {
+        collectionsList = colStore.data as any[];
+      }
+    } catch {}
+
+    const normPhone = (p: string | null | undefined) => (p || '').replace(/\D/g, '').slice(-10);
+    const normName = (n: string | null | undefined) => (n || '').trim().toLowerCase();
+
+    const collectionsByCust = new Map<string, number>();
+    for (const col of collectionsList) {
+      const key = normPhone(col.phone) || normName(col.customerName);
+      if (!key) continue;
+      collectionsByCust.set(key, (collectionsByCust.get(key) || 0) + (Number(col.amount) || 0));
+    }
+
+    const updatedCombined = combined.map(o => {
+      const key = normPhone(o.phone) || normName(o.customerName);
+      const colAmt = key ? (collectionsByCust.get(key) || 0) : 0;
+      const initialDep = Number(o.depositPaid) || 0;
+      const effectivePaid = Math.max(initialDep, colAmt);
+      const totalAmt = Number(o.totalAmount) || 0;
+      const remaining = Math.max(0, totalAmt - effectivePaid);
+      return {
+        ...o,
+        depositPaid: effectivePaid,
+        remainingAmount: remaining,
+      };
+    });
+
+    return NextResponse.json({ success: true, orders: updatedCombined });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }

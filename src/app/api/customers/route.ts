@@ -159,10 +159,8 @@ export async function GET(request: Request) {
     // 7. Calculate aggregate balances and generate detailed ledger entries
     const resultCustomers = Array.from(customerMap.values()).map(c => {
       let totalCurtains = 0;
-      let totalDeposits = 0;
       for (const q of c.quotations) {
         totalCurtains += (Number(q.totalAmount) || 0);
-        totalDeposits += (Number(q.depositPaid) || 0);
       }
 
       let totalSales = 0;
@@ -177,8 +175,15 @@ export async function GET(request: Request) {
         totalCollected += (Number(col.amount) || 0);
       }
 
+      // حساب أي عربون مسجل مباشرة داخل المقايسة ولم يتم إدخاله كسند تحصيل منفصل
+      let initialQuotationDeposits = 0;
+      for (const q of c.quotations) {
+        initialQuotationDeposits += (Number(q.depositPaid) || 0);
+      }
+      const uncollectedDeposits = Math.max(0, initialQuotationDeposits - totalCollected);
+
       const totalSpent = totalCurtains + totalSales + (c.openingBalance || 0);
-      const totalPaid = totalDeposits + totalSalesPaid + totalCollected;
+      const totalPaid = totalCollected + uncollectedDeposits + totalSalesPaid;
       const balance = totalSpent - totalPaid;
       const ordersCount = c.quotations.length + c.sales.length;
       const inspectionsCount = c.inspections.length;
@@ -213,10 +218,9 @@ export async function GET(request: Request) {
         });
       }
 
-      // Add curtain quotations and their deposits
+      // Add curtain quotations
       for (const q of c.quotations) {
         const qTotal = Number(q.totalAmount) || 0;
-        const qDeposit = Number(q.depositPaid) || 0;
         const roomCount = Array.isArray(q.rooms) ? q.rooms.length : 0;
         const qDate = q.date || (q.createdAt ? q.createdAt.toISOString().split('T')[0] : c.createdAt);
 
@@ -232,19 +236,20 @@ export async function GET(request: Request) {
             balanceAfter: running,
           });
         }
+      }
 
-        if (qDeposit > 0) {
-          running -= qDeposit;
-          ledger.push({
-            id: `DEP-${q.id}`,
-            date: qDate,
-            type: 'عربون دفعة أولى 💵',
-            description: `عربون مستلم عند اعتماد مقايسة الستائر (${qDeposit.toLocaleString()} ج)`,
-            debit: 0,
-            credit: qDeposit,
-            balanceAfter: running,
-          });
-        }
+      // If there are uncollected initial deposits from quotation
+      if (uncollectedDeposits > 0) {
+        running -= uncollectedDeposits;
+        ledger.push({
+          id: `DEP-${c.id}`,
+          date: c.createdAt,
+          type: 'عربون دفعة أولى 💵',
+          description: `عربون مستلم عند اعتماد مقايسة الستائر (${uncollectedDeposits.toLocaleString()} ج)`,
+          debit: 0,
+          credit: uncollectedDeposits,
+          balanceAfter: running,
+        });
       }
 
       // Add fabric sales and their payments
@@ -281,16 +286,17 @@ export async function GET(request: Request) {
         }
       }
 
-      // Add collections
+      // Add collections with payment method styling
       for (const col of c.collections) {
         const colAmount = Number(col.amount) || 0;
         if (colAmount > 0) {
           running -= colAmount;
+          const methodEmoji = col.method === 'إنستاباي' ? '📱' : col.method === 'فيزا' ? '💳' : col.method === 'فودافون كاش' ? '🔴' : col.method === 'تحويل بنكي' ? '🏦' : '💵';
           ledger.push({
             id: `COL-${col.id}`,
             date: col.date || c.createdAt,
-            type: 'سند تحصيل / سداد 💰',
-            description: `سند تحصيل (${col.method || 'نقدي'}) — ${col.treasury || 'الخزينة الرئيسية'} ${col.notes ? `(${col.notes})` : ''}`,
+            type: `سند تحصيل (${col.method || 'نقدي'}) ${methodEmoji}`,
+            description: `سداد قيمة (${colAmount.toLocaleString()} ج) عبر ${col.method || 'نقدي'} — ${col.treasury || 'الخزينة'} ${col.notes ? `(${col.notes})` : ''}`,
             debit: 0,
             credit: colAmount,
             balanceAfter: running,
@@ -317,7 +323,7 @@ export async function GET(request: Request) {
         city: c.city,
         openingBalance: c.openingBalance,
         totalSpent,
-        totalDeposits,
+        totalDeposits: totalCollected + uncollectedDeposits,
         totalPaid,
         balance,
         ordersCount,
@@ -345,6 +351,10 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { id, name, phone, address, city, balance, notes, collections } = body;
 
+    // Helper to normalize phone / name
+    const normPhone = (p: string | null | undefined) => (p || '').replace(/\D/g, '').slice(-10);
+    const normName = (n: string | null | undefined) => (n || '').trim().toLowerCase();
+
     // If saving collections list
     if (collections && Array.isArray(collections)) {
       await prisma.systemStore.upsert({
@@ -357,6 +367,61 @@ export async function POST(request: Request) {
           data: collections,
         },
       });
+
+      // مزامنة فورية مع طلبات الستائر وأوامر الشغل
+      try {
+        const custCollectionsMap = new Map<string, number>();
+        for (const col of collections) {
+          const key = normPhone(col.phone) || normName(col.customerName);
+          if (!key) continue;
+          custCollectionsMap.set(key, (custCollectionsMap.get(key) || 0) + (Number(col.amount) || 0));
+        }
+
+        const allQuotations = await prisma.quotationOrder.findMany();
+        for (const q of allQuotations) {
+          const key = normPhone(q.phone) || normName(q.customerName);
+          if (key && custCollectionsMap.has(key)) {
+            const totalCol = custCollectionsMap.get(key) || 0;
+            const totalAmt = Number(q.totalAmount) || 0;
+            const newDeposit = Math.min(totalAmt > 0 ? totalAmt : totalCol, totalCol);
+            const newRemaining = Math.max(0, totalAmt - newDeposit);
+            const newStatus = (newRemaining === 0 && totalAmt > 0)
+              ? (['تم التحويل للورشة', 'في الورشة', 'تم التركيب والتسليم'].includes(q.status) ? q.status : 'معتمد ومسدد بالكامل')
+              : (newDeposit > 0 ? 'معتمد ومسدد العربون' : q.status);
+
+            await prisma.quotationOrder.update({
+              where: { id: q.id },
+              data: {
+                depositPaid: newDeposit,
+                remainingAmount: newRemaining,
+                status: newStatus,
+              },
+            });
+          }
+        }
+
+        const allPipelines = await prisma.pipelineOrder.findMany();
+        for (const p of allPipelines) {
+          const key = normPhone(p.phone) || normName(p.customerName);
+          if (key && custCollectionsMap.has(key)) {
+            const totalCol = custCollectionsMap.get(key) || 0;
+            const totalAmt = Number(p.totalAmount) || 0;
+            const newDeposit = Math.min(totalAmt > 0 ? totalAmt : totalCol, totalCol);
+            const newRemaining = Math.max(0, totalAmt - newDeposit);
+
+            await prisma.pipelineOrder.update({
+              where: { id: p.id },
+              data: {
+                depositPaid: newDeposit,
+                remainingAmount: newRemaining,
+              },
+            });
+          }
+        }
+      } catch (syncErr) {
+        console.error('Failed to sync collections with orders:', syncErr);
+      }
+
       return NextResponse.json({ success: true, collections });
     }
 
