@@ -271,6 +271,47 @@ export default function CentralOrdersLedgerPage() {
     );
   };
 
+  // #FIX: أوردر لسه ما اتحولش رسميًا لخط الإنتاج (لا يوجد له صف حقيقى فى PipelineOrder)
+  // بيتبنى هنا كنسخة "مؤقتة" من بيانات العقد (QuotationOrder) — لكن rooms هناك بشكل
+  // "التسعير" (widthCm/heavyFabricName/heavyPrice...)، وهو شكل مختلف تمامًا عن شكل
+  // "الورشة" (heavyFabric.name/meters/netHeight) اللى مودالات القص والتفصيل بتستناه.
+  // فكانت ورقة الورشة بتطبع كل الخلايا فاضية لأى طلب لسه فى مرحلة التسعير. الدالة دي
+  // بتكتشف الحالة وتحوّل الغرف لشكل الورشة الصحيح (نفس التحويل المستخدم فعليًا فى زر
+  // "تحويل لقص القماش" بصفحة التسعير) قبل ما تتبعت لمودالات الطباعة.
+  const toWorkshopOrder = (order: PipelineMasterOrder): PipelineMasterOrder => {
+    const rooms: any[] = order.rooms || [];
+    const alreadyWorkshopShape = rooms.length === 0 || rooms.some(r => r && (r.heavyFabric || r.sheerFabric || r.blackoutFabric || r.roomName));
+    if (alreadyWorkshopShape) return order;
+
+    const quotation = findQuotationForOrder(order);
+    const sourceRooms: any[] = (quotation?.rooms as any[]) || rooms;
+    const mappedRooms = sourceRooms.map((r: any, idx: number) => ({
+      roomName: r.name || `غرفة ${idx + 1}`,
+      heavyFabric: (r.heavyEnabled !== false && (Number(r.heavyMeters) > 0 || r.heavyFabricName)) ? {
+        name: r.heavyFabricName || 'قماش ثقيل',
+        code: r.heavyFabricCode || '',
+        meters: Number(r.heavyMeters) || 0,
+        tapeType: r.heavyTapeType || '٣ فتلة',
+        netHeight: String(r.heightCm || 280),
+      } : undefined,
+      sheerFabric: (r.sheerEnabled !== false && (Number(r.sheerMeters) > 0 || r.sheerFabricName)) ? {
+        name: r.sheerFabricName || 'شيفون',
+        code: r.sheerFabricCode || '',
+        meters: Number(r.sheerMeters) || 0,
+        tapeType: r.sheerTapeType || 'ويفي',
+        netHeight: String(r.heightCm || 278),
+      } : undefined,
+      blackoutFabric: (r.blackoutEnabled && (Number(r.blackoutMeters) > 0 || r.blackoutFabricName)) ? {
+        name: r.blackoutFabricName || 'بلاك آوت',
+        code: r.blackoutFabricCode || '',
+        meters: Number(r.blackoutMeters) || 0,
+        tapeType: r.blackoutTapeType || 'جراب',
+        netHeight: String(r.heightCm || 275),
+      } : undefined,
+    }));
+    return { ...order, rooms: mappedRooms as any };
+  };
+
   // #FIX: كان بيبني عقد طباعة بأسعار وهمية ثابتة (380/160/100/50/125 ج) لأى أوردر
   // — لأن rooms على مستوى خط الإنتاج بتتحول لشكل "القص" (اسم/أمتار بس، من غير أسعار)
   // بمجرد ما الأوردر يتحول من التسعير. النتيجة كانت عقد مطبوع بإجمالي عشوائي مالوش
@@ -580,7 +621,7 @@ export default function CentralOrdersLedgerPage() {
 
                 <button
                   type="button"
-                  onClick={() => setPrintCuttingOrder(activeEditingOrder)}
+                  onClick={() => setPrintCuttingOrder(toWorkshopOrder(activeEditingOrder))}
                   className="bg-slate-900 hover:bg-slate-800 text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors"
                 >
                   <span className="material-symbols-outlined text-[16px]">content_cut</span>
@@ -589,7 +630,7 @@ export default function CentralOrdersLedgerPage() {
 
                 <button
                   type="button"
-                  onClick={() => setPrintWorksheetOrder(activeEditingOrder)}
+                  onClick={() => setPrintWorksheetOrder(toWorkshopOrder(activeEditingOrder))}
                   className="bg-purple-900 hover:bg-purple-800 text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors"
                 >
                   <span className="material-symbols-outlined text-[16px]">precision_manufacturing</span>
