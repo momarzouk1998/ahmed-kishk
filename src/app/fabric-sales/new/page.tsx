@@ -154,16 +154,16 @@ export default function NewSalesInvoicePOSPage() {
     }
   }, [totalAmount, isFullPaid]);
 
-  // Filtered Products — الفاتورة تعرض الأصناف المتوفرة فعليًا بالمخزون فقط (منعًا لبيع صنف خلص).
+  // #FIX: كنّا بنخفى الأصناف اللى كميتها صفر تمامًا — لكن الأفضل نعرضها للموظف عشان
+  // يعرف إنها موجودة فى الفهرس، مع قفلها وعدم السماح بإضافتها لفاتورة (منعًا لبيع صنف خلص).
   const filteredProducts = products.filter(p => {
-    const inStock = (p.totalQuantity ?? 0) > 0;
     const matchesBranch = !branch || branch === 'الكل' || normalizeBranchName(p.branch) === normalizeBranchName(branch);
     const matchesCat = selectedCategory === 'الكل' || p.category === selectedCategory;
     const matchesSearch =
       !searchQuery.trim() ||
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.code.toLowerCase().includes(searchQuery.toLowerCase());
-    return inStock && matchesBranch && matchesCat && matchesSearch;
+    return matchesBranch && matchesCat && matchesSearch;
   });
 
   // Add Item to Invoice Table
@@ -380,8 +380,12 @@ export default function NewSalesInvoicePOSPage() {
               <div className="w-[64px] shrink-0 flex flex-col gap-1 overflow-y-auto pl-1.5 border-l border-slate-100">
                 {categories.map(cat => {
                   const isActive = selectedCategory === cat;
-                  const inStockProducts = products.filter(p => (p.totalQuantity ?? 0) > 0);
-                  const count = cat === 'الكل' ? inStockProducts.length : inStockProducts.filter(p => p.category === cat).length;
+                  // العدد بيعكس أصناف الفرع المعروض دلوقتى (بما فيها اللى كميتها صفر —
+                  // الأصناف الخالصة بتظهر مقفولة فى الجريد جنبها)
+                  const branchScopedProducts = products.filter(p =>
+                    !branch || branch === 'الكل' || normalizeBranchName(p.branch) === normalizeBranchName(branch)
+                  );
+                  const count = cat === 'الكل' ? branchScopedProducts.length : branchScopedProducts.filter(p => p.category === cat).length;
                   return (
                     <button
                       key={cat}
@@ -426,21 +430,36 @@ export default function NewSalesInvoicePOSPage() {
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 gap-1.5 flex-1 overflow-y-auto pr-1 content-start">
-                    {filteredProducts.map(prod => (
-                      <button
-                        key={prod.id}
-                        type="button"
-                        onClick={() => handleAddProduct(prod)}
-                        className="text-right p-1.5 rounded-xl border border-slate-200 bg-white hover:bg-amber-50/90 hover:border-amber-400 transition-all group cursor-pointer flex items-start justify-between gap-1.5 shadow-3xs h-fit"
-                      >
-                        <span className="font-bold text-slate-900 text-[10px] leading-snug group-hover:text-amber-900 break-words whitespace-normal min-w-0 flex-1">
-                          {prod.name}
-                        </span>
-                        <span className="font-mono font-black text-[10px] text-emerald-700 bg-emerald-50 px-1 py-0.5 rounded border border-emerald-200 shrink-0">
-                          {prod.sellPrice.toLocaleString()}
-                        </span>
-                      </button>
-                    ))}
+                    {filteredProducts.map(prod => {
+                      const stock = Number(prod.totalQuantity) || 0;
+                      const outOfStock = stock <= 0;
+                      return (
+                        <button
+                          key={prod.id}
+                          type="button"
+                          onClick={() => !outOfStock && handleAddProduct(prod)}
+                          disabled={outOfStock}
+                          title={outOfStock ? 'الصنف خلص من المخزون — مايتضافش للفاتورة' : ''}
+                          className={`text-right p-1.5 rounded-xl border transition-all group flex items-start justify-between gap-1.5 shadow-3xs h-fit ${
+                            outOfStock
+                              ? 'border-slate-200 bg-slate-50 cursor-not-allowed opacity-60'
+                              : 'border-slate-200 bg-white hover:bg-amber-50/90 hover:border-amber-400 cursor-pointer'
+                          }`}
+                        >
+                          <span className={`font-bold text-[10px] leading-snug break-words whitespace-normal min-w-0 flex-1 ${
+                            outOfStock ? 'text-slate-500 line-through decoration-slate-400' : 'text-slate-900 group-hover:text-amber-900'
+                          }`}>
+                            {prod.name}
+                            {outOfStock && <span className="block text-[9px] font-black text-rose-600 no-underline mt-0.5">🔒 خلص</span>}
+                          </span>
+                          <span className={`font-mono font-black text-[10px] px-1 py-0.5 rounded border shrink-0 ${
+                            outOfStock ? 'text-slate-400 bg-slate-100 border-slate-200' : 'text-emerald-700 bg-emerald-50 border-emerald-200'
+                          }`}>
+                            {prod.sellPrice.toLocaleString()}
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
               </div>
