@@ -612,7 +612,7 @@ export default function InventoryPage() {
                     <div className="flex items-start justify-between">
                       <div>
                         <div className="font-bold text-sm text-slate-900">{item.name}</div>
-                        <div className="text-xs text-slate-400 font-mono mt-0.5">{item.code} • {item.supplier} • {item.category}</div>
+                        <div className="text-xs text-slate-400 font-mono mt-0.5">{item.supplier} • {item.category}</div>
                       </div>
                       <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${isLow ? 'bg-rose-100 text-rose-800' : 'bg-emerald-100 text-emerald-800'}`}>
                         {isLow ? 'مخزون منخفض' : 'متوفر'}
@@ -667,7 +667,7 @@ export default function InventoryPage() {
                 <table className="w-full text-right text-xs min-w-[950px]">
                   <thead className="bg-slate-100/90 text-slate-700 font-bold uppercase border-b border-slate-200">
                     <tr>
-                      <th className="py-2.5 px-3">الكود والاسم</th>
+                      <th className="py-2.5 px-3">اسم الصنف</th>
                       <th className="py-2.5 px-3">التصنيف</th>
                       <th className="py-2.5 px-3 text-center">الوحدة</th>
                       <th className="py-2.5 px-3 text-center text-slate-900 bg-slate-200/50">الرصيد</th>
@@ -690,16 +690,13 @@ export default function InventoryPage() {
                         return (
                           <tr key={item.id} className="bg-amber-50/90 ring-2 ring-amber-400">
                             <td className="p-1.5">
-                              <div className="flex items-center gap-1">
-                                <span className="font-mono text-[10px] text-amber-900 font-bold shrink-0">{inlineForm.code}</span>
-                                <input
-                                  type="text"
-                                  value={inlineForm.name}
-                                  onChange={e => setInlineForm({ ...inlineForm, name: e.target.value })}
-                                  className="w-full bg-white border border-amber-300 rounded-lg p-1 text-xs font-bold text-slate-900"
-                                  autoFocus
-                                />
-                              </div>
+                              <input
+                                type="text"
+                                value={inlineForm.name}
+                                onChange={e => setInlineForm({ ...inlineForm, name: e.target.value })}
+                                className="w-full bg-white border border-amber-300 rounded-lg p-1 text-xs font-bold text-slate-900"
+                                autoFocus
+                              />
                             </td>
                             <td className="p-1.5">
                               <select
@@ -803,14 +800,9 @@ export default function InventoryPage() {
                       return (
                         <tr key={item.id} className={`hover:bg-slate-50/80 transition-colors border-b border-slate-100 ${isLow ? 'bg-rose-50/40' : ''}`}>
                           <td className="py-2.5 px-3 whitespace-nowrap">
-                            <div className="flex items-center gap-1.5">
-                              <span className="font-mono text-[11px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-bold border border-slate-200 shrink-0">
-                                {item.code}
-                              </span>
-                              <span className="font-bold text-xs text-slate-900 truncate max-w-[220px]" title={item.name}>
-                                {item.name}
-                              </span>
-                            </div>
+                            <span className="font-bold text-xs text-slate-900 truncate max-w-[280px] block" title={item.name}>
+                              {item.name}
+                            </span>
                           </td>
                           <td className="py-2.5 px-3 text-xs font-bold text-slate-700 whitespace-nowrap">
                             {item.category}
