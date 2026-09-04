@@ -341,7 +341,8 @@ export default function NewSalesInvoicePOSPage() {
 
   return (
     <PageShell title="نقطة البيع والكاشير — فواتير المبيعات">
-      <div className="max-w-[1600px] mx-auto pb-4">
+      {/* -mt/-mx/-mb يقلّل من هوامش الـ PageShell عشان شاشة الكاشير تستغل عرض الشاشة كله (POS يحتاج مساحة قصوى) */}
+      <div className="w-full -mt-4 lg:-mt-6 -mx-4 sm:-mx-6 lg:-mx-8 -mb-6 lg:-mb-8 px-2 sm:px-3 py-2">
         {/* 3-Column POS Layout (Col 1: Catalog / Col 2: Customer & Touch / Col 3: Invoice Items & Actions) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-2.5 items-stretch">
           
