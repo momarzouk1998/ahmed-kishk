@@ -10,10 +10,10 @@ export async function GET(request: Request) {
   try {
     const scope = await getBranchScope(request);
 
-    // إذا كانت قاعدة البيانات تحتوي على أقل من 300 صنف، نقوم بإدراج الـ 326 صنف فوراً
+    // إذا كانت قاعدة البيانات تحتوي على أقل من 250 صنف، نقوم بإدراج الأصناف فوراً
     try {
       const count = await prisma.inventoryItem.count();
-      if (count < 300) {
+      if (count < 250) {
         await prisma.inventoryItem.createMany({
           data: initialInventory as any,
           skipDuplicates: true,

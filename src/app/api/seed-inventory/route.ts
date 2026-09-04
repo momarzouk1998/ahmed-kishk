@@ -7,8 +7,13 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   try {
     let inserted = 0;
-    let updated = 0;
 
+    // 1. مسح كافة الأصناف القديمة في فرع عرابي لتجنب أي أصناف مكررة أو قديمة
+    await prisma.inventoryItem.deleteMany({
+      where: { branch: 'فرع عرابي' },
+    });
+
+    // 2. إدراج وتحديث كافة الأصناف الرسمية الجديدة من initialInventory.json
     for (const item of (initialInventory as any[])) {
       await prisma.inventoryItem.upsert({
         where: { code: item.code },
@@ -34,6 +39,7 @@ export async function GET() {
           costPrice: item.costPrice,
           sellPrice: item.sellPrice,
           branch: item.branch,
+          minAlert: item.minAlert || 20,
         },
       });
       inserted++;
@@ -46,7 +52,7 @@ export async function GET() {
 
     return NextResponse.json({
       success: true,
-      message: 'تم تحديث ومزامنة كافة أصناف المخزون بقاعدة البيانات بنجاح',
+      message: 'تم تحديث واستبدال أصناف مخزن عرابي بنجاح ومزامنة المخزون بالكامل',
       totalInDb,
       breakdown: {
         'الفرع الرئيسي': mainCount,
