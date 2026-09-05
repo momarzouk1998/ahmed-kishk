@@ -212,11 +212,11 @@ export default function ReportsPage() {
       }
 
       const m = ((inv.paymentMethod || (inv as any).paymentType || '') as string).trim();
-      if (m === 'نقدي' || m === 'كاش' || m === 'نقدي (كاش)' || m.includes('نقدي') || m.includes('كاش')) cash += paid;
+      if (m.includes('فودافون') || m.toLowerCase().includes('vodafone')) vodafone += paid;
       else if (m.includes('إنستا') || m.includes('انستا') || m.toLowerCase().includes('insta')) instapay += paid;
-      else if (m.includes('فودافون') || m.toLowerCase().includes('vodafone')) vodafone += paid;
       else if (m.includes('فيزا') || m.includes('كارت') || m.toLowerCase().includes('visa') || m.toLowerCase().includes('card')) visa += paid;
       else if (m.includes('آجل') || m.includes('دفعات') || m === 'بالآجل / دفعات') deferred += paid;
+      else if (m === 'نقدي' || m === 'كاش' || m === 'نقدي (كاش)' || m.includes('نقدي') || m.includes('كاش') || !m) cash += paid;
       else other += paid;
     });
 
@@ -225,10 +225,10 @@ export default function ReportsPage() {
       const amt = Number(col.amount || 0);
       totalDirectCollections += amt;
       const m = (col.method || '').trim();
-      if (m.includes('إنستا') || m.includes('انستا') || m.toLowerCase().includes('insta')) instapay += amt;
-      else if (m.includes('فودافون') || m.toLowerCase().includes('vodafone')) vodafone += amt;
+      if (m.includes('فودافون') || m.toLowerCase().includes('vodafone')) vodafone += amt;
+      else if (m.includes('إنستا') || m.includes('انستا') || m.toLowerCase().includes('insta')) instapay += amt;
       else if (m.includes('فيزا') || m.toLowerCase().includes('visa') || m.includes('كارت')) visa += amt;
-      else if (m === 'نقدي' || m === 'كاش' || m.includes('نقدي') || m.includes('كاش')) cash += amt;
+      else if (m === 'نقدي' || m === 'كاش' || m === 'نقدي (كاش)' || m.includes('نقدي') || m.includes('كاش') || !m) cash += amt;
       else other += amt;
     });
 
