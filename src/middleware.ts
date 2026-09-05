@@ -1,11 +1,16 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { verifyToken, AUTH_COOKIE } from '@/lib/auth';
+import { checkSubscription } from '@/lib/subscription-check';
 
 const PUBLIC_PATHS = ['/login'];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // Subscription must be checked before anything else, including login
+  const blocked = await checkSubscription(pathname);
+  if (blocked) return blocked;
 
   // Allow public paths
   if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
