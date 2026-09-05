@@ -927,12 +927,12 @@ export default function FabricSalesPage() {
                 </div>
               </div>
 
-              {/* 🧵 Items and Fabrics Breakdown in Invoice */}
-              <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-2.5">
-                <div className="flex justify-between items-center border-b border-slate-200 pb-2">
+              {/* 🧵 Items and Fabrics Breakdown in Invoice - Clean Inline Table */}
+              <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 space-y-2">
+                <div className="flex justify-between items-center pb-1">
                   <div className="flex items-center gap-1.5 font-black text-slate-900 text-xs">
                     <span className="material-symbols-outlined text-amber-600 text-base">inventory_2</span>
-                    <span>بنود ومحتويات الفاتورة ({(editingInvoice.items || []).length}):</span>
+                    <span>بنود الفاتورة ({(editingInvoice.items || []).length}):</span>
                   </div>
                   <button
                     type="button"
@@ -940,94 +940,87 @@ export default function FabricSalesPage() {
                     className="inline-flex items-center gap-1 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black px-2.5 py-1 rounded-lg text-[11px] shadow-sm transition-colors cursor-pointer"
                   >
                     <span>➕</span>
-                    <span>إضافة بند / صنف</span>
+                    <span>إضافة بند جديد</span>
                   </button>
                 </div>
 
-                <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
-                  {(!editingInvoice.items || editingInvoice.items.length === 0) ? (
-                    <div className="text-center py-4 text-slate-400 font-bold text-xs bg-white rounded-xl border border-dashed border-slate-300">
-                      لا توجد بنود مسجلة فى الفاتورة — اضغط "إضافة بند" لإدراج أصناف
-                    </div>
-                  ) : (
-                    editingInvoice.items.map((item, idx) => {
-                      const lineTotal = Number(item.totalPrice) || ((Number(item.meters) || 0) * (Number(item.pricePerMeter) || 0));
-                      return (
-                        <div
-                          key={idx}
-                          className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs space-y-2"
-                        >
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="font-mono font-black text-[10px] bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded border border-slate-200">
-                              #{idx + 1}
-                            </span>
-                            <input
-                              type="text"
-                              value={item.name || ''}
-                              placeholder="اسم القماش / الصنف"
-                              onChange={e => handleEditItemChange(idx, 'name', e.target.value)}
-                              className="flex-1 font-bold text-slate-900 border border-slate-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-amber-500"
-                            />
-                            <input
-                              type="text"
-                              value={item.code || ''}
-                              placeholder="كود الصنف"
-                              onChange={e => handleEditItemChange(idx, 'code', e.target.value)}
-                              className="w-24 font-mono text-slate-600 border border-slate-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-amber-500"
-                              dir="ltr"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => handleEditDeleteItem(idx)}
-                              className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 p-1 rounded-lg cursor-pointer transition-colors"
-                              title="حذف هذا البند"
-                            >
-                              <span className="material-symbols-outlined text-base">delete</span>
-                            </button>
-                          </div>
-
-                          <div className="grid grid-cols-3 gap-2 items-center bg-slate-50/70 p-2 rounded-lg border border-slate-100 text-[11px]">
-                            <div>
-                              <label className="font-bold text-slate-600 block text-[10px] mb-0.5">
-                                الأمتار / الكمية:
-                              </label>
-                              <input
-                                type="number"
-                                step="any"
-                                min="0"
-                                value={item.meters}
-                                onChange={e => handleEditItemChange(idx, 'meters', e.target.value)}
-                                className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1 font-mono font-black text-slate-900 text-xs text-center"
-                              />
-                            </div>
-
-                            <div>
-                              <label className="font-bold text-slate-600 block text-[10px] mb-0.5">
-                                سعر المتر (ج):
-                              </label>
-                              <input
-                                type="number"
-                                step="any"
-                                min="0"
-                                value={item.pricePerMeter}
-                                onChange={e => handleEditItemChange(idx, 'pricePerMeter', e.target.value)}
-                                className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1 font-mono font-black text-slate-900 text-xs text-center"
-                              />
-                            </div>
-
-                            <div className="text-center">
-                              <label className="font-bold text-slate-600 block text-[10px] mb-0.5">
-                                الإجمالي للبند:
-                              </label>
-                              <div className="font-mono font-black text-amber-900 bg-amber-100/60 border border-amber-300 rounded-lg py-1 text-xs">
-                                {lineTotal.toLocaleString()} ج
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
+                <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+                  <table className="w-full text-right text-xs border-collapse">
+                    <thead className="bg-slate-100/90 text-slate-700 font-bold border-b border-slate-200 text-[11px]">
+                      <tr>
+                        <th className="p-2 text-center w-8">#</th>
+                        <th className="p-2">اسم الصنف / القماش</th>
+                        <th className="p-2 text-center w-24">الكمية (متر)</th>
+                        <th className="p-2 text-center w-24">سعر المتر</th>
+                        <th className="p-2 text-center w-28">الإجمالي</th>
+                        <th className="p-2 text-center w-10">حذف</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {(!editingInvoice.items || editingInvoice.items.length === 0) ? (
+                        <tr>
+                          <td colSpan={6} className="text-center py-4 text-slate-400 font-bold text-xs">
+                            لا توجد بنود مسجلة — اضغط "إضافة بند جديد"
+                          </td>
+                        </tr>
+                      ) : (
+                        editingInvoice.items.map((item, idx) => {
+                          const lineTotal = Number(item.totalPrice) || ((Number(item.meters) || 0) * (Number(item.pricePerMeter) || 0));
+                          return (
+                            <tr key={idx} className="hover:bg-slate-50/70 transition-colors">
+                              <td className="p-2 text-center font-mono font-bold text-slate-400 text-[11px]">
+                                {idx + 1}
+                              </td>
+                              <td className="p-2">
+                                <input
+                                  type="text"
+                                  value={item.name || ''}
+                                  placeholder="اسم القماش..."
+                                  onChange={e => handleEditItemChange(idx, 'name', e.target.value)}
+                                  className="w-full font-bold text-slate-900 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-amber-500 focus:bg-white bg-slate-50/50"
+                                />
+                              </td>
+                              <td className="p-2">
+                                <input
+                                  type="number"
+                                  step="any"
+                                  min="0"
+                                  value={item.meters}
+                                  onChange={e => handleEditItemChange(idx, 'meters', e.target.value)}
+                                  className="w-full bg-slate-50/50 focus:bg-white border border-slate-200 rounded-lg px-2 py-1.5 font-mono font-black text-slate-900 text-xs text-center focus:outline-none focus:border-amber-500"
+                                />
+                              </td>
+                              <td className="p-2">
+                                <input
+                                  type="number"
+                                  step="any"
+                                  min="0"
+                                  value={item.pricePerMeter}
+                                  onChange={e => handleEditItemChange(idx, 'pricePerMeter', e.target.value)}
+                                  className="w-full bg-slate-50/50 focus:bg-white border border-slate-200 rounded-lg px-2 py-1.5 font-mono font-black text-slate-900 text-xs text-center focus:outline-none focus:border-amber-500"
+                                />
+                              </td>
+                              <td className="p-2 text-center">
+                                <span className="inline-block w-full font-mono font-black text-amber-950 bg-amber-50 border border-amber-200 rounded-lg py-1.5 px-2 text-xs">
+                                  {lineTotal.toLocaleString()} ج
+                                </span>
+                              </td>
+                              <td className="p-2 text-center">
+                                <button
+                                  type="button"
+                                  onClick={() => handleEditDeleteItem(idx)}
+                                  className="text-rose-400 hover:text-rose-600 hover:bg-rose-50 p-1.5 rounded-lg cursor-pointer transition-colors inline-flex items-center justify-center"
+                                  title="حذف هذا البند"
+                                >
+                                  <span className="material-symbols-outlined text-base">delete</span>
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               </div>
 
