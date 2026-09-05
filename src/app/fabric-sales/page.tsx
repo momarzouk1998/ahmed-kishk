@@ -179,6 +179,91 @@ export default function FabricSalesPage() {
     if (selectedInvoice?.id === editingInvoice.id) setSelectedInvoice(updatedObj);
   };
 
+  // Item editing helpers for Edit Invoice Modal
+  const handleEditItemChange = (index: number, field: keyof SalesInvoiceItem, value: any) => {
+    if (!editingInvoice) return;
+    const currentItems = Array.isArray(editingInvoice.items) ? [...editingInvoice.items] : [];
+    if (!currentItems[index]) return;
+
+    const updatedItem = { ...currentItems[index], [field]: value };
+    if (field === 'meters' || field === 'pricePerMeter') {
+      const m = Number(field === 'meters' ? value : updatedItem.meters) || 0;
+      const p = Number(field === 'pricePerMeter' ? value : updatedItem.pricePerMeter) || 0;
+      updatedItem.totalPrice = Math.round(m * p * 100) / 100;
+    }
+    currentItems[index] = updatedItem;
+
+    const newSubtotal = currentItems.reduce((acc, it) => acc + (Number(it.totalPrice) || 0), 0);
+    const disc = Number(editingInvoice.discountAmount) || 0;
+    const newTotal = Math.max(0, Math.round((newSubtotal - disc) * 100) / 100);
+
+    const wasFullyPaid = (Number(editingInvoice.paidAmount) || 0) >= (Number(editingInvoice.totalAmount) || 0);
+    const newPaid = wasFullyPaid ? newTotal : Math.min(Number(editingInvoice.paidAmount) || 0, newTotal);
+    const newRemaining = Math.max(0, newTotal - newPaid);
+
+    setEditingInvoice({
+      ...editingInvoice,
+      items: currentItems,
+      subtotal: newSubtotal,
+      totalAmount: newTotal,
+      paidAmount: newPaid,
+      remainingAmount: newRemaining,
+    });
+  };
+
+  const handleEditAddItem = () => {
+    if (!editingInvoice) return;
+    const currentItems = Array.isArray(editingInvoice.items) ? [...editingInvoice.items] : [];
+    const newItem: SalesInvoiceItem = {
+      code: `ITEM-${Date.now().toString().slice(-4)}`,
+      name: 'صنف قماش جديد',
+      meters: 1,
+      pricePerMeter: 100,
+      totalPrice: 100,
+    };
+    currentItems.push(newItem);
+
+    const newSubtotal = currentItems.reduce((acc, it) => acc + (Number(it.totalPrice) || 0), 0);
+    const disc = Number(editingInvoice.discountAmount) || 0;
+    const newTotal = Math.max(0, Math.round((newSubtotal - disc) * 100) / 100);
+
+    const wasFullyPaid = (Number(editingInvoice.paidAmount) || 0) >= (Number(editingInvoice.totalAmount) || 0);
+    const newPaid = wasFullyPaid ? newTotal : Math.min(Number(editingInvoice.paidAmount) || 0, newTotal);
+    const newRemaining = Math.max(0, newTotal - newPaid);
+
+    setEditingInvoice({
+      ...editingInvoice,
+      items: currentItems,
+      subtotal: newSubtotal,
+      totalAmount: newTotal,
+      paidAmount: newPaid,
+      remainingAmount: newRemaining,
+    });
+  };
+
+  const handleEditDeleteItem = (index: number) => {
+    if (!editingInvoice) return;
+    const currentItems = Array.isArray(editingInvoice.items) ? [...editingInvoice.items] : [];
+    currentItems.splice(index, 1);
+
+    const newSubtotal = currentItems.reduce((acc, it) => acc + (Number(it.totalPrice) || 0), 0);
+    const disc = Number(editingInvoice.discountAmount) || 0;
+    const newTotal = Math.max(0, Math.round((newSubtotal - disc) * 100) / 100);
+
+    const wasFullyPaid = (Number(editingInvoice.paidAmount) || 0) >= (Number(editingInvoice.totalAmount) || 0);
+    const newPaid = wasFullyPaid ? newTotal : Math.min(Number(editingInvoice.paidAmount) || 0, newTotal);
+    const newRemaining = Math.max(0, newTotal - newPaid);
+
+    setEditingInvoice({
+      ...editingInvoice,
+      items: currentItems,
+      subtotal: newSubtotal,
+      totalAmount: newTotal,
+      paidAmount: newPaid,
+      remainingAmount: newRemaining,
+    });
+  };
+
   // Submit Sales Return
   const handleCreateReturn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -766,8 +851,8 @@ export default function FabricSalesPage() {
       )}
       {/* ✏️ Modal: Edit Saved Invoice (تعديل الفاتورة المحفوظة للأدمن ومدير الفرع) */}
       {editingInvoice && (
-        <div className="modal-overlay fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-xl w-full p-6 space-y-4 shadow-2xl border border-slate-200 my-auto">
+        <div className="modal-overlay fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-5 sm:p-6 space-y-4 shadow-2xl border border-slate-200 my-auto max-h-[92vh] overflow-y-auto">
             <div className="flex justify-between items-center pb-3 border-b border-slate-200">
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-amber-600 text-xl">edit_note</span>
@@ -839,6 +924,110 @@ export default function FabricSalesPage() {
                     <option value="بالآجل / دفعات">⏳ بالآجل / دفعات</option>
                     <option value="دفع متعدد / مزيج">🔀 دفع متعدد (مزيج)</option>
                   </select>
+                </div>
+              </div>
+
+              {/* 🧵 Items and Fabrics Breakdown in Invoice */}
+              <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-2.5">
+                <div className="flex justify-between items-center border-b border-slate-200 pb-2">
+                  <div className="flex items-center gap-1.5 font-black text-slate-900 text-xs">
+                    <span className="material-symbols-outlined text-amber-600 text-base">inventory_2</span>
+                    <span>بنود ومحتويات الفاتورة ({(editingInvoice.items || []).length}):</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleEditAddItem}
+                    className="inline-flex items-center gap-1 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black px-2.5 py-1 rounded-lg text-[11px] shadow-sm transition-colors cursor-pointer"
+                  >
+                    <span>➕</span>
+                    <span>إضافة بند / صنف</span>
+                  </button>
+                </div>
+
+                <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                  {(!editingInvoice.items || editingInvoice.items.length === 0) ? (
+                    <div className="text-center py-4 text-slate-400 font-bold text-xs bg-white rounded-xl border border-dashed border-slate-300">
+                      لا توجد بنود مسجلة فى الفاتورة — اضغط "إضافة بند" لإدراج أصناف
+                    </div>
+                  ) : (
+                    editingInvoice.items.map((item, idx) => {
+                      const lineTotal = Number(item.totalPrice) || ((Number(item.meters) || 0) * (Number(item.pricePerMeter) || 0));
+                      return (
+                        <div
+                          key={idx}
+                          className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs space-y-2"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-mono font-black text-[10px] bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded border border-slate-200">
+                              #{idx + 1}
+                            </span>
+                            <input
+                              type="text"
+                              value={item.name || ''}
+                              placeholder="اسم القماش / الصنف"
+                              onChange={e => handleEditItemChange(idx, 'name', e.target.value)}
+                              className="flex-1 font-bold text-slate-900 border border-slate-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-amber-500"
+                            />
+                            <input
+                              type="text"
+                              value={item.code || ''}
+                              placeholder="كود الصنف"
+                              onChange={e => handleEditItemChange(idx, 'code', e.target.value)}
+                              className="w-24 font-mono text-slate-600 border border-slate-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-amber-500"
+                              dir="ltr"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleEditDeleteItem(idx)}
+                              className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 p-1 rounded-lg cursor-pointer transition-colors"
+                              title="حذف هذا البند"
+                            >
+                              <span className="material-symbols-outlined text-base">delete</span>
+                            </button>
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-2 items-center bg-slate-50/70 p-2 rounded-lg border border-slate-100 text-[11px]">
+                            <div>
+                              <label className="font-bold text-slate-600 block text-[10px] mb-0.5">
+                                الأمتار / الكمية:
+                              </label>
+                              <input
+                                type="number"
+                                step="any"
+                                min="0"
+                                value={item.meters}
+                                onChange={e => handleEditItemChange(idx, 'meters', e.target.value)}
+                                className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1 font-mono font-black text-slate-900 text-xs text-center"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="font-bold text-slate-600 block text-[10px] mb-0.5">
+                                سعر المتر (ج):
+                              </label>
+                              <input
+                                type="number"
+                                step="any"
+                                min="0"
+                                value={item.pricePerMeter}
+                                onChange={e => handleEditItemChange(idx, 'pricePerMeter', e.target.value)}
+                                className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1 font-mono font-black text-slate-900 text-xs text-center"
+                              />
+                            </div>
+
+                            <div className="text-center">
+                              <label className="font-bold text-slate-600 block text-[10px] mb-0.5">
+                                الإجمالي للبند:
+                              </label>
+                              <div className="font-mono font-black text-amber-900 bg-amber-100/60 border border-amber-300 rounded-lg py-1 text-xs">
+                                {lineTotal.toLocaleString()} ج
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
               </div>
 

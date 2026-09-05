@@ -48,6 +48,7 @@ export async function POST(request: Request) {
       update: {
         customerName: customerName || undefined,
         phone: phone || undefined,
+        branch: branch || undefined,
         totalAmount: totalAmount !== undefined ? Number(totalAmount) : undefined,
         paidAmount: paidAmount !== undefined ? Number(paidAmount) : undefined,
         remainingAmount: remainingAmount !== undefined ? Number(remainingAmount) : undefined,
