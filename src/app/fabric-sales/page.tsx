@@ -949,7 +949,7 @@ export default function FabricSalesPage() {
                     <thead className="bg-slate-100/90 text-slate-700 font-bold border-b border-slate-200 text-[11px]">
                       <tr>
                         <th className="p-2 text-center w-8">#</th>
-                        <th className="p-2">اسم الصنف / القماش</th>
+                        <th className="p-2">الصنف</th>
                         <th className="p-2 text-center w-24">الكمية (متر)</th>
                         <th className="p-2 text-center w-24">سعر المتر</th>
                         <th className="p-2 text-center w-28">الإجمالي</th>
@@ -975,7 +975,7 @@ export default function FabricSalesPage() {
                                 <input
                                   type="text"
                                   value={item.name || ''}
-                                  placeholder="اسم القماش..."
+                                  placeholder="الصنف..."
                                   onChange={e => handleEditItemChange(idx, 'name', e.target.value)}
                                   className="w-full font-bold text-slate-900 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-amber-500 focus:bg-white bg-slate-50/50"
                                 />
