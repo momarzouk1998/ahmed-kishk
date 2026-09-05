@@ -6,6 +6,7 @@ import { formatDateOnly } from '@/lib/dateUtils';
 import PdfPrintButton from '@/components/PdfPrintButton';
 import { useCurrentUser } from '@/lib/useCurrentUser';
 import BranchSelect from '@/components/BranchSelect';
+import { normalizeBranchName } from '@/lib/branches';
 
 interface SalesInvoice {
   id: string;
@@ -159,7 +160,10 @@ export default function ReportsPage() {
     if (period === 'thisMonth') return d.substring(0, 7) === today.substring(0, 7);
     return true;
   };
-  const inBranch = (b: string | undefined) => selectedBranch === 'ALL' || b === selectedBranch;
+  const inBranch = (b: string | undefined): boolean => {
+    if (!selectedBranch || selectedBranch === 'ALL' || selectedBranch === 'الكل') return true;
+    return normalizeBranchName(b) === normalizeBranchName(selectedBranch);
+  };
 
   const fInvoices = useMemo(
     () => invoices.filter(i => inBranch(i.branch) && inPeriod(i.date)),
@@ -174,13 +178,14 @@ export default function ReportsPage() {
     () => collections.filter(c => {
       const matchPeriod = inPeriod(c.date);
       if (!matchPeriod) return false;
-      if (selectedBranch === 'ALL') return true;
+      if (selectedBranch === 'ALL' || selectedBranch === 'الكل') return true;
       const treasury = c.treasury || '';
+      if (normalizeBranchName(treasury) === normalizeBranchName(selectedBranch)) return true;
       if (treasury.includes(selectedBranch)) return true;
-      if (selectedBranch === 'فرع عمر أفندي' && (treasury.includes('عمر أفندي') || treasury.includes('عمر افندي'))) return true;
-      if (selectedBranch === 'فرع عرابي' && treasury.includes('عرابي')) return true;
-      if (selectedBranch === 'فرع الثلاثيني' && treasury.includes('الثلاثيني')) return true;
-      if (selectedBranch === 'الفرع الرئيسي' && (treasury.includes('الرئيسية') || treasury.includes('سعد زغلول'))) return true;
+      if (selectedBranch.includes('عمر') && (treasury.includes('عمر أفندي') || treasury.includes('عمر افندي') || treasury.includes('عمر'))) return true;
+      if (selectedBranch.includes('عرابي') && treasury.includes('عرابي')) return true;
+      if (selectedBranch.includes('الثلاثيني') && treasury.includes('الثلاثيني')) return true;
+      if (selectedBranch.includes('الرئيسي') && (treasury.includes('الرئيسية') || treasury.includes('سعد زغلول'))) return true;
       const cust = customers.find(cust => cust.phone === c.phone || cust.name === c.customerName);
       if (cust && cust.branch && inBranch(cust.branch)) return true;
       return false;
@@ -206,9 +211,9 @@ export default function ReportsPage() {
         return;
       }
 
-      const m = (inv.paymentMethod || '').trim();
-      if (m === 'نقدي' || m === 'كاش' || m === 'نقدي (كاش)') cash += paid;
-      else if (m.includes('إنستا') || m.toLowerCase().includes('insta')) instapay += paid;
+      const m = ((inv.paymentMethod || (inv as any).paymentType || '') as string).trim();
+      if (m === 'نقدي' || m === 'كاش' || m === 'نقدي (كاش)' || m.includes('نقدي') || m.includes('كاش')) cash += paid;
+      else if (m.includes('إنستا') || m.includes('انستا') || m.toLowerCase().includes('insta')) instapay += paid;
       else if (m.includes('فودافون') || m.toLowerCase().includes('vodafone')) vodafone += paid;
       else if (m.includes('فيزا') || m.includes('كارت') || m.toLowerCase().includes('visa') || m.toLowerCase().includes('card')) visa += paid;
       else if (m.includes('آجل') || m.includes('دفعات') || m === 'بالآجل / دفعات') deferred += paid;
@@ -220,10 +225,10 @@ export default function ReportsPage() {
       const amt = Number(col.amount || 0);
       totalDirectCollections += amt;
       const m = (col.method || '').trim();
-      if (m.includes('إنستا') || m.toLowerCase().includes('insta')) instapay += amt;
+      if (m.includes('إنستا') || m.includes('انستا') || m.toLowerCase().includes('insta')) instapay += amt;
       else if (m.includes('فودافون') || m.toLowerCase().includes('vodafone')) vodafone += amt;
       else if (m.includes('فيزا') || m.toLowerCase().includes('visa') || m.includes('كارت')) visa += amt;
-      else if (m === 'نقدي' || m === 'كاش') cash += amt;
+      else if (m === 'نقدي' || m === 'كاش' || m.includes('نقدي') || m.includes('كاش')) cash += amt;
       else other += amt;
     });
 

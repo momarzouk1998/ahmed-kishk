@@ -1,4 +1,4 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getBranchScope, branchWhere, effectiveCreateBranch } from '@/lib/branchScope';
 
@@ -11,7 +11,11 @@ export async function GET(request: Request) {
       where: branchWhere(scope),
       orderBy: { updatedAt: 'desc' },
     });
-    return NextResponse.json({ success: true, sales });
+    const normalizedSales = sales.map(s => ({
+      ...s,
+      paymentMethod: s.paymentType || (s as any).paymentMethod || 'نقدي',
+    }));
+    return NextResponse.json({ success: true, sales: normalizedSales });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
@@ -21,7 +25,8 @@ export async function POST(request: Request) {
   try {
     const scope = await getBranchScope(request);
     const body = await request.json();
-    const { id, invoiceNumber, customerName, phone, branch, totalAmount, paidAmount, remainingAmount, paymentType, date, items, notes } = body;
+    const { id, invoiceNumber, customerName, phone, branch, totalAmount, paidAmount, remainingAmount, date, items, notes } = body;
+    const pMethod = body.paymentMethod || body.paymentType || 'نقدي';
 
     const invNum = invoiceNumber || `INV-${Date.now()}`;
     const invoice = await prisma.salesInvoice.upsert({
@@ -35,7 +40,7 @@ export async function POST(request: Request) {
         totalAmount: Number(totalAmount) || 0,
         paidAmount: Number(paidAmount) || 0,
         remainingAmount: Number(remainingAmount) || 0,
-        paymentType: paymentType || 'نقدي',
+        paymentType: pMethod,
         date: date || new Date().toISOString().split('T')[0],
         items: items || [],
         notes: notes || '',
@@ -46,13 +51,18 @@ export async function POST(request: Request) {
         totalAmount: totalAmount !== undefined ? Number(totalAmount) : undefined,
         paidAmount: paidAmount !== undefined ? Number(paidAmount) : undefined,
         remainingAmount: remainingAmount !== undefined ? Number(remainingAmount) : undefined,
-        paymentType: paymentType || undefined,
+        paymentType: pMethod,
         items: items !== undefined ? items : undefined,
         notes: notes !== undefined ? notes : undefined,
       },
     });
 
-    return NextResponse.json({ success: true, invoice });
+    const normalizedInvoice = {
+      ...invoice,
+      paymentMethod: invoice.paymentType || pMethod,
+    };
+
+    return NextResponse.json({ success: true, invoice: normalizedInvoice });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }

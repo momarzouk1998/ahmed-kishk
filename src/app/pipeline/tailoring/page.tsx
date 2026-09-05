@@ -510,7 +510,7 @@ export default function PipelineTailoringPage() {
               <div className="text-rose-900 font-bold"><strong>📅 موعد الاستلام:</strong> {selectedOrderDetails.deliveryDate}</div>
               <div><strong>العنوان:</strong> {selectedOrderDetails.address}</div>
               <div><strong>الفرع:</strong> {selectedOrderDetails.branch}</div>
-              <div><strong>مسؤول الخياطة:</strong> {selectedOrderDetails.tailorName || 'أبو فهد الخياط'}</div>
+              <div><strong>الورشة:</strong> {selectedOrderDetails.tailorName || 'أبو فهد الخياط'}</div>
             </div>
 
             {/* Room-by-Room Specs with Editable Heights */}

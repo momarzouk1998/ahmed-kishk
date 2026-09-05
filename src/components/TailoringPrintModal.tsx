@@ -283,7 +283,7 @@ export default function TailoringPrintModal({ isOpen, onClose, data }: Tailoring
               <td class="info-val">${data.branch || 'الفرع الرئيسي'}</td>
             </tr>
             <tr>
-              <td class="info-label">مسؤول الخياطة:</td>
+              <td class="info-label">الورشة:</td>
               <td class="info-val">${data.tailorName || 'أبو فهد الخياط'}</td>
               <td class="info-label">تاريخ الطلب:</td>
               <td class="info-val">${data.createdAt ? formatDateOnly(data.createdAt) : 'غير محدد'}</td>
@@ -402,7 +402,7 @@ export default function TailoringPrintModal({ isOpen, onClose, data }: Tailoring
                   <td className="p-2 font-bold text-slate-900">{data.branch || 'الفرع الرئيسي'}</td>
                 </tr>
                 <tr className="border-t border-slate-200">
-                  <td className="p-2 font-bold text-slate-500 bg-slate-100/70">مسؤول الخياطة:</td>
+                  <td className="p-2 font-bold text-slate-500 bg-slate-100/70">الورشة:</td>
                   <td className="p-2 font-bold text-slate-900">{data.tailorName || 'أبو فهد الخياط'}</td>
                   <td className="p-2 font-bold text-slate-500 bg-slate-100/70">تاريخ الطلب:</td>
                   <td className="p-2 font-mono text-slate-900">{data.createdAt ? formatDateOnly(data.createdAt) : 'غير محدد'}</td>

@@ -668,8 +668,8 @@ export default function NewSalesInvoicePOSPage() {
                     ))}
                   </div>
 
-                  {/* Main Numeric Numpad — Large buttons */}
-                  <div className="grid grid-cols-4 gap-1.5 pt-1">
+                  {/* Main Numeric Numpad — Standard Calculator/POS LTR Layout */}
+                  <div className="grid grid-cols-4 gap-1.5 pt-1" dir="ltr">
                     {['7', '8', '9'].map(n => (
                       <button
                         key={n}

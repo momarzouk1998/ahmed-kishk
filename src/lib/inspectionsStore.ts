@@ -88,6 +88,9 @@ export interface RoomPricing {
   pipeColor?: 'فضى' | 'أوكسيديه' | 'أسود' | 'زيتى';
   pipePricePerMeter?: number;
   pipeAccessories?: PipeAccessories;
+  blackoutTrackEnabled?: boolean;  // إضافة تراك خلفي للبلاك آوت مع المواسير
+  blackoutTrackPrice?: number;    // سعر متر تراك البلاك آوت
+  blackoutTrackMeters?: number;   // أمتار تراك البلاك آوت
 
   // Tape, Tailoring, Install & Transport
   tapeMeters: number;
@@ -408,8 +411,8 @@ export function syncInspectionToPricing(inspectionOrId: InspectionData | string)
       // Blackout 3rd
       blackoutFabricCode: '',
       blackoutFabricName: '',
-      blackoutTapeType: 'جراب',
-      blackoutMultiplier: 1.2,
+      blackoutTapeType: '٣ فتلة',
+      blackoutMultiplier: 2.0,
       blackoutMeters: 0,
       blackoutPrice: 0,
 

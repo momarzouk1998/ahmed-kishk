@@ -57,7 +57,7 @@ export function normalizeBranchName(raw?: string | null): string {
   if (s === 'الكل' || s === 'ALL') return 'الكل';
   if (s.includes('رئيسي') || s.includes('سعد زغلول') || s.includes('القاهرة')) return 'الفرع الرئيسي';
   if (s.includes('عرابي') || s.includes('عدلي')) return 'فرع عرابي';
-  if (s.includes('عمر أفندي')) return 'فرع عمر أفندي';
+  if (s.includes('عمر أفندي') || s.includes('عمر افندي') || s.includes('عمر')) return 'فرع عمر أفندي';
   if (s.includes('الثلاثيني')) return 'فرع الثلاثيني';
   return s;
 }

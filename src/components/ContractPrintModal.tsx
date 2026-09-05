@@ -28,16 +28,34 @@ export interface PrintRoomItem {
   sheerLiningEnabled?: boolean;
   sheerLiningPricePerMeter?: number;
   blackoutFabricName?: string;
+  blackoutTapeType?: string;
   blackoutTapePrice?: number;
   blackoutMultiplier?: number;
   blackoutMeters: number;
   blackoutPrice: number;
+  installationCategory?: 'تراك' | 'مواسير فورجيه';
+  installationType?: string;
   trackMeters: number;
   trackPrice: number;
+  pipeTypeDescription?: string;
+  pipeColor?: string;
+  pipePricePerMeter?: number;
+  pipeAccessories?: {
+    doubleBrackets: number;
+    singleBrackets: number;
+    sideCaps: number;
+    doubleRings: number;
+    decorHangers: number;
+  };
+  blackoutTrackEnabled?: boolean;
+  blackoutTrackPrice?: number;
+  blackoutTrackMeters?: number;
   tapeMeters: number;
   tapePrice: number;
   tailorPricePerSide: number;
   installFee: number;
+  transportFeeEnabled?: boolean;
+  transportFee?: number;
   totalSellPrice: number;
 }
 
@@ -64,12 +82,43 @@ interface ContractPrintModalProps {
   data: PrintContractData | null;
 }
 
-// #FIX: كانت بتحسب سعر الشريط بضرب "سعر شريط واحد مشترك" (tapePrice) فى إجمالي أمتار
-// كل الطبقات مع بعض (tapeMeters) — يعني لو الجوانب شريط ويفي (140ج) والخلفية شريط ٣
-// فتلة (50ج)، كانت بتطبّق سعر واحد بس على الأمتار كلها فبتطلع رقم غلط تمامًا (وبيفرق
-// عن الإجمالي الصحيح المعروض فى صفحة التسعير نفسها). دلوقتى بتستخدم إجمالي الغرفة
-// المحفوظ فعليًا (totalSellPrice — نفس الرقم اللي فى صفحة التسعير) كمصدر الحقيقة،
-// وبس بتحسب "التجهيزات" كالفرق المتبقي، مع عرض سعر شريط كل طبقة على حدة فى الوصف.
+function getHardwareDescription(room: PrintRoomItem) {
+  const isPipe = room.installationCategory === 'مواسير فورجيه' || (room.installationType && room.installationType.includes('مواسير'));
+  const parts: string[] = [];
+
+  if (isPipe) {
+    const pipeMeters = (room.widthCm || 250) / 100;
+    const pipeDesc = room.pipeTypeDescription || 'سادة';
+    const pipeCol = room.pipeColor || 'فضى';
+    const pipeP = room.pipePricePerMeter || 0;
+    parts.push(`ماسورة فورجيه ${pipeDesc} ${pipeCol} (${pipeMeters}م × ${pipeP}ج)`);
+
+    const acc = room.pipeAccessories;
+    if (acc) {
+      const accParts: string[] = [];
+      if (acc.doubleBrackets > 0) accParts.push(`${acc.doubleBrackets} حامل مجوز`);
+      if (acc.singleBrackets > 0) accParts.push(`${acc.singleBrackets} حامل مفرد`);
+      if (acc.sideCaps > 0) accParts.push(`${acc.sideCaps} طبات`);
+      if (acc.doubleRings > 0) accParts.push(`${acc.doubleRings} حلقات`);
+      if (acc.decorHangers > 0) accParts.push(`${acc.decorHangers} شماعات`);
+      if (accParts.length > 0) {
+        parts.push(`إكسسوارات (${accParts.join(' + ')})`);
+      }
+    }
+
+    if (room.blackoutTrackEnabled) {
+      const bTrackPrice = room.blackoutTrackPrice || 100;
+      parts.push(`تراك بلاك آوت (${pipeMeters}م × ${bTrackPrice}ج)`);
+    }
+  } else {
+    const trackP = room.trackPrice || 0;
+    const trackM = room.trackMeters || (room.widthCm || 250) / 100;
+    parts.push(`تراك ألومنيوم (${trackM}م × ${trackP}ج)`);
+  }
+
+  return parts.join(' + ');
+}
+
 function getRoomBreakdown(room: PrintRoomItem) {
   const heavyFabricCost = room.heavyMeters * (room.heavyPrice || 0);
   const sheerFabricCost = room.sheerMeters * (room.sheerPrice || 0);
@@ -163,15 +212,16 @@ export default function ContractPrintModal({ isOpen, onClose, data }: ContractPr
       }
 
       // Accessories
-      const trackP = room.trackPrice || 0;
       const installF = room.installFee || 0;
       const { fittingsTotal, roomTotal, tapeDescription } = getRoomBreakdown(room);
+      const hardwareDesc = getHardwareDescription(room);
+      const transportDesc = (room.transportFeeEnabled && (room.transportFee || 0) > 0) ? ` + نقل (${room.transportFee}ج)` : '';
 
       roomsRowsHtml += `
         <tr style="background:#f8fafc; font-size:10pt; color:#475569;">
           <td style="font-weight:700;">التجهيزات والمصنعيات</td>
           <td colspan="3">
-            مجرى (${room.trackMeters}م × ${trackP}ج) + شريط (${tapeDescription}) + تركيب (${installF}ج)
+            ${hardwareDesc} + شريط (${tapeDescription}) + تركيب (${installF}ج)${transportDesc}
           </td>
           <td style="text-align:center; font-family:monospace; font-weight:700; color:#0f172a; font-size:11pt;">${fittingsTotal.toLocaleString()} ج</td>
         </tr>
@@ -659,16 +709,17 @@ export default function ContractPrintModal({ isOpen, onClose, data }: ContractPr
                     )}
 
                     {(() => {
-                      const trP = room.trackPrice || 0;
                       const instF = room.installFee || 0;
                       const { fittingsTotal, roomTotal, tapeDescription } = getRoomBreakdown(room);
+                      const hardwareDesc = getHardwareDescription(room);
+                      const transportDesc = (room.transportFeeEnabled && (room.transportFee || 0) > 0) ? ` + نقل (${room.transportFee}ج)` : '';
 
                       return (
                         <>
                           <tr className="border-b border-slate-200 text-xs bg-slate-50/50">
                             <td className="p-2 font-bold text-slate-600">التجهيزات والمصنعيات</td>
                             <td colSpan={3} className="p-2 text-slate-600">
-                              مجرى ({room.trackMeters}م × {trP}ج) + شريط ({tapeDescription}) + تركيب ({instF}ج)
+                              {hardwareDesc} + شريط ({tapeDescription}) + تركيب ({instF}ج){transportDesc}
                             </td>
                             <td className="p-2 text-center font-mono font-bold text-slate-900">
                               {fittingsTotal.toLocaleString()} ج

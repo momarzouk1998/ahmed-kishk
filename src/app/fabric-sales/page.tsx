@@ -29,7 +29,7 @@ interface SalesInvoice {
   discountValue: number;
   discountAmount: number;
   totalAmount: number;
-  paymentMethod: 'نقدي' | 'إنستاباي' | 'فودافون كاش' | 'فيزا / كارت' | 'بالآجل / دفعات';
+  paymentMethod: 'نقدي' | 'إنستاباي' | 'فودافون كاش' | 'فيزا / كارت' | 'بالآجل / دفعات' | 'دفع متعدد / مزيج' | string;
   paidAmount: number;
   remainingAmount: number;
   status: 'تم السداد بالكامل' | 'مسدد جزئياً' | 'آجل / غير مسدد';
@@ -223,7 +223,17 @@ export default function FabricSalesPage() {
       (inv.invoiceNumber && inv.invoiceNumber.toLowerCase().includes(search.toLowerCase())) ||
       custPhone.includes(search);
 
-    const matchPayment = paymentFilter === 'all' || inv.paymentMethod === paymentFilter;
+    const invMethod: string = (inv.paymentMethod || (inv as any).paymentType || 'نقدي') as string;
+    const matchPayment =
+      paymentFilter === 'all' ||
+      invMethod === paymentFilter ||
+      (paymentFilter === 'نقدي' && (invMethod === 'نقدي' || invMethod === 'كاش' || invMethod === 'نقدي (كاش)')) ||
+      (paymentFilter === 'إنستاباي' && (invMethod.includes('إنستا') || invMethod.includes('انستا') || invMethod.toLowerCase().includes('insta'))) ||
+      (paymentFilter === 'فودافون كاش' && (invMethod.includes('فودافون') || invMethod.toLowerCase().includes('vodafone'))) ||
+      (paymentFilter === 'فيزا / كارت' && (invMethod.includes('فيزا') || invMethod.includes('كارت') || invMethod.toLowerCase().includes('visa'))) ||
+      (paymentFilter === 'بالآجل / دفعات' && (invMethod.includes('آجل') || invMethod.includes('دفعات'))) ||
+      (paymentFilter === 'دفع متعدد / مزيج' && (invMethod.includes('متعدد') || invMethod.includes('مزيج')));
+
     const matchStatus = statusFilter === 'all' || inv.status === statusFilter;
     return matchSearch && matchPayment && matchStatus;
   });
@@ -341,6 +351,7 @@ export default function FabricSalesPage() {
                   <option value="فودافون كاش">📱 فودافون كاش</option>
                   <option value="فيزا / كارت">💳 فيزا / كارت</option>
                   <option value="بالآجل / دفعات">⏳ بالآجل / دفعات</option>
+                  <option value="دفع متعدد / مزيج">🔀 دفع متعدد / مزيج</option>
                 </select>
               </div>
 
@@ -388,6 +399,7 @@ export default function FabricSalesPage() {
                         const phone = inv.phone || inv.customerPhone || '';
                         const isFullyPaid = remaining <= 0;
                         const isPartial = paid > 0 && remaining > 0;
+                        const pMethod = inv.paymentMethod || (inv as any).paymentType || 'نقدي';
 
                         return (
                           <tr
@@ -409,14 +421,45 @@ export default function FabricSalesPage() {
                             {/* Customer Name & Phone */}
                             <td className="p-3.5 text-slate-700">
                               <div className="font-bold text-slate-900 text-sm">{inv.customerName}</div>
-                              <div className="text-[10px] text-slate-400 font-mono" dir="ltr">{phone || inv.branch}</div>
+                              <div className="text-[10px] text-slate-500 font-mono font-bold flex items-center gap-1.5 mt-0.5">
+                                <span className="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">{inv.branch}</span>
+                                {phone && <span dir="ltr">{phone}</span>}
+                              </div>
                             </td>
 
-                            {/* Payment Method */}
+                            {/* Payment Method Badge */}
                             <td className="p-3.5 text-center">
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-lg text-[11px] font-bold bg-slate-100 text-slate-800 border border-slate-200">
-                                {inv.paymentMethod}
-                              </span>
+                              {pMethod.includes('إنستا') || pMethod.includes('انستا') || pMethod.toLowerCase().includes('insta') ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-black bg-purple-100 text-purple-900 border border-purple-300 shadow-3xs">
+                                  <span>⚡</span>
+                                  <span>إنستاباي</span>
+                                </span>
+                              ) : pMethod.includes('فودافون') || pMethod.toLowerCase().includes('vodafone') ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-black bg-rose-100 text-rose-900 border border-rose-300 shadow-3xs">
+                                  <span>📱</span>
+                                  <span>فودافون كاش</span>
+                                </span>
+                              ) : pMethod.includes('فيزا') || pMethod.includes('كارت') || pMethod.toLowerCase().includes('visa') ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-black bg-blue-100 text-blue-900 border border-blue-300 shadow-3xs">
+                                  <span>💳</span>
+                                  <span>فيزا / كارت</span>
+                                </span>
+                              ) : pMethod.includes('متعدد') || pMethod.includes('مزيج') ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-black bg-amber-100 text-amber-950 border border-amber-300 shadow-3xs">
+                                  <span>🔀</span>
+                                  <span>دفع متعدد</span>
+                                </span>
+                              ) : pMethod.includes('آجل') || pMethod.includes('دفعات') ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-black bg-amber-50 text-amber-900 border border-amber-300 shadow-3xs">
+                                  <span>⏳</span>
+                                  <span>بالآجل</span>
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-black bg-emerald-100 text-emerald-950 border border-emerald-300 shadow-3xs">
+                                  <span>💵</span>
+                                  <span>كاش / نقدي</span>
+                                </span>
+                              )}
                             </td>
 
                             {/* Discount */}

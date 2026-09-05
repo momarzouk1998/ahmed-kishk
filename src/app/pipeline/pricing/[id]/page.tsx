@@ -171,10 +171,10 @@ export default function PricingDetailPage() {
   const [sheerP, setSheerP] = useState<number>(160);
 
   // 3. Blackout Layer State (3rd Layer)
-  const [blackoutTapeType, setBlackoutTapeType] = useState<string>('جراب');
+  const [blackoutTapeType, setBlackoutTapeType] = useState<string>('٣ فتلة');
   const [blackoutTapePrice, setBlackoutTapePrice] = useState<number>(50);
-  const [blackoutMultiplier, setBlackoutMultiplier] = useState<number>(1.20);
-  const [blackoutMeters, setBlackoutMeters] = useState<number>(3.0);
+  const [blackoutMultiplier, setBlackoutMultiplier] = useState<number>(2.0);
+  const [blackoutMeters, setBlackoutMeters] = useState<number>(5.0);
   const [blackoutCode, setBlackoutCode] = useState<string>('BK-301');
   const [blackoutP, setBlackoutP] = useState<number>(250);
 
@@ -184,6 +184,10 @@ export default function PricingDetailPage() {
   const [pipeTypeDescription, setPipeTypeDescription] = useState<'سادة' | 'مجدول'>('سادة');
   const [pipeColor, setPipeColor] = useState<'فضى' | 'أوكسيديه' | 'أسود' | 'زيتى'>('فضى');
   const [pipePricePerMeter, setPipePricePerMeter] = useState<number>(65);
+
+  // تراك إضافي للبلاك آوت مع المواسير
+  const [blackoutTrackEnabled, setBlackoutTrackEnabled] = useState<boolean>(false);
+  const [blackoutTrackPrice, setBlackoutTrackPrice] = useState<number>(100);
 
   const [accessoryPrices, setAccessoryPrices] = useState(curtainDefaults.accessoryPrices);
 
@@ -252,11 +256,11 @@ export default function PricingDetailPage() {
     setSheerLiningPricePerMeter((room as any).sheerLiningPricePerMeter || DEFAULT_SHEER_LINING_PRICE);
     setSheerPieces((room as any).sheerPieces || 'قطعة واحدة');
 
-    const bkTape = room.blackoutTapeType || 'جراب';
-    const bkMul = room.blackoutMultiplier ?? 1.20;
+    const bkTape = room.blackoutTapeType || '٣ فتلة';
+    const bkMul = room.blackoutMultiplier ?? (bkTape === '٣ فتلة' ? 2.0 : 1.20);
     const bkM = room.blackoutMeters || Math.round(widthM * bkMul * 100) / 100;
     setBlackoutTapeType(bkTape);
-    setBlackoutTapePrice(room.blackoutTapePrice ?? tapeTypePrices[bkTape] ?? 0);
+    setBlackoutTapePrice(room.blackoutTapePrice ?? tapeTypePrices[bkTape] ?? 50);
     setBlackoutMultiplier(bkMul);
     setBlackoutMeters(bkM);
     setBlackoutCode(room.blackoutFabricCode || '');
@@ -264,10 +268,12 @@ export default function PricingDetailPage() {
 
     const isPipe = room.installationType?.includes('مواسير') || room.installationCategory === 'مواسير فورجيه';
     setInstallationCategory(isPipe ? 'مواسير فورجيه' : 'تراك');
-    setTrackPricePerMeter(room.trackPrice || 0);
+    setTrackPricePerMeter(room.trackPrice || 100);
     setPipeTypeDescription(room.pipeTypeDescription || 'سادة');
     setPipeColor(room.pipeColor || 'فضى');
     setPipePricePerMeter(room.pipePricePerMeter || 0);
+    setBlackoutTrackEnabled(room.blackoutTrackEnabled ?? (isPipe && !!room.blackoutEnabled));
+    setBlackoutTrackPrice(room.blackoutTrackPrice || 100);
     setPipeAccessories(room.pipeAccessories || {
       doubleBrackets: isPipe ? 2 : 0,
       singleBrackets: 0,
@@ -380,7 +386,8 @@ export default function PricingDetailPage() {
             (pipeAccessories.sideCaps * accessoryPrices.sideCap) +
             (pipeAccessories.doubleRings * accessoryPrices.doubleRing) +
             (pipeAccessories.decorHangers * accessoryPrices.decorHanger);
-          installationTotal = pipeBaseCost + accessoriesCost;
+          const blackoutTrackCost = blackoutTrackEnabled ? editingWidthM * (blackoutTrackPrice || 100) : 0;
+          installationTotal = pipeBaseCost + accessoriesCost + blackoutTrackCost;
         }
 
         const effectiveInstallFee = installFeeEnabled ? installFee : 0;
@@ -432,6 +439,9 @@ export default function PricingDetailPage() {
           pipeColor,
           pipePricePerMeter,
           pipeAccessories,
+          blackoutTrackEnabled: installationCategory === 'مواسير فورجيه' ? blackoutTrackEnabled : false,
+          blackoutTrackPrice: installationCategory === 'مواسير فورجيه' && blackoutTrackEnabled ? (blackoutTrackPrice || 100) : 0,
+          blackoutTrackMeters: installationCategory === 'مواسير فورجيه' && blackoutTrackEnabled ? editingWidthM : 0,
 
           tapeMeters: Math.round((effectiveHeavyMeters + effectiveSheerMeters + effectiveBlackoutMeters) * 100) / 100,
           tapePrice: heavyTapePrice || sheerTapePrice || 0,
@@ -987,11 +997,17 @@ export default function PricingDetailPage() {
                           {/* Layer 3: Blackout Layer */}
                           <div className="p-4 bg-white rounded-xl border border-slate-200 space-y-3">
                             <div className="flex items-center justify-between text-xs">
-                              <label className="font-black text-slate-900 flex items-center gap-2 cursor-pointer">
+                              <label className="font-black text-slate-900 flex items-center gap-2 cursor-pointer select-none">
                                 <input
                                   type="checkbox"
                                   checked={blackoutEnabled}
-                                  onChange={e => setBlackoutEnabled(e.target.checked)}
+                                  onChange={e => {
+                                    const isChecked = e.target.checked;
+                                    setBlackoutEnabled(isChecked);
+                                    if (isChecked && installationCategory === 'مواسير فورجيه') {
+                                      setBlackoutTrackEnabled(true);
+                                    }
+                                  }}
                                   className="w-4 h-4 rounded accent-slate-900 cursor-pointer"
                                 />
                                 <span className="w-5 h-5 rounded-full bg-slate-900 text-white text-xs flex items-center justify-center font-bold">3</span>
@@ -1298,6 +1314,40 @@ export default function PricingDetailPage() {
                                       </div>
                                     </div>
                                   </div>
+                                </div>
+
+                                {/* إضافة تراك للبلاك آوت مع المواسير */}
+                                <div className="pt-2.5 border-t border-amber-200/60 bg-amber-50/70 p-3 rounded-xl flex flex-col sm:flex-row justify-between items-center gap-3">
+                                  <div>
+                                    <label className="font-black text-amber-950 flex items-center gap-2 cursor-pointer text-xs select-none">
+                                      <input
+                                        type="checkbox"
+                                        checked={blackoutTrackEnabled}
+                                        onChange={e => setBlackoutTrackEnabled(e.target.checked)}
+                                        className="w-4 h-4 rounded accent-amber-600 cursor-pointer"
+                                      />
+                                      <span>إضافة تراك ألومنيوم خلفي للبلاك آوت (مجرى عازل للماسورة) 🛠️</span>
+                                    </label>
+                                    <p className="text-[11px] text-slate-500 mt-0.5 pr-6">
+                                      لتركيب طبقة البلاك آوت على تراك خلف الماسورة بنفس مقاس الغرفة ({editingWidthM.toFixed(2)} متر).
+                                    </p>
+                                  </div>
+                                  {blackoutTrackEnabled && (
+                                    <div className="flex items-center gap-2 shrink-0">
+                                      <span className="text-slate-700 font-bold text-xs">سعر متر التراك:</span>
+                                      <input
+                                        type="number"
+                                        value={blackoutTrackPrice}
+                                        disabled={!canEditPrices}
+                                        onChange={e => setBlackoutTrackPrice(Number(e.target.value))}
+                                        className="w-16 border border-slate-300 rounded-lg px-2 py-1 text-center font-mono font-bold text-xs bg-white"
+                                      />
+                                      <span className="text-slate-600 font-bold text-xs">ج/م</span>
+                                      <div className="font-mono font-bold text-xs bg-amber-100 text-amber-950 px-2.5 py-1 rounded-lg border border-amber-300">
+                                        {editingWidthM.toFixed(2)}م × {blackoutTrackPrice}ج = {(editingWidthM * blackoutTrackPrice).toLocaleString()} ج
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             )}
