@@ -1,6 +1,19 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 
+async function checkSubscription(): Promise<{ active: boolean; status?: string; message?: string }> {
+  try {
+    const res = await fetch(
+      'https://admin.openappo.com/api/subscription/verify?system=' + encodeURIComponent('Ahmed Kishk'),
+      { cache: 'no-store' }
+    );
+    if (!res.ok) return { active: true };
+    return await res.json();
+  } catch {
+    return { active: true };
+  }
+}
+
 export const metadata: Metadata = {
   title: 'أحمد كشك — للأقمشة والستائر الفاخرة',
   description: 'نظام إداري متكامل لإدارة مقاسات الستائر، المعاينات الميدانية، والمبيعات لمؤسسة أحمد كشك',
@@ -26,11 +39,13 @@ export const viewport: Viewport = {
   viewportFit: 'cover',
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const subStatus = await checkSubscription();
+
   return (
     <html lang="ar" dir="rtl">
       <head>
@@ -52,6 +67,16 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
       </head>
       <body className="bg-background font-body text-on-surface antialiased min-h-screen selection:bg-brand-gold selection:text-brand-dark">
+        {subStatus.status === 'expiring_soon' && (
+          <div className="no-print print:hidden bg-yellow-500 text-black px-4 py-2 text-center text-sm font-bold w-full shadow-sm">
+            {subStatus.message}
+          </div>
+        )}
+        {subStatus.status === 'grace_period' && (
+          <div className="no-print print:hidden bg-red-500 text-white px-4 py-2 text-center text-sm font-bold w-full shadow-sm">
+            {subStatus.message}
+          </div>
+        )}
         {children}
         <script
           dangerouslySetInnerHTML={{
