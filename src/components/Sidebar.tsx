@@ -34,10 +34,12 @@ export default function Sidebar() {
     // #FIX: كانت الصلاحيات (خصوصًا قفل تعديل الأسعار) بتتقرأ مرة واحدة بس عند فتح
     // التاب لأول مرة — لو الأدمن قفل صلاحية موظف وهو شغال فعليًا (تاب مفتوح من قبل)،
     // التاب ده كان يفضل شغال بالصلاحيات القديمة (المفتوحة) لحد ما يعمل تسجيل خروج
-    // ودخول تانى. دلوقتى بتتحدّث دوريًا كل 30 ثانية عشان أي قفل يطبّقه الأدمن ينفّذ
-    // فعليًا خلال نص دقيقة على الأكتر، من غير ما نحتاج نفس آلية الـ localStorage
-    // الخطرة اللي شلناها من النظام الليلة دي (هنا بس بنقرأ من السيرفر، مفيش أي كتابة
-    // بترجع بيانات قديمة فوق الجديدة).
+    // ودخول تانى. دلوقتى بتتحدّث كل 5 ثوانى + فورًا عند رجوع التاب للـ focus/ظهوره
+    // + عند أى تنقل بين الصفحات، عشان أى قفل يطبّقه الأدمن ينفّذ خلال ثوانى معدودة
+    // كأنه لحظى، من غير ما نحتاج نفس آلية الـ localStorage الخطرة اللي شلناها من
+    // النظام الليلة دي (هنا بس بنقرأ من السيرفر، مفيش أي كتابة بترجع بيانات قديمة
+    // فوق الجديدة). ولو الصفحة اللي هو واقف فيها دلوقتى اتقفلت عليه، بيتنقل تلقائيًا
+    // بره منها فورًا بدل ما يفضل شايفها لحد ما يعمل حاجة تانية.
     let cancelled = false;
 
     async function loadUserAndPermissions() {
@@ -66,6 +68,12 @@ export default function Sidebar() {
             if (Array.isArray(data?.allowedPageIds)) {
               setAllowedPageIds(data.allowedPageIds);
               try { localStorage.setItem(`user_perms_${d.user.phone}`, JSON.stringify(data.allowedPageIds)); } catch {}
+              // #FEATURE: لو الصفحة الحالية بقت غير مسموحة، اطرد المستخدم منها فورًا
+              // بدل ما تختفى بس من السايد بار وهو لسه واقف جواها شايف بياناتها.
+              const currentPage = ALL_SYSTEM_PAGES.find(p => pathname === p.href || (p.href !== '/' && pathname.startsWith(p.href + '/')));
+              if (currentPage && !data.allowedPageIds.includes(currentPage.id)) {
+                router.push('/');
+              }
               return;
             }
           }
@@ -78,9 +86,20 @@ export default function Sidebar() {
     }
 
     loadUserAndPermissions();
-    const interval = setInterval(loadUserAndPermissions, 30_000);
-    return () => { cancelled = true; clearInterval(interval); };
-  }, []);
+    const interval = setInterval(loadUserAndPermissions, 5_000);
+    const onVisible = () => { if (document.visibilityState === 'visible') loadUserAndPermissions(); };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onVisible);
+    };
+    // #NOTE: بنعتمد على pathname هنا عشان نعرف نطرد المستخدم من الصفحة الحالية لو
+    // اتقفلت عليه — فالـ effect المفروض يعيد التشغيل عند كل تنقل بين الصفحات.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;

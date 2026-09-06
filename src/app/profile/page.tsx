@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 
 export default function ProfilePage() {
   const router = useRouter();
-  const [tab, setTab] = useState<'info' | 'password'>('info');
+  const [tab, setTab] = useState<'info' | 'password' | 'priceLock'>('info');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
@@ -14,11 +14,18 @@ export default function ProfilePage() {
   // Profile form
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [branch, setBranch] = useState('');
 
   // Password form
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+
+  // Branch price-password form (كل مدير فرع يقدر يغير باسورد فتح الأسعار بتاع فرعه بنفسه)
+  const [currentPricePwd, setCurrentPricePwd] = useState('');
+  const [newPricePwd, setNewPricePwd] = useState('');
+  const [confirmPricePwd, setConfirmPricePwd] = useState('');
+  const [priceLoading, setPriceLoading] = useState(false);
 
   useEffect(() => {
     // Load current user from cookie-based session (via header or API)
@@ -26,6 +33,7 @@ export default function ProfilePage() {
       if (d.user) {
         setName(d.user.name || '');
         setPhone(d.user.phone || '');
+        setBranch(d.user.branch || '');
       }
     }).catch(() => {});
   }, []);
@@ -81,6 +89,34 @@ export default function ProfilePage() {
     }
   };
 
+  const handleChangePricePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPricePwd !== confirmPricePwd) {
+      showMsg('كلمة سر الأسعار الجديدة وتأكيدها غير متطابقتين', true);
+      return;
+    }
+    if (newPricePwd.length < 4) {
+      showMsg('كلمة سر الأسعار يجب أن تكون 4 خانات على الأقل', true);
+      return;
+    }
+    setPriceLoading(true);
+    try {
+      const res = await fetch('/api/branch-price-passwords/self', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword: currentPricePwd, newPassword: newPricePwd }),
+      });
+      const data = await res.json();
+      if (!res.ok) showMsg(data.error || 'حدث خطأ', true);
+      else {
+        showMsg('تم تغيير باسورد الأسعار بنجاح ✅');
+        setCurrentPricePwd(''); setNewPricePwd(''); setConfirmPricePwd('');
+      }
+    } finally {
+      setPriceLoading(false);
+    }
+  };
+
   const handleLogout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
     router.push('/login');
@@ -111,6 +147,7 @@ export default function ProfilePage() {
             {[
               { id: 'info', label: 'البيانات الشخصية', icon: 'person' },
               { id: 'password', label: 'تغيير كلمة السر', icon: 'lock' },
+              { id: 'priceLock', label: 'باسورد الأسعار', icon: 'payments' },
             ].map(t => (
               <button
                 key={t.id}
@@ -207,6 +244,56 @@ export default function ProfilePage() {
               >
                 <span className="material-symbols-outlined text-[18px]">lock_reset</span>
                 تغيير كلمة السر
+              </button>
+            </form>
+          )}
+
+          {/* Branch Price-Password Form */}
+          {tab === 'priceLock' && (
+            <form onSubmit={handleChangePricePassword} className="bg-surface-container-lowest rounded-2xl border border-surface-container-highest p-6 flex flex-col gap-5">
+              <p className="text-xs text-on-surface-variant -mt-1">
+                هذا الباسورد يستخدمه موظفوك ({branch || 'فرعك'}) لطلب فتح تعديل الأسعار والخصومات منك. غيّره من هنا مباشرة بنفسك من غير ما تحتاج تطلب من الأدمن.
+              </p>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-mono text-on-surface-variant">باسورد الأسعار الحالي لفرعك</label>
+                <input
+                  type="password"
+                  value={currentPricePwd}
+                  onChange={e => setCurrentPricePwd(e.target.value)}
+                  className="border border-outline-variant rounded-lg p-3 text-sm focus:outline-none focus:border-primary transition-colors"
+                  placeholder="أدخل الباسورد الحالي"
+                  required
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-mono text-on-surface-variant">باسورد الأسعار الجديد</label>
+                <input
+                  type="password"
+                  value={newPricePwd}
+                  onChange={e => setNewPricePwd(e.target.value)}
+                  className="border border-outline-variant rounded-lg p-3 text-sm focus:outline-none focus:border-primary transition-colors"
+                  placeholder="4 خانات على الأقل"
+                  required
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-mono text-on-surface-variant">تأكيد الباسورد الجديد</label>
+                <input
+                  type="password"
+                  value={confirmPricePwd}
+                  onChange={e => setConfirmPricePwd(e.target.value)}
+                  className="border border-outline-variant rounded-lg p-3 text-sm focus:outline-none focus:border-primary transition-colors"
+                  placeholder="أعد كتابة الباسورد الجديد"
+                  required
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={priceLoading}
+                className="bg-primary text-on-primary py-3 rounded-lg font-bold text-sm hover:bg-inverse-surface transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+              >
+                <span className="material-symbols-outlined text-[18px]">payments</span>
+                تغيير باسورد الأسعار
               </button>
             </form>
           )}
