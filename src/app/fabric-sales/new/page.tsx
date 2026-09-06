@@ -74,8 +74,7 @@ export default function NewSalesInvoicePOSPage() {
   const [items, setItems] = useState<InvoiceLineItem[]>([]);
   const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
 
-  // Touch Screen Mode Keypad
-  const [touchMode, setTouchMode] = useState<boolean>(true);
+  // Touch Screen Keypad Buffer
   const [keypadBuffer, setKeypadBuffer] = useState<string>('');
 
   // Discount States
@@ -585,159 +584,147 @@ export default function NewSalesInvoicePOSPage() {
 
             {/* Light Touch Keypad Panel — flex-1 to fill remaining height */}
             <div className="bg-slate-50 text-slate-900 p-2 rounded-2xl border border-slate-200 shadow-soft space-y-1.5 flex-1 flex flex-col min-h-0">
-              <div className="flex justify-between items-center border-b border-slate-200 pb-1.5">
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setTouchMode(!touchMode)}
-                    className={`px-2 py-1 rounded-xl text-xs font-black transition-all flex items-center gap-1 cursor-pointer border ${
-                      touchMode
-                        ? 'bg-amber-500 text-white border-amber-600 shadow-xs'
-                        : 'bg-slate-200 hover:bg-slate-300 text-slate-700 border-slate-300'
-                    }`}
-                  >
-                    <span className="material-symbols-outlined text-sm">touch_app</span>
-                    <span>تاتش {touchMode ? '✓' : '✕'}</span>
-                  </button>
-                  <span className="text-xs font-black text-slate-800">تعديل الأمتار:</span>
-                </div>
-
+              {/* Active Selected Item Banner - Full Width */}
+              <div className="border-b border-slate-200 pb-1.5">
                 {activeSelectedItem ? (
-                  <div className="bg-white border border-slate-200 px-2 py-1 rounded-xl text-xs flex items-center gap-1.5 shadow-3xs">
-                    <span className="font-black text-amber-900 max-w-[130px] truncate">{activeSelectedItem.name}</span>
-                    <span className="bg-emerald-100 text-emerald-950 font-mono font-black px-1.5 py-0.5 rounded-lg text-xs">
-                      {activeSelectedItem.meters}م
+                  <div className="bg-white border border-amber-200 bg-amber-50/40 px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-between shadow-3xs w-full">
+                    <div className="flex items-center gap-1.5 min-w-0 pr-1">
+                      <span className="material-symbols-outlined text-amber-600 text-base flex-shrink-0">straighten</span>
+                      <span className="font-black text-slate-900 truncate text-xs" title={activeSelectedItem.name}>
+                        {activeSelectedItem.name}
+                      </span>
+                    </div>
+                    <span className="bg-emerald-600 text-white font-mono font-black px-2 py-0.5 rounded-lg text-xs flex-shrink-0 shadow-3xs">
+                      {activeSelectedItem.meters} م
                     </span>
                   </div>
                 ) : (
-                  <span className="text-xs text-slate-400 font-bold">اختر صنفاً</span>
+                  <div className="bg-white/80 border border-dashed border-slate-300 px-2 py-1.5 rounded-xl text-xs text-center text-slate-500 font-bold w-full">
+                    اضغط على أي صنف لتعديل أمتاره مباشرة
+                  </div>
                 )}
               </div>
 
-              {touchMode && (
-                <>
-                  {/* Quick Fraction Meter Buttons (Direct set & Increments) */}
-                  <div className="space-y-1">
-                    <div className="grid grid-cols-4 gap-1">
-                      {[
-                        { label: '½ م (0.5)', val: 0.50 },
-                        { label: '¾ م (0.75)', val: 0.75 },
-                        { label: '¼ م (0.25)', val: 0.25 },
-                        { label: '1 متر', val: 1.00 },
-                      ].map((frac, fIdx) => (
-                        <button
-                          key={fIdx}
-                          type="button"
-                          onClick={() => handleSetExactMeters(frac.val)}
-                          className="bg-amber-100 hover:bg-amber-500 hover:text-white text-amber-950 font-black py-2 rounded-xl text-xs transition-colors cursor-pointer text-center border border-amber-300 shadow-3xs active:scale-95"
-                          title={`ضبط الكمية مباشرة على ${frac.val} متر`}
-                        >
-                          {frac.label}
-                        </button>
-                      ))}
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-1">
-                      {[
-                        { label: '+ ½م', val: 0.50 },
-                        { label: '+ 1م', val: 1.00 },
-                        { label: '+ 5م', val: 5.00 },
-                      ].map((frac, fIdx) => (
-                        <button
-                          key={fIdx}
-                          type="button"
-                          onClick={() => handleAddFraction(frac.val)}
-                          className="bg-slate-100 hover:bg-slate-300 text-slate-800 font-black py-1.5 rounded-xl text-xs transition-colors cursor-pointer text-center border border-slate-200 shadow-3xs active:scale-95"
-                          title={`إضافة ${frac.val} متر للكمية الحالية`}
-                        >
-                          {frac.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Main Numeric Numpad — Standard Calculator/POS LTR Layout */}
-                  <div className="grid grid-cols-4 gap-1.5 pt-1" dir="ltr">
-                    {['7', '8', '9'].map(n => (
-                      <button
-                        key={n}
-                        type="button"
-                        onClick={() => handleKeypadPress(n)}
-                        className="bg-white hover:bg-amber-50 text-slate-950 font-mono font-black text-2xl py-3 rounded-xl border border-slate-200 shadow-3xs active:scale-95 transition-all cursor-pointer"
-                      >
-                        {n}
-                      </button>
-                    ))}
+              {/* Quick Fraction Meter Buttons (Direct set & Increments) */}
+              <div className="space-y-1">
+                <div className="grid grid-cols-4 gap-1">
+                  {[
+                    { label: '½ م (0.5)', val: 0.50 },
+                    { label: '¾ م (0.75)', val: 0.75 },
+                    { label: '¼ م (0.25)', val: 0.25 },
+                    { label: '1 متر', val: 1.00 },
+                  ].map((frac, fIdx) => (
                     <button
+                      key={fIdx}
                       type="button"
-                      onClick={() => handleKeypadPress('BACKSPACE')}
-                      className="bg-rose-50 hover:bg-rose-500 text-rose-700 hover:text-white font-black py-3 rounded-xl border border-rose-200 flex items-center justify-center cursor-pointer transition-colors shadow-3xs"
+                      onClick={() => handleSetExactMeters(frac.val)}
+                      className="bg-amber-100 hover:bg-amber-500 hover:text-white text-amber-950 font-black py-2 rounded-xl text-xs transition-colors cursor-pointer text-center border border-amber-300 shadow-3xs active:scale-95"
+                      title={`ضبط الكمية مباشرة على ${frac.val} متر`}
                     >
-                      <span className="material-symbols-outlined text-[22px]">backspace</span>
+                      {frac.label}
                     </button>
+                  ))}
+                </div>
 
-                    {['4', '5', '6'].map(n => (
-                      <button
-                        key={n}
-                        type="button"
-                        onClick={() => handleKeypadPress(n)}
-                        className="bg-white hover:bg-amber-50 text-slate-950 font-mono font-black text-2xl py-3 rounded-xl border border-slate-200 shadow-3xs active:scale-95 transition-all cursor-pointer"
-                      >
-                        {n}
-                      </button>
-                    ))}
+                <div className="grid grid-cols-3 gap-1">
+                  {[
+                    { label: '+ ½م', val: 0.50 },
+                    { label: '+ 1م', val: 1.00 },
+                    { label: '+ 5م', val: 5.00 },
+                  ].map((frac, fIdx) => (
                     <button
+                      key={fIdx}
                       type="button"
-                      onClick={() => handleKeypadPress('CLEAR')}
-                      className="bg-amber-50 hover:bg-amber-100 text-amber-900 font-black py-3 rounded-xl border border-amber-200 text-sm cursor-pointer transition-colors shadow-3xs"
+                      onClick={() => handleAddFraction(frac.val)}
+                      className="bg-slate-100 hover:bg-slate-300 text-slate-800 font-black py-1.5 rounded-xl text-xs transition-colors cursor-pointer text-center border border-slate-200 shadow-3xs active:scale-95"
+                      title={`إضافة ${frac.val} متر للكمية الحالية`}
                     >
-                      C
+                      {frac.label}
                     </button>
+                  ))}
+                </div>
+              </div>
 
-                    {['1', '2', '3'].map(n => (
-                      <button
-                        key={n}
-                        type="button"
-                        onClick={() => handleKeypadPress(n)}
-                        className="bg-white hover:bg-amber-50 text-slate-950 font-mono font-black text-2xl py-3 rounded-xl border border-slate-200 shadow-3xs active:scale-95 transition-all cursor-pointer"
-                      >
-                        {n}
-                      </button>
-                    ))}
-                    <button
-                      type="button"
-                      onClick={() => handleKeypadPress('.')}
-                      className="bg-white hover:bg-amber-50 text-slate-950 font-mono font-black text-2xl py-3 rounded-xl border border-slate-200 shadow-3xs active:scale-95 transition-all cursor-pointer"
-                    >
-                      .
-                    </button>
+              {/* Main Numeric Numpad — Standard Calculator/POS LTR Layout */}
+              <div className="grid grid-cols-4 gap-1.5 pt-1" dir="ltr">
+                {['7', '8', '9'].map(n => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => handleKeypadPress(n)}
+                    className="bg-white hover:bg-amber-50 text-slate-950 font-mono font-black text-2xl py-3 rounded-xl border border-slate-200 shadow-3xs active:scale-95 transition-all cursor-pointer"
+                  >
+                    {n}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => handleKeypadPress('BACKSPACE')}
+                  className="bg-rose-50 hover:bg-rose-500 text-rose-700 hover:text-white font-black py-3 rounded-xl border border-rose-200 flex items-center justify-center cursor-pointer transition-colors shadow-3xs"
+                >
+                  <span className="material-symbols-outlined text-[22px]">backspace</span>
+                </button>
 
-                    <button
-                      type="button"
-                      onClick={() => handleKeypadPress('0')}
-                      className="col-span-2 bg-white hover:bg-amber-50 text-slate-950 font-mono font-black text-2xl py-3 rounded-xl border border-slate-200 shadow-3xs active:scale-95 transition-all cursor-pointer"
-                    >
-                      0
-                    </button>
+                {['4', '5', '6'].map(n => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => handleKeypadPress(n)}
+                    className="bg-white hover:bg-amber-50 text-slate-950 font-mono font-black text-2xl py-3 rounded-xl border border-slate-200 shadow-3xs active:scale-95 transition-all cursor-pointer"
+                  >
+                    {n}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => handleKeypadPress('CLEAR')}
+                  className="bg-amber-50 hover:bg-amber-100 text-amber-900 font-black py-3 rounded-xl border border-amber-200 text-sm cursor-pointer transition-colors shadow-3xs"
+                >
+                  C
+                </button>
 
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (items.length > 0) {
-                          const curIdx = items.findIndex(it => it.id === selectedRowId);
-                          const nextIdx = (curIdx + 1) % items.length;
-                          setSelectedRowId(items[nextIdx].id);
-                          setKeypadBuffer('');
-                        }
-                      }}
-                      className="col-span-2 bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3 rounded-xl flex items-center justify-center gap-1 text-sm cursor-pointer shadow-xs transition-colors"
-                    >
-                      <span>الصنف التالي</span>
-                      <span className="material-symbols-outlined text-[16px]">arrow_downward</span>
-                    </button>
-                  </div>
-                </>
-              )}
+                {['1', '2', '3'].map(n => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => handleKeypadPress(n)}
+                    className="bg-white hover:bg-amber-50 text-slate-950 font-mono font-black text-2xl py-3 rounded-xl border border-slate-200 shadow-3xs active:scale-95 transition-all cursor-pointer"
+                  >
+                    {n}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => handleKeypadPress('.')}
+                  className="bg-white hover:bg-amber-50 text-slate-950 font-mono font-black text-2xl py-3 rounded-xl border border-slate-200 shadow-3xs active:scale-95 transition-all cursor-pointer"
+                >
+                  .
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleKeypadPress('0')}
+                  className="col-span-2 bg-white hover:bg-amber-50 text-slate-950 font-mono font-black text-2xl py-3 rounded-xl border border-slate-200 shadow-3xs active:scale-95 transition-all cursor-pointer"
+                >
+                  0
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (items.length > 0) {
+                      const curIdx = items.findIndex(it => it.id === selectedRowId);
+                      const nextIdx = (curIdx + 1) % items.length;
+                      setSelectedRowId(items[nextIdx].id);
+                      setKeypadBuffer('');
+                    }
+                  }}
+                  className="col-span-2 bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3 rounded-xl flex items-center justify-center gap-1 text-sm cursor-pointer shadow-xs transition-colors"
+                >
+                  <span>الصنف التالي</span>
+                  <span className="material-symbols-outlined text-[16px]">arrow_downward</span>
+                </button>
+              </div>
             </div>
 
           </div>
