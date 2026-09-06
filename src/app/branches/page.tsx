@@ -6,6 +6,7 @@ import { ALL_SYSTEM_PAGES } from '@/lib/permissions';
 import { BRANCHES_LIST, BranchConfig } from '@/lib/branches';
 import BranchPricePasswordsCard from '@/components/BranchPricePasswordsCard';
 import CurtainTechniciansCard from '@/components/CurtainTechniciansCard';
+import CurtainWorkshopsCard from '@/components/CurtainWorkshopsCard';
 import { useCurrentUser } from '@/lib/useCurrentUser';
 
 interface Employee {
@@ -217,7 +218,23 @@ export default function BranchesAndPermissionsPage() {
     } else if (presetType === 'INSTALLER') {
       setActivePerms(['p_installation', 'p_accessories']);
     } else if (presetType === 'FABRIC_ONLY') {
-      setActivePerms(['p_fabric_sales', 'p_fabric_sales_edit_price', 'p_customers', 'p_inventory', 'p_inventory_edit_price', 'p_dashboard']);
+      setActivePerms([
+        'p_dashboard',
+        'p_fabric_sales',
+        'p_fabric_sales_edit_price',
+        'p_fabric_sales_edit',
+        'p_purchases',
+        'p_purchases_edit_price',
+        'p_purchases_edit',
+        'p_customers',
+        'p_customers_edit',
+        'p_suppliers',
+        'p_suppliers_edit',
+        'p_inventory',
+        'p_inventory_edit_price',
+        'p_inventory_edit',
+        'p_reports',
+      ]);
     }
   };
 
@@ -235,6 +252,7 @@ export default function BranchesAndPermissionsPage() {
       localStorage.setItem(`user_perms_${selectedEmp.phone}`, JSON.stringify(activePerms));
       localStorage.setItem(`user_branch_${selectedEmp.phone}`, activeBranch);
       localStorage.setItem(`user_restrict_${selectedEmp.phone}`, String(restrictToBranch));
+      window.dispatchEvent(new Event('storage'));
     } catch {}
 
     // مزامنة إلى السيرفر — يجعلها دائمة عبر الجلسات والأجهزة
@@ -343,8 +361,11 @@ export default function BranchesAndPermissionsPage() {
         {/* Manager Password Change Card */}
         <BranchPricePasswordsCard />
 
-        {/* Curtain Measurement Technicians List */}
-        <CurtainTechniciansCard />
+        {/* Dynamic Technicians & Workshops Management Cards */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <CurtainTechniciansCard />
+          <CurtainWorkshopsCard />
+        </div>
 
         {/* Employees & Permissions Table */}
         <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-soft">

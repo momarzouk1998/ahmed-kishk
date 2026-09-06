@@ -55,8 +55,9 @@ export default function Sidebar() {
           localStorage.setItem('userName', d.user.name || '');
         } catch {}
 
-        if (d.user.role === 'ADMIN') {
-          setAllowedPageIds(null);
+        const isSuperAdmin = d.user.phone === '01558282760' || d.user.phone === '01063821000';
+        if (isSuperAdmin) {
+          setAllowedPageIds(ALL_SYSTEM_PAGES.map(p => p.id));
           return;
         }
 
@@ -69,7 +70,6 @@ export default function Sidebar() {
               setAllowedPageIds(data.allowedPageIds);
               try { localStorage.setItem(`user_perms_${d.user.phone}`, JSON.stringify(data.allowedPageIds)); } catch {}
               // #FEATURE: لو الصفحة الحالية بقت غير مسموحة، اطرد المستخدم منها فورًا
-              // بدل ما تختفى بس من السايد بار وهو لسه واقف جواها شايف بياناتها.
               const currentPage = ALL_SYSTEM_PAGES.find(p => pathname === p.href || (p.href !== '/' && pathname.startsWith(p.href + '/')));
               if (currentPage && !data.allowedPageIds.includes(currentPage.id)) {
                 router.push('/');
@@ -78,10 +78,6 @@ export default function Sidebar() {
             }
           }
         } catch {}
-        // مفيش سجل صلاحيات محفوظ للموظف — يفضل زي ما هو (nav تظل ظاهرة كاملة)، لكن
-        // hasSubPerm فى permissions.ts بقى افتراضيًا يمنع تعديل الأسعار/التعديل/الحذف
-        // لغير الأدمن لحد ما يتحدد صراحة.
-        if (!cancelled) setAllowedPageIds(null);
       } catch {}
     }
 
@@ -166,8 +162,10 @@ export default function Sidebar() {
   };
 
   const isAllowed = (pageId: string) => {
-    if (!user || user.role === 'ADMIN') return true;
-    if (!allowedPageIds) return true;
+    if (!user) return false;
+    const isSuperAdmin = user.phone === '01558282760' || user.phone === '01063821000';
+    if (isSuperAdmin) return true;
+    if (!allowedPageIds) return false;
     return allowedPageIds.includes(pageId);
   };
 

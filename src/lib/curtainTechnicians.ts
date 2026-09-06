@@ -12,13 +12,19 @@ export async function getCurtainTechnicians(): Promise<string[]> {
   const rec = await prisma.systemStore.findUnique({ where: { key: STORE_KEY } });
   const raw = rec?.data as any;
   if (raw && Array.isArray(raw?.list) && raw.list.length) {
-    return raw.list.map(String);
+    const cleaned = raw.list
+      .map(String)
+      .filter((n: string) => n !== 'محمد كشك' && n !== 'عبد الله كشك' && n !== 'عبدالله كشك');
+    if (!cleaned.includes('محمد نصار')) cleaned.push('محمد نصار');
+    if (!cleaned.includes('أمين')) cleaned.push('أمين');
+    return cleaned;
   }
   return SEED_TECHNICIANS;
 }
 
 export async function setCurtainTechnicians(list: string[]): Promise<string[]> {
-  const cleaned = Array.from(new Set(list.map(s => String(s).trim()).filter(Boolean)));
+  const cleaned = Array.from(new Set(list.map(s => String(s).trim()).filter(Boolean)))
+    .filter(n => n !== 'محمد كشك' && n !== 'عبد الله كشك' && n !== 'عبدالله كشك');
   await prisma.systemStore.upsert({
     where: { key: STORE_KEY },
     update: { data: { list: cleaned } as any },
