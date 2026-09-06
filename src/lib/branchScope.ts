@@ -29,10 +29,22 @@ export async function getBranchScope(request: Request): Promise<BranchScope | nu
   return { isAdmin: isSuperAdmin, branch: user.branch || 'الفرع الرئيسي' };
 }
 
-/** where-clause جاهز لإدخاله فى أى prisma.findMany: فرع المستخدم المقيّد فقط، أو بلا قيد للأدمن العام. */
-export function branchWhere(scope: BranchScope | null): { branch?: string } {
+import { normalizeBranchName, MAIN_BRANCH_VALUE, MAIN_BRANCH_LABEL } from '@/lib/branches';
+
+/** where-clause جاهز لإدخاله فى أى prisma.findMany: فرع المستخدم المقيّد فقط، أو بلا قيد للأدمن العام مع مراعاة كافة الصيغ الإملائية. */
+export function branchWhere(scope: BranchScope | null): { branch?: any } {
   if (!scope || scope.isAdmin) return {};
-  return { branch: scope.branch };
+  const norm = normalizeBranchName(scope.branch);
+  if (norm === 'فرع عمر أفندي') {
+    return { branch: { in: ['فرع عمر أفندي', 'فرع عمر افندي', 'عمر أفندي', 'عمر افندي', scope.branch] } };
+  }
+  if (norm === 'فرع الثلاثيني') {
+    return { branch: { in: ['فرع الثلاثيني', 'فرع التلاتيني', 'الثلاثيني', 'التلاتيني', scope.branch] } };
+  }
+  if (norm === 'فرع عرابي') {
+    return { branch: { in: ['فرع عرابي', 'عرابي', 'عدلي', scope.branch] } };
+  }
+  return { branch: { in: [scope.branch, norm, MAIN_BRANCH_VALUE, MAIN_BRANCH_LABEL] } };
 }
 
 /**

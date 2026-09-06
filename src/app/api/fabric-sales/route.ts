@@ -49,35 +49,56 @@ export async function POST(request: Request) {
       finalNotes = `${finalNotes} [SPLIT:${JSON.stringify(splitPayments)}]`.trim();
     }
 
-    const invNum = invoiceNumber || `INV-${Date.now()}`;
-    const invoice = await prisma.salesInvoice.upsert({
-      where: { invoiceNumber: invNum },
-      create: {
-        id: id || invNum,
-        invoiceNumber: invNum,
-        customerName: customerName || 'عميل نقدي',
-        phone: phone || '',
-        branch: effectiveCreateBranch(scope, branch),
-        totalAmount: Number(totalAmount) || 0,
-        paidAmount: Number(paidAmount) || 0,
-        remainingAmount: Number(remainingAmount) || 0,
-        paymentType: pMethod,
-        date: date || new Date().toISOString().split('T')[0],
-        items: items || [],
-        notes: finalNotes,
-      },
-      update: {
-        customerName: customerName || undefined,
-        phone: phone || undefined,
-        branch: branch || undefined,
-        totalAmount: totalAmount !== undefined ? Number(totalAmount) : undefined,
-        paidAmount: paidAmount !== undefined ? Number(paidAmount) : undefined,
-        remainingAmount: remainingAmount !== undefined ? Number(remainingAmount) : undefined,
-        paymentType: pMethod,
-        items: items !== undefined ? items : undefined,
-        notes: finalNotes !== undefined ? finalNotes : undefined,
-      },
-    });
+    let invNum = (invoiceNumber || '').trim();
+    if (!invNum) {
+      invNum = `INV-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}-${Math.floor(10 + Math.random() * 90)}`;
+    }
+
+    // Check if this is an update to an existing record
+    const existingById = id ? await prisma.salesInvoice.findUnique({ where: { id } }) : null;
+    let invoice;
+
+    if (existingById) {
+      // Intentional update to an existing invoice
+      invoice = await prisma.salesInvoice.update({
+        where: { id: existingById.id },
+        data: {
+          customerName: customerName || undefined,
+          phone: phone || undefined,
+          branch: branch || undefined,
+          totalAmount: totalAmount !== undefined ? Number(totalAmount) : undefined,
+          paidAmount: paidAmount !== undefined ? Number(paidAmount) : undefined,
+          remainingAmount: remainingAmount !== undefined ? Number(remainingAmount) : undefined,
+          paymentType: pMethod,
+          items: items !== undefined ? items : undefined,
+          notes: finalNotes !== undefined ? finalNotes : undefined,
+        },
+      });
+    } else {
+      // New invoice creation — ensure invoiceNumber is completely unique and doesn't overwrite an old one
+      const existingByNumber = await prisma.salesInvoice.findUnique({ where: { invoiceNumber: invNum } });
+      if (existingByNumber) {
+        // Collision detected: generate a guaranteed unique serial so we never overwrite the old invoice
+        invNum = `INV-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`;
+      }
+
+      invoice = await prisma.salesInvoice.create({
+        data: {
+          id: id || `INV-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`,
+          invoiceNumber: invNum,
+          customerName: customerName || 'عميل نقدي',
+          phone: phone || '',
+          branch: effectiveCreateBranch(scope, branch),
+          totalAmount: Number(totalAmount) || 0,
+          paidAmount: Number(paidAmount) || 0,
+          remainingAmount: Number(remainingAmount) || 0,
+          paymentType: pMethod,
+          date: date || new Date().toISOString().split('T')[0],
+          items: items || [],
+          notes: finalNotes,
+        },
+      });
+    }
 
     const normalizedInvoice = {
       ...invoice,

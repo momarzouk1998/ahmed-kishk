@@ -130,9 +130,9 @@ export default function NewSalesInvoicePOSPage() {
         console.error('Error loading inventory products:', err);
       }
 
-      // Generate invoice number
-      const rand = Math.floor(100 + Math.random() * 900);
-      setInvoiceNumber(`INV-2026-${rand}`);
+      // Generate unique invoice number
+      const serial = `${Date.now().toString().slice(-6)}${Math.floor(10 + Math.random() * 90)}`;
+      setInvoiceNumber(`INV-2026-${serial}`);
     }
     initData();
   }, []);
@@ -379,6 +379,8 @@ export default function NewSalesInvoicePOSPage() {
       setKeypadBuffer('');
       clearManagerUnlock();
       setMgrUnlocked(false);
+      const serial = `${Date.now().toString().slice(-6)}${Math.floor(10 + Math.random() * 90)}`;
+      setInvoiceNumber(`INV-2026-${serial}`);
     }
   };
 

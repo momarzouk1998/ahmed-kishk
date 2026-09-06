@@ -87,42 +87,59 @@ export async function POST(request: Request) {
       paymentMethod, status, date, items, notes,
     } = body;
 
-    const invNum = invoiceNumber || `PUR-${Date.now()}`;
-    // نلتقط الحالة السابقة (لو الفاتورة موجودة) قبل الـ upsert لحساب الفارق التفاضلى للمورد
-    const existingInvoice = await prisma.purchaseInvoice.findUnique({ where: { invoiceNumber: invNum } });
-    const invoice = await prisma.purchaseInvoice.upsert({
-      where: { invoiceNumber: invNum },
-      create: {
-        id: id || invNum,
-        invoiceNumber: invNum,
-        supplierName: supplierName || 'مورد عام',
-        supplierPhone: supplierPhone || '',
-        branch: effectiveCreateBranch(scope, branch),
-        subtotal: Number(subtotal) || 0,
-        discountAmount: Number(discountAmount) || 0,
-        totalAmount: Number(totalAmount) || 0,
-        paidAmount: Number(paidAmount) || 0,
-        remainingAmount: Number(remainingAmount) || 0,
-        paymentMethod: paymentMethod || 'نقدي (كاش)',
-        status: status || 'آجل / غير مسدد',
-        date: date || new Date().toISOString().split('T')[0],
-        items: items || [],
-        notes: notes || '',
-      },
-      update: {
-        supplierName: supplierName || undefined,
-        supplierPhone: supplierPhone !== undefined ? supplierPhone : undefined,
-        subtotal: subtotal !== undefined ? Number(subtotal) : undefined,
-        discountAmount: discountAmount !== undefined ? Number(discountAmount) : undefined,
-        totalAmount: totalAmount !== undefined ? Number(totalAmount) : undefined,
-        paidAmount: paidAmount !== undefined ? Number(paidAmount) : undefined,
-        remainingAmount: remainingAmount !== undefined ? Number(remainingAmount) : undefined,
-        paymentMethod: paymentMethod || undefined,
-        status: status || undefined,
-        items: items !== undefined ? items : undefined,
-        notes: notes !== undefined ? notes : undefined,
-      },
-    });
+    let invNum = (invoiceNumber || '').trim();
+    if (!invNum) {
+      invNum = `PUR-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}-${Math.floor(10 + Math.random() * 90)}`;
+    }
+
+    const existingById = id ? await prisma.purchaseInvoice.findUnique({ where: { id } }) : null;
+    let existingInvoice = existingById;
+    let invoice;
+
+    if (existingById) {
+      invoice = await prisma.purchaseInvoice.update({
+        where: { id: existingById.id },
+        data: {
+          supplierName: supplierName || undefined,
+          supplierPhone: supplierPhone !== undefined ? supplierPhone : undefined,
+          branch: branch || undefined,
+          subtotal: subtotal !== undefined ? Number(subtotal) : undefined,
+          discountAmount: discountAmount !== undefined ? Number(discountAmount) : undefined,
+          totalAmount: totalAmount !== undefined ? Number(totalAmount) : undefined,
+          paidAmount: paidAmount !== undefined ? Number(paidAmount) : undefined,
+          remainingAmount: remainingAmount !== undefined ? Number(remainingAmount) : undefined,
+          paymentMethod: paymentMethod || undefined,
+          status: status || undefined,
+          items: items !== undefined ? items : undefined,
+          notes: notes !== undefined ? notes : undefined,
+        },
+      });
+    } else {
+      const existingByNumber = await prisma.purchaseInvoice.findUnique({ where: { invoiceNumber: invNum } });
+      if (existingByNumber) {
+        invNum = `PUR-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`;
+      }
+
+      invoice = await prisma.purchaseInvoice.create({
+        data: {
+          id: id || `PUR-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`,
+          invoiceNumber: invNum,
+          supplierName: supplierName || 'مورد عام',
+          supplierPhone: supplierPhone || '',
+          branch: effectiveCreateBranch(scope, branch),
+          subtotal: Number(subtotal) || 0,
+          discountAmount: Number(discountAmount) || 0,
+          totalAmount: Number(totalAmount) || 0,
+          paidAmount: Number(paidAmount) || 0,
+          remainingAmount: Number(remainingAmount) || 0,
+          paymentMethod: paymentMethod || 'نقدي (كاش)',
+          status: status || 'آجل / غير مسدد',
+          date: date || new Date().toISOString().split('T')[0],
+          items: items || [],
+          notes: notes || '',
+        },
+      });
+    }
 
     await syncSupplierFromPurchase(existingInvoice, invoice);
 

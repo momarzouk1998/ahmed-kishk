@@ -62,7 +62,7 @@ export default function NewPurchaseInvoicePage() {
   }, [isAdmin, currentUser]);
 
   // Invoice Code / Number
-  const [invoiceNumber, setInvoiceNumber] = useState('');
+  const [invoiceNumber, setInvoiceNumber] = useState(() => `PUR-2026-${Date.now().toString().slice(-6)}${Math.floor(10 + Math.random() * 90)}`);
 
   // Supplier state
   const [supplierId, setSupplierId] = useState('');
