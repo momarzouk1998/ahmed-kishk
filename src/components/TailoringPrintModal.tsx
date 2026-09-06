@@ -39,7 +39,14 @@ export default function TailoringPrintModal({ isOpen, onClose, data }: Tailoring
     }
 
     let roomsHtml = '';
-    (data.rooms || []).forEach((room: any, rIdx: number) => {
+    const activeRooms = (data.rooms || []).filter((room: any) =>
+      room.heavyFabric || room.sheerFabric || room.blackoutFabric ||
+      (room.heavyEnabled !== false && (Number(room.heavyMeters) > 0 || room.heavyFabricName)) ||
+      (room.sheerEnabled !== false && (Number(room.sheerMeters) > 0 || room.sheerFabricName)) ||
+      (room.blackoutEnabled && (Number(room.blackoutMeters) > 0 || room.blackoutFabricName))
+    );
+
+    activeRooms.forEach((room: any, rIdx: number) => {
       roomsHtml += `
         <tr style="background:#fffbeb; font-weight:bold; border:1px solid #cbd5e1;">
           <td colspan="5" style="padding:5px 8px; text-align:right; color:#78350f; font-size:11pt; border:1px solid #cbd5e1;">
@@ -427,7 +434,12 @@ export default function TailoringPrintModal({ isOpen, onClose, data }: Tailoring
                 </tr>
               </thead>
               <tbody>
-                {(data.rooms || []).map((room: any, rIdx: number) => (
+                {((data.rooms || []).filter((room: any) =>
+                  room.heavyFabric || room.sheerFabric || room.blackoutFabric ||
+                  (room.heavyEnabled !== false && (Number(room.heavyMeters) > 0 || room.heavyFabricName)) ||
+                  (room.sheerEnabled !== false && (Number(room.sheerMeters) > 0 || room.sheerFabricName)) ||
+                  (room.blackoutEnabled && (Number(room.blackoutMeters) > 0 || room.blackoutFabricName))
+                )).map((room: any, rIdx: number) => (
                   <React.Fragment key={rIdx}>
                     <tr className="bg-amber-50/70 font-bold border-t border-b border-amber-200">
                       <td colSpan={5} className="p-2 text-amber-950">

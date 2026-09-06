@@ -150,33 +150,33 @@ export default function PricingDetailPage() {
   };
 
   // Layer Toggles
-  const [heavyEnabled, setHeavyEnabled] = useState<boolean>(true);
-  const [sheerEnabled, setSheerEnabled] = useState<boolean>(true);
+  const [heavyEnabled, setHeavyEnabled] = useState<boolean>(false);
+  const [sheerEnabled, setSheerEnabled] = useState<boolean>(false);
   const [blackoutEnabled, setBlackoutEnabled] = useState<boolean>(false);
 
   // 1. Heavy Fabric State (1st Layer)
   const [heavyTapeType, setHeavyTapeType] = useState<string>('٣ فتلة');
   const [heavyMultiplier, setHeavyMultiplier] = useState<number>(2.0);
-  const [heavyMeters, setHeavyMeters] = useState<number>(5.0);
-  const [heavyCode, setHeavyCode] = useState<string>('HV-201');
+  const [heavyMeters, setHeavyMeters] = useState<number>(0);
+  const [heavyCode, setHeavyCode] = useState<string>('');
   const [heavyTapePrice, setHeavyTapePrice] = useState<number>(50);
-  const [heavyP, setHeavyP] = useState<number>(380);
+  const [heavyP, setHeavyP] = useState<number>(0);
 
   // 2. Sheer Fabric State (2nd Layer)
   const [sheerTapeType, setSheerTapeType] = useState<string>('ويفي');
   const [sheerTapePrice, setSheerTapePrice] = useState<number>(140);
   const [sheerMultiplier, setSheerMultiplier] = useState<number>(2.5);
-  const [sheerMeters, setSheerMeters] = useState<number>(6.25);
-  const [sheerCode, setSheerCode] = useState<string>('SH-101');
-  const [sheerP, setSheerP] = useState<number>(160);
+  const [sheerMeters, setSheerMeters] = useState<number>(0);
+  const [sheerCode, setSheerCode] = useState<string>('');
+  const [sheerP, setSheerP] = useState<number>(0);
 
   // 3. Blackout Layer State (3rd Layer)
   const [blackoutTapeType, setBlackoutTapeType] = useState<string>('٣ فتلة');
   const [blackoutTapePrice, setBlackoutTapePrice] = useState<number>(50);
-  const [blackoutMultiplier, setBlackoutMultiplier] = useState<number>(2.0);
-  const [blackoutMeters, setBlackoutMeters] = useState<number>(5.0);
-  const [blackoutCode, setBlackoutCode] = useState<string>('BK-301');
-  const [blackoutP, setBlackoutP] = useState<number>(250);
+  const [blackoutMultiplier, setBlackoutMultiplier] = useState<number>(1.25);
+  const [blackoutMeters, setBlackoutMeters] = useState<number>(0);
+  const [blackoutCode, setBlackoutCode] = useState<string>('');
+  const [blackoutP, setBlackoutP] = useState<number>(0);
 
   // Installation Category: Track vs Forge Pipe
   const [installationCategory, setInstallationCategory] = useState<'تراك' | 'مواسير فورجيه'>('تراك');
@@ -226,17 +226,18 @@ export default function PricingDetailPage() {
     setEditingRoomId(room.id);
     const widthM = room.widthCm / 100;
 
-    setHeavyEnabled(room.heavyEnabled !== false);
-    setSheerEnabled(room.sheerEnabled !== false);
-    setBlackoutEnabled(!!room.blackoutEnabled);
+    // غرفة غير مسعرة تبدأ غير محددة بالكامل (بيضا)
+    const isPriced = (room.heavyEnabled !== undefined || room.sheerEnabled !== undefined || (Number(room.totalSellPrice) > 0) || !!room.heavyFabricCode || !!room.sheerFabricCode);
+
+    setHeavyEnabled(isPriced ? room.heavyEnabled !== false : false);
+    setSheerEnabled(isPriced ? room.sheerEnabled !== false : false);
+    setBlackoutEnabled(isPriced ? !!room.blackoutEnabled : false);
 
     const hTape = room.heavyTapeType || '٣ فتلة';
     const hMul = room.heavyMultiplier ?? (TAPE_MULTIPLIERS[hTape] || 2.0);
-    const hM = room.heavyMeters || Math.round(widthM * hMul * 100) / 100;
+    const hM = isPriced ? (room.heavyMeters || Math.round(widthM * hMul * 100) / 100) : 0;
     setHeavyTapeType(hTape);
-    // #FIX: كان بيرجع السعر لصفر عند إعادة فتح الغرفة (TAPE_PRICES كانت كلها صفر) —
-    // دلوقتي بيقرأ السعر المحفوظ فعلياً على الغرفة، وبيرجع لافتراضى نوع الشريط بس لو مفيش سعر محفوظ.
-    setHeavyTapePrice(room.heavyTapePrice ?? tapeTypePrices[hTape] ?? 0);
+    setHeavyTapePrice(room.heavyTapePrice ?? tapeTypePrices[hTape] ?? (hTape === 'إيكيا' ? 80 : 50));
     setHeavyMultiplier(hMul);
     setHeavyMeters(hM);
     setHeavyCode(room.heavyFabricCode || '');
@@ -244,9 +245,9 @@ export default function PricingDetailPage() {
 
     const sTape = room.sheerTapeType || 'ويفي';
     const sMul = room.sheerMultiplier ?? (TAPE_MULTIPLIERS[sTape] || 2.5);
-    const sM = room.sheerMeters || Math.round(widthM * sMul * 100) / 100;
+    const sM = isPriced ? (room.sheerMeters || Math.round(widthM * sMul * 100) / 100) : 0;
     setSheerTapeType(sTape);
-    setSheerTapePrice(room.sheerTapePrice ?? tapeTypePrices[sTape] ?? 0);
+    setSheerTapePrice(room.sheerTapePrice ?? tapeTypePrices[sTape] ?? (sTape === 'إيكيا' ? 80 : 140));
     setSheerMultiplier(sMul);
     setSheerMeters(sM);
     setSheerCode(room.sheerFabricCode || '');
@@ -257,10 +258,10 @@ export default function PricingDetailPage() {
     setSheerPieces((room as any).sheerPieces || 'قطعة واحدة');
 
     const bkTape = room.blackoutTapeType || '٣ فتلة';
-    const bkMul = room.blackoutMultiplier ?? (bkTape === '٣ فتلة' ? 2.0 : 1.20);
-    const bkM = room.blackoutMeters || Math.round(widthM * bkMul * 100) / 100;
+    const bkMul = room.blackoutMultiplier ?? (bkTape === '٣ فتلة' ? 1.25 : (bkTape === 'ويفي' ? 2.5 : 1.25));
+    const bkM = isPriced ? (room.blackoutMeters || Math.round(widthM * bkMul * 100) / 100) : 0;
     setBlackoutTapeType(bkTape);
-    setBlackoutTapePrice(room.blackoutTapePrice ?? tapeTypePrices[bkTape] ?? 50);
+    setBlackoutTapePrice(room.blackoutTapePrice ?? tapeTypePrices[bkTape] ?? (bkTape === 'إيكيا' ? 80 : 50));
     setBlackoutMultiplier(bkMul);
     setBlackoutMeters(bkM);
     setBlackoutCode(room.blackoutFabricCode || '');
@@ -271,26 +272,26 @@ export default function PricingDetailPage() {
     setTrackPricePerMeter(room.trackPrice || 100);
     setPipeTypeDescription(room.pipeTypeDescription || 'سادة');
     setPipeColor(room.pipeColor || 'فضى');
-    setPipePricePerMeter(room.pipePricePerMeter || 0);
+    setPipePricePerMeter(room.pipePricePerMeter !== undefined && Number(room.pipePricePerMeter) > 0 ? room.pipePricePerMeter : 65);
     setBlackoutTrackEnabled(room.blackoutTrackEnabled ?? (isPipe && !!room.blackoutEnabled));
     setBlackoutTrackPrice(room.blackoutTrackPrice || 100);
     setPipeAccessories(room.pipeAccessories || {
-      doubleBrackets: isPipe ? 2 : 0,
+      doubleBrackets: 0,
       singleBrackets: 0,
-      sideCaps: isPipe ? 2 : 0,
+      sideCaps: 0,
       doubleRings: 0,
       decorHangers: 0,
     });
 
-    setInstallFeeEnabled(room.installFeeEnabled !== false);
-    setInstallFee(room.installFee ?? 0);
+    setInstallFeeEnabled(room.installFeeEnabled !== undefined ? room.installFeeEnabled : false);
+    setInstallFee(room.installFee ?? curtainDefaults.installFee);
     setTransportFeeEnabled(!!room.transportFeeEnabled);
     setTransportFee(room.transportFee ?? 0);
   };
 
   const handleHeavyTapeSelect = (tapeName: string) => {
     setHeavyTapeType(tapeName);
-    setHeavyTapePrice(tapeTypePrices[tapeName] ?? 0);
+    setHeavyTapePrice(tapeTypePrices[tapeName] ?? (tapeName === 'إيكيا' ? 80 : 50));
     const mul = TAPE_MULTIPLIERS[tapeName] || 2.0;
     setHeavyMultiplier(mul);
     setHeavyMeters(Math.round(editingWidthM * mul * 100) / 100);
@@ -298,7 +299,7 @@ export default function PricingDetailPage() {
 
   const handleSheerTapeSelect = (tapeName: string) => {
     setSheerTapeType(tapeName);
-    setSheerTapePrice(tapeTypePrices[tapeName] ?? 0);
+    setSheerTapePrice(tapeTypePrices[tapeName] ?? (tapeName === 'إيكيا' ? 80 : 140));
     const mul = TAPE_MULTIPLIERS[tapeName] || 2.5;
     setSheerMultiplier(mul);
     setSheerMeters(Math.round(editingWidthM * mul * 100) / 100);
@@ -306,8 +307,8 @@ export default function PricingDetailPage() {
 
   const handleBlackoutTapeSelect = (tapeName: string) => {
     setBlackoutTapeType(tapeName);
-    setBlackoutTapePrice(tapeTypePrices[tapeName] ?? 0);
-    const mul = blackoutMultiplier || 1.20;
+    setBlackoutTapePrice(tapeTypePrices[tapeName] ?? (tapeName === 'إيكيا' ? 80 : 50));
+    const mul = tapeName === '٣ فتلة' ? 1.25 : (tapeName === 'ويفي' ? 2.5 : 1.25);
     setBlackoutMultiplier(mul);
     setBlackoutMeters(Math.round(editingWidthM * mul * 100) / 100);
   };
@@ -1633,33 +1634,35 @@ export default function PricingDetailPage() {
                   const updatedList = quotations.map(q => q.id === quotation.id ? { ...q, status: 'في المقص' as any } : q);
                   setQuotations(updatedList);
 
-                  // Map rooms to RoomFabricItem[] format which cutting/tailoring expects
-                  const mappedRooms = (quotation.rooms || []).map((r: any, idx: number) => ({
-                    roomName: r.name || `غرفة ${idx + 1}`,
-                    heavyFabric: (r.heavyEnabled !== false && (Number(r.heavyMeters) > 0 || r.heavyFabricName)) ? {
-                      name: r.heavyFabricName || 'قماش ثقيل',
-                      code: r.heavyFabricCode || 'HV-101',
-                      meters: Number(r.heavyMeters) || 0,
-                      tapeType: r.heavyTapeType || '٣ فتلة',
-                      netHeight: String(r.heightCm || 280),
-                    } : undefined,
-                    sheerFabric: (r.sheerEnabled !== false && (Number(r.sheerMeters) > 0 || r.sheerFabricName)) ? {
-                      name: r.sheerFabricName || 'شيفون',
-                      code: r.sheerFabricCode || 'SH-101',
-                      meters: Number(r.sheerMeters) || 0,
-                      tapeType: r.sheerTapeType || 'ويفي',
-                      netHeight: String(r.heightCm || 280),
-                      hasLining: !!(r.sheerLiningEnabled),
-                      liningPricePerMeter: r.sheerLiningPricePerMeter || 0,
-                    } : undefined,
-                    blackoutFabric: (r.blackoutEnabled && (Number(r.blackoutMeters) > 0 || r.blackoutFabricName)) ? {
-                      name: r.blackoutFabricName || 'بلاك آوت',
-                      code: r.blackoutFabricCode || 'BK-301',
-                      meters: Number(r.blackoutMeters) || 0,
-                      tapeType: r.blackoutTapeType || 'جراب',
-                      netHeight: String(r.heightCm || 280),
-                    } : undefined,
-                  }));
+                  // Map rooms to RoomFabricItem[] format which cutting/tailoring expects (فقط الغرف المسعرة والتى بها أقمشة)
+                  const mappedRooms = (quotation.rooms || [])
+                    .map((r: any, idx: number) => ({
+                      roomName: r.name || `غرفة ${idx + 1}`,
+                      heavyFabric: (r.heavyEnabled !== false && (Number(r.heavyMeters) > 0 || r.heavyFabricName)) ? {
+                        name: r.heavyFabricName || 'قماش ثقيل',
+                        code: r.heavyFabricCode || 'HV-101',
+                        meters: Number(r.heavyMeters) || 0,
+                        tapeType: r.heavyTapeType || '٣ فتلة',
+                        netHeight: String(r.heightCm || 280),
+                      } : undefined,
+                      sheerFabric: (r.sheerEnabled !== false && (Number(r.sheerMeters) > 0 || r.sheerFabricName)) ? {
+                        name: r.sheerFabricName || 'شيفون',
+                        code: r.sheerFabricCode || 'SH-101',
+                        meters: Number(r.sheerMeters) || 0,
+                        tapeType: r.sheerTapeType || 'ويفي',
+                        netHeight: String(r.heightCm || 280),
+                        hasLining: !!(r.sheerLiningEnabled),
+                        liningPricePerMeter: r.sheerLiningPricePerMeter || 0,
+                      } : undefined,
+                      blackoutFabric: (r.blackoutEnabled && (Number(r.blackoutMeters) > 0 || r.blackoutFabricName)) ? {
+                        name: r.blackoutFabricName || 'بلاك آوت',
+                        code: r.blackoutFabricCode || 'BK-301',
+                        meters: Number(r.blackoutMeters) || 0,
+                        tapeType: r.blackoutTapeType || 'جراب',
+                        netHeight: String(r.heightCm || 280),
+                      } : undefined,
+                    }))
+                    .filter((r: any) => r.heavyFabric || r.sheerFabric || r.blackoutFabric);
 
                   // 2. Fetch latest pipeline orders and upsert
                   const storedOrders = await fetchPipelineOrders();

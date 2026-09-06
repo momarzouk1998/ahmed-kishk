@@ -11,7 +11,7 @@ const STORAGE_KEY = 'ahmed_kishk_tape_type_prices_v1';
 
 export const BUILT_IN_TAPE_PRICES: Record<string, number> = {
   '٣ فتلة': 50,
-  'إيكيا': 50,
+  'إيكيا': 80,
   'ويفي': 140,
   'جراب': 50,
   'حلقات ديكور': 50,

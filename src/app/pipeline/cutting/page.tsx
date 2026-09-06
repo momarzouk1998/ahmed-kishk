@@ -60,24 +60,26 @@ export default function PipelineCuttingPage() {
           address: q.address,
           branch: q.branch || 'الفرع الرئيسي',
           cutterName: '',
-          rooms: (q.rooms || []).map((r: any, idx: number) => ({
-            roomName: r.name || `غرفة ${idx + 1}`,
-            heavyFabric: (r.heavyEnabled !== false && (Number(r.heavyMeters) > 0 || r.heavyFabricName)) ? {
-              name: r.heavyFabricName || 'قماش ثقيل',
-              code: r.heavyFabricCode || 'HV-101',
-              meters: Number(r.heavyMeters) || 0,
-            } : undefined,
-            sheerFabric: (r.sheerEnabled !== false && (Number(r.sheerMeters) > 0 || r.sheerFabricName)) ? {
-              name: r.sheerFabricName || 'شيفون',
-              code: r.sheerFabricCode || 'SH-101',
-              meters: Number(r.sheerMeters) || 0,
-            } : undefined,
-            blackoutFabric: (r.blackoutEnabled && (Number(r.blackoutMeters) > 0 || r.blackoutFabricName)) ? {
-              name: r.blackoutFabricName || 'بلاك آوت',
-              code: r.blackoutFabricCode || 'BK-301',
-              meters: Number(r.blackoutMeters) || 0,
-            } : undefined,
-          })),
+          rooms: (q.rooms || [])
+            .map((r: any, idx: number) => ({
+              roomName: r.name || `غرفة ${idx + 1}`,
+              heavyFabric: (r.heavyEnabled !== false && (Number(r.heavyMeters) > 0 || r.heavyFabricName)) ? {
+                name: r.heavyFabricName || 'قماش ثقيل',
+                code: r.heavyFabricCode || 'HV-101',
+                meters: Number(r.heavyMeters) || 0,
+              } : undefined,
+              sheerFabric: (r.sheerEnabled !== false && (Number(r.sheerMeters) > 0 || r.sheerFabricName)) ? {
+                name: r.sheerFabricName || 'شيفون',
+                code: r.sheerFabricCode || 'SH-101',
+                meters: Number(r.sheerMeters) || 0,
+              } : undefined,
+              blackoutFabric: (r.blackoutEnabled && (Number(r.blackoutMeters) > 0 || r.blackoutFabricName)) ? {
+                name: r.blackoutFabricName || 'بلاك آوت',
+                code: r.blackoutFabricCode || 'BK-301',
+                meters: Number(r.blackoutMeters) || 0,
+              } : undefined,
+            }))
+            .filter((r: any) => r.heavyFabric || r.sheerFabric || r.blackoutFabric),
           status: 'بانتظار القص',
           createdAt: q.date || new Date().toISOString().split('T')[0],
         }));

@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
@@ -21,13 +21,80 @@ export default function NewPurchaseInvoicePage() {
   const router = useRouter();
 
   // Supplier Information
-  const [supplierName, setSupplierName] = useState('شركة النيل للأقمشة والمنسوجات');
-  const [supplierPhone, setSupplierPhone] = useState('01099988877');
+  const [supplierName, setSupplierName] = useState('');
+  const [supplierPhone, setSupplierPhone] = useState('');
   const [branch, setBranch] = useState('الفرع الرئيسي');
+  const [suppliersList, setSuppliersList] = useState<any[]>([]);
+  const [showAddSupplierModal, setShowAddSupplierModal] = useState(false);
+  const [newSupName, setNewSupName] = useState('');
+  const [newSupPhone, setNewSupPhone] = useState('');
+  const [newSupAddress, setNewSupAddress] = useState('');
+  const [isSavingSup, setIsSavingSup] = useState(false);
+
   const { user: currentUser, isAdmin } = useCurrentUser();
   useEffect(() => {
     if (!isAdmin && currentUser?.branch) setBranch(currentUser.branch);
   }, [isAdmin, currentUser]);
+
+  useEffect(() => {
+    async function loadSuppliers() {
+      try {
+        const res = await fetch('/api/suppliers', { cache: 'no-store' });
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && Array.isArray(json.suppliers)) {
+            setSuppliersList(json.suppliers);
+            if (json.suppliers.length > 0 && !supplierName) {
+              setSupplierName(json.suppliers[0].name);
+              setSupplierPhone(json.suppliers[0].phone || '');
+            }
+          }
+        }
+      } catch (err) {}
+    }
+    loadSuppliers();
+  }, []);
+
+  const handleSelectSupplier = (name: string) => {
+    setSupplierName(name);
+    const found = suppliersList.find(s => s.name === name);
+    if (found) {
+      setSupplierPhone(found.phone || '');
+    }
+  };
+
+  const handleCreateSupplier = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newSupName.trim() || isSavingSup) return;
+    setIsSavingSup(true);
+    const newObj = {
+      id: `SUP-${Date.now()}`,
+      name: newSupName.trim(),
+      phone: newSupPhone.trim(),
+      address: newSupAddress.trim(),
+      branch,
+    };
+    try {
+      const res = await fetch('/api/suppliers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newObj),
+      });
+      if (res.ok) {
+        setSuppliersList(prev => [newObj, ...prev]);
+        setSupplierName(newObj.name);
+        setSupplierPhone(newObj.phone);
+        setShowAddSupplierModal(false);
+        setNewSupName('');
+        setNewSupPhone('');
+        setNewSupAddress('');
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSavingSup(false);
+    }
+  };
 
   // Dynamic Line Items
   const [items, setItems] = useState<PurchaseLineItem[]>([
@@ -211,21 +278,56 @@ export default function NewPurchaseInvoicePage() {
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* Section 1: Supplier Details */}
           <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-soft space-y-4">
-            <h3 className="font-black text-slate-900 text-sm border-r-4 border-amber-500 pr-2.5">
-              1. بيانات المورد والشركة:
-            </h3>
+            <div className="flex justify-between items-center">
+              <h3 className="font-black text-slate-900 text-sm border-r-4 border-amber-500 pr-2.5">
+                1. بيانات المورد والشركة:
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowAddSupplierModal(true)}
+                className="bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer"
+              >
+                <span>➕</span> إضافة مورد جديد
+              </button>
+            </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
               <div>
                 <label className="text-slate-700 font-bold block mb-1">اسم المورد / الشركة *:</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="أدخل اسم المورد..."
-                  value={supplierName}
-                  onChange={e => setSupplierName(e.target.value)}
-                  className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 font-bold text-slate-900 focus:outline-none focus:border-amber-500 bg-slate-50"
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    required
+                    list="suppliers-datalist"
+                    placeholder="اختر أو اكتب اسم المورد..."
+                    value={supplierName}
+                    onChange={e => handleSelectSupplier(e.target.value)}
+                    className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 font-bold text-slate-900 focus:outline-none focus:border-amber-500 bg-slate-50"
+                  />
+                  <datalist id="suppliers-datalist">
+                    {suppliersList.map(s => (
+                      <option key={s.id} value={s.name}>
+                        {s.name} {s.phone ? `(${s.phone})` : ''}
+                      </option>
+                    ))}
+                  </datalist>
+                </div>
+                {suppliersList.length > 0 && (
+                  <div className="mt-1.5 flex flex-wrap gap-1">
+                    {suppliersList.slice(0, 4).map(s => (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => handleSelectSupplier(s.name)}
+                        className={`text-[10px] px-2 py-0.5 rounded-md font-bold transition-colors ${
+                          supplierName === s.name ? 'bg-amber-500 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                        }`}
+                      >
+                        {s.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div>
@@ -557,6 +659,80 @@ export default function NewPurchaseInvoicePage() {
             </div>
           </div>
         </form>
+
+        {/* Quick Add Supplier Modal */}
+        {showAddSupplierModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs">
+            <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl border border-slate-200">
+              <div className="flex justify-between items-center mb-4 pb-3 border-b border-slate-100">
+                <h3 className="font-black text-slate-900 text-sm flex items-center gap-2">
+                  <span>➕</span> إضافة مورد جديد للسيستم
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setShowAddSupplierModal(false)}
+                  className="text-slate-400 hover:text-slate-700 text-lg font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <form onSubmit={handleCreateSupplier} className="space-y-3.5 text-xs">
+                <div>
+                  <label className="text-slate-700 font-bold block mb-1">اسم المورد / الشركة *:</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="مثال: مصنع النور للأقمشة"
+                    value={newSupName}
+                    onChange={e => setNewSupName(e.target.value)}
+                    className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 font-bold text-slate-900 focus:outline-none focus:border-amber-500 bg-slate-50"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-slate-700 font-bold block mb-1">رقم الهاتف:</label>
+                  <input
+                    type="text"
+                    placeholder="مثال: 01012345678"
+                    value={newSupPhone}
+                    onChange={e => setNewSupPhone(e.target.value)}
+                    className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 font-mono font-bold text-slate-900 focus:outline-none focus:border-amber-500 bg-slate-50"
+                    dir="ltr"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-slate-700 font-bold block mb-1">العنوان / ملاحظات:</label>
+                  <input
+                    type="text"
+                    placeholder="مثال: الأزهر، القاهرة"
+                    value={newSupAddress}
+                    onChange={e => setNewSupAddress(e.target.value)}
+                    className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 focus:outline-none focus:border-amber-500 bg-slate-50"
+                  />
+                </div>
+
+                <div className="flex gap-2 pt-3 border-t border-slate-100">
+                  <button
+                    type="submit"
+                    disabled={isSavingSup}
+                    className="flex-1 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white font-black py-2.5 rounded-xl cursor-pointer transition-colors"
+                  >
+                    {isSavingSup ? 'جاري الحفظ...' : 'حفظ واختيار المورد ✓'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddSupplierModal(false)}
+                    className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-4 py-2.5 rounded-xl cursor-pointer"
+                  >
+                    إلغاء
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     </PageShell>
   );
