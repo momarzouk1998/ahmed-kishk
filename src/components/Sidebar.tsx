@@ -82,15 +82,18 @@ export default function Sidebar() {
     }
 
     loadUserAndPermissions();
-    const interval = setInterval(loadUserAndPermissions, 5_000);
+    const interval = setInterval(loadUserAndPermissions, 3_000);
     const onVisible = () => { if (document.visibilityState === 'visible') loadUserAndPermissions(); };
+    const onStorage = () => { loadUserAndPermissions(); };
     document.addEventListener('visibilitychange', onVisible);
     window.addEventListener('focus', onVisible);
+    window.addEventListener('storage', onStorage);
     return () => {
       cancelled = true;
       clearInterval(interval);
       document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener('focus', onVisible);
+      window.removeEventListener('storage', onStorage);
     };
     // #NOTE: بنعتمد على pathname هنا عشان نعرف نطرد المستخدم من الصفحة الحالية لو
     // اتقفلت عليه — فالـ effect المفروض يعيد التشغيل عند كل تنقل بين الصفحات.
