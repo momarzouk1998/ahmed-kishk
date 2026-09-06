@@ -336,7 +336,7 @@ export default function ReportsPage() {
   const ledgerStats = useMemo(() => {
     const custDebts = customers
       .filter(c => Math.abs(Number(c.balance) || 0) > 0.01)
-      .filter(c => selectedBranch === 'ALL' || (c as any).branch === selectedBranch)
+      .filter(c => inBranch((c as any).branch || (c as any).city))
       .sort((a, b) => Math.abs(b.balance) - Math.abs(a.balance));
     const custTotalDebt = custDebts.reduce((s, c) => s + Math.max(0, Number(c.balance) || 0), 0);
     const custTotalCredit = custDebts.reduce((s, c) => s + Math.max(0, -(Number(c.balance) || 0)), 0);
@@ -351,7 +351,7 @@ export default function ReportsPage() {
 
   // ─── Inventory alerts ────────────────────────────────────────
   const invAlerts = useMemo(() => {
-    const bFilt = (i: InventoryItem) => selectedBranch === 'ALL' || i.branch === selectedBranch;
+    const bFilt = (i: InventoryItem) => inBranch(i.branch);
     const list = inventory.filter(bFilt);
     const belowMin = list.filter(i => (i.totalQuantity || 0) <= (i.minAlert || 0));
     const totalCost = list.reduce((s, i) => s + (i.totalQuantity || 0) * (i.costPrice || 0), 0);

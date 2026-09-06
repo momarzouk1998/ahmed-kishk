@@ -7,7 +7,7 @@ import { getStoredInspections, getStoredQuotations } from '@/lib/inspectionsStor
 import { getStoredPipelineOrders } from '@/lib/pipelineStore';
 
 export default function DashboardPage() {
-  const [timeRange, setTimeRange] = useState<'MONTH' | 'WEEK' | 'TODAY'>('MONTH');
+  const [timeRange, setTimeRange] = useState<'MONTH' | 'WEEK' | 'TODAY'>('TODAY');
 
   const [rawInspections, setRawInspections] = useState<any[]>([]);
   const [rawQuotations, setRawQuotations] = useState<any[]>([]);
@@ -33,9 +33,6 @@ export default function DashboardPage() {
         const orders = (resOrd.success && Array.isArray(resOrd.orders)) ? resOrd.orders : getStoredPipelineOrders();
         const invItems = (resInv.success && Array.isArray(resInv.items)) ? resInv.items : [];
         const customers = (resCust.success && Array.isArray(resCust.customers)) ? resCust.customers : [];
-        // #FIX: كان بيقرأ resSales.invoices، لكن GET /api/fabric-sales بيرجع المصفوفة
-        // تحت اسم "sales" مش "invoices" — يعني فواتير البيع بالمتر (الكاشير) كانت دايمًا
-        // بتتحسب صفر فى كل كروت وتقارير الشاشة الرئيسية، لأي مستخدم ولأي فرع.
         const sales = (resSales.success && Array.isArray(resSales.sales)) ? resSales.sales : [];
 
         setRawInspections(ins || []);
@@ -164,6 +161,16 @@ export default function DashboardPage() {
     },
   ];
 
+  // Helper to match branch
+  const matchBranch = (branchVal: any, branchKey: string) => {
+    const s = String(branchVal || '').trim();
+    if (branchKey === 'الرئيسي') return s.includes('رئيسي') || s.includes('سعد زغلول') || s.includes('القاهرة');
+    if (branchKey === 'عرابي') return s.includes('عرابي') || s.includes('عدلي');
+    if (branchKey === 'عمر أفندي') return s.includes('عمر أفندي') || s.includes('عمر افندي') || s.includes('عمر');
+    if (branchKey === 'الثلاثيني') return s.includes('الثلاثيني');
+    return false;
+  };
+
   // Dynamic Branch Sales Calculation (100% Real data)
   const branchList = [
     { name: 'الفرع الرئيسي (73 سعد زغلول)', type: 'ستائر وأقمشة تنجيد', key: 'الرئيسي' },
@@ -173,21 +180,31 @@ export default function DashboardPage() {
   ];
 
   const dynamicBranchSales = branchList.map(b => {
-    const bQot = rangedQuotations.filter((q: any) => q.branch && q.branch.includes(b.key));
-    const bSales = rangedSales.filter((s: any) => s.branch && s.branch.includes(b.key));
+    const bQot = rangedQuotations.filter((q: any) => matchBranch(q.branch, b.key));
+    const bSales = rangedSales.filter((s: any) => matchBranch(s.branch, b.key));
 
     const totalSalesAmount = bQot.reduce((sum: number, q: any) => sum + (Number(q.totalAmount) || 0), 0)
       + bSales.reduce((sum: number, s: any) => sum + (Number(s.totalAmount) || 0), 0);
 
+    const totalCollectedAmount = bQot.reduce((sum: number, q: any) => sum + (Number(q.depositPaid) || 0), 0)
+      + bSales.reduce((sum: number, s: any) => sum + (Number(s.paidAmount) || 0), 0);
+
+    const totalRemainingAmount = Math.max(0, totalSalesAmount - totalCollectedAmount);
+
     const totalOps = bQot.length + bSales.length;
-    const targetPercent = totalOps > 0 ? `${Math.min(100, totalOps * 25)}%` : '0%';
+    const collectionRate = totalSalesAmount > 0
+      ? Math.round((totalCollectedAmount / totalSalesAmount) * 100)
+      : (totalOps > 0 ? 100 : 0);
 
     return {
       name: b.name,
       type: b.type,
       sales: `${totalSalesAmount.toLocaleString()} ج`,
+      collected: `${totalCollectedAmount.toLocaleString()} ج`,
+      remaining: `${totalRemainingAmount.toLocaleString()} ج`,
       orders: totalOps,
-      target: targetPercent,
+      target: `${collectionRate}% محصَّل`,
+      rateNum: collectionRate,
     };
   });
 
@@ -389,10 +406,18 @@ export default function DashboardPage() {
                     <div className="font-black text-sm text-slate-900">{b.name}</div>
                     <span className="text-[11px] text-slate-500 font-bold">{b.type} • {b.orders} عملية</span>
                   </div>
-                  <div className="flex items-center justify-between sm:justify-end gap-4">
-                    <div className="text-left">
-                      <div className="font-mono font-black text-base text-brand-gold-dark">{b.sales}</div>
-                      <div className="text-[10px] text-emerald-800 font-bold">معدل الإنجاز {b.target}</div>
+                  <div className="flex items-center justify-between sm:justify-end gap-3 flex-wrap">
+                    <div className="text-right sm:text-left">
+                      <div className="text-[10px] text-slate-500 font-bold">إجمالي المبيعات / العقود</div>
+                      <div className="font-mono font-black text-sm text-slate-900">{b.sales}</div>
+                    </div>
+                    <div className="text-right sm:text-left bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-200">
+                      <div className="text-[10px] text-emerald-800 font-bold">المحصَّل بالدرج</div>
+                      <div className="font-mono font-black text-xs text-emerald-700">{b.collected}</div>
+                    </div>
+                    <div className="text-right sm:text-left bg-amber-50 px-2.5 py-1 rounded-xl border border-amber-200">
+                      <div className="text-[10px] text-amber-800 font-bold">{b.target}</div>
+                      <div className="font-mono font-bold text-[10px] text-amber-900">آجل: {b.remaining}</div>
                     </div>
                   </div>
                 </div>

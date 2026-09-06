@@ -7,6 +7,10 @@ import { formatDateOnly } from '@/lib/dateUtils';
 import FabricSalesPrintModal from '@/components/FabricSalesPrintModal';
 import PdfPrintButton from '@/components/PdfPrintButton';
 
+import { useCurrentUser } from '@/lib/useCurrentUser';
+import BranchSelect from '@/components/BranchSelect';
+import { normalizeBranchName } from '@/lib/branches';
+
 interface SalesInvoiceItem {
   code: string;
   name: string;
@@ -53,6 +57,8 @@ interface CustomerSalesReturn {
 const SALES_INVOICES_KEY = 'ahmed_kishk_sales_invoices_v1';
 const SALES_RETURNS_KEY = 'ahmed_kishk_sales_returns_v1';
 
+export type DateFilterType = 'today' | 'yesterday' | 'week' | 'month' | 'custom' | 'all';
+
 export default function FabricSalesPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'INVOICES' | 'RETURNS'>('INVOICES');
@@ -60,10 +66,20 @@ export default function FabricSalesPage() {
   const [returns, setReturns] = useState<CustomerSalesReturn[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Filters
+  // Filters (افتراضي اليوم)
+  const [dateFilter, setDateFilter] = useState<DateFilterType>('today');
+  const [dateFrom, setDateFrom] = useState<string>('');
+  const [dateTo, setDateTo] = useState<string>('');
+  const [branchFilter, setBranchFilter] = useState<string>('ALL');
   const [search, setSearch] = useState('');
   const [paymentFilter, setPaymentFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [showFilterModal, setShowFilterModal] = useState<boolean>(false);
+
+  const { user: currentUser, isAdmin } = useCurrentUser();
+  useEffect(() => {
+    if (!isAdmin && currentUser?.branch) setBranchFilter(currentUser.branch);
+  }, [isAdmin, currentUser]);
 
   // Selected Invoice Modal for Full View & Print
   const [selectedInvoice, setSelectedInvoice] = useState<SalesInvoice | null>(null);
@@ -300,10 +316,43 @@ export default function FabricSalesPage() {
     setRetAmount(500);
   };
 
+  // Date & Branch helpers
+  const matchesDate = (invDateStr: string | undefined): boolean => {
+    if (!invDateStr) return dateFilter === 'all';
+    const d = invDateStr.split('T')[0].split(' ')[0];
+    const today = new Date().toISOString().split('T')[0];
+
+    if (dateFrom || dateTo) {
+      if (dateFrom && d < dateFrom) return false;
+      if (dateTo && d > dateTo) return false;
+      return true;
+    }
+
+    if (dateFilter === 'today') return d === today;
+    if (dateFilter === 'yesterday') {
+      const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      return d === yesterday;
+    }
+    if (dateFilter === 'week') {
+      const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      return d >= weekAgo;
+    }
+    if (dateFilter === 'month') {
+      return d.substring(0, 7) === today.substring(0, 7);
+    }
+    return true;
+  };
+
+  const matchesBranch = (branchStr: string | undefined): boolean => {
+    if (!branchFilter || branchFilter === 'ALL' || branchFilter === 'الكل') return true;
+    return normalizeBranchName(branchStr) === normalizeBranchName(branchFilter);
+  };
+
   // Filtered Invoices
   const filteredInvoices = invoices.filter(inv => {
     const custPhone = inv.phone || inv.customerPhone || '';
     const matchSearch =
+      !search.trim() ||
       (inv.customerName && inv.customerName.toLowerCase().includes(search.toLowerCase())) ||
       (inv.invoiceNumber && inv.invoiceNumber.toLowerCase().includes(search.toLowerCase())) ||
       custPhone.includes(search);
@@ -320,16 +369,22 @@ export default function FabricSalesPage() {
       (paymentFilter === 'دفع متعدد / مزيج' && (invMethod.includes('متعدد') || invMethod.includes('مزيج')));
 
     const matchStatus = statusFilter === 'all' || inv.status === statusFilter;
-    return matchSearch && matchPayment && matchStatus;
+    const matchDate = matchesDate(inv.date);
+    const matchBr = matchesBranch(inv.branch);
+
+    return matchSearch && matchPayment && matchStatus && matchDate && matchBr;
   });
 
   // Filtered Returns
   const filteredReturns = returns.filter(ret => {
-    return (
+    const matchSearch =
+      !search.trim() ||
       (ret.customerName && ret.customerName.toLowerCase().includes(search.toLowerCase())) ||
       (ret.returnNumber && ret.returnNumber.toLowerCase().includes(search.toLowerCase())) ||
-      (ret.invoiceNumber && ret.invoiceNumber.toLowerCase().includes(search.toLowerCase()))
-    );
+      (ret.invoiceNumber && ret.invoiceNumber.toLowerCase().includes(search.toLowerCase()));
+
+    const matchDate = matchesDate(ret.date);
+    return matchSearch && matchDate;
   });
 
   // Metrics
@@ -411,47 +466,115 @@ export default function FabricSalesPage() {
               </div>
             </div>
 
-            {/* Search & Filter Bar */}
-            <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs grid grid-cols-1 sm:grid-cols-12 gap-3 text-xs">
-              <div className="relative sm:col-span-6">
+            {/* Quick Date Filters & Search / Advanced Filter Bar */}
+            <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs space-y-2.5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                {/* Quick Date Tabs */}
+                <div className="flex bg-slate-100 p-1 rounded-xl gap-1 border border-slate-200 text-xs font-bold overflow-x-auto">
+                  {(
+                    [
+                      { key: 'today', label: 'اليوم' },
+                      { key: 'yesterday', label: 'أمس' },
+                      { key: 'week', label: 'هذا الأسبوع' },
+                      { key: 'month', label: 'هذا الشهر' },
+                      { key: 'all', label: 'كل التواريخ' },
+                    ] as { key: DateFilterType; label: string }[]
+                  ).map(t => (
+                    <button
+                      key={t.key}
+                      type="button"
+                      onClick={() => {
+                        setDateFilter(t.key);
+                        setDateFrom('');
+                        setDateTo('');
+                      }}
+                      className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
+                        dateFilter === t.key && !dateFrom && !dateTo
+                          ? 'bg-amber-500 text-white font-black shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                      }`}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Advanced Filter Button */}
+                <button
+                  type="button"
+                  onClick={() => setShowFilterModal(true)}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-black border flex items-center gap-1.5 transition-all cursor-pointer ${
+                    (paymentFilter !== 'all' || statusFilter !== 'all' || (branchFilter !== 'ALL' && branchFilter !== 'الكل') || dateFrom || dateTo)
+                      ? 'bg-amber-50 border-amber-400 text-amber-950 shadow-xs'
+                      : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[16px]">tune</span>
+                  <span>تصفية الفواتير المتقدمة</span>
+                  {(paymentFilter !== 'all' || statusFilter !== 'all' || (branchFilter !== 'ALL' && branchFilter !== 'الكل') || dateFrom || dateTo) && (
+                    <span className="bg-amber-500 text-white text-[10px] w-4 h-4 rounded-full inline-flex items-center justify-center font-bold font-mono">
+                      {(paymentFilter !== 'all' ? 1 : 0) + (statusFilter !== 'all' ? 1 : 0) + ((branchFilter !== 'ALL' && branchFilter !== 'الكل') ? 1 : 0) + (dateFrom || dateTo ? 1 : 0)}
+                    </span>
+                  )}
+                </button>
+              </div>
+
+              {/* Live Search Input */}
+              <div className="relative">
                 <span className="material-symbols-outlined absolute right-3.5 top-2.5 text-slate-400 text-base">search</span>
                 <input
                   type="text"
-                  placeholder="بحث برقم الفاتورة، اسم العميل، أو الهاتف..."
+                  placeholder="بحث سريع برقم الفاتورة، اسم العميل، أو الهاتف..."
                   value={search}
                   onChange={e => setSearch(e.target.value)}
-                  className="w-full pr-10 pl-4 py-2 border border-slate-200 rounded-xl focus:border-amber-500 focus:outline-none font-bold text-slate-900 shadow-2xs"
+                  className="w-full pr-10 pl-4 py-2 border border-slate-200 rounded-xl focus:border-amber-500 focus:outline-none font-bold text-slate-900 shadow-2xs text-xs bg-slate-50"
                 />
               </div>
 
-              <div className="sm:col-span-3">
-                <select
-                  value={paymentFilter}
-                  onChange={e => setPaymentFilter(e.target.value)}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 font-bold text-slate-800 focus:outline-none cursor-pointer"
-                >
-                  <option value="all">كل طرق الدفع</option>
-                  <option value="نقدي">💵 نقدي (كاش)</option>
-                  <option value="إنستاباي">⚡ إنستاباي</option>
-                  <option value="فودافون كاش">📱 فودافون كاش</option>
-                  <option value="فيزا / كارت">💳 فيزا / كارت</option>
-                  <option value="بالآجل / دفعات">⏳ بالآجل / دفعات</option>
-                  <option value="دفع متعدد / مزيج">🔀 دفع متعدد / مزيج</option>
-                </select>
-              </div>
-
-              <div className="sm:col-span-3">
-                <select
-                  value={statusFilter}
-                  onChange={e => setStatusFilter(e.target.value)}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 font-bold text-slate-800 focus:outline-none cursor-pointer"
-                >
-                  <option value="all">كل حالات السداد</option>
-                  <option value="تم السداد بالكامل">تم السداد بالكامل</option>
-                  <option value="مسدد جزئياً">مسدد جزئياً</option>
-                  <option value="آجل / غير مسدد">آجل / غير مسدد</option>
-                </select>
-              </div>
+              {/* Active Filter Badges Summary */}
+              {(paymentFilter !== 'all' || statusFilter !== 'all' || (branchFilter !== 'ALL' && branchFilter !== 'الكل') || dateFrom || dateTo) && (
+                <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[11px]">
+                  <span className="text-slate-400 font-bold">فلاتر نشطة:</span>
+                  {branchFilter !== 'ALL' && branchFilter !== 'الكل' && (
+                    <span className="bg-slate-100 text-slate-800 border border-slate-300 px-2 py-0.5 rounded-md font-bold flex items-center gap-1">
+                      الفرع: {branchFilter}
+                      <button type="button" onClick={() => setBranchFilter('ALL')} className="text-slate-400 hover:text-slate-700">✕</button>
+                    </span>
+                  )}
+                  {paymentFilter !== 'all' && (
+                    <span className="bg-slate-100 text-slate-800 border border-slate-300 px-2 py-0.5 rounded-md font-bold flex items-center gap-1">
+                      الدفع: {paymentFilter}
+                      <button type="button" onClick={() => setPaymentFilter('all')} className="text-slate-400 hover:text-slate-700">✕</button>
+                    </span>
+                  )}
+                  {statusFilter !== 'all' && (
+                    <span className="bg-slate-100 text-slate-800 border border-slate-300 px-2 py-0.5 rounded-md font-bold flex items-center gap-1">
+                      الحالة: {statusFilter}
+                      <button type="button" onClick={() => setStatusFilter('all')} className="text-slate-400 hover:text-slate-700">✕</button>
+                    </span>
+                  )}
+                  {(dateFrom || dateTo) && (
+                    <span className="bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-md font-bold flex items-center gap-1">
+                      التاريخ: {dateFrom || 'من البداية'} إلى {dateTo || 'الآن'}
+                      <button type="button" onClick={() => { setDateFrom(''); setDateTo(''); }} className="text-amber-700 hover:text-amber-950">✕</button>
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPaymentFilter('all');
+                      setStatusFilter('all');
+                      setBranchFilter('ALL');
+                      setDateFrom('');
+                      setDateTo('');
+                      setDateFilter('today');
+                    }}
+                    className="text-rose-600 hover:underline text-[10px] font-bold mr-1"
+                  >
+                    إلغاء كل الفلاتر
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Clean & Spacious Invoices Table (Click Row to Open Invoice) */}
@@ -1178,6 +1301,132 @@ export default function FabricSalesPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Advanced Filter Modal */}
+      {showFilterModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-lg shadow-2xl border border-slate-200">
+            <div className="flex justify-between items-center mb-4 pb-3 border-b border-slate-100">
+              <h3 className="font-black text-slate-900 text-sm flex items-center gap-2">
+                <span className="material-symbols-outlined text-amber-500 text-lg">tune</span>
+                <span>تصفية فواتير المبيعات المتقدمة</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowFilterModal(false)}
+                className="text-slate-400 hover:text-slate-700 text-lg font-bold cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              {/* Date From & To */}
+              <div>
+                <label className="text-slate-700 font-bold block mb-1.5">الفترة الزمنية (من / إلى):</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <span className="text-[10px] text-slate-400 block mb-0.5">من تاريخ:</span>
+                    <input
+                      type="date"
+                      value={dateFrom}
+                      onChange={e => {
+                        setDateFrom(e.target.value);
+                        setDateFilter('custom');
+                      }}
+                      className="w-full border border-slate-200 rounded-xl px-3 py-2 font-mono font-bold text-slate-900 bg-slate-50 focus:outline-none focus:border-amber-500 text-xs"
+                    />
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-400 block mb-0.5">إلى تاريخ:</span>
+                    <input
+                      type="date"
+                      value={dateTo}
+                      onChange={e => {
+                        setDateTo(e.target.value);
+                        setDateFilter('custom');
+                      }}
+                      className="w-full border border-slate-200 rounded-xl px-3 py-2 font-mono font-bold text-slate-900 bg-slate-50 focus:outline-none focus:border-amber-500 text-xs"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Branch Filter */}
+              <div>
+                <label className="text-slate-700 font-bold block mb-1">الفرع:</label>
+                <BranchSelect
+                  value={branchFilter}
+                  onChange={setBranchFilter}
+                  isAdmin={isAdmin}
+                  allValue="ALL"
+                  allLabel="🌐 كل الفروع"
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900 bg-slate-50 focus:outline-none focus:border-amber-500 cursor-pointer"
+                />
+              </div>
+
+              {/* Payment Method */}
+              <div>
+                <label className="text-slate-700 font-bold block mb-1">طريقة السداد:</label>
+                <select
+                  value={paymentFilter}
+                  onChange={e => setPaymentFilter(e.target.value)}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900 bg-slate-50 focus:outline-none focus:border-amber-500 cursor-pointer"
+                >
+                  <option value="all">كل طرق الدفع</option>
+                  <option value="نقدي">💵 نقدي (كاش)</option>
+                  <option value="إنستاباي">⚡ إنستاباي</option>
+                  <option value="فودافون كاش">📱 فودافون كاش</option>
+                  <option value="فيزا / كارت">💳 فيزا / كارت</option>
+                  <option value="بالآجل / دفعات">⏳ بالآجل / دفعات</option>
+                  <option value="دفع متعدد / مزيج">🔀 دفع متعدد / مزيج</option>
+                </select>
+              </div>
+
+              {/* Payment Status */}
+              <div>
+                <label className="text-slate-700 font-bold block mb-1">حالة السداد:</label>
+                <select
+                  value={statusFilter}
+                  onChange={e => setStatusFilter(e.target.value)}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900 bg-slate-50 focus:outline-none focus:border-amber-500 cursor-pointer"
+                >
+                  <option value="all">كل حالات السداد</option>
+                  <option value="تم السداد بالكامل">تم السداد بالكامل</option>
+                  <option value="مسدد جزئياً">مسدد جزئياً</option>
+                  <option value="آجل / غير مسدد">آجل / غير مسدد</option>
+                </select>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowFilterModal(false)}
+                  className="flex-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-2.5 rounded-xl cursor-pointer shadow-gold transition-colors text-center"
+                >
+                  تطبيق الفلاتر ({filteredInvoices.length} نتيجة) ✓
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPaymentFilter('all');
+                    setStatusFilter('all');
+                    setBranchFilter('ALL');
+                    setDateFrom('');
+                    setDateTo('');
+                    setDateFilter('today');
+                    setSearch('');
+                  }}
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-4 py-2.5 rounded-xl cursor-pointer"
+                >
+                  إعادة ضبط
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

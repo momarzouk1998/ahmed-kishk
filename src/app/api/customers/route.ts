@@ -321,6 +321,7 @@ export async function GET(request: Request) {
         phone: c.phone,
         address: c.address,
         city: c.city,
+        branch: c.city,
         openingBalance: c.openingBalance,
         totalSpent,
         totalDeposits: totalCollected + uncollectedDeposits,
