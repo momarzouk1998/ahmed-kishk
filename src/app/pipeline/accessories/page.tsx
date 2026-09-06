@@ -8,6 +8,7 @@ import AccessoriesPrintModal from '@/components/AccessoriesPrintModal';
 import OrderRowActions from '@/components/OrderRowActions';
 import { useCurrentUser } from '@/lib/useCurrentUser';
 import BranchSelect from '@/components/BranchSelect';
+import Pagination from '@/components/Pagination';
 
 interface AccessoryItemSpec {
   name: string;
@@ -176,6 +177,16 @@ export default function PipelineAccessoriesPage() {
 
     return matchesSearch && matchesBranch;
   });
+
+  // Pagination (20 لكل صفحة)
+  const PAGE_SIZE = 20;
+  const [currentPage, setCurrentPage] = useState(1);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, searchQuery, selectedBranch]);
+
+  const paginatedKits = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   const toggleItem = (kitId: string, idx: number) => {
     setKits(prev => prev.map(k => {
@@ -348,7 +359,7 @@ export default function PipelineAccessoriesPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map(kit => (
+                  {paginatedKits.map(kit => (
                     <tr key={kit.id} className="border-t border-slate-100 hover:bg-slate-50/60">
                       <td className="p-3.5 font-bold text-slate-900">{kit.customerName} ({kit.phone})</td>
                       <td className="p-3.5 text-slate-700">{kit.address} ({kit.branch || 'الفرع الرئيسي'})</td>
@@ -402,7 +413,7 @@ export default function PipelineAccessoriesPage() {
         ) : (
           /* TAB 1 & TAB 2: Active Cards View */
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {filtered.map(kit => (
+            {paginatedKits.map(kit => (
               <div key={kit.id} className="bg-white rounded-2xl border border-slate-200 p-5 shadow-soft flex flex-col justify-between space-y-4">
                 <div>
                   <div className="flex justify-between items-start pb-3 border-b border-slate-100">
@@ -505,6 +516,15 @@ export default function PipelineAccessoriesPage() {
             ))}
           </div>
         )}
+
+        {/* Pagination Controls */}
+        <Pagination
+          currentPage={currentPage}
+          totalItems={filtered.length}
+          pageSize={PAGE_SIZE}
+          onPageChange={setCurrentPage}
+          itemName="طقم إكسسوار"
+        />
       </div>
 
       {/* ➕ Modal: Add Custom Extra Accessory Item */}

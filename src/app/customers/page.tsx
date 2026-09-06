@@ -5,6 +5,7 @@ import PageShell from '@/components/PageShell';
 import { formatDateOnly } from '@/lib/dateUtils';
 import PdfPrintButton from '@/components/PdfPrintButton';
 import { useCurrentUser } from '@/lib/useCurrentUser';
+import Pagination from '@/components/Pagination';
 
 interface CustomerLedgerEntry {
   id: string;
@@ -247,6 +248,23 @@ export default function CustomersPage() {
     return matchSearch && matchMethod;
   });
 
+  // Pagination (30 لكل صفحة)
+  const PAGE_SIZE = 30;
+  const [custPage, setCustPage] = useState(1);
+  const [colPage, setColPage] = useState(1);
+
+  // Reset pagination on filter changes
+  useEffect(() => {
+    setCustPage(1);
+  }, [search, statusFilter]);
+
+  useEffect(() => {
+    setColPage(1);
+  }, [search, methodFilter]);
+
+  const paginatedCustomers = filteredCustomers.slice((custPage - 1) * PAGE_SIZE, custPage * PAGE_SIZE);
+  const paginatedCollections = filteredCollections.slice((colPage - 1) * PAGE_SIZE, colPage * PAGE_SIZE);
+
   // Financial Metrics
   const totalDebtsLina = filteredCustomers.reduce((s, c) => s + ((Number(c.balance) || 0) > 0 ? (Number(c.balance) || 0) : 0), 0);
   const totalPrepaidAleena = filteredCustomers.reduce((s, c) => s + ((Number(c.balance) || 0) < 0 ? Math.abs(Number(c.balance) || 0) : 0), 0);
@@ -383,14 +401,14 @@ export default function CustomersPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {filteredCustomers.length === 0 ? (
+                    {paginatedCustomers.length === 0 ? (
                       <tr>
                         <td colSpan={8} className="p-8 text-center text-slate-400 font-bold">
                           لا يوجد عملاء مطابقين لمعايير البحث
                         </td>
                       </tr>
                     ) : (
-                      filteredCustomers.map(cust => {
+                      paginatedCustomers.map(cust => {
                         const bal = Number(cust.balance) || 0;
                         const isCleared = Math.abs(bal) <= 0.01;
                         const isDebtor = bal > 0.01;
@@ -486,6 +504,14 @@ export default function CustomersPage() {
                   </tbody>
                 </table>
               </div>
+
+              <Pagination
+                currentPage={custPage}
+                totalItems={filteredCustomers.length}
+                pageSize={PAGE_SIZE}
+                onPageChange={setCustPage}
+                itemName="عميل"
+              />
             </div>
           </div>
         )}
@@ -562,14 +588,14 @@ export default function CustomersPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {filteredCollections.length === 0 ? (
+                    {paginatedCollections.length === 0 ? (
                       <tr>
                         <td colSpan={7} className="p-8 text-center text-slate-400 font-bold">
                           لا توجد سندات تحصيل مسجلة
                         </td>
                       </tr>
                     ) : (
-                      filteredCollections.map(col => (
+                      paginatedCollections.map(col => (
                         <tr key={col.id} className="hover:bg-slate-50/70 transition-colors">
                           <td className="p-3.5 font-mono text-slate-700 font-bold">{col.date ? formatDateOnly(col.date) : 'غير محدد'}</td>
                           <td className="p-3.5 font-bold text-slate-900">
@@ -608,6 +634,14 @@ export default function CustomersPage() {
                   </tbody>
                 </table>
               </div>
+
+              <Pagination
+                currentPage={colPage}
+                totalItems={filteredCollections.length}
+                pageSize={PAGE_SIZE}
+                onPageChange={setColPage}
+                itemName="سند تحصيل"
+              />
             </div>
           </div>
         )}

@@ -10,6 +10,7 @@ import WhatsAppShareButton from '@/components/WhatsAppShareButton';
 import OrderRowActions from '@/components/OrderRowActions';
 import { useCurrentUser } from '@/lib/useCurrentUser';
 import BranchSelect from '@/components/BranchSelect';
+import Pagination from '@/components/Pagination';
 
 interface RoomTailoringDetail {
   roomName: string;
@@ -184,6 +185,16 @@ export default function PipelineTailoringPage() {
     return matchesSearch && matchesBranch;
   });
 
+  // Pagination (20 لكل صفحة)
+  const PAGE_SIZE = 20;
+  const [currentPage, setCurrentPage] = useState(1);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, searchQuery, selectedBranch]);
+
+  const paginatedOrders = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
   const updateOrderStatus = async (id: string, newStatus: string, localStatus?: string) => {
     const updated = orders.map(o => o.id === id ? { ...o, status: newStatus, localStatus } : o);
     setOrders(updated);
@@ -332,7 +343,7 @@ export default function PipelineTailoringPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map(order => {
+                  {paginatedOrders.map(order => {
                     const totals = calculateTotalMeters(order.rooms);
 
                     return (
@@ -425,6 +436,15 @@ export default function PipelineTailoringPage() {
             </div>
           </div>
         )}
+
+        {/* Pagination Controls */}
+        <Pagination
+          currentPage={currentPage}
+          totalItems={filtered.length}
+          pageSize={PAGE_SIZE}
+          onPageChange={setCurrentPage}
+          itemName="أمر خياطة"
+        />
       </div>
 
       {/* 🔍 Full Order Details & Editable Heights & Printable Worksheet Modal */}

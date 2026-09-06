@@ -6,6 +6,7 @@ import { formatDateOnly } from '@/lib/dateUtils';
 import PdfPrintButton from '@/components/PdfPrintButton';
 import { useCurrentUser } from '@/lib/useCurrentUser';
 import BranchSelect from '@/components/BranchSelect';
+import Pagination from '@/components/Pagination';
 
 interface Supplier {
   id: string;
@@ -485,6 +486,28 @@ export default function SuppliersPage() {
     return matchSearch && matchStatus;
   });
 
+  // Pagination (30 لكل صفحة)
+  const PAGE_SIZE = 30;
+  const [supPage, setSupPage] = useState(1);
+  const [payPage, setPayPage] = useState(1);
+  const [chkPage, setChkPage] = useState(1);
+
+  useEffect(() => {
+    setSupPage(1);
+  }, [search]);
+
+  useEffect(() => {
+    setPayPage(1);
+  }, [search]);
+
+  useEffect(() => {
+    setChkPage(1);
+  }, [search, statusFilter]);
+
+  const paginatedSuppliers = filteredSuppliers.slice((supPage - 1) * PAGE_SIZE, supPage * PAGE_SIZE);
+  const paginatedPayments = filteredPayments.slice((payPage - 1) * PAGE_SIZE, payPage * PAGE_SIZE);
+  const paginatedChecks = filteredChecks.slice((chkPage - 1) * PAGE_SIZE, chkPage * PAGE_SIZE);
+
   // Metrics
   const totalBalanceOwed = filteredSuppliers.reduce((s, c) => s + (Number(c.balanceOwed) || 0), 0);
   const suppliersOwedCount = filteredSuppliers.filter(s => (Number(s.balanceOwed) || 0) > 0).length;
@@ -601,7 +624,7 @@ export default function SuppliersPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredSuppliers.map(sup => (
+                    {paginatedSuppliers.map(sup => (
                       <tr
                         key={sup.id}
                         onClick={() => setSelectedSupplier(sup)}
@@ -688,6 +711,13 @@ export default function SuppliersPage() {
                   </tbody>
                 </table>
               </div>
+              <Pagination
+                currentPage={supPage}
+                totalItems={filteredSuppliers.length}
+                pageSize={PAGE_SIZE}
+                onPageChange={setSupPage}
+                itemName="مورد"
+              />
             </div>
           </div>
         )}
@@ -745,7 +775,7 @@ export default function SuppliersPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredPayments.map(pay => (
+                    {paginatedPayments.map(pay => (
                       <tr key={pay.id} className="border-t border-slate-100 hover:bg-slate-50/70 transition-colors">
                         <td className="p-3.5 font-mono text-slate-700 font-bold">{pay.date ? formatDateOnly(pay.date) : 'غير محدد'}</td>
                         <td className="p-3.5 font-bold text-slate-900">{pay.supplierName}</td>
@@ -807,6 +837,13 @@ export default function SuppliersPage() {
                   </tbody>
                 </table>
               </div>
+              <Pagination
+                currentPage={payPage}
+                totalItems={filteredPayments.length}
+                pageSize={PAGE_SIZE}
+                onPageChange={setPayPage}
+                itemName="سند سداد"
+              />
             </div>
           </div>
         )}
@@ -869,7 +906,7 @@ export default function SuppliersPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredChecks.map(chk => {
+                    {paginatedChecks.map(chk => {
                       const statusBadgeClass = chk.status === 'تم الصرف' ? 'bg-emerald-100 text-emerald-900 border-emerald-200' : 'bg-amber-100 text-amber-900 border-amber-200';
 
                       return (
@@ -940,6 +977,13 @@ export default function SuppliersPage() {
                   </tbody>
                 </table>
               </div>
+              <Pagination
+                currentPage={chkPage}
+                totalItems={filteredChecks.length}
+                pageSize={PAGE_SIZE}
+                onPageChange={setChkPage}
+                itemName="شيك بنكي"
+              />
             </div>
           </div>
         )}

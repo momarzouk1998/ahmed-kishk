@@ -10,6 +10,7 @@ import PdfPrintButton from '@/components/PdfPrintButton';
 import { useCurrentUser } from '@/lib/useCurrentUser';
 import BranchSelect from '@/components/BranchSelect';
 import { normalizeBranchName } from '@/lib/branches';
+import Pagination from '@/components/Pagination';
 
 interface SalesInvoiceItem {
   code: string;
@@ -75,6 +76,15 @@ export default function FabricSalesPage() {
   const [paymentFilter, setPaymentFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [showFilterModal, setShowFilterModal] = useState<boolean>(false);
+
+  // Pagination (30 فواتير لكل صفحة)
+  const PAGE_SIZE = 30;
+  const [currentPage, setCurrentPage] = useState<number>(1);
+
+  // Reset page to 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [dateFilter, dateFrom, dateTo, branchFilter, search, paymentFilter, statusFilter]);
 
   const { user: currentUser, isAdmin } = useCurrentUser();
   useEffect(() => {
@@ -393,6 +403,11 @@ export default function FabricSalesPage() {
   const totalSalesRemaining = filteredInvoices.reduce((s, i) => s + (Number(i.remainingAmount) || 0), 0);
   const totalReturnsAmount = filteredReturns.reduce((s, r) => s + (Number(r.refundAmount) || 0), 0);
 
+  // Pagination calculations
+  const totalPages = Math.max(1, Math.ceil(filteredInvoices.length / PAGE_SIZE));
+  const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+  const paginatedInvoices = filteredInvoices.slice((safeCurrentPage - 1) * PAGE_SIZE, safeCurrentPage * PAGE_SIZE);
+
   return (
     <PageShell title="فواتير المبيعات ومردودات العملاء">
       <div className="flex flex-col gap-5 max-w-7xl mx-auto pb-12" id="print-area">
@@ -569,7 +584,7 @@ export default function FabricSalesPage() {
                       setDateTo('');
                       setDateFilter('today');
                     }}
-                    className="text-rose-600 hover:underline text-[10px] font-bold mr-1"
+                    className="text-rose-600 hover:underline text-[10px] font-bold mr-1 cursor-pointer"
                   >
                     إلغاء كل الفلاتر
                   </button>
@@ -594,14 +609,14 @@ export default function FabricSalesPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {filteredInvoices.length === 0 ? (
+                    {paginatedInvoices.length === 0 ? (
                       <tr>
                         <td colSpan={8} className="p-8 text-center text-slate-400 font-bold">
-                          لا توجد فواتير مبيعات مسجلة
+                          لا توجد فواتير مبيعات مطابقة للفلاتر
                         </td>
                       </tr>
                     ) : (
-                      filteredInvoices.map(inv => {
+                      paginatedInvoices.map(inv => {
                         const paid = Number(inv.paidAmount) || 0;
                         const remaining = Number(inv.remainingAmount) || 0;
                         const phone = inv.phone || inv.customerPhone || '';
@@ -747,6 +762,15 @@ export default function FabricSalesPage() {
                   </tbody>
                 </table>
               </div>
+
+              {/* Pagination Controls */}
+              <Pagination
+                currentPage={safeCurrentPage}
+                totalItems={filteredInvoices.length}
+                pageSize={PAGE_SIZE}
+                onPageChange={setCurrentPage}
+                itemName="فاتورة"
+              />
             </div>
           </div>
         )}

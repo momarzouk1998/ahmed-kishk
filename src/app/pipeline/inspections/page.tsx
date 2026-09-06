@@ -12,6 +12,7 @@ import OrderRowActions from '@/components/OrderRowActions';
 import { useCurrentUser } from '@/lib/useCurrentUser';
 import BranchSelect from '@/components/BranchSelect';
 import { normalizeBranchName, branchLabel } from '@/lib/branches';
+import Pagination from '@/components/Pagination';
 
 export type InspectionSummary = InspectionData;
 
@@ -90,7 +91,11 @@ export default function PipelineInspectionsPage() {
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 8;
+  const pageSize = 20;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, searchQuery, selectedTech, selectedBranch, selectedStatus]);
 
   const isSent = (status: InspectionData['status']) => status === 'قيد التسعير' || status === 'في الورشة' || status === 'مكتمل';
   const isTodayItem = (item: InspectionData) => isTodayOrOverdue(item.scheduledAt || item.createdAt);
@@ -518,27 +523,13 @@ export default function PipelineInspectionsPage() {
             </div>
 
             {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between bg-white p-3 rounded-xl border border-slate-200 text-xs">
-                <span className="text-slate-500 font-bold">صفحة {currentPage} من {totalPages}</span>
-                <div className="flex gap-2">
-                  <button
-                    disabled={currentPage === 1}
-                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                    className="px-3 py-1 rounded-lg border border-slate-200 disabled:opacity-40 font-bold bg-white hover:bg-slate-50 cursor-pointer"
-                  >
-                    السابق
-                  </button>
-                  <button
-                    disabled={currentPage === totalPages}
-                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                    className="px-3 py-1 rounded-lg border border-slate-200 disabled:opacity-40 font-bold bg-white hover:bg-slate-50 cursor-pointer"
-                  >
-                    التالي
-                  </button>
-                </div>
-              </div>
-            )}
+            <Pagination
+              currentPage={currentPage}
+              totalItems={filtered.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              itemName="طلب معاينة"
+            />
           </>
         )}
       </div>

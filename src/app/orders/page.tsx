@@ -9,6 +9,7 @@ import TailoringPrintModal from '@/components/TailoringPrintModal';
 import { useCurrentUser } from '@/lib/useCurrentUser';
 import BranchSelect from '@/components/BranchSelect';
 import { normalizeBranchName, branchLabel } from '@/lib/branches';
+import Pagination from '@/components/Pagination';
 import {
   getStoredPipelineOrders,
   fetchPipelineOrders,
@@ -249,6 +250,16 @@ export default function CentralOrdersLedgerPage() {
 
     return matchSearch && matchStage && matchBranch;
   });
+
+  // Pagination (30 لكل صفحة)
+  const PAGE_SIZE = 30;
+  const [currentPage, setCurrentPage] = useState(1);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, selectedStage, selectedBranch]);
+
+  const paginatedOrders = filteredOrders.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   const totalOrdersCount = filteredOrders.length;
   const totalRevenue = filteredOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
@@ -499,7 +510,7 @@ export default function CentralOrdersLedgerPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredOrders.map(order => {
+                  {paginatedOrders.map(order => {
                     const currentStage = normalizeMasterStage(order.status);
                     const stageObj = GLOBAL_STAGES.find(s => s.key === currentStage) || GLOBAL_STAGES[1];
 
@@ -571,6 +582,14 @@ export default function CentralOrdersLedgerPage() {
                 </tbody>
               </table>
             </div>
+
+            <Pagination
+              currentPage={currentPage}
+              totalItems={filteredOrders.length}
+              pageSize={PAGE_SIZE}
+              onPageChange={setCurrentPage}
+              itemName="طلب"
+            />
           </div>
         )}
       </div>

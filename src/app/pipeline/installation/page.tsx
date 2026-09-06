@@ -7,6 +7,7 @@ import { formatDate } from '@/lib/dateUtils';
 import OrderRowActions from '@/components/OrderRowActions';
 import { useCurrentUser } from '@/lib/useCurrentUser';
 import BranchSelect from '@/components/BranchSelect';
+import Pagination from '@/components/Pagination';
 
 interface InstallJob {
   id: string;
@@ -82,6 +83,16 @@ export default function PipelineInstallationPage() {
 
     return matchesSearch && matchesBranch;
   });
+
+  // Pagination (20 لكل صفحة)
+  const PAGE_SIZE = 20;
+  const [currentPage, setCurrentPage] = useState(1);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, searchQuery, selectedBranch]);
+
+  const paginatedJobs = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   const completeInstallation = async (id: string) => {
     setJobs(prev => prev.map(j => {
@@ -203,7 +214,7 @@ export default function PipelineInstallationPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map(job => (
+                  {paginatedJobs.map(job => (
                     <tr key={job.id} className="border-t border-slate-100 hover:bg-slate-50/60 transition-colors">
                       <td className="p-3.5 font-bold text-slate-900">{job.customerName} ({job.phone})</td>
                       <td className="p-3.5 text-slate-700">{job.address}</td>
@@ -245,7 +256,7 @@ export default function PipelineInstallationPage() {
         ) : (
           /* TAB 1: Active Cards (الكرت) */
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {filtered.map(job => (
+            {paginatedJobs.map(job => (
               <div key={job.id} className="bg-white rounded-2xl border border-slate-200 p-5 shadow-soft flex flex-col justify-between space-y-4">
                 <div>
                   <div className="flex justify-between items-start mb-2">
@@ -308,6 +319,15 @@ export default function PipelineInstallationPage() {
             ))}
           </div>
         )}
+
+        {/* Pagination Controls */}
+        <Pagination
+          currentPage={currentPage}
+          totalItems={filtered.length}
+          pageSize={PAGE_SIZE}
+          onPageChange={setCurrentPage}
+          itemName="طلب تركيب"
+        />
       </div>
     </PageShell>
   );

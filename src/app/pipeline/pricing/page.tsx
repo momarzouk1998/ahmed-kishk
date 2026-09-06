@@ -13,6 +13,7 @@ import OrderRowActions from '@/components/OrderRowActions';
 import { useCurrentUser } from '@/lib/useCurrentUser';
 import BranchSelect from '@/components/BranchSelect';
 import { normalizeBranchName, branchLabel } from '@/lib/branches';
+import Pagination from '@/components/Pagination';
 function getBranchBadgeStyle(branchName: string) {
   switch (branchName) {
     case 'الفرع الرئيسي':
@@ -76,6 +77,16 @@ export default function PipelinePricingPage() {
     return matchesSearch && matchesBranch && matchesStatus;
   });
 
+  // Pagination (30 لكل صفحة)
+  const PAGE_SIZE = 30;
+  const [currentPage, setCurrentPage] = useState(1);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, searchQuery, selectedBranch, selectedStatus]);
+
+  const paginatedQuotations = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
   const openCount = branchScopedQuotations.filter(q => !isSent(q.status)).length;
   const sentCount = branchScopedQuotations.filter(q => isSent(q.status)).length;
 
@@ -109,33 +120,31 @@ export default function PipelinePricingPage() {
                 : 'border-transparent text-slate-400 hover:text-slate-700'
             }`}
           >
-            <span className="material-symbols-outlined text-[18px]">verified</span>
-            <span>تم التحويل للورشة</span>
+            <span className="material-symbols-outlined text-[18px]">history</span>
+            <span>سجل العقود المحولة للورشة</span>
             <span className={`text-[11px] px-2 py-0.2 rounded-full font-mono font-bold ${
-              activeTab === 'SENT' ? 'bg-amber-100 text-amber-950' : 'bg-slate-100 text-slate-500'
+              activeTab === 'SENT' ? 'bg-emerald-100 text-emerald-950' : 'bg-slate-100 text-slate-500'
             }`}>
               {sentCount}
             </span>
           </button>
         </div>
 
-        {/* Search & Filter Controls */}
-        <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
-          {/* Search Box */}
+        {/* Search & Filter Options Row */}
+        <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 text-xs">
           <div className="relative sm:col-span-6">
-            <span className="material-symbols-outlined absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">
+            <span className="material-symbols-outlined absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-base">
               search
             </span>
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="بحث باسم العميل، رقم الهاتف أو العنوان..."
-              className="w-full bg-white border border-slate-200 rounded-xl pr-10 pl-4 py-2.5 text-xs text-slate-900 focus:outline-none focus:border-brand-gold shadow-2xs"
+              placeholder="بحث باسم العميل، رقم الهاتف، أو العنوان..."
+              className="w-full bg-white border border-slate-200 rounded-xl pr-10 pl-4 py-2.5 font-bold text-slate-900 focus:outline-none focus:border-brand-gold shadow-2xs"
             />
           </div>
 
-          {/* Filter 1: Branch */}
           <div className="sm:col-span-3">
             <BranchSelect
               value={selectedBranch}
@@ -143,28 +152,34 @@ export default function PipelinePricingPage() {
               isAdmin={isAdmin}
               allValue="ALL"
               allLabel="جميع الفروع"
-              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-brand-gold shadow-2xs"
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 font-bold text-slate-800 focus:outline-none focus:border-brand-gold shadow-2xs cursor-pointer"
             />
           </div>
 
-          {/* Filter 2: Status */}
           <div className="sm:col-span-3">
             <select
               value={selectedStatus}
               onChange={(e) => setSelectedStatus(e.target.value)}
-              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-brand-gold shadow-2xs cursor-pointer"
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 font-bold text-slate-800 focus:outline-none focus:border-brand-gold shadow-2xs cursor-pointer"
             >
               <option value="ALL">جميع الحالات</option>
-              <option value="بانتظار التسعير">بانتظار التسعير</option>
-              <option value="تم إرسال المقايسة">تم إرسال المقايسة</option>
-              <option value="معتمد ومسدد العربون">معتمد ومسدد العربون</option>
-              <option value="تم التحويل للورشة">تم التحويل للورشة</option>
-              <option value="في المقص">في المقص</option>
-              <option value="في الورشة">في الورشة</option>
-              <option value="تجهيز الاكسسوارات">تجهيز الاكسسوارات</option>
-              <option value="جاهز للاستلام">جاهز للاستلام</option>
-              <option value="جاهز للتركيب">جاهز للتركيب</option>
-              <option value="مكتمل">مكتمل</option>
+              {activeTab === 'OPEN' ? (
+                <>
+                  <option value="بانتظار التسعير">بانتظار التسعير</option>
+                  <option value="تم إرسال المقايسة">تم إرسال المقايسة</option>
+                  <option value="معتمد ومسدد العربون">معتمد ومسدد العربون</option>
+                </>
+              ) : (
+                <>
+                  <option value="تم التحويل للورشة">تم التحويل للورشة</option>
+                  <option value="في المقص">في المقص</option>
+                  <option value="في الورشة">في الورشة</option>
+                  <option value="تجهيز الاكسسوارات">تجهيز الاكسسوارات</option>
+                  <option value="جاهز للاستلام">جاهز للاستلام</option>
+                  <option value="جاهز للتركيب">جاهز للتركيب</option>
+                  <option value="مكتمل">مكتمل</option>
+                </>
+              )}
             </select>
           </div>
         </div>
@@ -194,7 +209,7 @@ export default function PipelinePricingPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {filtered.map(q => (
+                  {paginatedQuotations.map(q => (
                     <tr
                       key={q.id}
                       className="hover:bg-amber-50/40 transition-colors cursor-pointer"
@@ -262,6 +277,14 @@ export default function PipelinePricingPage() {
                 </tbody>
               </table>
             </div>
+
+            <Pagination
+              currentPage={currentPage}
+              totalItems={filtered.length}
+              pageSize={PAGE_SIZE}
+              onPageChange={setCurrentPage}
+              itemName="عقد"
+            />
           </div>
         )}
       </div>

@@ -8,6 +8,7 @@ import { useCurrentUser } from '@/lib/useCurrentUser';
 import BranchSelect from '@/components/BranchSelect';
 import { BRANCHES_LIST, normalizeBranchName, branchLabel } from '@/lib/branches';
 import initialInventory from '@/data/initialInventory.json';
+import Pagination from '@/components/Pagination';
 
 interface InventoryItem {
   id: string;
@@ -354,6 +355,22 @@ export default function InventoryPage() {
     );
   });
 
+  // Pagination (30 لكل صفحة)
+  const PAGE_SIZE = 30;
+  const [stockPage, setStockPage] = useState(1);
+  const [adjPage, setAdjPage] = useState(1);
+
+  useEffect(() => {
+    setStockPage(1);
+  }, [activeCategory, selectedBranch, search, lowStockOnly]);
+
+  useEffect(() => {
+    setAdjPage(1);
+  }, [selectedBranch, logSearch]);
+
+  const paginatedItems = filteredItems.slice((stockPage - 1) * PAGE_SIZE, stockPage * PAGE_SIZE);
+  const paginatedAdjustments = filteredAdjustments.slice((adjPage - 1) * PAGE_SIZE, adjPage * PAGE_SIZE);
+
   return (
     <PageShell title="المخزون والجرد المباشر">
       {mgrModal}
@@ -494,9 +511,9 @@ export default function InventoryPage() {
               </div>
             </div>
 
-            {/* Mobile View Cards */}
+            {/* Mobile Cards View */}
             <div className="space-y-3 md:hidden">
-              {filteredItems.map(item => {
+              {paginatedItems.map(item => {
                 const available = item.totalQuantity - item.reservedQuantity;
                 const isLow = available <= (item.minAlert || 20);
                 const isEditing = editingId === item.id;
@@ -665,7 +682,7 @@ export default function InventoryPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {filteredItems.map(item => {
+                    {paginatedItems.map(item => {
                       const available = item.totalQuantity - item.reservedQuantity;
                       const isLow = available <= (item.minAlert || 20);
                       const isEditing = editingId === item.id;
@@ -845,6 +862,14 @@ export default function InventoryPage() {
                   </tbody>
                 </table>
               </div>
+
+              <Pagination
+                currentPage={stockPage}
+                totalItems={filteredItems.length}
+                pageSize={PAGE_SIZE}
+                onPageChange={setStockPage}
+                itemName="صنف مخزون"
+              />
             </div>
           </>
         )}
@@ -888,7 +913,7 @@ export default function InventoryPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-mono">
-                    {filteredAdjustments.map(log => {
+                    {paginatedAdjustments.map(log => {
                       const isPositive = log.difference >= 0;
                       const dateStr = new Date(log.timestamp).toLocaleString('ar-EG', {
                         year: 'numeric',
@@ -930,6 +955,14 @@ export default function InventoryPage() {
                   </tbody>
                 </table>
               </div>
+
+              <Pagination
+                currentPage={adjPage}
+                totalItems={filteredAdjustments.length}
+                pageSize={PAGE_SIZE}
+                onPageChange={setAdjPage}
+                itemName="حركة تسوية"
+              />
             </div>
           </div>
         )}

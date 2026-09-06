@@ -10,6 +10,7 @@ import OrderRowActions from '@/components/OrderRowActions';
 import { useCurrentUser } from '@/lib/useCurrentUser';
 import BranchSelect from '@/components/BranchSelect';
 import { normalizeBranchName, branchLabel } from '@/lib/branches';
+import Pagination from '@/components/Pagination';
 
 interface RoomFabricItem {
   roomName: string;
@@ -117,6 +118,16 @@ export default function PipelineCuttingPage() {
     const matchesBranch = selectedBranch === 'ALL' || selectedBranch === 'الكل' || normalizeBranchName(o.branch) === normalizeBranchName(selectedBranch);
     return matchesSearch && matchesBranch;
   });
+
+  // Pagination (20 لكل صفحة)
+  const PAGE_SIZE = 20;
+  const [currentPage, setCurrentPage] = useState(1);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, searchQuery, selectedBranch]);
+
+  const paginatedOrders = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   const updateOrderStatus = async (id: string, newStatus: CuttingOrder['status']) => {
     // 1. Optimistic update in UI
@@ -290,7 +301,7 @@ export default function PipelineCuttingPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {filtered.map(order => {
+                  {paginatedOrders.map(order => {
                     const totals = getFabricTotals(order.rooms);
                     const totalMeters = totals.reduce((sum, t) => sum + (t.meters || 0), 0);
 
@@ -378,7 +389,7 @@ export default function PipelineCuttingPage() {
         ) : (
           /* TAB 1: Active Cards (أوامر القص الجارية) */
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {filtered.map(order => {
+            {paginatedOrders.map(order => {
               const totals = getFabricTotals(order.rooms);
               const totalMeters = totals.reduce((sum, t) => sum + (t.meters || 0), 0);
 
@@ -495,6 +506,15 @@ export default function PipelineCuttingPage() {
             })}
           </div>
         )}
+
+        {/* Pagination Controls */}
+        <Pagination
+          currentPage={currentPage}
+          totalItems={filtered.length}
+          pageSize={PAGE_SIZE}
+          onPageChange={setCurrentPage}
+          itemName="أمر قص"
+        />
       </div>
 
       {/* 🖨️ Cutting Worksheet Printable Modal */}

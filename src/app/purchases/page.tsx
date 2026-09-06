@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
 import { useRouter } from 'next/navigation';
 import { formatDateOnly } from '@/lib/dateUtils';
+import Pagination from '@/components/Pagination';
 
 interface PurchaseInvoiceItem {
   code: string;
@@ -239,6 +240,22 @@ export default function PurchasesPage() {
       ret.invoiceNumber.toLowerCase().includes(search.toLowerCase());
   });
 
+  // Pagination (30 لكل صفحة)
+  const PAGE_SIZE = 30;
+  const [purPage, setPurPage] = useState(1);
+  const [retPage, setRetPage] = useState(1);
+
+  useEffect(() => {
+    setPurPage(1);
+  }, [search, paymentFilter]);
+
+  useEffect(() => {
+    setRetPage(1);
+  }, [search]);
+
+  const paginatedPurchases = filteredPurchases.slice((purPage - 1) * PAGE_SIZE, purPage * PAGE_SIZE);
+  const paginatedReturns = filteredReturns.slice((retPage - 1) * PAGE_SIZE, retPage * PAGE_SIZE);
+
   // Metrics — Number() guards against undefined fields coming from server
   const totalPurchasesCost = filteredPurchases.reduce((s, p) => s + (Number(p.totalAmount) || 0), 0);
   const totalPurchasesPaid = filteredPurchases.reduce((s, p) => s + (Number(p.paidAmount) || 0), 0);
@@ -358,7 +375,7 @@ export default function PurchasesPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredPurchases.map(pur => {
+                    {paginatedPurchases.map(pur => {
                       const badgeClass = pur.status === 'مسدد بالكامل' ? 'bg-emerald-100 text-emerald-900 border-emerald-200' : pur.status === 'مسدد جزئياً' ? 'bg-amber-100 text-amber-900 border-amber-200' : 'bg-rose-100 text-rose-900 border-rose-200';
 
                       return (
@@ -433,6 +450,14 @@ export default function PurchasesPage() {
                   </tbody>
                 </table>
               </div>
+
+              <Pagination
+                currentPage={purPage}
+                totalItems={filteredPurchases.length}
+                pageSize={PAGE_SIZE}
+                onPageChange={setPurPage}
+                itemName="فاتورة شراء"
+              />
             </div>
           </div>
         )}
@@ -489,7 +514,7 @@ export default function PurchasesPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredReturns.map(ret => (
+                    {paginatedReturns.map(ret => (
                       <tr key={ret.id} className="border-t border-slate-100 hover:bg-slate-50/70 transition-colors">
                         <td className="p-3.5 font-bold text-slate-900">
                           <span className="font-mono text-rose-800 text-xs block">{ret.returnNumber}</span>
@@ -548,6 +573,14 @@ export default function PurchasesPage() {
                   </tbody>
                 </table>
               </div>
+
+              <Pagination
+                currentPage={retPage}
+                totalItems={filteredReturns.length}
+                pageSize={PAGE_SIZE}
+                onPageChange={setRetPage}
+                itemName="مرتجع شراء"
+              />
             </div>
           </div>
         )}
