@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import PageShell from '@/components/PageShell';
 import { useRouter } from 'next/navigation';
 import { canUserEditPrices } from '@/lib/permissions';
-import { useManagerGate, isManagerUnlocked } from '@/components/ManagerUnlockGate';
+import { useManagerGate, isManagerUnlocked, clearManagerUnlock } from '@/components/ManagerUnlockGate';
 import { useCurrentUser } from '@/lib/useCurrentUser';
 import BranchSelect from '@/components/BranchSelect';
 import { normalizeBranchName } from '@/lib/branches';
@@ -273,6 +273,18 @@ export default function NewSalesInvoicePOSPage() {
     }
   };
 
+  // Quick Direct Meters Setting (e.g. 0.5m, 0.75m, 0.25m, 1m)
+  const handleSetExactMeters = (meters: number) => {
+    if (!selectedRowId && items.length > 0) {
+      setSelectedRowId(items[0].id);
+    }
+    const targetId = selectedRowId || (items[0] ? items[0].id : null);
+    if (!targetId) return;
+
+    handleUpdateItem(targetId, 'meters', meters);
+    setKeypadBuffer(String(meters));
+  };
+
   // Quick Fraction Addition to Active Row
   const handleAddFraction = (fraction: number) => {
     if (!selectedRowId && items.length > 0) {
@@ -283,6 +295,13 @@ export default function NewSalesInvoicePOSPage() {
 
     const targetItem = items.find(it => it.id === targetId);
     if (!targetItem) return;
+
+    // إذا كان الصنف مضافاً جديداً بقيمة 1.0 الافتراضية وضغط الكاشير على كسر (مثل ½ أو ¼ أو ¾)، يتم ضبطه مباشرة إلى هذا الكسر
+    if (targetItem.meters === 1.0 && !keypadBuffer && fraction < 1) {
+      handleUpdateItem(targetId, 'meters', fraction);
+      setKeypadBuffer(String(fraction));
+      return;
+    }
 
     const currentMeters = targetItem.meters || 0;
     const newMeters = Number((currentMeters + fraction).toFixed(2));
@@ -333,6 +352,10 @@ export default function NewSalesInvoicePOSPage() {
         body: JSON.stringify(invoicePayload),
       }).catch(err => console.error('DB Sync Error:', err));
 
+      // إعادة قفل صلاحية المدير فوراً بعد انتهاء الفاتورة لطلب الباسورد في الفاتورة القادمة
+      clearManagerUnlock();
+      setMgrUnlocked(false);
+
       setLastSavedInvoice(invoicePayload);
 
       if (andPrint) {
@@ -355,6 +378,8 @@ export default function NewSalesInvoicePOSPage() {
       setDiscountValue(0);
       setPaidAmount(0);
       setKeypadBuffer('');
+      clearManagerUnlock();
+      setMgrUnlocked(false);
     }
   };
 
@@ -650,22 +675,44 @@ export default function NewSalesInvoicePOSPage() {
 
               {touchMode && (
                 <>
-                  {/* Quick Fraction Meter Buttons (Only 3: + ¼م, + ½م, + ¾م) */}
-                  <div className="grid grid-cols-3 gap-1.5">
-                    {[
-                      { label: '+ ¼م', val: 0.25 },
-                      { label: '+ ½م', val: 0.50 },
-                      { label: '+ ¾م', val: 0.75 },
-                    ].map((frac, fIdx) => (
-                      <button
-                        key={fIdx}
-                        type="button"
-                        onClick={() => handleAddFraction(frac.val)}
-                        className="bg-amber-100 hover:bg-amber-500 hover:text-white text-amber-950 font-black py-2.5 rounded-xl text-sm transition-colors cursor-pointer text-center border border-amber-300 shadow-3xs"
-                      >
-                        {frac.label}
-                      </button>
-                    ))}
+                  {/* Quick Fraction Meter Buttons (Direct set & Increments) */}
+                  <div className="space-y-1">
+                    <div className="grid grid-cols-4 gap-1">
+                      {[
+                        { label: '½ م (0.5)', val: 0.50 },
+                        { label: '¾ م (0.75)', val: 0.75 },
+                        { label: '¼ م (0.25)', val: 0.25 },
+                        { label: '1 متر', val: 1.00 },
+                      ].map((frac, fIdx) => (
+                        <button
+                          key={fIdx}
+                          type="button"
+                          onClick={() => handleSetExactMeters(frac.val)}
+                          className="bg-amber-100 hover:bg-amber-500 hover:text-white text-amber-950 font-black py-2 rounded-xl text-xs transition-colors cursor-pointer text-center border border-amber-300 shadow-3xs active:scale-95"
+                          title={`ضبط الكمية مباشرة على ${frac.val} متر`}
+                        >
+                          {frac.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-1">
+                      {[
+                        { label: '+ ½م', val: 0.50 },
+                        { label: '+ 1م', val: 1.00 },
+                        { label: '+ 5م', val: 5.00 },
+                      ].map((frac, fIdx) => (
+                        <button
+                          key={fIdx}
+                          type="button"
+                          onClick={() => handleAddFraction(frac.val)}
+                          className="bg-slate-100 hover:bg-slate-300 text-slate-800 font-black py-1.5 rounded-xl text-xs transition-colors cursor-pointer text-center border border-slate-200 shadow-3xs active:scale-95"
+                          title={`إضافة ${frac.val} متر للكمية الحالية`}
+                        >
+                          {frac.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
                   {/* Main Numeric Numpad — Standard Calculator/POS LTR Layout */}

@@ -193,7 +193,7 @@ export default function ReportsPage() {
     [collections, selectedBranch, period, customers]
   );
 
-  // ─── Sales KPIs & cash-drawer breakdown (Including Collections) ──────────────
+  // ─── Sales KPIs & cash-drawer breakdown (Including Collections & Split Payments) ──────────────
   const salesKpis = useMemo(() => {
     let cash = 0, instapay = 0, vodafone = 0, visa = 0, deferred = 0, other = 0;
     let grand = 0, remaining = 0;
@@ -203,11 +203,19 @@ export default function ReportsPage() {
       remaining += Number(inv.remainingAmount || 0);
       const paid = Number(inv.paidAmount || 0);
 
-      if (inv.splitPayments) {
-        cash += Number(inv.splitPayments.cash || 0);
-        instapay += Number(inv.splitPayments.instapay || 0);
-        vodafone += Number(inv.splitPayments.vodafone || 0);
-        visa += Number(inv.splitPayments.visa || 0);
+      let split = inv.splitPayments;
+      if (!split && inv.notes && inv.notes.includes('[SPLIT:')) {
+        try {
+          const match = inv.notes.match(/\[SPLIT:([^\]]+)\]/);
+          if (match && match[1]) split = JSON.parse(match[1]);
+        } catch {}
+      }
+
+      if (split) {
+        cash += Number(split.cash || 0);
+        instapay += Number(split.instapay || 0);
+        vodafone += Number(split.vodafone || 0);
+        visa += Number(split.visa || 0);
         return;
       }
 
@@ -239,19 +247,48 @@ export default function ReportsPage() {
   // ─── Profits (real cost from inventory) ──────────────────────
   const profitStats = useMemo(() => {
     const itemCostMap = new Map<string, number>();
-    inventory.forEach(it => itemCostMap.set(it.code, Number(it.costPrice) || 0));
+    inventory.forEach(it => {
+      const cost = Number(it.costPrice) || 0;
+      if (it.code) itemCostMap.set(it.code.trim().toLowerCase(), cost);
+      if (it.name) itemCostMap.set(it.name.trim().toLowerCase(), cost);
+    });
 
     let revenue = 0, cost = 0;
+    const profitItemRows: any[] = [];
+
     fInvoices.forEach(inv => {
       revenue += Number(inv.totalAmount || 0);
       (inv.items || []).forEach((it: any) => {
-        const c = itemCostMap.get(it.code) || 0;
-        cost += (Number(it.meters) || 0) * c;
+        const key = (it.code || it.name || '').trim().toLowerCase();
+        let c = itemCostMap.get(key);
+        if (c === undefined && it.name) c = itemCostMap.get(it.name.trim().toLowerCase());
+        if (c === undefined && it.code) c = itemCostMap.get(it.code.trim().toLowerCase());
+        const unitCost = Number(c) || 0;
+        const lineMeters = Number(it.meters) || 0;
+        const lineRevenue = Number(it.totalPrice) || (lineMeters * (Number(it.pricePerMeter) || 0));
+        const lineCost = lineMeters * unitCost;
+        cost += lineCost;
+
+        profitItemRows.push({
+          invNumber: inv.invoiceNumber,
+          customerName: inv.customerName,
+          date: inv.date,
+          name: it.name || 'صنف',
+          code: it.code || '—',
+          meters: lineMeters,
+          pricePerMeter: Number(it.pricePerMeter) || 0,
+          unitCost,
+          revenue: lineRevenue,
+          cost: lineCost,
+          profit: lineRevenue - lineCost,
+          marginPct: lineRevenue > 0 ? ((lineRevenue - lineCost) / lineRevenue) * 100 : 0,
+        });
       });
     });
+
     const profit = revenue - cost;
     const marginPct = revenue > 0 ? (profit / revenue) * 100 : 0;
-    return { revenue, cost, profit, marginPct };
+    return { revenue, cost, profit, marginPct, profitItemRows };
   }, [fInvoices, inventory]);
 
   // ─── Top-selling items (real) ────────────────────────────────
@@ -588,18 +625,103 @@ function SalesReport({ kpis, invoices, collections, branchLabel, periodLabel }: 
 }
 
 function ProfitsReport({ stats, topItems, branchLabel, periodLabel }: any) {
+  const isNegative = Number(stats.profit) < 0;
+
   return (
     <>
       <KpiStrip items={[
         { label: 'إجمالى الإيرادات', value: `${stats.revenue.toLocaleString()} ج`, color: 'bg-amber-100 border-amber-400' },
         { label: 'تكلفة المبيعات', value: `${stats.cost.toLocaleString()} ج`, color: 'bg-rose-50 border-rose-300' },
-        { label: 'صافى الربح', value: `${stats.profit.toLocaleString()} ج`, color: 'bg-emerald-50 border-emerald-300' },
-        { label: 'هامش الربح %', value: `${stats.marginPct.toFixed(1)}%`, color: 'bg-amber-50 border-amber-300' },
+        { label: 'صافى الربح', value: `${stats.profit.toLocaleString()} ج`, color: isNegative ? 'bg-rose-100 border-rose-400 text-rose-950 font-black' : 'bg-emerald-50 border-emerald-300' },
+        { label: 'هامش الربح %', value: `${stats.marginPct.toFixed(1)}%`, color: isNegative ? 'bg-rose-50 border-rose-300 text-rose-900' : 'bg-amber-50 border-amber-300' },
       ]} />
+
+      {isNegative && (
+        <div className="bg-rose-50 border-2 border-rose-300 rounded-2xl p-3 text-xs font-bold text-rose-950 flex items-center gap-2">
+          <span className="material-symbols-outlined text-rose-600 text-lg">warning</span>
+          <span>
+            <strong>تنبيه الأرباح السالبة:</strong> صافي الربح بالسالب لوجود فواتير مسجلة بتكلفة أعلى من سعر البيع أو فواتير كُتب فيها الأمتار أو الأسعار بالخطأ. راجع جدول تحليل الأرباح التفصيلي بالأسفل لتحديد وتعديل الفاتورة المعنية.
+          </span>
+        </div>
+      )}
 
       {stats.cost === 0 && stats.revenue > 0 && (
         <div className="bg-amber-50 border border-amber-300 rounded-lg p-2.5 text-[11px] font-bold text-amber-900">
           ⚠️ لا توجد بيانات تكلفة للأصناف المباعة فى المخزون — أضف سعر التكلفة (costPrice) لكل صنف لعرض الربح الحقيقى.
+        </div>
+      )}
+
+      {/* 📊 Detailed Profit Breakdown per Sold Item */}
+      {stats.profitItemRows && stats.profitItemRows.length > 0 && (
+        <div className="card bg-white rounded-2xl border border-slate-200 p-3">
+          <div className="flex justify-between items-center mb-2 pb-2 border-b border-slate-100">
+            <h3 className="font-black text-xs text-slate-900 flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-amber-600 text-sm">analytics</span>
+              <span>تحليل أرباح وتكلفة الأصناف المباعة ({stats.profitItemRows.length}) — {branchLabel} • {periodLabel}</span>
+            </h3>
+            <span className="text-[11px] font-mono font-bold text-slate-500">
+              إجمالي الأصناف المباعة
+            </span>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-right text-[11px] border-collapse">
+              <thead className="bg-slate-100 text-slate-700 border-b border-slate-300">
+                <tr>
+                  <th className="p-2">الفاتورة</th>
+                  <th className="p-2">التاريخ</th>
+                  <th className="p-2">الصنف</th>
+                  <th className="p-2 text-center">الأمتار</th>
+                  <th className="p-2 text-left font-mono">سعر البيع/م</th>
+                  <th className="p-2 text-left font-mono">الإيراد</th>
+                  <th className="p-2 text-left font-mono">تكلفة المتر</th>
+                  <th className="p-2 text-left font-mono">إجمالي التكلفة</th>
+                  <th className="p-2 text-left font-mono">صافي الربح</th>
+                  <th className="p-2 text-center">الهامش %</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stats.profitItemRows.map((row: any, rIdx: number) => {
+                  const itemNegative = row.profit < 0;
+                  return (
+                    <tr
+                      key={rIdx}
+                      className={`border-b border-slate-100 hover:bg-slate-50 ${itemNegative ? 'bg-rose-50/70 font-bold text-rose-950' : ''}`}
+                    >
+                      <td className="p-2 font-mono font-bold text-slate-900">{row.invNumber}</td>
+                      <td className="p-2 font-mono text-slate-500">{row.date ? formatDateOnly(row.date) : '—'}</td>
+                      <td className="p-2 font-bold text-slate-900">{row.name}</td>
+                      <td className="p-2 text-center font-mono font-bold">{row.meters}</td>
+                      <td className="p-2 text-left font-mono">{row.pricePerMeter.toLocaleString()} ج</td>
+                      <td className="p-2 text-left font-mono font-black text-slate-900">{row.revenue.toLocaleString()} ج</td>
+                      <td className="p-2 text-left font-mono text-slate-600">{row.unitCost > 0 ? `${row.unitCost.toLocaleString()} ج` : '—'}</td>
+                      <td className="p-2 text-left font-mono text-rose-800">{row.cost > 0 ? `${row.cost.toLocaleString()} ج` : '—'}</td>
+                      <td className={`p-2 text-left font-mono font-black ${itemNegative ? 'text-rose-700' : 'text-emerald-700'}`}>
+                        {row.profit > 0 ? `+${row.profit.toLocaleString()}` : row.profit.toLocaleString()} ج
+                      </td>
+                      <td className="p-2 text-center font-mono font-bold">
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] ${itemNegative ? 'bg-rose-200 text-rose-900' : 'bg-emerald-100 text-emerald-900'}`}>
+                          {row.marginPct.toFixed(1)}%
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot className="bg-slate-50 border-t-2 border-slate-300 font-black">
+                <tr>
+                  <td colSpan={5} className="p-2 text-slate-900">المجموع الكلي</td>
+                  <td className="p-2 text-left font-mono text-slate-950">{stats.revenue.toLocaleString()} ج</td>
+                  <td></td>
+                  <td className="p-2 text-left font-mono text-rose-800">{stats.cost.toLocaleString()} ج</td>
+                  <td className={`p-2 text-left font-mono ${isNegative ? 'text-rose-700' : 'text-emerald-700'}`}>
+                    {stats.profit.toLocaleString()} ج
+                  </td>
+                  <td className="p-2 text-center font-mono">{stats.marginPct.toFixed(1)}%</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
         </div>
       )}
 

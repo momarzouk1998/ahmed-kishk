@@ -11,10 +11,25 @@ export async function GET(request: Request) {
       where: branchWhere(scope),
       orderBy: { updatedAt: 'desc' },
     });
-    const normalizedSales = sales.map(s => ({
-      ...s,
-      paymentMethod: s.paymentType || (s as any).paymentMethod || 'نقدي',
-    }));
+    const normalizedSales = sales.map(s => {
+      let splitPayments = (s as any).splitPayments || undefined;
+      if (!splitPayments && s.notes && s.notes.includes('[SPLIT:')) {
+        try {
+          const match = s.notes.match(/\[SPLIT:([^\]]+)\]/);
+          if (match && match[1]) {
+            splitPayments = JSON.parse(match[1]);
+          }
+        } catch {}
+      }
+      const cleanNotes = s.notes ? s.notes.replace(/\[SPLIT:[^\]]+\]/g, '').trim() : '';
+
+      return {
+        ...s,
+        notes: cleanNotes,
+        splitPayments,
+        paymentMethod: s.paymentType || (s as any).paymentMethod || 'نقدي',
+      };
+    });
     return NextResponse.json({ success: true, sales: normalizedSales });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -25,8 +40,14 @@ export async function POST(request: Request) {
   try {
     const scope = await getBranchScope(request);
     const body = await request.json();
-    const { id, invoiceNumber, customerName, phone, branch, totalAmount, paidAmount, remainingAmount, date, items, notes } = body;
+    const { id, invoiceNumber, customerName, phone, branch, totalAmount, paidAmount, remainingAmount, date, items, notes, splitPayments } = body;
     const pMethod = body.paymentMethod || body.paymentType || 'نقدي';
+
+    let finalNotes = (notes || '').trim();
+    if (splitPayments && typeof splitPayments === 'object') {
+      finalNotes = finalNotes.replace(/\[SPLIT:[^\]]+\]/g, '').trim();
+      finalNotes = `${finalNotes} [SPLIT:${JSON.stringify(splitPayments)}]`.trim();
+    }
 
     const invNum = invoiceNumber || `INV-${Date.now()}`;
     const invoice = await prisma.salesInvoice.upsert({
@@ -43,7 +64,7 @@ export async function POST(request: Request) {
         paymentType: pMethod,
         date: date || new Date().toISOString().split('T')[0],
         items: items || [],
-        notes: notes || '',
+        notes: finalNotes,
       },
       update: {
         customerName: customerName || undefined,
@@ -54,12 +75,14 @@ export async function POST(request: Request) {
         remainingAmount: remainingAmount !== undefined ? Number(remainingAmount) : undefined,
         paymentType: pMethod,
         items: items !== undefined ? items : undefined,
-        notes: notes !== undefined ? notes : undefined,
+        notes: finalNotes !== undefined ? finalNotes : undefined,
       },
     });
 
     const normalizedInvoice = {
       ...invoice,
+      notes: notes || '',
+      splitPayments: splitPayments || undefined,
       paymentMethod: invoice.paymentType || pMethod,
     };
 
