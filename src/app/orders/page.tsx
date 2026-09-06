@@ -497,22 +497,47 @@ export default function CentralOrdersLedgerPage() {
         ) : (
           <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-soft">
             <div className="overflow-x-auto">
-              <table className="w-full text-right text-xs min-w-[850px]">
+              <table className="w-full text-right text-xs min-w-[900px]">
                 <thead className="bg-slate-50 text-slate-500 font-mono border-b border-slate-200">
                   <tr>
                     <th className="p-3.5">اسم العميل</th>
                     <th className="p-3.5">الهاتف والعنوان والفرع</th>
                     <th className="p-3.5">تاريخ المعاينة</th>
-                    <th className="p-3.5">تاريخ التسليم/التركيب</th>
+                    <th className="p-3.5">تاريخ التسليم</th>
+                    <th className="p-3.5">تاريخ التركيب</th>
                     <th className="p-3.5 font-mono">الإجمالي والمتبقي</th>
                     <th className="p-3.5 text-center">المرحلة العامة للحالة</th>
-                    <th className="p-3.5 text-center">الإجراءات والتحكم</th>
+                    <th className="p-3.5 text-center w-16">الإجراءات</th>
                   </tr>
                 </thead>
                 <tbody>
                   {paginatedOrders.map(order => {
                     const currentStage = normalizeMasterStage(order.status);
                     const stageObj = GLOBAL_STAGES.find(s => s.key === currentStage) || GLOBAL_STAGES[1];
+
+                    const qMatch = quotations.find(q =>
+                      q.id === order.orderId ||
+                      q.id === order.id ||
+                      (q.customerName && order.customerName && q.customerName.trim().toLowerCase() === order.customerName.trim().toLowerCase())
+                    );
+
+                    const isInstallOrder =
+                      (order as any).fulfillmentType === 'INSTALLATION' ||
+                      (qMatch as any)?.fulfillmentType === 'INSTALLATION' ||
+                      (order as any).scheduledDate ||
+                      (order as any).installationDate ||
+                      currentStage === 'جاهز للتركيب';
+
+                    // Delivery date
+                    const deliveryDateVal = !isInstallOrder
+                      ? ((order as any).deliveryDate || ((qMatch as any)?.fulfillmentType === 'DELIVERY' ? qMatch?.deliveryDate : ''))
+                      : ((order as any).deliveryDate && (order as any).deliveryDate !== (order as any).scheduledDate && (order as any).scheduledDate ? (order as any).deliveryDate : '');
+
+                    // Installation date
+                    const installDateVal =
+                      (order as any).scheduledDate ||
+                      (order as any).installationDate ||
+                      (isInstallOrder ? ((order as any).deliveryDate || qMatch?.deliveryDate || '') : '');
 
                     return (
                       <tr
@@ -531,10 +556,13 @@ export default function CentralOrdersLedgerPage() {
                           </div>
                         </td>
                         <td className="p-3.5 font-mono text-slate-800 font-bold">
-                          {order.createdAt ? formatDateOnly(order.createdAt) : 'غير محدد'}
+                          {order.createdAt ? formatDateOnly(order.createdAt) : '—'}
                         </td>
-                        <td className="p-3.5 font-mono font-bold text-rose-800">
-                          {order.deliveryDate ? formatDateOnly(order.deliveryDate) : 'غير محدد'}
+                        <td className="p-3.5 font-mono font-bold text-sky-800">
+                          {deliveryDateVal ? formatDateOnly(deliveryDateVal) : '—'}
+                        </td>
+                        <td className="p-3.5 font-mono font-bold text-amber-900">
+                          {installDateVal ? formatDateOnly(installDateVal) : '—'}
                         </td>
                         <td className="p-3.5 font-mono">
                           <div className="font-bold text-slate-900">{(order.totalAmount || 0).toLocaleString()} ج</div>
@@ -557,22 +585,14 @@ export default function CentralOrdersLedgerPage() {
                           </select>
                         </td>
                         <td className="p-3.5 text-center" onClick={e => e.stopPropagation()}>
-                          <div className="flex items-center justify-center gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => setActiveEditingOrder(order)}
-                              className="bg-slate-900 hover:bg-slate-800 text-white px-2.5 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer"
-                            >
-                              عرض العقد والتعديل 📋
-                            </button>
-
+                          <div className="flex items-center justify-center">
                             <button
                               type="button"
                               onClick={() => handleDelete(order.id, order.customerName)}
-                              className="text-rose-600 hover:text-rose-800 p-1 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
+                              className="text-rose-600 hover:text-rose-800 p-1.5 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
                               title="حذف الأوردر"
                             >
-                              <span className="material-symbols-outlined text-[18px]">delete</span>
+                              <span className="material-symbols-outlined text-[20px]">delete</span>
                             </button>
                           </div>
                         </td>
@@ -707,8 +727,8 @@ export default function CentralOrdersLedgerPage() {
                 </div>
               </div>
 
-              {/* Inspection & Delivery Dates */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-amber-50/60 p-4 rounded-2xl border border-amber-200">
+              {/* Inspection, Delivery & Installation Dates */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-amber-50/60 p-4 rounded-2xl border border-amber-200">
                 <div>
                   <label className="text-amber-950 font-black block mb-1">📅 تاريخ المعاينة:</label>
                   <input
@@ -720,11 +740,25 @@ export default function CentralOrdersLedgerPage() {
                 </div>
 
                 <div>
-                  <label className="text-amber-950 font-black block mb-1">📅 تاريخ التسليم / التركيب:</label>
+                  <label className="text-amber-950 font-black block mb-1">📦 تاريخ التسليم:</label>
                   <input
                     type="date"
                     value={activeEditingOrder.deliveryDate || ''}
                     onChange={(e) => setActiveEditingOrder({ ...activeEditingOrder, deliveryDate: e.target.value })}
+                    className="w-full bg-white border border-amber-300 rounded-xl px-3 py-1.5 font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-amber-950 font-black block mb-1">🛠️ تاريخ التركيب:</label>
+                  <input
+                    type="date"
+                    value={(activeEditingOrder as any).scheduledDate || (activeEditingOrder as any).installationDate || ''}
+                    onChange={(e) => setActiveEditingOrder({
+                      ...activeEditingOrder,
+                      scheduledDate: e.target.value,
+                      installationDate: e.target.value,
+                    } as any)}
                     className="w-full bg-white border border-amber-300 rounded-xl px-3 py-1.5 font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
                   />
                 </div>

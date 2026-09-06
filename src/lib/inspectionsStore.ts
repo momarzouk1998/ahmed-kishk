@@ -163,6 +163,8 @@ export interface QuotationOrder {
   remainingAmount: number;
   date: string;
   deliveryDate?: string;
+  installationDate?: string;
+  fulfillmentType?: 'DELIVERY' | 'INSTALLATION';
   estimatorName: string;
   rooms: RoomPricing[];
   updatedAt?: string; // #18: timestamp للـ conflict detection
