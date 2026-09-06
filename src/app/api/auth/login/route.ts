@@ -14,11 +14,11 @@ const DEFAULT_USERS_ROSTER = [
   // فرع عرابي
   { name: 'أحمد عبدالله', phone: '01023232370', role: 'ADMIN', branch: 'فرع عرابي' },
   { name: 'محمد نصار', phone: '01055288214', role: 'BRANCH_STAFF', branch: 'فرع عرابي' },
-  // فرع عمر أفندي
-  { name: 'محمد كشك', phone: '01018728640', role: 'ADMIN', branch: 'فرع عمر أفندي' },
+  // فرع عمر أفندي (فرع أقمشة فقط — بدون مراحل الستائر)
+  { name: 'محمد كشك', phone: '01018728640', role: 'BRANCH_STAFF', branch: 'فرع عمر أفندي' },
   { name: 'أحمد عبدالعال', phone: '01275763008', role: 'BRANCH_STAFF', branch: 'فرع عمر أفندي' },
-  // فرع الثلاثيني
-  { name: 'عبدالله كشك', phone: '01033447262', role: 'ADMIN', branch: 'فرع الثلاثيني' },
+  // فرع الثلاثيني (فرع أقمشة فقط — بدون مراحل الستائر)
+  { name: 'عبدالله كشك', phone: '01033447262', role: 'BRANCH_STAFF', branch: 'فرع الثلاثيني' },
 ];
 
 async function ensureDefaultUsers() {

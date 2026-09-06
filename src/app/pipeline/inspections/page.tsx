@@ -45,6 +45,10 @@ export default function PipelineInspectionsPage() {
   const [showNewModal, setShowNewModal] = useState(false);
   const [successToast, setSuccessToast] = useState<string | null>(null);
   const [printItem, setPrintItem] = useState<InspectionData | null>(null);
+  // #FIX: القائمة كانت هاردكود فى الكود — دلوقتى بتتقرأ من السيرفر عشان الأدمن
+  // يقدر يضيف/يشيل فنى مباشرة من صفحة /branches من غير تعديل كود. الاستيراد
+  // الثابت من technicians.ts بيفضل بس كـ fallback لو السيرفر فشل.
+  const [techniciansList, setTechniciansList] = useState<string[]>(CURTAIN_TECHNICIANS);
 
   useEffect(() => {
     async function load() {
@@ -52,6 +56,13 @@ export default function PipelineInspectionsPage() {
       setInspections(data);
     }
     load();
+    (async () => {
+      try {
+        const res = await fetch('/api/curtain-technicians', { cache: 'no-store' });
+        const d = await res.json();
+        if (Array.isArray(d?.list) && d.list.length) setTechniciansList(d.list);
+      } catch {}
+    })();
   }, []);
 
   // New Request Form state
@@ -303,7 +314,7 @@ export default function PipelineInspectionsPage() {
               className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-brand-gold shadow-2xs"
             >
               <option value="ALL">جميع الفنيين</option>
-              {CURTAIN_TECHNICIANS.map(t => <option key={t} value={t}>{t}</option>)}
+              {techniciansList.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
           </div>
 
@@ -639,7 +650,7 @@ export default function PipelineInspectionsPage() {
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-bold text-slate-700">الفني المسؤول</label>
                   <select value={tech} onChange={e => setTech(e.target.value)} className="border border-slate-200 rounded-xl p-2 text-xs font-bold">
-                    {CURTAIN_TECHNICIANS.map(t => <option key={t} value={t}>{t}</option>)}
+                    {techniciansList.map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
               </div>

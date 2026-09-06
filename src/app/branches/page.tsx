@@ -5,6 +5,7 @@ import PageShell from '@/components/PageShell';
 import { ALL_SYSTEM_PAGES } from '@/lib/permissions';
 import { BRANCHES_LIST, BranchConfig } from '@/lib/branches';
 import BranchPricePasswordsCard from '@/components/BranchPricePasswordsCard';
+import CurtainTechniciansCard from '@/components/CurtainTechniciansCard';
 import { useCurrentUser } from '@/lib/useCurrentUser';
 
 interface Employee {
@@ -66,7 +67,7 @@ const initialEmployees: Employee[] = [
     // كاشير: بدون صلاحية تعديل الأسعار — يحتاج باسورد المدير
     allowedPageIds: ['p_inspections', 'p_pricing', 'p_fabric_sales', 'p_customers', 'p_inventory', 'p_dashboard'],
   },
-  // ═════════ فرع عمر أفندي ═════════
+  // ═════════ فرع عمر أفندي (فرع أقمشة فقط — بدون مراحل الستائر) ═════════
   {
     id: 'EMP-06',
     name: 'محمد كشك',
@@ -74,7 +75,7 @@ const initialEmployees: Employee[] = [
     role: 'مدير فرع عمر أفندي',
     branch: 'فرع عمر أفندي',
     restrictToBranch: true,
-    allowedPageIds: ALL_SYSTEM_PAGES.map(p => p.id),
+    allowedPageIds: ['p_fabric_sales', 'p_purchases', 'p_customers', 'p_suppliers', 'p_inventory', 'p_dashboard'],
   },
   {
     id: 'EMP-07',
@@ -85,7 +86,7 @@ const initialEmployees: Employee[] = [
     restrictToBranch: true,
     allowedPageIds: ['p_fabric_sales', 'p_customers', 'p_inventory', 'p_dashboard'],
   },
-  // ═════════ فرع الثلاثيني ═════════
+  // ═════════ فرع الثلاثيني (فرع أقمشة فقط — بدون مراحل الستائر) ═════════
   {
     id: 'EMP-08',
     name: 'عبدالله كشك',
@@ -93,7 +94,7 @@ const initialEmployees: Employee[] = [
     role: 'مدير فرع الثلاثيني',
     branch: 'فرع الثلاثيني',
     restrictToBranch: true,
-    allowedPageIds: ALL_SYSTEM_PAGES.map(p => p.id),
+    allowedPageIds: ['p_fabric_sales', 'p_purchases', 'p_customers', 'p_suppliers', 'p_inventory', 'p_dashboard'],
   },
 ];
 
@@ -341,6 +342,9 @@ export default function BranchesAndPermissionsPage() {
 
         {/* Manager Password Change Card */}
         <BranchPricePasswordsCard />
+
+        {/* Curtain Measurement Technicians List */}
+        <CurtainTechniciansCard />
 
         {/* Employees & Permissions Table */}
         <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-soft">
