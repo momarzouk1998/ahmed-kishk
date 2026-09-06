@@ -1,4 +1,4 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getBranchScope, branchWhere, effectiveCreateBranch } from '@/lib/branchScope';
 
@@ -125,6 +125,40 @@ export async function POST(request: Request) {
     });
 
     await syncSupplierFromPurchase(existingInvoice, invoice);
+
+    // تحديث أرصدة المخزون وسعر التكلفة لكل صنف تم شراؤه
+    if (Array.isArray(items) && items.length > 0) {
+      const targetBranch = effectiveCreateBranch(scope, branch);
+      for (const it of items) {
+        const qtyToAdd = Number(it.meters || it.quantity) || 0;
+        const unitCost = Number(it.unitCost || it.pricePerMeter || it.costPrice) || 0;
+        if (qtyToAdd > 0) {
+          try {
+            const itemCode = (it.code || '').trim();
+            const itemName = (it.name || '').trim();
+
+            let existing = itemCode ? await prisma.inventoryItem.findUnique({ where: { code: itemCode } }) : null;
+            if (!existing && itemName) {
+              existing = await prisma.inventoryItem.findFirst({
+                where: { name: itemName, branch: targetBranch },
+              });
+            }
+
+            if (existing) {
+              await prisma.inventoryItem.update({
+                where: { id: existing.id },
+                data: {
+                  totalQuantity: { increment: qtyToAdd },
+                  costPrice: unitCost > 0 ? unitCost : undefined,
+                },
+              });
+            }
+          } catch (err) {
+            console.error('Failed to sync inventory item quantity from purchase:', err);
+          }
+        }
+      }
+    }
 
     return NextResponse.json({ success: true, invoice });
   } catch (error: any) {
