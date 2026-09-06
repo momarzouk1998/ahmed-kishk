@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getBranchScope, branchWhere, effectiveCreateBranch } from '@/lib/branchScope';
+import { assertPagePermission } from '@/lib/permissionsServer';
 
 import initialInventory from '@/data/initialInventory.json';
 
@@ -60,6 +61,22 @@ export async function POST(request: Request) {
       const existingByCode = await prisma.inventoryItem.findUnique({ where: { code: code.trim() } });
       if (existingByCode && existingByCode.branch !== scope.branch) {
         return NextResponse.json({ success: false, error: 'هذا الكود مستخدم بالفعل فى فرع آخر — اختر كوداً مختلفاً' }, { status: 409 });
+      }
+    }
+
+    // #GUARD: تغيير سعر البيع/التكلفة لصنف موجود فعلاً يتطلب صلاحية "تعديل
+    // الأسعار" — ده نفس القفل اللي شغال فعلاً فى واجهة /inventory (priceLocked)
+    // فبس بنمنع تخطيه بطلب مباشر للـ API. باقى التعديلات (الكمية، الاسم..) وإضافة
+    // صنف جديد لسه متاحة لأى موظف عنده صلاحية الوصول للصفحة، لأنها مش مقفولة فى
+    // الواجهة أصلاً دلوقتى.
+    const existingItem = await prisma.inventoryItem.findUnique({ where: { code: code.trim() } });
+    if (existingItem) {
+      const priceChanged =
+        (costPrice !== undefined && Number(costPrice) !== Number(existingItem.costPrice)) ||
+        (sellPrice !== undefined && Number(sellPrice) !== Number(existingItem.sellPrice));
+      if (priceChanged) {
+        const pricePerm = await assertPagePermission(request, 'p_inventory', 'edit_price');
+        if (!pricePerm.ok) return NextResponse.json({ success: false, error: pricePerm.error }, { status: pricePerm.status });
       }
     }
 
