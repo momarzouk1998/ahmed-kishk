@@ -353,7 +353,7 @@ export default function NewPurchaseInvoicePage() {
       return;
     }
     if (items.length === 0) {
-      alert('السلة فارغة! أضف صنفاً واحداً على الأقل من قائمة الخامات');
+      alert('السلة فارغة! أضف صنفاً واحداً على الأقل من جدول الخامات');
       return;
     }
     if (subtotal <= 0) {
@@ -439,85 +439,105 @@ export default function NewPurchaseInvoicePage() {
   };
 
   return (
-    <PageShell title="إنشاء فاتورة مشتريات جديدة" fullWidth>
-      <div className="max-w-[1500px] mx-auto space-y-4 pb-12">
+    <PageShell noHeader fullWidth>
+      <div className="w-full max-w-[1600px] mx-auto space-y-2.5 pb-8 pt-1">
 
-        {/* Top Header Card */}
-        <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-soft flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-amber-500/10 text-amber-600 flex items-center justify-center font-black">
-              <span className="material-symbols-outlined text-2xl">add_business</span>
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-base sm:text-lg font-black text-slate-900">فاتورة مشتريات وتوريد خامات</h1>
-                <span className="bg-amber-100 text-amber-950 text-xs px-2.5 py-0.5 rounded-lg font-mono font-black border border-amber-300">
-                  {invoiceNumber || 'PUR-2026-001'}
-                </span>
-              </div>
-              <p className="text-xs text-slate-500 mt-0.5">البحث السريع عن الموردين والأصناف وتحديث المخزون تلقائياً عند الحفظ</p>
-            </div>
+        {/* 🌟 Single Ultra-Compact Top Bar (No Double Header) */}
+        <div className="bg-white px-3.5 py-2 rounded-2xl border border-slate-200 shadow-soft flex flex-wrap items-center justify-between gap-2.5">
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-amber-600 text-xl">shopping_cart_checkout</span>
+            <h1 className="text-sm sm:text-base font-black text-slate-900">فاتورة مشتريات وتوريد</h1>
+            <span className="bg-amber-100 text-amber-950 text-xs px-2 py-0.5 rounded-lg font-mono font-black border border-amber-300">
+              {invoiceNumber || 'PUR-2026-001'}
+            </span>
           </div>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto">
+          {/* Inline Supplier + Branch Selectors */}
+          <div className="flex flex-wrap items-center gap-2 flex-1 max-w-2xl justify-end">
+            <div className="w-64">
+              <SearchableSelect
+                options={supplierOptions}
+                value={supplierId}
+                onChange={handleSelectSupplier}
+                placeholder="🔍 المورد / الشركة..."
+                emptyLabel="— اختر المورد —"
+                onAddNew={() => setShowAddSupplierModal(true)}
+                addNewText="إضافة مورد باسم"
+              />
+            </div>
+
+            <div className="w-36">
+              <BranchSelect
+                value={branch}
+                onChange={setBranch}
+                isAdmin={isAdmin}
+                className="w-full border border-slate-200 rounded-xl px-2.5 py-1.5 font-bold text-slate-900 text-xs bg-slate-50 focus:outline-none"
+              />
+            </div>
+
             <button
               type="button"
               onClick={() => {
                 setNewProdName(productSearch.trim());
                 setShowAddProductModal(true);
               }}
-              className="bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300 font-bold px-3.5 py-2 rounded-xl text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-3xs"
+              className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-2.5 py-1.5 rounded-xl text-xs flex items-center gap-1 transition-colors cursor-pointer shadow-3xs whitespace-nowrap"
             >
-              <span className="material-symbols-outlined text-[16px]">add_box</span>
-              <span>+ تعريف صنف جديد</span>
+              <span className="material-symbols-outlined text-[15px]">add_box</span>
+              <span>+ صنف جديد</span>
             </button>
 
             <button
               type="button"
               onClick={() => router.push('/purchases')}
-              className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-3.5 py-2 rounded-xl text-xs transition-colors cursor-pointer border border-slate-200 flex items-center gap-1"
+              className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-2.5 py-1.5 rounded-xl text-xs transition-colors cursor-pointer border border-slate-200 flex items-center gap-1 whitespace-nowrap"
+              title="رجوع لسجل فواتير المشتريات"
             >
-              <span>↩️</span>
-              <span>سجل الفواتير</span>
+              <span>↩️ السجل</span>
             </button>
           </div>
         </div>
 
         {/* 2-Column Split Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-2.5 items-start">
 
           {/* ========================================================= */}
-          {/* COLUMN 1 (7 cols): Products Search & Inventory Catalog */}
+          {/* COLUMN 1 (7 cols - RIGHT): High-Density Products Catalog Table */}
           {/* ========================================================= */}
-          <div className="lg:col-span-7 space-y-3">
+          <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200 shadow-soft overflow-hidden flex flex-col" style={{ height: 'calc(100vh - 85px)' }}>
             
-            {/* Search and Category Filters */}
-            <div className="bg-white p-3.5 rounded-3xl border border-slate-200 shadow-soft space-y-3">
-              {/* Live Search Input */}
-              <div className="relative">
-                <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg">
-                  search
+            {/* Search & Filter Top Bar */}
+            <div className="p-2.5 border-b border-slate-200 bg-slate-50/70 space-y-2 shrink-0">
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-base">
+                    search
+                  </span>
+                  <input
+                    type="text"
+                    value={productSearch}
+                    onChange={e => setProductSearch(e.target.value)}
+                    placeholder="🔍 ابحث عن صنف بالاسم، الكود، أو الباركود..."
+                    className="w-full bg-white border border-slate-300 rounded-xl pr-8 pl-6 py-1.5 text-xs font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-amber-500 transition-all shadow-inner"
+                  />
+                  {productSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setProductSearch('')}
+                      className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-[10px] font-bold bg-slate-200 rounded-full w-4 h-4 flex items-center justify-center cursor-pointer"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+
+                <span className="text-[11px] font-mono font-bold text-slate-500 bg-white border border-slate-200 px-2 py-1 rounded-lg shrink-0">
+                  {filteredProducts.length} صنف
                 </span>
-                <input
-                  type="text"
-                  value={productSearch}
-                  onChange={e => setProductSearch(e.target.value)}
-                  placeholder="🔍 ابحث عن قماش أو صنف بالاسم، الكود، أو الباركود..."
-                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl pr-10 pl-4 py-2.5 text-xs sm:text-sm font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-amber-500 focus:bg-white transition-all shadow-inner"
-                />
-                {productSearch && (
-                  <button
-                    type="button"
-                    onClick={() => setProductSearch('')}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold bg-slate-200 rounded-full w-5 h-5 flex items-center justify-center cursor-pointer"
-                  >
-                    ✕
-                  </button>
-                )}
               </div>
 
-              {/* Category Pills */}
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
+              {/* Category Filter Pills */}
+              <div className="flex items-center gap-1 overflow-x-auto pb-0.5 custom-scrollbar">
                 {CATEGORIES.map(cat => {
                   const isActive = selectedCategory === cat;
                   return (
@@ -525,16 +545,12 @@ export default function NewPurchaseInvoicePage() {
                       key={cat}
                       type="button"
                       onClick={() => setSelectedCategory(cat)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap border ${
+                      className={`px-2 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer whitespace-nowrap border ${
                         isActive
-                          ? 'bg-slate-900 text-white border-slate-900 shadow-2xs'
-                          : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                          ? 'bg-slate-900 text-white border-slate-900 shadow-3xs'
+                          : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200'
                       }`}
                     >
-                      {cat === 'ستائر' && '🪟 '}
-                      {cat === 'سواريه' && '✨ '}
-                      {cat === 'تراكات ومواسير' && '🛠️ '}
-                      {cat === 'أشرطة وإكسسوارات' && '🎀 '}
                       {cat}
                     </button>
                   );
@@ -542,29 +558,18 @@ export default function NewPurchaseInvoicePage() {
               </div>
             </div>
 
-            {/* Products Grid */}
-            <div className="bg-white p-3.5 rounded-3xl border border-slate-200 shadow-soft">
-              <div className="flex justify-between items-center mb-3">
-                <h3 className="font-black text-slate-900 text-xs sm:text-sm flex items-center gap-1.5">
-                  <span className="material-symbols-outlined text-amber-500 text-lg">inventory_2</span>
-                  <span>الأصناف المتاحة بالمخزن ({filteredProducts.length})</span>
-                </h3>
-                <span className="text-[11px] text-slate-400 font-bold">اضغط على الصنف لإضافته للسلة</span>
-              </div>
-
+            {/* Products Table */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar">
               {loadingProducts ? (
-                <div className="py-16 text-center text-slate-400 text-xs font-bold">
+                <div className="py-20 text-center text-slate-400 text-xs font-bold">
                   جاري تحميل أصناف المخزن...
                 </div>
               ) : filteredProducts.length === 0 ? (
                 /* Empty search result -> Quick Add CTA */
-                <div className="py-10 px-4 text-center space-y-3 bg-amber-50/50 rounded-2xl border-2 border-dashed border-amber-200">
-                  <span className="material-symbols-outlined text-4xl text-amber-500 block">search_off</span>
-                  <div>
-                    <h4 className="font-black text-slate-900 text-sm">
-                      لم يتم العثور على صنف مطابق {productSearch ? `لـ "${productSearch}"` : ''}
-                    </h4>
-                    <p className="text-xs text-slate-500 mt-1">هل هذه خامـة جديدة موردة غير مسجلة في المخزن من قبل؟</p>
+                <div className="p-6 text-center space-y-2.5 bg-amber-50/40 m-3 rounded-xl border border-dashed border-amber-300">
+                  <span className="material-symbols-outlined text-3xl text-amber-500 block">search_off</span>
+                  <div className="text-xs font-bold text-slate-800">
+                    لم يتم العثور على صنف مطابق {productSearch ? `لـ "${productSearch}"` : ''}
                   </div>
                   <button
                     type="button"
@@ -572,185 +577,144 @@ export default function NewPurchaseInvoicePage() {
                       setNewProdName(productSearch.trim());
                       setShowAddProductModal(true);
                     }}
-                    className="bg-brand-gold hover:bg-amber-400 text-slate-950 font-black px-4 py-2.5 rounded-xl text-xs sm:text-sm shadow-gold cursor-pointer inline-flex items-center gap-1.5 transition-all active:scale-95"
+                    className="bg-brand-gold hover:bg-amber-400 text-slate-950 font-black px-3.5 py-1.5 rounded-xl text-xs shadow-gold cursor-pointer inline-flex items-center gap-1 transition-all active:scale-95"
                   >
-                    <span className="material-symbols-outlined text-lg">add_circle</span>
-                    <span>+ إضافة صنف جديد باسم "{productSearch || 'صنف جديد'}" للمخزن والفاتورة</span>
+                    <span className="material-symbols-outlined text-base">add_circle</span>
+                    <span>+ إضافة صنف جديد باسم "{productSearch || 'صنف جديد'}"</span>
                   </button>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-[580px] overflow-y-auto pr-1">
-                  {filteredProducts.map(p => {
-                    const cost = Number(p.costPrice) || Number(p.sellPrice) || 0;
-                    const inCart = items.find(it => it.code === p.code || it.name === p.name);
+                <table className="w-full text-right text-xs border-collapse">
+                  <thead className="bg-slate-100 text-slate-600 font-bold border-b border-slate-200 sticky top-0 z-10 text-[11px]">
+                    <tr>
+                      <th className="p-2 pr-3">كود</th>
+                      <th className="p-2">اسم الصنف / الخامة</th>
+                      <th className="p-2">التصنيف</th>
+                      <th className="p-2 text-center">رصيد المخزن</th>
+                      <th className="p-2 text-center">سعر التكلفة</th>
+                      <th className="p-2 text-center w-20">إجراء</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
+                    {filteredProducts.map(p => {
+                      const cost = Number(p.costPrice) || Number(p.sellPrice) || 0;
+                      const inCart = items.find(it => it.code === p.code || it.name === p.name);
 
-                    return (
-                      <div
-                        key={p.id || p.code}
-                        onClick={() => handleAddProductToCart(p)}
-                        className={`p-3 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between gap-2 text-right ${
-                          inCart
-                            ? 'bg-amber-50/80 border-amber-400 ring-2 ring-amber-300 shadow-xs'
-                            : 'bg-white hover:bg-slate-50 border-slate-200 hover:border-slate-300 shadow-3xs'
-                        }`}
-                      >
-                        <div className="flex justify-between items-start gap-2">
-                          <div className="min-w-0">
-                            <span className="font-black text-xs sm:text-sm text-slate-900 block truncate" title={p.name}>
-                              {p.name}
+                      return (
+                        <tr
+                          key={p.id || p.code}
+                          onClick={() => handleAddProductToCart(p)}
+                          className={`hover:bg-amber-50/60 cursor-pointer transition-colors ${
+                            inCart ? 'bg-amber-50/80 font-bold' : ''
+                          }`}
+                        >
+                          <td className="p-2 pr-3 font-mono text-[10px] text-slate-400 whitespace-nowrap" dir="ltr">
+                            {p.code}
+                          </td>
+
+                          <td className="p-2 font-bold text-slate-900 max-w-[220px] truncate" title={p.name}>
+                            {p.name}
+                          </td>
+
+                          <td className="p-2 whitespace-nowrap">
+                            <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-bold">
+                              {p.category || 'عام'}
                             </span>
-                            <div className="flex items-center gap-1.5 mt-0.5">
-                              <span className="text-[10px] text-slate-400 font-mono" dir="ltr">{p.code}</span>
-                              {p.category && (
-                                <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.2 rounded font-bold">
-                                  {p.category}
-                                </span>
-                              )}
-                            </div>
-                          </div>
+                          </td>
 
-                          <span className="bg-emerald-50 text-emerald-800 font-mono font-black text-xs px-2 py-1 rounded-xl border border-emerald-200 shrink-0">
-                            {cost.toLocaleString()} ج / {p.unit || 'متر'}
-                          </span>
-                        </div>
+                          <td className="p-2 text-center whitespace-nowrap font-mono text-slate-700">
+                            {p.totalQuantity || 0} {p.unit || 'متر'}
+                          </td>
 
-                        <div className="flex justify-between items-center pt-1 border-t border-slate-100 text-[11px]">
-                          <span className="text-slate-500 font-bold">
-                            رصيد المخزن: <strong className="font-mono text-slate-800">{p.totalQuantity || 0}</strong> {p.unit || 'متر'}
-                          </span>
+                          <td className="p-2 text-center font-mono font-bold text-emerald-800 whitespace-nowrap">
+                            {cost.toLocaleString()} ج
+                          </td>
 
-                          <span className={`font-bold flex items-center gap-0.5 ${
-                            inCart ? 'text-amber-800' : 'text-slate-400'
-                          }`}>
-                            {inCart ? `✓ بالسلة (${inCart.meters}م)` : '+ إضافة'}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                          <td className="p-2 text-center whitespace-nowrap" onClick={e => e.stopPropagation()}>
+                            <button
+                              type="button"
+                              onClick={() => handleAddProductToCart(p)}
+                              className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer shadow-3xs ${
+                                inCart
+                                  ? 'bg-amber-500 text-slate-950 hover:bg-amber-600'
+                                  : 'bg-slate-900 hover:bg-slate-800 text-white'
+                              }`}
+                              title="إضافة للسلة"
+                            >
+                              {inCart ? `✓ ${inCart.meters}` : '+ أضف'}
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               )}
             </div>
 
           </div>
 
           {/* ========================================================= */}
-          {/* COLUMN 2 (5 cols): Supplier, Cart Items & Settlement */}
+          {/* COLUMN 2 (5 cols - LEFT): Cart Items Table & Settlement */}
           {/* ========================================================= */}
-          <div className="lg:col-span-5 space-y-3">
+          <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200 shadow-soft overflow-hidden flex flex-col" style={{ height: 'calc(100vh - 85px)' }}>
+            
+            {/* Header */}
+            <div className="px-3 py-2 border-b border-slate-200 bg-slate-50/70 flex justify-between items-center shrink-0">
+              <div className="flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-amber-500 text-base">receipt_long</span>
+                <span className="font-black text-slate-900 text-xs sm:text-sm">أصناف الفاتورة</span>
+                <span className="bg-amber-100 text-amber-950 text-xs px-2 py-0.2 rounded-full font-mono font-black border border-amber-300">
+                  {items.length}
+                </span>
+              </div>
 
-            {/* Supplier & Branch Card */}
-            <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-soft space-y-3">
-              <div className="flex justify-between items-center">
-                <h3 className="font-black text-slate-900 text-xs sm:text-sm flex items-center gap-1.5">
-                  <span className="material-symbols-outlined text-amber-500 text-lg">person</span>
-                  <span>1. بيانات المورد والفرع</span>
-                </h3>
-
+              {items.length > 0 && (
                 <button
                   type="button"
-                  onClick={() => setShowAddSupplierModal(true)}
-                  className="text-[11px] font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 px-2.5 py-1 rounded-xl transition-colors cursor-pointer border border-amber-300 flex items-center gap-1"
+                  onClick={() => setItems([])}
+                  className="text-[11px] text-rose-600 hover:text-rose-700 font-bold bg-rose-50 hover:bg-rose-100 border border-rose-200 px-2 py-0.5 rounded-lg transition-colors cursor-pointer"
                 >
-                  <span>➕</span>
-                  <span>مورد جديد</span>
+                  مسح الكل ✕
                 </button>
-              </div>
-
-              <div className="space-y-2">
-                <div>
-                  <label className="text-[11px] font-bold text-slate-700 block mb-1">المورد / الشركة *:</label>
-                  <SearchableSelect
-                    options={supplierOptions}
-                    value={supplierId}
-                    onChange={handleSelectSupplier}
-                    placeholder="🔍 ابحث بالاسم أو الهاتف..."
-                    emptyLabel="— اختر المورد —"
-                    onAddNew={() => setShowAddSupplierModal(true)}
-                    addNewText="إضافة مورد جديد باسم"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="text-[11px] font-bold text-slate-700 block mb-1">هاتف المورد:</label>
-                    <input
-                      type="text"
-                      placeholder="010..."
-                      value={supplierPhone}
-                      onChange={e => setSupplierPhone(e.target.value)}
-                      className="w-full border border-slate-200 rounded-xl px-3 py-2 font-mono font-bold text-slate-900 text-xs bg-slate-50 focus:bg-white focus:outline-none focus:border-amber-500"
-                      dir="ltr"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-[11px] font-bold text-slate-700 block mb-1">فرع الاستلام:</label>
-                    <BranchSelect
-                      value={branch}
-                      onChange={setBranch}
-                      isAdmin={isAdmin}
-                      className="w-full border border-slate-200 rounded-xl px-2.5 py-2 font-bold text-slate-900 text-xs bg-slate-50 focus:outline-none"
-                    />
-                  </div>
-                </div>
-              </div>
+              )}
             </div>
 
-            {/* Cart Items Table Card */}
-            <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-soft space-y-3">
-              <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-                <h3 className="font-black text-slate-900 text-xs sm:text-sm flex items-center gap-1.5">
-                  <span className="material-symbols-outlined text-amber-500 text-lg">shopping_cart</span>
-                  <span>2. بنود الفاتورة والخامات ({items.length})</span>
-                </h3>
-
-                {items.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setItems([])}
-                    className="text-[11px] text-rose-600 hover:text-rose-700 font-black bg-rose-50 hover:bg-rose-100 px-2 py-0.5 rounded-lg transition-colors cursor-pointer"
-                  >
-                    مسح السلة
-                  </button>
-                )}
-              </div>
-
+            {/* Cart Table Container */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-1">
               {items.length === 0 ? (
-                <div className="py-8 text-center text-slate-400 text-xs font-bold bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-                  <span className="material-symbols-outlined text-3xl text-slate-300 block mb-1">add_shopping_cart</span>
-                  لم يتم إضافة أصناف بعد. اختر خامات من القائمة يميناً 👈
+                <div className="py-16 text-center text-slate-400 text-xs font-bold space-y-1">
+                  <span className="material-symbols-outlined text-3xl text-slate-300 block">add_shopping_cart</span>
+                  <span>السلة فارغة. اضغط على أي صنف من الجدول يميناً لإضافته 👈</span>
                 </div>
               ) : (
-                <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
-                  {items.map((it, idx) => (
-                    <div key={it.id || idx} className="bg-slate-50 p-2.5 rounded-2xl border border-slate-200 space-y-2 text-xs">
-                      <div className="flex justify-between items-start gap-2">
-                        <div className="min-w-0">
-                          <span className="font-black text-slate-900 block truncate" title={it.name}>
+                <table className="w-full text-right text-xs border-collapse">
+                  <thead className="bg-slate-100 text-slate-600 font-bold border-b border-slate-200 sticky top-0 z-10 text-[11px]">
+                    <tr>
+                      <th className="p-1.5 pr-2">الصنف</th>
+                      <th className="p-1.5 text-center w-28">الكمية</th>
+                      <th className="p-1.5 text-center w-20">السعر (ج)</th>
+                      <th className="p-1.5 text-center w-20">الإجمالي</th>
+                      <th className="p-1.5 text-center w-6"></th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {items.map(it => (
+                      <tr key={it.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="p-1.5 pr-2">
+                          <div className="font-bold text-slate-900 truncate max-w-[130px]" title={it.name}>
                             {it.name}
-                          </span>
-                          <span className="text-[10px] text-slate-400 font-mono" dir="ltr">{it.code}</span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => removeItem(it.id)}
-                          className="text-rose-500 hover:text-rose-700 font-black w-5 h-5 rounded-md hover:bg-rose-100 flex items-center justify-center cursor-pointer transition-colors"
-                          title="حذف البند"
-                        >
-                          ✕
-                        </button>
-                      </div>
+                          </div>
+                          <div className="text-[10px] text-slate-400 font-mono" dir="ltr">{it.code}</div>
+                        </td>
 
-                      <div className="grid grid-cols-12 gap-2 items-center pt-1 border-t border-slate-200/70">
-                        {/* Quantity Stepper */}
-                        <div className="col-span-5">
-                          <label className="text-[10px] font-bold text-slate-600 block mb-0.5">الكمية / الأمتار:</label>
-                          <div className="flex items-center gap-1">
+                        {/* Inline Quantity Stepper */}
+                        <td className="p-1.5 text-center">
+                          <div className="inline-flex items-center gap-0.5 border border-slate-300 rounded-lg p-0.5 bg-white">
                             <button
                               type="button"
                               onClick={() => updateItem(it.id, 'meters', Math.max(0.25, it.meters - 1))}
-                              className="w-6 h-6 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-900 font-black flex items-center justify-center cursor-pointer active:scale-95"
+                              className="w-5 h-5 rounded bg-slate-100 hover:bg-slate-200 text-slate-800 font-black text-xs flex items-center justify-center cursor-pointer"
                             >
                               -
                             </button>
@@ -760,156 +724,151 @@ export default function NewPurchaseInvoicePage() {
                               min="0.1"
                               value={it.meters}
                               onChange={e => updateItem(it.id, 'meters', parseFloat(e.target.value) || 0)}
-                              className="w-full text-center border border-slate-300 rounded-lg py-1 font-mono font-black text-xs bg-white text-slate-900 focus:outline-none focus:border-amber-500"
+                              className="w-11 text-center font-mono font-black text-xs bg-transparent text-slate-900 focus:outline-none"
                             />
                             <button
                               type="button"
                               onClick={() => updateItem(it.id, 'meters', it.meters + 1)}
-                              className="w-6 h-6 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-900 font-black flex items-center justify-center cursor-pointer active:scale-95"
+                              className="w-5 h-5 rounded bg-slate-100 hover:bg-slate-200 text-slate-800 font-black text-xs flex items-center justify-center cursor-pointer"
                             >
                               +
                             </button>
                           </div>
-                        </div>
+                        </td>
 
-                        {/* Unit Cost */}
-                        <div className="col-span-4">
-                          <label className="text-[10px] font-bold text-slate-600 block mb-0.5">سعر الشراء (ج):</label>
+                        {/* Inline Unit Cost Input */}
+                        <td className="p-1.5 text-center">
                           <input
                             type="number"
                             min="0"
                             value={it.unitCost === 0 ? '' : it.unitCost}
                             onChange={e => updateItem(it.id, 'unitCost', parseFloat(e.target.value) || 0)}
                             placeholder="0"
-                            className="w-full border border-slate-300 rounded-lg py-1 px-1.5 font-mono font-black text-xs text-center bg-white text-slate-900 focus:outline-none focus:border-amber-500"
+                            className="w-16 border border-slate-300 rounded-lg py-1 px-1 text-center font-mono font-black text-xs text-slate-900 bg-white focus:outline-none focus:border-amber-500"
                           />
-                        </div>
+                        </td>
 
-                        {/* Total per row */}
-                        <div className="col-span-3 text-left">
-                          <label className="text-[10px] font-bold text-slate-600 block mb-0.5">الإجمالي:</label>
-                          <span className="font-mono font-black text-amber-900 text-xs block py-1">
-                            {it.totalCost.toLocaleString()} ج
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                        {/* Total */}
+                        <td className="p-1.5 text-center font-mono font-bold text-amber-950 whitespace-nowrap">
+                          {it.totalCost.toLocaleString()}
+                        </td>
+
+                        {/* Remove Button */}
+                        <td className="p-1.5 text-center">
+                          <button
+                            type="button"
+                            onClick={() => removeItem(it.id)}
+                            className="text-slate-400 hover:text-rose-600 font-bold cursor-pointer"
+                            title="حذف"
+                          >
+                            ✕
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               )}
             </div>
 
-            {/* Financials & Settlement Card */}
-            <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-soft space-y-3">
-              <h3 className="font-black text-slate-900 text-xs sm:text-sm flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-amber-500 text-lg">payments</span>
-                <span>3. الحسابات وطريقة السداد</span>
-              </h3>
-
-              {/* Payment Methods */}
-              <div>
-                <label className="text-[11px] font-bold text-slate-700 block mb-1">طريقة سداد المورد:</label>
-                <div className="grid grid-cols-3 gap-1.5 text-center text-xs">
-                  {[
-                    { id: 'نقدي (كاش)', label: '💵 نقدي' },
-                    { id: 'على دفعات / آجل', label: '⏳ آجل / دفعات' },
-                    { id: 'شيكات بنكية', label: '🏦 شيكات' },
-                    { id: 'إنستاباي', label: '⚡ إنستاباي' },
-                    { id: 'فودافون كاش', label: '📱 فودافون' },
-                    { id: 'فيزا / كارت', label: '💳 فيزا' },
-                  ].map(m => (
-                    <button
-                      key={m.id}
-                      type="button"
-                      onClick={() => setPaymentMethod(m.id as any)}
-                      className={`py-1.5 px-1 rounded-xl text-xs font-black transition-all border cursor-pointer ${
-                        paymentMethod === m.id
-                          ? 'bg-amber-500 text-white border-amber-600 shadow-xs'
-                          : 'bg-slate-50 hover:bg-slate-100 text-slate-800 border-slate-200'
-                      }`}
-                    >
-                      {m.label}
-                    </button>
-                  ))}
-                </div>
+            {/* Financials & Settlement Section (Fixed at bottom of left column) */}
+            <div className="p-2.5 border-t border-slate-200 bg-slate-50 space-y-2 shrink-0 text-xs">
+              
+              {/* Payment Methods Pills */}
+              <div className="grid grid-cols-3 gap-1 text-center text-[11px]">
+                {[
+                  { id: 'نقدي (كاش)', label: '💵 نقدي' },
+                  { id: 'على دفعات / آجل', label: '⏳ آجل / دفعات' },
+                  { id: 'شيكات بنكية', label: '🏦 شيكات' },
+                  { id: 'إنستاباي', label: '⚡ إنستاباي' },
+                  { id: 'فودافون كاش', label: '📱 فودافون' },
+                  { id: 'فيزا / كارت', label: '💳 فيزا' },
+                ].map(m => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => setPaymentMethod(m.id as any)}
+                    className={`py-1 px-1 rounded-lg font-black transition-all border cursor-pointer ${
+                      paymentMethod === m.id
+                        ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-3xs'
+                        : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200'
+                    }`}
+                  >
+                    {m.label}
+                  </button>
+                ))}
               </div>
 
-              {/* Checks Manager if Payment Method is Checks */}
+              {/* Checks Manager */}
               {paymentMethod === 'شيكات بنكية' && (
-                <div className="bg-amber-50/70 p-3 rounded-2xl border border-amber-200 space-y-2 text-xs">
-                  <div className="flex justify-between items-center">
+                <div className="bg-amber-50/90 p-2 rounded-xl border border-amber-200 space-y-1.5 max-h-36 overflow-y-auto">
+                  <div className="flex justify-between items-center text-[11px]">
                     <span className="font-black text-amber-950">شيكات الفاتورة:</span>
                     <button
                       type="button"
                       onClick={addCheckRow}
-                      className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-black px-2 py-0.5 rounded-lg text-[11px] cursor-pointer"
+                      className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-black px-2 py-0.5 rounded text-[10px] cursor-pointer"
                     >
                       + شيك إضافي
                     </button>
                   </div>
-
-                  <div className="space-y-2">
-                    {checkRows.map((chk, cIdx) => (
-                      <div key={chk.id || cIdx} className="bg-white p-2 rounded-xl border border-amber-200 space-y-1.5">
-                        <div className="grid grid-cols-2 gap-1.5">
-                          <input
-                            type="text"
-                            placeholder="رقم الشيك *"
-                            value={chk.checkNumber}
-                            onChange={e => updateCheckRow(chk.id, 'checkNumber', e.target.value)}
-                            className="border border-slate-300 rounded-lg px-2 py-1 font-mono font-bold text-xs"
-                          />
-                          <select
-                            value={chk.bankName}
-                            onChange={e => updateCheckRow(chk.id, 'bankName', e.target.value)}
-                            className="border border-slate-300 rounded-lg px-2 py-1 font-bold text-xs"
-                          >
-                            {BANKS.map(b => <option key={b} value={b}>{b}</option>)}
-                          </select>
-                        </div>
-                        <div className="grid grid-cols-2 gap-1.5">
-                          <input
-                            type="number"
-                            min="0"
-                            placeholder="المبلغ (ج) *"
-                            value={chk.amount || ''}
-                            onChange={e => updateCheckRow(chk.id, 'amount', parseFloat(e.target.value) || 0)}
-                            className="border border-slate-300 rounded-lg px-2 py-1 font-mono font-bold text-xs"
-                          />
-                          <input
-                            type="date"
-                            value={chk.dueDate}
-                            onChange={e => updateCheckRow(chk.id, 'dueDate', e.target.value)}
-                            className="border border-slate-300 rounded-lg px-2 py-1 font-mono font-bold text-xs"
-                          />
-                        </div>
-                        {checkRows.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => removeCheckRow(chk.id)}
-                            className="text-rose-600 text-[10px] font-bold hover:underline"
-                          >
-                            إزالة الشيك ✕
-                          </button>
-                        )}
+                  {checkRows.map((chk, cIdx) => (
+                    <div key={chk.id || cIdx} className="bg-white p-1.5 rounded-lg border border-amber-200 space-y-1">
+                      <div className="grid grid-cols-2 gap-1">
+                        <input
+                          type="text"
+                          placeholder="رقم الشيك *"
+                          value={chk.checkNumber}
+                          onChange={e => updateCheckRow(chk.id, 'checkNumber', e.target.value)}
+                          className="border border-slate-300 rounded px-1.5 py-0.5 font-mono text-[11px]"
+                        />
+                        <select
+                          value={chk.bankName}
+                          onChange={e => updateCheckRow(chk.id, 'bankName', e.target.value)}
+                          className="border border-slate-300 rounded px-1.5 py-0.5 text-[11px]"
+                        >
+                          {BANKS.map(b => <option key={b} value={b}>{b}</option>)}
+                        </select>
                       </div>
-                    ))}
-                  </div>
+                      <div className="grid grid-cols-2 gap-1">
+                        <input
+                          type="number"
+                          min="0"
+                          placeholder="المبلغ (ج) *"
+                          value={chk.amount || ''}
+                          onChange={e => updateCheckRow(chk.id, 'amount', parseFloat(e.target.value) || 0)}
+                          className="border border-slate-300 rounded px-1.5 py-0.5 font-mono text-[11px]"
+                        />
+                        <input
+                          type="date"
+                          value={chk.dueDate}
+                          onChange={e => updateCheckRow(chk.id, 'dueDate', e.target.value)}
+                          className="border border-slate-300 rounded px-1.5 py-0.5 font-mono text-[11px]"
+                        />
+                      </div>
+                      {checkRows.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeCheckRow(chk.id)}
+                          className="text-rose-600 text-[10px] font-bold"
+                        >
+                          إزالة الشيك ✕
+                        </button>
+                      )}
+                    </div>
+                  ))}
                 </div>
               )}
 
               {/* Totals Summary */}
-              <div className="bg-slate-900 text-white p-3 rounded-2xl space-y-2 shadow-md border border-slate-800 text-xs">
-                <div className="flex justify-between items-center text-slate-300 font-bold">
+              <div className="bg-slate-900 text-white p-2.5 rounded-xl space-y-1.5 border border-slate-800">
+                <div className="flex justify-between items-center text-slate-300 text-[11px]">
                   <span>المجموع الفرعي:</span>
-                  <span className="font-mono text-sm">{subtotal.toLocaleString()} ج.م</span>
+                  <span className="font-mono font-bold text-xs">{subtotal.toLocaleString()} ج.م</span>
                 </div>
 
-                {/* Direct Value Discount */}
-                <div className="flex justify-between items-center text-amber-300 font-bold gap-2 pt-1 border-t border-slate-800">
-                  <div className="flex items-center gap-1 whitespace-nowrap">
-                    <span>خصم المورد:</span>
-                  </div>
+                <div className="flex justify-between items-center text-amber-300 text-[11px] pt-1 border-t border-slate-800">
+                  <span>خصم المورد:</span>
                   <div className="flex items-center gap-1">
                     <input
                       type="number"
@@ -917,37 +876,35 @@ export default function NewPurchaseInvoicePage() {
                       placeholder="0"
                       value={discountValue || ''}
                       onChange={e => setDiscountValue(Number(e.target.value))}
-                      className="w-24 text-center rounded-lg px-2 py-1 font-mono font-black text-xs text-slate-950 bg-white border border-slate-300 focus:outline-none"
+                      className="w-20 text-center rounded px-1.5 py-0.5 font-mono font-black text-xs text-slate-950 bg-white focus:outline-none"
                     />
-                    <span className="text-[11px] font-mono text-slate-300">ج.م</span>
+                    <span className="text-[10px] font-mono text-slate-400">ج.م</span>
                   </div>
                 </div>
 
-                <div className="flex justify-between items-center text-white border-t border-slate-800 pt-1.5 font-black">
-                  <span className="text-sm">الصافي المطلوب:</span>
-                  <span className="font-mono text-lg text-emerald-400">{totalAmount.toLocaleString()} ج.م</span>
+                <div className="flex justify-between items-center text-white border-t border-slate-800 pt-1 font-black">
+                  <span className="text-xs">الصافي المطلوب:</span>
+                  <span className="font-mono text-base text-emerald-400">{totalAmount.toLocaleString()} ج.م</span>
                 </div>
               </div>
 
               {/* Paid & Remaining */}
-              <div className="bg-amber-50/70 border border-amber-200 p-2.5 rounded-2xl space-y-2 text-xs">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="font-black text-amber-950 whitespace-nowrap">
-                    المدفوع الآن:
-                  </span>
-                  <div className="flex items-center gap-1.5 flex-1 max-w-[200px]">
+              <div className="bg-amber-50/80 border border-amber-200 p-2 rounded-xl space-y-1 text-[11px]">
+                <div className="flex items-center justify-between gap-1.5">
+                  <span className="font-black text-amber-950 whitespace-nowrap">المدفوع:</span>
+                  <div className="flex items-center gap-1">
                     <input
                       type="number"
                       min="0"
                       value={paidAmount || ''}
                       onChange={e => setPaidAmount(Number(e.target.value))}
                       placeholder="0"
-                      className="w-full bg-white border border-amber-400 focus:border-amber-600 rounded-xl px-2 py-1.5 font-mono font-black text-slate-950 text-sm text-center focus:outline-none"
+                      className="w-24 bg-white border border-amber-400 rounded-lg px-1.5 py-1 font-mono font-black text-slate-950 text-xs text-center focus:outline-none"
                     />
                     <button
                       type="button"
                       onClick={() => setPaidAmount(totalAmount)}
-                      className="bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] px-2 py-1.5 rounded-xl font-black whitespace-nowrap cursor-pointer shadow-3xs"
+                      className="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] px-2 py-1 rounded-lg font-black cursor-pointer"
                     >
                       كامل ⚡
                     </button>
@@ -955,8 +912,8 @@ export default function NewPurchaseInvoicePage() {
                 </div>
 
                 <div className="flex justify-between items-center pt-1 border-t border-amber-200/80 font-bold">
-                  <span className="text-slate-600">المتبقي (آجل على المؤسسة):</span>
-                  <strong className={`font-mono font-black text-sm ${
+                  <span className="text-slate-600">المتبقي (آجل):</span>
+                  <strong className={`font-mono font-black text-xs ${
                     remainingAmount === 0 ? 'text-emerald-700' : 'text-rose-700'
                   }`}>
                     {remainingAmount.toLocaleString()} ج.م
@@ -964,30 +921,28 @@ export default function NewPurchaseInvoicePage() {
                 </div>
               </div>
 
-              {/* Notes */}
-              <div>
-                <textarea
-                  rows={2}
-                  placeholder="ملاحظات توريد الخامات (اختياري)..."
-                  value={purNotes}
-                  onChange={e => setPurNotes(e.target.value)}
-                  className="w-full border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-amber-500 bg-slate-50"
-                />
-              </div>
+              {/* Notes Input */}
+              <input
+                type="text"
+                placeholder="ملاحظات توريد الخامات (اختياري)..."
+                value={purNotes}
+                onChange={e => setPurNotes(e.target.value)}
+                className="w-full border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-amber-500 bg-white"
+              />
 
               {/* Submit Save Button */}
               <button
                 type="button"
                 disabled={isSubmitting || items.length === 0}
                 onClick={handleSubmit}
-                className="w-full bg-brand-gold hover:bg-amber-400 disabled:opacity-50 text-slate-950 py-3.5 rounded-2xl text-xs sm:text-sm font-black shadow-gold cursor-pointer transition-all flex items-center justify-center gap-2 active:scale-[0.99]"
+                className="w-full bg-brand-gold hover:bg-amber-400 disabled:opacity-50 text-slate-950 py-2.5 rounded-xl text-xs font-black shadow-gold cursor-pointer transition-all flex items-center justify-center gap-1.5 active:scale-[0.99]"
               >
                 {isSubmitting ? (
-                  <span>⏳ جاري حفظ الفاتورة وتحديث المخزن...</span>
+                  <span>⏳ جاري حفظ الفاتورة...</span>
                 ) : (
                   <>
-                    <span className="material-symbols-outlined text-lg">save</span>
-                    <span>حفظ فاتورة الشراء وتحديث أرصدة المخزون ✓</span>
+                    <span className="material-symbols-outlined text-base">save</span>
+                    <span>حفظ فاتورة الشراء وتحديث المخزن ✓</span>
                   </>
                 )}
               </button>
