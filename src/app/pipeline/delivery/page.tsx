@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
 import { getStoredPipelineOrders, fetchPipelineOrders, updatePipelineOrderStatus, isTodayOrOverdue, normalizeMasterStage } from '@/lib/pipelineStore';
+import { formatDateOnly } from '@/lib/dateUtils';
 import OrderRowActions from '@/components/OrderRowActions';
 import { useCurrentUser } from '@/lib/useCurrentUser';
 import BranchSelect from '@/components/BranchSelect';
@@ -275,6 +276,7 @@ export default function PipelineDeliveryPage() {
 
                   <div className="p-3 bg-slate-50 rounded-xl my-2 text-xs space-y-1 font-medium">
                     <div><strong>الفرع / النقطة:</strong> {job.branch}</div>
+                    <div><strong>موعد التسليم:</strong> {(job as any).deliveryDate ? formatDateOnly((job as any).deliveryDate) : 'غير محدد'}</div>
                     <div><strong>ملاحظات التسليم:</strong> {job.notes}</div>
                     <div className="flex justify-between pt-1.5 border-t border-slate-200">
                       <span className="text-slate-500">المتبقي للتحصيل عند التسليم:</span>

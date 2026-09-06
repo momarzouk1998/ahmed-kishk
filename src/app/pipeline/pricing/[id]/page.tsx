@@ -119,23 +119,32 @@ export default function PricingDetailPage() {
 
   const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
   const [deliveryDate, setDeliveryDate] = useState<string>('');
+  const [installationDate, setInstallationDate] = useState<string>('');
   const [fulfillmentType, setFulfillmentType] = useState<'DELIVERY' | 'INSTALLATION'>('INSTALLATION');
   const [estimator, setEstimator] = useState<string>('أحمد كشك');
 
   const handleFulfillmentChange = async (type: 'DELIVERY' | 'INSTALLATION', date: string) => {
     setFulfillmentType(type);
-    setDeliveryDate(date);
+    let newDelDate = deliveryDate;
+    let newInstDate = installationDate;
+    if (type === 'DELIVERY') {
+      newDelDate = date;
+      setDeliveryDate(date);
+    } else {
+      newInstDate = date;
+      setInstallationDate(date);
+    }
 
     if (!quotation) return;
 
     // 1. Update quotation store
     const updatedQuotations = quotations.map(q =>
-      q.id === quotation.id ? { ...q, deliveryDate: date, fulfillmentType: type } : q
+      q.id === quotation.id ? { ...q, deliveryDate: newDelDate, installationDate: newInstDate, fulfillmentType: type } : q
     );
     setQuotations(updatedQuotations);
     await saveAllQuotations(updatedQuotations);
 
-    // 2. Sync deliveryDate with master pipeline store without altering its pipeline status
+    // 2. Sync with master pipeline store without altering its pipeline status
     const storedOrders = getStoredPipelineOrders();
     const existingIndex = storedOrders.findIndex(o => o.orderId === quotation.id || o.id === quotation.id || (o.customerName && quotation.customerName && o.customerName === quotation.customerName));
 
@@ -143,7 +152,10 @@ export default function PricingDetailPage() {
       const updated = [...storedOrders];
       updated[existingIndex] = {
         ...storedOrders[existingIndex],
-        deliveryDate: date,
+        deliveryDate: newDelDate,
+        installationDate: newInstDate,
+        scheduledDate: newInstDate,
+        fulfillmentType: type,
       };
       await saveStoredPipelineOrders(updated);
     }
@@ -216,6 +228,14 @@ export default function PricingDetailPage() {
     if (quotation) {
       setEstimator(quotation.estimatorName || 'أحمد كشك');
       setDeliveryDate(quotation.deliveryDate || '');
+      setInstallationDate(quotation.installationDate || '');
+      if (quotation.fulfillmentType) {
+        setFulfillmentType(quotation.fulfillmentType);
+      } else if (quotation.deliveryDate && !quotation.installationDate) {
+        setFulfillmentType('DELIVERY');
+      } else {
+        setFulfillmentType('INSTALLATION');
+      }
     }
   }, [quotation]);
 
@@ -617,7 +637,7 @@ export default function PricingDetailPage() {
 
                 <button
                   type="button"
-                  onClick={() => handleFulfillmentChange('INSTALLATION', deliveryDate)}
+                  onClick={() => handleFulfillmentChange('INSTALLATION', installationDate)}
                   className={`px-3 py-1 rounded-md transition-all cursor-pointer text-xs ${
                     fulfillmentType === 'INSTALLATION'
                       ? 'bg-amber-400 text-slate-950 font-black shadow-2xs'
@@ -631,16 +651,16 @@ export default function PricingDetailPage() {
               {/* Date Input */}
               <input
                 type="date"
-                value={deliveryDate || ''}
+                value={(fulfillmentType === 'DELIVERY' ? deliveryDate : installationDate) || ''}
                 onChange={(e) => handleFulfillmentChange(fulfillmentType, e.target.value)}
                 className="bg-white border border-amber-300 rounded-lg px-3 py-1 text-slate-900 font-mono font-bold text-xs focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
               />
             </div>
 
             {/* Target Tab Badge Indicator */}
-            {deliveryDate && (
+            {(fulfillmentType === 'DELIVERY' ? deliveryDate : installationDate) && (
               <div className="text-[11px] font-bold text-slate-700 bg-white px-2.5 py-1 rounded-md border border-amber-200 shadow-3xs">
-                📅 موعد ال{fulfillmentType === 'DELIVERY' ? 'تسليم' : 'تركيب'} المطلوب: {deliveryDate}
+                📅 موعد ال{fulfillmentType === 'DELIVERY' ? 'تسليم' : 'تركيب'} المطلوب: {fulfillmentType === 'DELIVERY' ? deliveryDate : installationDate}
               </div>
             )}
           </div>

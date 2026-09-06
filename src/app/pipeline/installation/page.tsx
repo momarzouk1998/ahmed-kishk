@@ -83,12 +83,10 @@ export default function PipelineInstallationPage() {
         })
         .map((o: any) => {
           const rawDate =
-            o.scheduledDate ||
-            o.deliveryDate ||
             o.installationDate ||
+            o.scheduledDate ||
             o.scheduledAt ||
             o.installDate ||
-            o.date ||
             '';
           const tech =
             o.technicianName ||
@@ -191,8 +189,8 @@ export default function PipelineInstallationPage() {
         if (isMatch) {
           return {
             ...o,
+            installationDate: scheduleDateInput.trim(),
             scheduledDate: scheduleDateInput.trim(),
-            deliveryDate: scheduleDateInput.trim(),
             technicianName: technicianInput.trim(),
           };
         }
@@ -206,7 +204,6 @@ export default function PipelineInstallationPage() {
           return {
             ...j,
             scheduledDate: scheduleDateInput.trim(),
-            deliveryDate: scheduleDateInput.trim(),
             technicianName: technicianInput.trim(),
           };
         }

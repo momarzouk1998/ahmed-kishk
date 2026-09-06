@@ -87,7 +87,7 @@ export async function POST(request: Request) {
     const results = [];
     for (const item of rawList) {
       if (!item || !item.id) continue;
-      const { id, inspectionId, customerName, phone, address, branch, status, totalAmount, depositPaid, remainingAmount, date, deliveryDate, estimatorName, rooms } = item;
+      const { id, inspectionId, customerName, phone, address, branch, status, totalAmount, depositPaid, remainingAmount, date, deliveryDate, inspectionDate, installationDate, estimatorName, rooms } = item;
       const effBranch = effectiveCreateBranch(scope, branch);
 
       const quotation = await prisma.quotationOrder.upsert({
@@ -105,6 +105,8 @@ export async function POST(request: Request) {
           remainingAmount: Number(remainingAmount) || 0,
           date: date || new Date().toISOString().split('T')[0],
           deliveryDate: deliveryDate ? String(deliveryDate) : null,
+          inspectionDate: inspectionDate ? String(inspectionDate) : null,
+          installationDate: installationDate ? String(installationDate) : null,
           estimatorName: estimatorName || 'أحمد كشك',
           rooms: rooms || [],
         },
@@ -118,6 +120,8 @@ export async function POST(request: Request) {
           depositPaid: depositPaid !== undefined ? Number(depositPaid) : undefined,
           remainingAmount: remainingAmount !== undefined ? Number(remainingAmount) : undefined,
           deliveryDate: deliveryDate !== undefined ? (deliveryDate ? String(deliveryDate) : null) : undefined,
+          inspectionDate: inspectionDate !== undefined ? (inspectionDate ? String(inspectionDate) : null) : undefined,
+          installationDate: installationDate !== undefined ? (installationDate ? String(installationDate) : null) : undefined,
           estimatorName: estimatorName || undefined,
           rooms: rooms !== undefined ? rooms : undefined,
         },

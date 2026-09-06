@@ -24,6 +24,11 @@ export interface PipelineMasterOrder {
   address: string;
   branch: string;
   deliveryDate?: string;
+  inspectionDate?: string;
+  installationDate?: string;
+  fulfillmentType?: 'DELIVERY' | 'INSTALLATION' | string;
+  scheduledDate?: string;
+  scheduledAt?: string;
   cutterName?: string;
   tailorName?: string;
   technicianName?: string;

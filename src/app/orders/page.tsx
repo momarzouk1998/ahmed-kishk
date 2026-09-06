@@ -224,6 +224,8 @@ export default function CentralOrdersLedgerPage() {
         address: finalOrder.address,
         branch: finalOrder.branch,
         deliveryDate: finalOrder.deliveryDate,
+        inspectionDate: finalOrder.inspectionDate,
+        installationDate: finalOrder.installationDate,
         totalAmount: total,
         depositPaid: deposit,
         remainingAmount: remaining,
@@ -521,23 +523,32 @@ export default function CentralOrdersLedgerPage() {
                       (q.customerName && order.customerName && q.customerName.trim().toLowerCase() === order.customerName.trim().toLowerCase())
                     );
 
-                    const isInstallOrder =
-                      (order as any).fulfillmentType === 'INSTALLATION' ||
-                      (qMatch as any)?.fulfillmentType === 'INSTALLATION' ||
-                      (order as any).scheduledDate ||
-                      (order as any).installationDate ||
-                      currentStage === 'جاهز للتركيب';
+                    const inspMatch = inspections.find(i =>
+                      i.id === order.orderId ||
+                      i.id === order.id ||
+                      (i.customerName && order.customerName && i.customerName.trim().toLowerCase() === order.customerName.trim().toLowerCase())
+                    );
+
+                    // Inspection date
+                    const inspectionDateVal =
+                      (order as any).inspectionDate ||
+                      inspMatch?.scheduledAt ||
+                      inspMatch?.createdAt ||
+                      order.createdAt ||
+                      '';
 
                     // Delivery date
-                    const deliveryDateVal = !isInstallOrder
-                      ? ((order as any).deliveryDate || ((qMatch as any)?.fulfillmentType === 'DELIVERY' ? qMatch?.deliveryDate : ''))
-                      : ((order as any).deliveryDate && (order as any).deliveryDate !== (order as any).scheduledDate && (order as any).scheduledDate ? (order as any).deliveryDate : '');
+                    const deliveryDateVal =
+                      (order as any).deliveryDate ||
+                      qMatch?.deliveryDate ||
+                      '';
 
                     // Installation date
                     const installDateVal =
-                      (order as any).scheduledDate ||
                       (order as any).installationDate ||
-                      (isInstallOrder ? ((order as any).deliveryDate || qMatch?.deliveryDate || '') : '');
+                      (order as any).scheduledDate ||
+                      qMatch?.installationDate ||
+                      '';
 
                     return (
                       <tr
@@ -556,7 +567,7 @@ export default function CentralOrdersLedgerPage() {
                           </div>
                         </td>
                         <td className="p-3.5 font-mono text-slate-800 font-bold">
-                          {order.createdAt ? formatDateOnly(order.createdAt) : '—'}
+                          {inspectionDateVal ? formatDateOnly(inspectionDateVal) : '—'}
                         </td>
                         <td className="p-3.5 font-mono font-bold text-sky-800">
                           {deliveryDateVal ? formatDateOnly(deliveryDateVal) : '—'}
@@ -733,8 +744,8 @@ export default function CentralOrdersLedgerPage() {
                   <label className="text-amber-950 font-black block mb-1">📅 تاريخ المعاينة:</label>
                   <input
                     type="date"
-                    value={activeEditingOrder.createdAt || ''}
-                    onChange={(e) => setActiveEditingOrder({ ...activeEditingOrder, createdAt: e.target.value })}
+                    value={(activeEditingOrder as any).inspectionDate || activeEditingOrder.createdAt || ''}
+                    onChange={(e) => setActiveEditingOrder({ ...activeEditingOrder, inspectionDate: e.target.value, createdAt: e.target.value } as any)}
                     className="w-full bg-white border border-amber-300 rounded-xl px-3 py-1.5 font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
                   />
                 </div>
