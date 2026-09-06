@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
 import { getStoredPipelineOrders, fetchPipelineOrders, updatePipelineOrderStatus, saveStoredPipelineOrders, isTodayOrOverdue, normalizeMasterStage } from '@/lib/pipelineStore';
+import { fetchQuotations, fetchInspections } from '@/lib/inspectionsStore';
 import { formatDate, formatDateOnly } from '@/lib/dateUtils';
 import OrderRowActions from '@/components/OrderRowActions';
 import { useCurrentUser } from '@/lib/useCurrentUser';
@@ -69,7 +70,12 @@ export default function PipelineInstallationPage() {
 
   useEffect(() => {
     async function load() {
-      const stored = await fetchPipelineOrders();
+      const [stored, quotations, inspections] = await Promise.all([
+        fetchPipelineOrders(),
+        fetchQuotations(),
+        fetchInspections(),
+      ]);
+
       if (!stored) {
         setJobs([]);
         return;
@@ -82,26 +88,52 @@ export default function PipelineInstallationPage() {
           return stage === 'جاهز للتركيب' || stage === 'مكتمل';
         })
         .map((o: any) => {
+          const cleanId = (o.orderId || o.id || '').replace(/^ORD-/, '');
+          const qMatch = (quotations || []).find(q =>
+            q.id === o.orderId ||
+            q.id === o.id ||
+            q.id === cleanId ||
+            `ORD-${q.id}` === o.id ||
+            (q.customerName && o.customerName && q.customerName.trim().toLowerCase() === o.customerName.trim().toLowerCase())
+          );
+          const inspMatch = (inspections || []).find(i =>
+            i.id === o.id ||
+            i.id === o.orderId ||
+            i.id === cleanId ||
+            `ORD-${i.id}` === o.id ||
+            (i.customerName && o.customerName && i.customerName.trim().toLowerCase() === o.customerName.trim().toLowerCase())
+          );
+
           const rawDate =
             o.installationDate ||
             o.scheduledDate ||
+            qMatch?.installationDate ||
+            (qMatch?.fulfillmentType === 'INSTALLATION' ? qMatch?.deliveryDate : undefined) ||
+            (o.fulfillmentType === 'INSTALLATION' ? o.deliveryDate : undefined) ||
             o.scheduledAt ||
             o.installDate ||
+            inspMatch?.scheduledAt ||
+            o.deliveryDate ||
+            qMatch?.deliveryDate ||
             '';
+
           const tech =
             o.technicianName ||
             o.technician ||
+            inspMatch?.technician ||
+            qMatch?.estimatorName ||
             o.installTechnician ||
             o.estimatorName ||
             '';
-          const total = Number(o.totalAmount) || 0;
-          const dep = Number(o.depositPaid) || 0;
+
+          const total = Number(o.totalAmount) || Number(qMatch?.totalAmount) || 0;
+          const dep = Number(o.depositPaid) || Number(qMatch?.depositPaid) || 0;
           const rem = o.remainingAmount !== undefined ? Number(o.remainingAmount) : Math.max(0, total - dep);
 
           return {
             ...o,
             scheduledDate: rawDate,
-            deliveryDate: o.deliveryDate || rawDate,
+            deliveryDate: o.deliveryDate || qMatch?.deliveryDate || rawDate,
             technicianName: tech,
             remainingAmount: rem,
           };

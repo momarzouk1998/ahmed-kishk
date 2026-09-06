@@ -163,6 +163,7 @@ export interface QuotationOrder {
   remainingAmount: number;
   date: string;
   deliveryDate?: string;
+  inspectionDate?: string;
   installationDate?: string;
   fulfillmentType?: 'DELIVERY' | 'INSTALLATION';
   estimatorName: string;

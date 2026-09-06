@@ -145,8 +145,8 @@ export default function PricingDetailPage() {
     await saveAllQuotations(updatedQuotations);
 
     // 2. Sync with master pipeline store without altering its pipeline status
-    const storedOrders = getStoredPipelineOrders();
-    const existingIndex = storedOrders.findIndex(o => o.orderId === quotation.id || o.id === quotation.id || (o.customerName && quotation.customerName && o.customerName === quotation.customerName));
+    const storedOrders = await fetchPipelineOrders();
+    const existingIndex = storedOrders.findIndex(o => o.orderId === quotation.id || o.id === quotation.id || o.id === `ORD-${quotation.id}` || (o.customerName && quotation.customerName && o.customerName === quotation.customerName));
 
     if (existingIndex >= 0) {
       const updated = [...storedOrders];
@@ -1689,6 +1689,14 @@ export default function PricingDetailPage() {
                   const existingIndex = storedOrders.findIndex(o => o.orderId === quotation.id || o.id === quotation.id || o.id === `ORD-${quotation.id}` || (o.customerName && quotation.customerName && o.customerName === quotation.customerName));
 
                   const orderIdToUse = quotation.id || `ORD-${Date.now()}`;
+                  const existingOrder = existingIndex >= 0 ? storedOrders[existingIndex] : null;
+                  const finalDeliveryDate = deliveryDate || quotation.deliveryDate || existingOrder?.deliveryDate || '';
+                  const finalInstallationDate = installationDate || quotation.installationDate || existingOrder?.installationDate || (fulfillmentType === 'INSTALLATION' ? finalDeliveryDate : '') || '';
+                  const finalScheduledDate = finalInstallationDate || existingOrder?.scheduledDate || '';
+                  const finalFulfillmentType = fulfillmentType || quotation.fulfillmentType || existingOrder?.fulfillmentType || 'INSTALLATION';
+
+                  const insp = quotation.inspectionId ? getInspectionById(quotation.inspectionId) : null;
+
                   const orderPayload: PipelineMasterOrder = {
                     id: existingIndex >= 0 ? storedOrders[existingIndex].id : `ORD-${quotation.id}`,
                     orderId: orderIdToUse,
@@ -1696,7 +1704,12 @@ export default function PricingDetailPage() {
                     phone: quotation.phone || '',
                     address: quotation.address || '',
                     branch: quotation.branch || 'الفرع الرئيسي',
-                    deliveryDate: quotation.deliveryDate || '',
+                    deliveryDate: finalDeliveryDate,
+                    inspectionDate: quotation.inspectionDate || existingOrder?.inspectionDate || quotation.date || '',
+                    installationDate: finalInstallationDate,
+                    scheduledDate: finalScheduledDate,
+                    fulfillmentType: finalFulfillmentType,
+                    technicianName: existingOrder?.technicianName || insp?.technician || quotation.estimatorName || '',
                     status: 'في المقص',
                     localStatus: 'بانتظار القص',
                     createdAt: quotation.date || new Date().toISOString().split('T')[0],

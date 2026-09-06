@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
 import { getStoredPipelineOrders, fetchPipelineOrders, updatePipelineOrderStatus, isTodayOrOverdue, normalizeMasterStage } from '@/lib/pipelineStore';
+import { fetchQuotations } from '@/lib/inspectionsStore';
 import { formatDateOnly } from '@/lib/dateUtils';
 import OrderRowActions from '@/components/OrderRowActions';
 import { useCurrentUser } from '@/lib/useCurrentUser';
@@ -34,17 +35,42 @@ export default function PipelineDeliveryPage() {
 
   useEffect(() => {
     async function load() {
-      const stored = await fetchPipelineOrders();
+      const [stored, quotations] = await Promise.all([
+        fetchPipelineOrders(),
+        fetchQuotations(),
+      ]);
+
       if (!stored) {
         setJobs([]);
         return;
       }
       // #FIX: كان localStatus وحده كافياً لإظهار الأوردر هنا حتى لو status الحقيقى
       // رجع لمرحلة سابقة. المرجع الآن هو المرحلة المُطبَّعة فقط.
-      const relevant = stored.filter(o => {
-        const stage = normalizeMasterStage(o.status || '');
-        return stage === 'جاهز للاستلام' || stage === 'مكتمل';
-      });
+      const relevant = stored
+        .filter(o => {
+          const stage = normalizeMasterStage(o.status || '');
+          return stage === 'جاهز للاستلام' || stage === 'مكتمل';
+        })
+        .map((o: any) => {
+          const cleanId = (o.orderId || o.id || '').replace(/^ORD-/, '');
+          const qMatch = (quotations || []).find(q =>
+            q.id === o.orderId ||
+            q.id === o.id ||
+            q.id === cleanId ||
+            `ORD-${q.id}` === o.id ||
+            (q.customerName && o.customerName && q.customerName.trim().toLowerCase() === o.customerName.trim().toLowerCase())
+          );
+          const delDate = o.deliveryDate || qMatch?.deliveryDate || '';
+          const total = Number(o.totalAmount) || Number(qMatch?.totalAmount) || 0;
+          const dep = Number(o.depositPaid) || Number(qMatch?.depositPaid) || 0;
+          const rem = o.remainingAmount !== undefined ? Number(o.remainingAmount) : Math.max(0, total - dep);
+
+          return {
+            ...o,
+            deliveryDate: delDate,
+            remainingAmount: rem,
+          };
+        });
       setJobs(relevant as any);
     }
     load();
