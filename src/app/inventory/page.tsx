@@ -47,12 +47,9 @@ type TabKey = typeof TABS[number]['key'];
 
 export default function InventoryPage() {
   const [tab, setTab] = useState<TabKey>('stock');
-  // #FIX: كانت بتبدأ بنسخة قديمة محفوظة على قرص الجهاز (localStorage) قبل ما تتأكد من
-  // السيرفر — ممكن تعرض بيانات مخزون قديمة/غلط لثوانى (أو أكتر لو الطلب فشل). دلوقتى
-  // البداية دايمًا من الكتالوج الافتراضى المُجهَّز مع النظام، وبيتم استبداله فورًا
-  // بالبيانات الحقيقية من قاعدة البيانات فى أول تحميل.
-  const [items, setItems] = useState<InventoryItem[]>(initialInventory as InventoryItem[]);
-  const [categories, setCategories] = useState<string[]>(() => ['الكل', ...Array.from(new Set(initialInventory.map(i => i.category).filter(Boolean)))]);
+  const [items, setItems] = useState<InventoryItem[]>([]);
+  const [categories, setCategories] = useState<string[]>(['الكل']);
+  const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState('الكل');
   const [selectedBranch, setSelectedBranch] = useState('الكل');
   const [search, setSearch] = useState('');
@@ -117,10 +114,11 @@ export default function InventoryPage() {
   // Load Inventory & Suppliers
   const loadInventory = async () => {
     try {
+      setLoading(true);
       const res = await fetch('/api/inventory', { cache: 'no-store' });
       if (res.ok) {
         const json = await res.json();
-        if (json.success && Array.isArray(json.items) && json.items.length > 0) {
+        if (json.success && Array.isArray(json.items)) {
           setItems(json.items);
           // Extract unique categories dynamically
           const cats = Array.from(new Set(json.items.map((i: InventoryItem) => i.category).filter(Boolean)));
@@ -129,6 +127,8 @@ export default function InventoryPage() {
       }
     } catch (e) {
       console.error(e);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -852,13 +852,22 @@ export default function InventoryPage() {
                         </tr>
                       );
                     })}
-                    {filteredItems.length === 0 && (
+                    {loading ? (
+                      <tr>
+                        <td colSpan={11} className="p-12 text-center text-slate-500 font-bold">
+                          <div className="flex flex-col items-center justify-center gap-2">
+                            <span className="material-symbols-outlined text-3xl animate-spin text-amber-500">progress_activity</span>
+                            <span>جاري تحميل بيانات وأصناف المخزن...</span>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : filteredItems.length === 0 ? (
                       <tr>
                         <td colSpan={11} className="p-12 text-center text-slate-400 font-bold">
                           لا توجد أصناف مطابقة للبحث أو التصفية الحالية
                         </td>
                       </tr>
-                    )}
+                    ) : null}
                   </tbody>
                 </table>
               </div>

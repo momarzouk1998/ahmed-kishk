@@ -1107,10 +1107,26 @@ export default function NewSalesInvoicePOSPage() {
                   <span>الصافي المستحق:</span>
                   <span>{lastSavedInvoice.totalAmount} ج.م</span>
                 </div>
-                <div className="flex justify-between text-emerald-700">
-                  <span>المدفوع ({lastSavedInvoice.paymentMethod}):</span>
-                  <span>{lastSavedInvoice.paidAmount} ج.م</span>
-                </div>
+                {/* Payment Method */}
+                {lastSavedInvoice.splitPayments && lastSavedInvoice.paymentMethod === 'دفع متعدد / مزيج' ? (
+                  <div className="space-y-0.5 pt-0.5">
+                    <div className="flex justify-between text-emerald-700">
+                      <span>المدفوع (دفع متعدد):</span>
+                      <span>{lastSavedInvoice.paidAmount} ج.م</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1 pr-1">
+                      {lastSavedInvoice.splitPayments.cash ? <span className="text-[10px] bg-green-100 text-green-800 px-1.5 py-0.5 rounded font-bold">💵 {lastSavedInvoice.splitPayments.cash} كاش</span> : null}
+                      {lastSavedInvoice.splitPayments.instapay ? <span className="text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded font-bold">⚡ {lastSavedInvoice.splitPayments.instapay} إنستاباي</span> : null}
+                      {lastSavedInvoice.splitPayments.vodafone ? <span className="text-[10px] bg-red-100 text-red-800 px-1.5 py-0.5 rounded font-bold">📱 {lastSavedInvoice.splitPayments.vodafone} فودافون</span> : null}
+                      {lastSavedInvoice.splitPayments.visa ? <span className="text-[10px] bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded font-bold">💳 {lastSavedInvoice.splitPayments.visa} فيزا</span> : null}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex justify-between text-emerald-700">
+                    <span>المدفوع ({lastSavedInvoice.paymentMethod}):</span>
+                    <span>{lastSavedInvoice.paidAmount} ج.م</span>
+                  </div>
+                )}
                 {lastSavedInvoice.remainingAmount > 0 && (
                   <div className="flex justify-between text-rose-600">
                     <span>المتبقي:</span>

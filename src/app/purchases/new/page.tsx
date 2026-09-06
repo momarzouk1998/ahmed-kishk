@@ -51,8 +51,6 @@ interface PurchaseCheckRow {
 
 const BANKS = ['QNB', 'البنك الأهلي المصري', 'بنك مصر', 'CIB', 'بنك القاهرة', 'بنك الإسكندرية'];
 
-const CATEGORIES = ['الكل', 'ستائر', 'سواريه', 'تراكات ومواسير', 'أشرطة وإكسسوارات'];
-
 export default function NewPurchaseInvoicePage() {
   const router = useRouter();
 
@@ -325,6 +323,21 @@ export default function NewPurchaseInvoicePage() {
     setItems(items.filter(it => it.id !== id));
   };
 
+  // Dynamic categories strictly belonging to the active branch's available inventory
+  const dynamicCategories = useMemo(() => {
+    const branchScoped = products.filter(p =>
+      !branch || branch === 'الكل' || normalizeBranchName(p.branch) === normalizeBranchName(branch)
+    );
+    const uniqueCats = Array.from(
+      new Set(
+        branchScoped
+          .map(p => (p.category || '').trim())
+          .filter(Boolean)
+      )
+    );
+    return uniqueCats;
+  }, [products, branch]);
+
   // Filtered Products for Catalog Search
   const filteredProducts = useMemo(() => {
     const q = productSearch.trim().toLowerCase();
@@ -452,21 +465,8 @@ export default function NewPurchaseInvoicePage() {
             </span>
           </div>
 
-          {/* Inline Supplier + Branch Selectors */}
-          <div className="flex flex-wrap items-center gap-2 flex-1 max-w-2xl justify-end">
-            <div className="w-64">
-              <SearchableSelect
-                options={supplierOptions}
-                value={supplierId}
-                onChange={handleSelectSupplier}
-                placeholder="🔍 المورد / الشركة..."
-                emptyLabel="— اختر المورد —"
-                onAddNew={() => setShowAddSupplierModal(true)}
-                addNewText="إضافة مورد باسم"
-              />
-            </div>
-
-            <div className="w-36">
+          <div className="flex items-center gap-2">
+            <div className="w-40">
               <BranchSelect
                 value={branch}
                 onChange={setBranch}
@@ -481,7 +481,7 @@ export default function NewPurchaseInvoicePage() {
                 setNewProdName(productSearch.trim());
                 setShowAddProductModal(true);
               }}
-              className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-2.5 py-1.5 rounded-xl text-xs flex items-center gap-1 transition-colors cursor-pointer shadow-3xs whitespace-nowrap"
+              className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-3 py-1.5 rounded-xl text-xs flex items-center gap-1 transition-colors cursor-pointer shadow-3xs whitespace-nowrap"
             >
               <span className="material-symbols-outlined text-[15px]">add_box</span>
               <span>+ صنف جديد</span>
@@ -490,12 +490,82 @@ export default function NewPurchaseInvoicePage() {
             <button
               type="button"
               onClick={() => router.push('/purchases')}
-              className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-2.5 py-1.5 rounded-xl text-xs transition-colors cursor-pointer border border-slate-200 flex items-center gap-1 whitespace-nowrap"
+              className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-3 py-1.5 rounded-xl text-xs transition-colors cursor-pointer border border-slate-200 flex items-center gap-1 whitespace-nowrap"
               title="رجوع لسجل فواتير المشتريات"
             >
               <span>↩️ السجل</span>
             </button>
           </div>
+        </div>
+
+        {/* 🏢 Dedicated Supplier Selection & Quick Add Bar (Above Catalog / Cart) */}
+        <div className="bg-white p-2.5 rounded-2xl border border-slate-200 shadow-soft flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2.5 flex-1 min-w-[280px]">
+            <div className="flex items-center gap-1.5 text-slate-700 font-black text-xs shrink-0">
+              <span className="material-symbols-outlined text-amber-600 text-lg">local_shipping</span>
+              <span>المورد / التاجر:</span>
+            </div>
+            <div className="w-72 max-w-full">
+              <SearchableSelect
+                options={supplierOptions}
+                value={supplierId}
+                onChange={handleSelectSupplier}
+                placeholder="🔍 ابحث بالاسم، الشركة أو الهاتف..."
+                emptyLabel="— اختر المورد —"
+                onAddNew={() => setShowAddSupplierModal(true)}
+                addNewText="إضافة مورد جديد باسم"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowAddSupplierModal(true)}
+              className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1 transition-colors cursor-pointer shrink-0 shadow-3xs"
+            >
+              <span className="material-symbols-outlined text-[15px]">person_add</span>
+              <span>+ مورد جديد</span>
+            </button>
+          </div>
+
+          {/* Selected Supplier Info Pill */}
+          {supplierName ? (
+            <div className="flex items-center gap-2 bg-amber-50/70 border border-amber-200/80 px-3 py-1 rounded-xl text-xs">
+              <span className="font-bold text-amber-950">
+                🏢 {supplierName}
+              </span>
+              {supplierPhone && (
+                <span className="text-slate-600 font-mono text-[11px] border-r border-amber-300 pr-2 mr-1">
+                  📞 {supplierPhone}
+                </span>
+              )}
+              {(() => {
+                const s = suppliersList.find(sup => sup.id === supplierId || sup.name === supplierName);
+                if (s && Number(s.balance) > 0) {
+                  return (
+                    <span className="text-rose-700 font-mono font-black text-[11px] bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded mr-1">
+                      مستحق: {Number(s.balance).toLocaleString()} ج
+                    </span>
+                  );
+                }
+                return null;
+              })()}
+              <button
+                type="button"
+                onClick={() => {
+                  setSupplierId('');
+                  setSupplierName('');
+                  setSupplierPhone('');
+                }}
+                className="text-slate-400 hover:text-rose-600 text-xs font-bold mr-1 cursor-pointer"
+                title="إلغاء اختيار المورد"
+              >
+                ✕
+              </button>
+            </div>
+          ) : (
+            <div className="text-[11px] font-bold text-amber-800 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
+              ⚠️ يرجى اختيار المورد أو إضافته لحفظ الفاتورة
+            </div>
+          )}
         </div>
 
         {/* 2-Column Split Layout */}
@@ -504,9 +574,9 @@ export default function NewPurchaseInvoicePage() {
           {/* ========================================================= */}
           {/* COLUMN 1 (7 cols - RIGHT): High-Density Products Catalog Table */}
           {/* ========================================================= */}
-          <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200 shadow-soft overflow-hidden flex flex-col" style={{ height: 'calc(100vh - 85px)' }}>
+          <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200 shadow-soft overflow-hidden flex flex-col" style={{ height: 'calc(100vh - 135px)' }}>
             
-            {/* Search & Filter Top Bar */}
+            {/* Search & Dynamic Category Filter Top Bar */}
             <div className="p-2.5 border-b border-slate-200 bg-slate-50/70 space-y-2 shrink-0">
               <div className="flex items-center gap-2">
                 <div className="relative flex-1">
@@ -536,25 +606,33 @@ export default function NewPurchaseInvoicePage() {
                 </span>
               </div>
 
-              {/* Category Filter Pills */}
-              <div className="flex items-center gap-1 overflow-x-auto pb-0.5 custom-scrollbar">
-                {CATEGORIES.map(cat => {
-                  const isActive = selectedCategory === cat;
-                  return (
-                    <button
-                      key={cat}
-                      type="button"
-                      onClick={() => setSelectedCategory(cat)}
-                      className={`px-2 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer whitespace-nowrap border ${
-                        isActive
-                          ? 'bg-slate-900 text-white border-slate-900 shadow-3xs'
-                          : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200'
-                      }`}
-                    >
-                      {cat}
-                    </button>
-                  );
-                })}
+              {/* Dynamic Categories: Select Dropdown + All Button */}
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setSelectedCategory('الكل')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap border ${
+                    selectedCategory === 'الكل'
+                      ? 'bg-slate-900 text-white border-slate-900 shadow-3xs'
+                      : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200'
+                  }`}
+                >
+                  🌐 الكل ({products.filter(p => !branch || branch === 'الكل' || normalizeBranchName(p.branch) === normalizeBranchName(branch)).length})
+                </button>
+                <div className="relative flex-1">
+                  <select
+                    value={selectedCategory === 'الكل' ? '' : selectedCategory}
+                    onChange={e => setSelectedCategory(e.target.value || 'الكل')}
+                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-amber-500 shadow-inner cursor-pointer"
+                  >
+                    <option value="">📂 كل التصنيفات ({dynamicCategories.length} تصنيف متاح بالفرع)...</option>
+                    {dynamicCategories.map(cat => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
 
@@ -587,8 +665,7 @@ export default function NewPurchaseInvoicePage() {
                 <table className="w-full text-right text-xs border-collapse">
                   <thead className="bg-slate-100 text-slate-600 font-bold border-b border-slate-200 sticky top-0 z-10 text-[11px]">
                     <tr>
-                      <th className="p-2 pr-3">كود</th>
-                      <th className="p-2">اسم الصنف / الخامة</th>
+                      <th className="p-2 pr-3">اسم الصنف / الخامة</th>
                       <th className="p-2">التصنيف</th>
                       <th className="p-2 text-center">رصيد المخزن</th>
                       <th className="p-2 text-center">سعر التكلفة</th>
@@ -608,11 +685,7 @@ export default function NewPurchaseInvoicePage() {
                             inCart ? 'bg-amber-50/80 font-bold' : ''
                           }`}
                         >
-                          <td className="p-2 pr-3 font-mono text-[10px] text-slate-400 whitespace-nowrap" dir="ltr">
-                            {p.code}
-                          </td>
-
-                          <td className="p-2 font-bold text-slate-900 max-w-[220px] truncate" title={p.name}>
+                          <td className="p-2 pr-3 font-bold text-slate-900 max-w-[240px] truncate" title={p.name}>
                             {p.name}
                           </td>
 
@@ -657,7 +730,7 @@ export default function NewPurchaseInvoicePage() {
           {/* ========================================================= */}
           {/* COLUMN 2 (5 cols - LEFT): Cart Items Table & Settlement */}
           {/* ========================================================= */}
-          <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200 shadow-soft overflow-hidden flex flex-col" style={{ height: 'calc(100vh - 85px)' }}>
+          <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200 shadow-soft overflow-hidden flex flex-col" style={{ height: 'calc(100vh - 135px)' }}>
             
             {/* Header */}
             <div className="px-3 py-2 border-b border-slate-200 bg-slate-50/70 flex justify-between items-center shrink-0">

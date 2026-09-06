@@ -67,12 +67,12 @@ export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricS
       </tr>
     `).join('');
 
-    const paymentLine = data.splitPayments
+    const paymentLine = data.splitPayments && data.paymentMethod === 'دفع متعدد / مزيج'
       ? [
-          data.splitPayments.cash ? `${data.splitPayments.cash} كاش` : '',
-          data.splitPayments.instapay ? `${data.splitPayments.instapay} إنستاباي` : '',
-          data.splitPayments.vodafone ? `${data.splitPayments.vodafone} فودافون` : '',
-          data.splitPayments.visa ? `${data.splitPayments.visa} فيزا` : '',
+          Number(data.splitPayments.cash) > 0 ? `${Number(data.splitPayments.cash).toLocaleString()} كاش` : '',
+          Number(data.splitPayments.instapay) > 0 ? `${Number(data.splitPayments.instapay).toLocaleString()} إنستاباي` : '',
+          Number(data.splitPayments.vodafone) > 0 ? `${Number(data.splitPayments.vodafone).toLocaleString()} فودافون` : '',
+          Number(data.splitPayments.visa) > 0 ? `${Number(data.splitPayments.visa).toLocaleString()} فيزا` : '',
         ].filter(Boolean).join(' + ')
       : (data.paymentMethod || 'نقدي');
 
@@ -387,11 +387,11 @@ export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricS
               <td class="info-val">${data.branch || 'الفرع الرئيسي'}</td>
               <td class="info-label">طريقة السداد:</td>
               <td class="info-val">
-                ${data.splitPayments ? `متعدد (${[
-                  data.splitPayments.cash ? `${data.splitPayments.cash}ج كاش` : '',
-                  data.splitPayments.instapay ? `${data.splitPayments.instapay}ج إنستاباي` : '',
-                  data.splitPayments.vodafone ? `${data.splitPayments.vodafone}ج فودافون` : '',
-                  data.splitPayments.visa ? `${data.splitPayments.visa}ج فيزا` : ''
+                ${data.splitPayments && data.paymentMethod === 'دفع متعدد / مزيج' ? `متعدد (${[
+                  Number(data.splitPayments.cash) > 0 ? `${Number(data.splitPayments.cash).toLocaleString()}ج كاش` : '',
+                  Number(data.splitPayments.instapay) > 0 ? `${Number(data.splitPayments.instapay).toLocaleString()}ج إنستاباي` : '',
+                  Number(data.splitPayments.vodafone) > 0 ? `${Number(data.splitPayments.vodafone).toLocaleString()}ج فودافون` : '',
+                  Number(data.splitPayments.visa) > 0 ? `${Number(data.splitPayments.visa).toLocaleString()}ج فيزا` : ''
                 ].filter(Boolean).join(' + ')})` : (data.paymentMethod || 'نقدي')}
               </td>
             </tr>
@@ -439,6 +439,16 @@ export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricS
                 <span class="fin-val" style="color:#881337;">${data.remainingAmount.toLocaleString()} <span style="font-size:8pt;">ج.م</span></span>
               </div>
             </div>
+            ${data.splitPayments && data.paymentMethod === 'دفع متعدد / مزيج' ? `
+            <div style="border-top:1px solid #e2e8f0; margin-top:6px; padding-top:5px;">
+              <div style="font-size:8pt; font-weight:700; color:#475569; margin-bottom:4px;">تفاصيل الدفع المتعدد:</div>
+              <div style="display:flex; flex-wrap:wrap; gap:6px;">
+                ${Number(data.splitPayments.cash) > 0 ? `<span style="background:#f0fdf4; border:1px solid #86efac; border-radius:4px; padding:2px 8px; font-size:8pt; font-weight:700; color:#166534;">💵 كاش: ${Number(data.splitPayments.cash).toLocaleString()} ج</span>` : ''}
+                ${Number(data.splitPayments.instapay) > 0 ? `<span style="background:#eff6ff; border:1px solid #93c5fd; border-radius:4px; padding:2px 8px; font-size:8pt; font-weight:700; color:#1d4ed8;">⚡ إنستاباي: ${Number(data.splitPayments.instapay).toLocaleString()} ج</span>` : ''}
+                ${Number(data.splitPayments.vodafone) > 0 ? `<span style="background:#fff1f2; border:1px solid #fca5a5; border-radius:4px; padding:2px 8px; font-size:8pt; font-weight:700; color:#b91c1c;">📱 فودافون: ${Number(data.splitPayments.vodafone).toLocaleString()} ج</span>` : ''}
+                ${Number(data.splitPayments.visa) > 0 ? `<span style="background:#faf5ff; border:1px solid #d8b4fe; border-radius:4px; padding:2px 8px; font-size:8pt; font-weight:700; color:#7e22ce;">💳 فيزا: ${Number(data.splitPayments.visa).toLocaleString()} ج</span>` : ''}
+              </div>
+            </div>` : ''}
           </div>
 
           <!-- Footer -->
@@ -532,7 +542,19 @@ export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricS
                   <td className="p-2 font-bold text-slate-500 bg-slate-100/70">الفرع:</td>
                   <td className="p-2 font-bold text-slate-900">{data.branch || 'الفرع الرئيسي'}</td>
                   <td className="p-2 font-bold text-slate-500 bg-slate-100/70">طريقة السداد:</td>
-                  <td className="p-2 font-bold text-slate-900">{data.paymentMethod || 'نقدي'}</td>
+                  <td className="p-2 font-bold text-slate-900">
+                    {data.splitPayments && data.paymentMethod === 'دفع متعدد / مزيج' ? (
+                      <div className="space-y-0.5">
+                        <div className="text-[10px] font-black text-blue-700">دفع متعدد / مزيج</div>
+                        <div className="flex flex-wrap gap-1">
+                          {Number(data.splitPayments.cash) > 0 ? <span className="bg-green-100 text-green-800 px-1.5 py-0.5 rounded text-[10px] font-bold">💵 {Number(data.splitPayments.cash).toLocaleString()} ج كاش</span> : null}
+                          {Number(data.splitPayments.instapay) > 0 ? <span className="bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded text-[10px] font-bold">⚡ {Number(data.splitPayments.instapay).toLocaleString()} ج إنستاباي</span> : null}
+                          {Number(data.splitPayments.vodafone) > 0 ? <span className="bg-red-100 text-red-800 px-1.5 py-0.5 rounded text-[10px] font-bold">📱 {Number(data.splitPayments.vodafone).toLocaleString()} ج فودافون</span> : null}
+                          {Number(data.splitPayments.visa) > 0 ? <span className="bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded text-[10px] font-bold">💳 {Number(data.splitPayments.visa).toLocaleString()} ج فيزا</span> : null}
+                        </div>
+                      </div>
+                    ) : (data.paymentMethod || 'نقدي')}
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -592,6 +614,42 @@ export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricS
                 <span className="font-mono font-black text-base text-rose-950 block">{data.remainingAmount.toLocaleString()} ج.م</span>
               </div>
             </div>
+            {/* Split Payment Breakdown */}
+            {data.splitPayments && data.paymentMethod === 'دفع متعدد / مزيج' && (
+              <div className="border-t border-slate-200 pt-2 mt-1">
+                <div className="text-[10px] font-black text-slate-600 mb-1.5">تفاصيل الدفع المتعدد:</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {Number(data.splitPayments.cash) > 0 ? (
+                    <div className="flex items-center gap-1 bg-green-50 border border-green-200 px-2 py-1 rounded-lg">
+                      <span className="text-[10px]">💵</span>
+                      <span className="text-[10px] font-bold text-green-800">كاش:</span>
+                      <span className="text-[10px] font-black text-green-950 font-mono">{Number(data.splitPayments.cash).toLocaleString()} ج</span>
+                    </div>
+                  ) : null}
+                  {Number(data.splitPayments.instapay) > 0 ? (
+                    <div className="flex items-center gap-1 bg-blue-50 border border-blue-200 px-2 py-1 rounded-lg">
+                      <span className="text-[10px]">⚡</span>
+                      <span className="text-[10px] font-bold text-blue-800">إنستاباي:</span>
+                      <span className="text-[10px] font-black text-blue-950 font-mono">{Number(data.splitPayments.instapay).toLocaleString()} ج</span>
+                    </div>
+                  ) : null}
+                  {Number(data.splitPayments.vodafone) > 0 ? (
+                    <div className="flex items-center gap-1 bg-red-50 border border-red-200 px-2 py-1 rounded-lg">
+                      <span className="text-[10px]">📱</span>
+                      <span className="text-[10px] font-bold text-red-800">فودافون:</span>
+                      <span className="text-[10px] font-black text-red-950 font-mono">{Number(data.splitPayments.vodafone).toLocaleString()} ج</span>
+                    </div>
+                  ) : null}
+                  {Number(data.splitPayments.visa) > 0 ? (
+                    <div className="flex items-center gap-1 bg-purple-50 border border-purple-200 px-2 py-1 rounded-lg">
+                      <span className="text-[10px]">💳</span>
+                      <span className="text-[10px] font-bold text-purple-800">فيزا:</span>
+                      <span className="text-[10px] font-black text-purple-950 font-mono">{Number(data.splitPayments.visa).toLocaleString()} ج</span>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Footer */}

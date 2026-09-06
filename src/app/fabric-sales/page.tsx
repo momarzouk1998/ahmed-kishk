@@ -35,6 +35,12 @@ interface SalesInvoice {
   discountAmount: number;
   totalAmount: number;
   paymentMethod: 'نقدي' | 'إنستاباي' | 'فودافون كاش' | 'فيزا / كارت' | 'بالآجل / دفعات' | 'دفع متعدد / مزيج' | string;
+  splitPayments?: {
+    cash?: number;
+    instapay?: number;
+    vodafone?: number;
+    visa?: number;
+  };
   paidAmount: number;
   remainingAmount: number;
   status: 'تم السداد بالكامل' | 'مسدد جزئياً' | 'آجل / غير مسدد';
