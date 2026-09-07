@@ -54,61 +54,82 @@ export async function POST(request: Request) {
     }
 
     const effBranch = effectiveCreateBranch(scope, branch);
+    const trimmedCode = code.trim();
+
+    // #FIX (باغ اختفاء الأصناف): كان الحفظ upsert بالـ code كمفتاح وحيد — لو صنفين
+    // مختلفين اتصادف إن الكود اللي اتولّد لهم أوتوماتيك (زي SAT-#### العشوائى أو
+    // FAB-/ITEM- المبنى على آخر أرقام الوقت) طلع نفسه بالصدفة، التسجيل التانى كان
+    // بيمسح ويستبدل كل بيانات الأول بصمت (نفس الاسم بيتغيّر لحاجة تانية) من غير أي
+    // تنبيه — وده اللي حصل بالظبط لصنف "خياطة" فى فرع عرابي. دلوقتى: التمييز بين
+    // "تعديل صنف موجود" (لما id بتاع الصنف نفسه متبعوت ومطابق) و"إنشاء صنف جديد"
+    // (تعارض فى الكود بيتحل بتوليد كود بديل فريد، مش استبدال صامت).
+    const existingById = id ? await prisma.inventoryItem.findUnique({ where: { id } }) : null;
+    const existingByCode = await prisma.inventoryItem.findUnique({ where: { code: trimmedCode } });
 
     // #GUARD: الكود فريد على مستوى النظام كله (لا لكل فرع). موظف مقيّد لا يستطيع
     // الاستيلاء على صنف فرع آخر بمجرد كتابة نفس الكود.
-    if (scope && !scope.isAdmin) {
-      const existingByCode = await prisma.inventoryItem.findUnique({ where: { code: code.trim() } });
-      if (existingByCode && existingByCode.branch !== scope.branch) {
-        return NextResponse.json({ success: false, error: 'هذا الكود مستخدم بالفعل فى فرع آخر — اختر كوداً مختلفاً' }, { status: 409 });
-      }
+    if (scope && !scope.isAdmin && existingByCode && existingByCode.id !== existingById?.id && existingByCode.branch !== scope.branch) {
+      return NextResponse.json({ success: false, error: 'هذا الكود مستخدم بالفعل فى فرع آخر — اختر كوداً مختلفاً' }, { status: 409 });
     }
 
-    // #GUARD: تغيير سعر البيع/التكلفة لصنف موجود فعلاً يتطلب صلاحية "تعديل
-    // الأسعار" — ده نفس القفل اللي شغال فعلاً فى واجهة /inventory (priceLocked)
-    // فبس بنمنع تخطيه بطلب مباشر للـ API. باقى التعديلات (الكمية، الاسم..) وإضافة
-    // صنف جديد لسه متاحة لأى موظف عنده صلاحية الوصول للصفحة، لأنها مش مقفولة فى
-    // الواجهة أصلاً دلوقتى.
-    const existingItem = await prisma.inventoryItem.findUnique({ where: { code: code.trim() } });
-    if (existingItem) {
+    let item;
+    if (existingById) {
+      // #GUARD: تغيير سعر البيع/التكلفة لصنف موجود فعلاً يتطلب صلاحية "تعديل
+      // الأسعار" — ده نفس القفل اللي شغال فعلاً فى واجهة /inventory (priceLocked)
+      // فبس بنمنع تخطيه بطلب مباشر للـ API.
       const priceChanged =
-        (costPrice !== undefined && Number(costPrice) !== Number(existingItem.costPrice)) ||
-        (sellPrice !== undefined && Number(sellPrice) !== Number(existingItem.sellPrice));
+        (costPrice !== undefined && Number(costPrice) !== Number(existingById.costPrice)) ||
+        (sellPrice !== undefined && Number(sellPrice) !== Number(existingById.sellPrice));
       if (priceChanged) {
         const pricePerm = await assertPagePermission(request, 'p_inventory', 'edit_price');
         if (!pricePerm.ok) return NextResponse.json({ success: false, error: pricePerm.error }, { status: pricePerm.status });
       }
-    }
 
-    const item = await prisma.inventoryItem.upsert({
-      where: { code: code.trim() },
-      create: {
-        id: id || `INV-${Date.now()}`,
-        code: code.trim(),
-        name: name.trim(),
-        category: category || 'ستائر',
-        unit: unit || 'متر',
-        totalQuantity: Number(totalQuantity) || 0,
-        reservedQuantity: Number(reservedQuantity) || 0,
-        costPrice: Number(costPrice) || 0,
-        sellPrice: Number(sellPrice) || 0,
-        branch: effBranch,
-        minAlert: Number(minAlert) || 20,
-        supplier: supplier || 'شركة النيل',
-      },
-      update: {
-        name: name.trim(),
-        category: category || undefined,
-        unit: unit || undefined,
-        totalQuantity: totalQuantity !== undefined ? Number(totalQuantity) : undefined,
-        reservedQuantity: reservedQuantity !== undefined ? Number(reservedQuantity) : undefined,
-        costPrice: costPrice !== undefined ? Number(costPrice) : undefined,
-        sellPrice: sellPrice !== undefined ? Number(sellPrice) : undefined,
-        branch: scope && !scope.isAdmin ? scope.branch : (branch || undefined),
-        minAlert: minAlert !== undefined ? Number(minAlert) : undefined,
-        supplier: supplier || undefined,
-      },
-    });
+      // تعارض كود مع صنف آخر (مش هو نفسه) أثناء التعديل — ارفض بدل الاستبدال الصامت
+      if (existingByCode && existingByCode.id !== existingById.id) {
+        return NextResponse.json({ success: false, error: 'هذا الكود مستخدم بالفعل لصنف آخر — اختر كوداً مختلفاً' }, { status: 409 });
+      }
+
+      item = await prisma.inventoryItem.update({
+        where: { id: existingById.id },
+        data: {
+          code: trimmedCode,
+          name: name.trim(),
+          category: category || undefined,
+          unit: unit || undefined,
+          totalQuantity: totalQuantity !== undefined ? Number(totalQuantity) : undefined,
+          reservedQuantity: reservedQuantity !== undefined ? Number(reservedQuantity) : undefined,
+          costPrice: costPrice !== undefined ? Number(costPrice) : undefined,
+          sellPrice: sellPrice !== undefined ? Number(sellPrice) : undefined,
+          branch: scope && !scope.isAdmin ? scope.branch : (branch || undefined),
+          minAlert: minAlert !== undefined ? Number(minAlert) : undefined,
+          supplier: supplier || undefined,
+        },
+      });
+    } else {
+      // إنشاء صنف جديد. لو الكود (غالبًا مولّد تلقائيًا) اتصادف إنه مستخدم بالفعل
+      // لصنف تاني، ولّد كود بديل فريد بدل ما تستبدل الصنف القديم بصمت.
+      let finalCode = trimmedCode;
+      if (existingByCode) {
+        finalCode = `${trimmedCode}-${Date.now().toString().slice(-4)}`;
+      }
+      item = await prisma.inventoryItem.create({
+        data: {
+          id: id || `INV-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`,
+          code: finalCode,
+          name: name.trim(),
+          category: category || 'ستائر',
+          unit: unit || 'متر',
+          totalQuantity: Number(totalQuantity) || 0,
+          reservedQuantity: Number(reservedQuantity) || 0,
+          costPrice: Number(costPrice) || 0,
+          sellPrice: Number(sellPrice) || 0,
+          branch: effBranch,
+          minAlert: Number(minAlert) || 20,
+          supplier: supplier || 'شركة النيل',
+        },
+      });
+    }
 
     return NextResponse.json({ success: true, item });
   } catch (error: any) {
