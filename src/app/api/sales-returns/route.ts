@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getBranchScope, branchWhere, effectiveCreateBranch } from '@/lib/branchScope';
+import { generateUniqueSalesReturnNumber } from '@/lib/uniqueCode';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,31 +34,43 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'اسم العميل ومبلغ المرتجع مطلوبان' }, { status: 400 });
     }
 
-    const retId = id || returnNumber || `RET-${Date.now()}`;
-    const ret = await prisma.salesReturn.upsert({
-      where: { id: retId },
-      create: {
-        id: retId,
-        returnNumber: returnNumber || retId,
-        date: date || new Date().toISOString().split('T')[0],
-        invoiceNumber: invoiceNumber || '—',
-        customerName,
-        customerPhone: customerPhone || '',
-        branch: effectiveCreateBranch(scope, branch),
-        reason: reason || '',
-        itemsDetail: itemsDetail || '',
-        refundAmount: Number(refundAmount) || 0,
-        refundMethod: refundMethod || 'نقدي',
-        notes: notes || '',
-      },
-      update: {
-        reason: reason !== undefined ? reason : undefined,
-        itemsDetail: itemsDetail !== undefined ? itemsDetail : undefined,
-        refundAmount: refundAmount !== undefined ? Number(refundAmount) : undefined,
-        refundMethod: refundMethod || undefined,
-        notes: notes !== undefined ? notes : undefined,
-      },
-    });
+    // #FIX (مبدأ عدم تطابق الأكواد): id هو مفتاح التعديل الحقيقى الوحيد — مش رقم
+    // المرتجع. رقم المرتجع الجديد بيتولّد ويتحقق منه فعليًا من قاعدة البيانات.
+    const existingById = id ? await prisma.salesReturn.findUnique({ where: { id } }) : null;
+    let ret;
+    if (existingById) {
+      ret = await prisma.salesReturn.update({
+        where: { id: existingById.id },
+        data: {
+          reason: reason !== undefined ? reason : undefined,
+          itemsDetail: itemsDetail !== undefined ? itemsDetail : undefined,
+          refundAmount: refundAmount !== undefined ? Number(refundAmount) : undefined,
+          refundMethod: refundMethod || undefined,
+          notes: notes !== undefined ? notes : undefined,
+        },
+      });
+    } else {
+      let retNum = (returnNumber || '').trim();
+      if (!retNum || (await prisma.salesReturn.findUnique({ where: { returnNumber: retNum } }))) {
+        retNum = await generateUniqueSalesReturnNumber();
+      }
+      ret = await prisma.salesReturn.create({
+        data: {
+          id: `RET-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`,
+          returnNumber: retNum,
+          date: date || new Date().toISOString().split('T')[0],
+          invoiceNumber: invoiceNumber || '—',
+          customerName,
+          customerPhone: customerPhone || '',
+          branch: effectiveCreateBranch(scope, branch),
+          reason: reason || '',
+          itemsDetail: itemsDetail || '',
+          refundAmount: Number(refundAmount) || 0,
+          refundMethod: refundMethod || 'نقدي',
+          notes: notes || '',
+        },
+      });
+    }
 
     return NextResponse.json({ success: true, return: ret });
   } catch (error: any) {

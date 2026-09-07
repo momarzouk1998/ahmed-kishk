@@ -124,9 +124,6 @@ export default function SearchableFabricSelect({
           <span className="material-symbols-outlined text-slate-400 text-[18px] shrink-0">search</span>
           {selectedItem ? (
             <div className="flex items-center gap-2 truncate text-xs font-bold text-slate-900">
-              <span className="bg-amber-100 text-amber-950 font-mono text-[11px] px-1.5 py-0.5 rounded border border-amber-200 shrink-0">
-                {selectedItem.code}
-              </span>
               <span className="truncate">{selectedItem.name}</span>
               {selectedItem.branch && (
                 <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 shrink-0">
@@ -168,7 +165,7 @@ export default function SearchableFabricSelect({
                 autoFocus
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                placeholder="اكتب اسم القماش، الكود، أو التصنيف للبحث..."
+                placeholder="اكتب اسم القماش أو التصنيف للبحث..."
                 className="w-full pl-3 pr-8 py-2 text-xs font-bold text-slate-900 bg-white border border-slate-300 rounded-xl focus:outline-none focus:border-amber-500"
               />
               {searchQuery && (
@@ -204,9 +201,6 @@ export default function SearchableFabricSelect({
                     }`}
                   >
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className="bg-slate-100 text-slate-800 font-mono font-bold text-[11px] px-2 py-0.5 rounded border border-slate-200 shrink-0">
-                        {item.code}
-                      </span>
                       <div className="truncate">
                         <span className="font-bold block truncate">{item.name}</span>
                         <div className="flex items-center gap-2 text-[10px] text-slate-500 font-bold">

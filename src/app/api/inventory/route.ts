@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getBranchScope, branchWhere, effectiveCreateBranch } from '@/lib/branchScope';
 import { assertPagePermission } from '@/lib/permissionsServer';
+import { generateUniqueInventoryCode } from '@/lib/uniqueCode';
 
 import initialInventory from '@/data/initialInventory.json';
 
@@ -47,30 +48,21 @@ export async function POST(request: Request) {
   try {
     const scope = await getBranchScope(request);
     const body = await request.json();
-    const { id, code, name, category, unit, totalQuantity, reservedQuantity, costPrice, sellPrice, branch, minAlert, supplier } = body;
+    const { id, name, category, unit, totalQuantity, reservedQuantity, costPrice, sellPrice, branch, minAlert, supplier } = body;
 
-    if (!code || !name) {
-      return NextResponse.json({ success: false, error: 'كود الصنف والاسم مطلوبان' }, { status: 400 });
+    if (!name) {
+      return NextResponse.json({ success: false, error: 'اسم الصنف مطلوب' }, { status: 400 });
     }
 
     const effBranch = effectiveCreateBranch(scope, branch);
-    const trimmedCode = code.trim();
 
-    // #FIX (باغ اختفاء الأصناف): كان الحفظ upsert بالـ code كمفتاح وحيد — لو صنفين
-    // مختلفين اتصادف إن الكود اللي اتولّد لهم أوتوماتيك (زي SAT-#### العشوائى أو
-    // FAB-/ITEM- المبنى على آخر أرقام الوقت) طلع نفسه بالصدفة، التسجيل التانى كان
-    // بيمسح ويستبدل كل بيانات الأول بصمت (نفس الاسم بيتغيّر لحاجة تانية) من غير أي
-    // تنبيه — وده اللي حصل بالظبط لصنف "خياطة" فى فرع عرابي. دلوقتى: التمييز بين
-    // "تعديل صنف موجود" (لما id بتاع الصنف نفسه متبعوت ومطابق) و"إنشاء صنف جديد"
-    // (تعارض فى الكود بيتحل بتوليد كود بديل فريد، مش استبدال صامت).
+    // #FIX (باغ اختفاء الأصناف + مطلب "إخفاء الكود والتعديل عليه"): كود الصنف
+    // بقى بالكامل مسؤولية السيرفر — العميل ولا الواجهة يبعتوه أو يعدّلوه خالص.
+    // إنشاء صنف جديد بيولّد كود مُتحقّق فعليًا من قاعدة البيانات إنه مش مكرر
+    // (generateUniqueInventoryCode)، وتعديل صنف موجود بيسيب الكود الأصلى زي ما هو
+    // دايمًا (id هو المفتاح الحقيقى للتعديل، مش الكود). النتيجة: تصادم الأكواد
+    // (اللي كان بيمسح صنف زي "خياطة" بصمت) بقى مستحيل هيكليًا مش بس معالج بعد ما يحصل.
     const existingById = id ? await prisma.inventoryItem.findUnique({ where: { id } }) : null;
-    const existingByCode = await prisma.inventoryItem.findUnique({ where: { code: trimmedCode } });
-
-    // #GUARD: الكود فريد على مستوى النظام كله (لا لكل فرع). موظف مقيّد لا يستطيع
-    // الاستيلاء على صنف فرع آخر بمجرد كتابة نفس الكود.
-    if (scope && !scope.isAdmin && existingByCode && existingByCode.id !== existingById?.id && existingByCode.branch !== scope.branch) {
-      return NextResponse.json({ success: false, error: 'هذا الكود مستخدم بالفعل فى فرع آخر — اختر كوداً مختلفاً' }, { status: 409 });
-    }
 
     let item;
     if (existingById) {
@@ -85,15 +77,10 @@ export async function POST(request: Request) {
         if (!pricePerm.ok) return NextResponse.json({ success: false, error: pricePerm.error }, { status: pricePerm.status });
       }
 
-      // تعارض كود مع صنف آخر (مش هو نفسه) أثناء التعديل — ارفض بدل الاستبدال الصامت
-      if (existingByCode && existingByCode.id !== existingById.id) {
-        return NextResponse.json({ success: false, error: 'هذا الكود مستخدم بالفعل لصنف آخر — اختر كوداً مختلفاً' }, { status: 409 });
-      }
-
       item = await prisma.inventoryItem.update({
         where: { id: existingById.id },
         data: {
-          code: trimmedCode,
+          // #NOTE: code مش موجود هنا عمدًا — التعديل مينفعش يغيّر كود الصنف أبدًا.
           name: name.trim(),
           category: category || undefined,
           unit: unit || undefined,
@@ -107,16 +94,11 @@ export async function POST(request: Request) {
         },
       });
     } else {
-      // إنشاء صنف جديد. لو الكود (غالبًا مولّد تلقائيًا) اتصادف إنه مستخدم بالفعل
-      // لصنف تاني، ولّد كود بديل فريد بدل ما تستبدل الصنف القديم بصمت.
-      let finalCode = trimmedCode;
-      if (existingByCode) {
-        finalCode = `${trimmedCode}-${Date.now().toString().slice(-4)}`;
-      }
+      const uniqueCode = await generateUniqueInventoryCode();
       item = await prisma.inventoryItem.create({
         data: {
           id: id || `INV-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`,
-          code: finalCode,
+          code: uniqueCode,
           name: name.trim(),
           category: category || 'ستائر',
           unit: unit || 'متر',

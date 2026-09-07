@@ -85,7 +85,6 @@ export default function NewPurchaseInvoicePage() {
   // On-the-fly New Product Modal
   const [showAddProductModal, setShowAddProductModal] = useState(false);
   const [newProdName, setNewProdName] = useState('');
-  const [newProdCode, setNewProdCode] = useState('');
   const [newProdCategory, setNewProdCategory] = useState('ستائر');
   const [newProdUnit, setNewProdUnit] = useState('متر');
   const [newProdCostPrice, setNewProdCostPrice] = useState<number>(0);
@@ -257,12 +256,12 @@ export default function NewPurchaseInvoicePage() {
     if (!newProdName.trim() || isSavingProd) return;
     setIsSavingProd(true);
 
-    const code = newProdCode.trim() || `FAB-${Date.now().toString().slice(-4)}`;
+    // #NOTE: كود الصنف بيتولّد من السيرفر فقط دلوقتي (مضمون فريد فعليًا) — مفيش
+    // كود بيتبعت من هنا خالص.
     const cost = Number(newProdCostPrice) || 0;
     const sell = Number(newProdSellPrice) || Math.round(cost * 1.35);
 
     const newProdData: Partial<InventoryProduct> = {
-      code,
       name: newProdName.trim(),
       category: newProdCategory,
       unit: newProdUnit,
@@ -281,7 +280,7 @@ export default function NewPurchaseInvoicePage() {
 
       if (res.ok) {
         const json = await res.json();
-        const createdProd = json.item || { ...newProdData, id: `INV-${Date.now()}` };
+        const createdProd = json.item || { ...newProdData, id: `INV-${Date.now()}`, code: '' };
         setProducts(prev => [createdProd, ...prev]);
 
         // Add directly to cart
@@ -289,7 +288,6 @@ export default function NewPurchaseInvoicePage() {
 
         setShowAddProductModal(false);
         setNewProdName('');
-        setNewProdCode('');
         setNewProdCostPrice(0);
         setNewProdSellPrice(0);
       } else {
@@ -1060,19 +1058,7 @@ export default function NewPurchaseInvoicePage() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-slate-700 font-bold block mb-1">كود الصنف:</label>
-                  <input
-                    type="text"
-                    value={newProdCode}
-                    onChange={e => setNewProdCode(e.target.value)}
-                    placeholder="مثال: VLV-990"
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 font-mono font-bold text-slate-900 focus:outline-none"
-                    dir="ltr"
-                  />
-                </div>
-
+              <div className="grid grid-cols-1 gap-2">
                 <div>
                   <label className="text-slate-700 font-bold block mb-1">التصنيف:</label>
                   <select

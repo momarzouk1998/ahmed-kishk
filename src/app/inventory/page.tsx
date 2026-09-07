@@ -265,11 +265,12 @@ export default function InventoryPage() {
       setCategories([...categories, newCatInput]);
     }
 
-    const generatedCode = 'SAT-' + Math.floor(1000 + Math.random() * 9000);
-
+    // #NOTE: كود الصنف بقى بيتولّد من السيرفر فقط (مضمون فريد فعليًا فى قاعدة
+    // البيانات) — الواجهة متبعتش ولا تعرض كود خالص. القيمة هنا مؤقتة للعرض
+    // المتفائل قبل رد السيرفر وبتتستبدل بيه فورًا.
     const newItem: InventoryItem = {
       id: `INV-${Date.now()}`,
-      code: generatedCode,
+      code: '',
       name,
       category: catToUse,
       unit,
@@ -293,22 +294,27 @@ export default function InventoryPage() {
     setSellPrice(150);
 
     try {
-      await fetch('/api/inventory', {
+      const res = await fetch('/api/inventory', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newItem),
       });
+      const json = await res.json().catch(() => null);
+      const savedItem: InventoryItem = json?.item || newItem;
+
+      // استبدل الصنف المؤقت (id/code وهميين) بالنسخة الحقيقية من السيرفر بكودها الفعلى
+      setItems(prev => prev.map(it => it.id === newItem.id ? savedItem : it));
 
       // Log initial stock creation
       await fetch('/api/inventory/adjustments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          itemCode: newItem.code,
-          itemName: newItem.name,
-          branch: newItem.branch,
+          itemCode: savedItem.code,
+          itemName: savedItem.name,
+          branch: savedItem.branch,
           previousStock: 0,
-          newStock: newItem.totalQuantity,
+          newStock: savedItem.totalQuantity,
           reason: `إضافة صنف جديد بالمخزن بحصيلة ابتدائية`,
         }),
       });
@@ -504,7 +510,7 @@ export default function InventoryPage() {
                     type="text"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    placeholder="بحث بالاسم، الكود، المورد..."
+                    placeholder="بحث بالاسم، المورد..."
                     className="bg-white border border-slate-300 rounded-xl py-2 pl-3 pr-9 text-xs font-bold text-slate-900 focus:outline-none focus:border-amber-500 w-48"
                   />
                 </div>
@@ -523,7 +529,6 @@ export default function InventoryPage() {
                     <div key={item.id} className="bg-amber-50/90 border-2 border-amber-400 rounded-2xl p-4 space-y-3 shadow-md">
                       <div className="font-bold text-xs text-amber-950 flex items-center justify-between">
                         <span>✏️ جرد وتعديل مباشر للصنف</span>
-                        <span className="font-mono bg-amber-200 px-2 py-0.5 rounded">{item.code}</span>
                       </div>
 
                       <div>
@@ -912,7 +917,7 @@ export default function InventoryPage() {
                   <thead className="bg-slate-50 text-slate-600 font-bold uppercase border-b border-slate-200">
                     <tr>
                       <th className="p-3.5">التاريخ والوقت</th>
-                      <th className="p-3.5">الكود والصنف</th>
+                      <th className="p-3.5">الصنف</th>
                       <th className="p-3.5">الفرع</th>
                       <th className="p-3.5 text-center">الرصيد السابق</th>
                       <th className="p-3.5 text-center">الرصيد الجديد</th>
@@ -937,7 +942,6 @@ export default function InventoryPage() {
                           <td className="p-3.5 text-slate-500 text-[11px] whitespace-nowrap">{dateStr}</td>
                           <td className="p-3.5 font-sans">
                             <div className="font-bold text-slate-900">{log.itemName}</div>
-                            <div className="text-[10px] text-slate-400 font-mono">{log.itemCode}</div>
                           </td>
                           <td className="p-3.5 font-sans font-bold text-slate-700">{log.branch}</td>
                           <td className="p-3.5 text-center font-bold text-slate-500">{log.previousStock}</td>

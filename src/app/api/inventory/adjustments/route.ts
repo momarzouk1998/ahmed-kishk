@@ -59,7 +59,7 @@ export async function POST(request: Request) {
     const body = await request.json();
 
     const { itemCode, itemName, branch, previousStock, newStock, reason } = body;
-    if (!itemCode || !itemName) {
+    if (!itemName) {
       return NextResponse.json({ success: false, error: 'بيانات الحركة غير مكتملة' }, { status: 400 });
     }
 
@@ -71,7 +71,7 @@ export async function POST(request: Request) {
     const newLog: InventoryAdjustmentLog = {
       id: `ADJ-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       timestamp: new Date().toISOString(),
-      itemCode,
+      itemCode: itemCode || '',
       itemName,
       branch: effBranch,
       previousStock: prev,

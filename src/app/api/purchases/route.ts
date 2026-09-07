@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getBranchScope, branchWhere, effectiveCreateBranch } from '@/lib/branchScope';
+import { generateUniquePurchaseInvoiceNumber } from '@/lib/uniqueCode';
 
 export const dynamic = 'force-dynamic';
 
@@ -88,9 +89,6 @@ export async function POST(request: Request) {
     } = body;
 
     let invNum = (invoiceNumber || '').trim();
-    if (!invNum) {
-      invNum = `PUR-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}-${Math.floor(10 + Math.random() * 90)}`;
-    }
 
     const existingById = id ? await prisma.purchaseInvoice.findUnique({ where: { id } }) : null;
     let existingInvoice = existingById;
@@ -115,9 +113,10 @@ export async function POST(request: Request) {
         },
       });
     } else {
-      const existingByNumber = await prisma.purchaseInvoice.findUnique({ where: { invoiceNumber: invNum } });
-      if (existingByNumber) {
-        invNum = `PUR-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`;
+      // مبدأ عدم تطابق الأكواد: رقم فاتورة الشراء لازم فريد فعليًا فى قاعدة
+      // البيانات — لو المقترح فاضي أو متعارض، ولّد رقم مضمون عبر retry loop حقيقي.
+      if (!invNum || (await prisma.purchaseInvoice.findUnique({ where: { invoiceNumber: invNum } }))) {
+        invNum = await generateUniquePurchaseInvoiceNumber();
       }
 
       invoice = await prisma.purchaseInvoice.create({

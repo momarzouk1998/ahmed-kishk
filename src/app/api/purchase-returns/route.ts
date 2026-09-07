@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getBranchScope, branchWhere, effectiveCreateBranch } from '@/lib/branchScope';
+import { generateUniquePurchaseReturnNumber } from '@/lib/uniqueCode';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,31 +34,46 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'اسم المورد ومبلغ المرتجع مطلوبان' }, { status: 400 });
     }
 
-    const retId = id || returnNumber || `PRET-${Date.now()}`;
-    const ret = await prisma.purchaseReturn.upsert({
-      where: { id: retId },
-      create: {
-        id: retId,
-        returnNumber: returnNumber || retId,
-        date: date || new Date().toISOString().split('T')[0],
-        invoiceNumber: invoiceNumber || '—',
-        supplierName,
-        supplierPhone: supplierPhone || '',
-        branch: effectiveCreateBranch(scope, branch),
-        reason: reason || '',
-        itemsDetail: itemsDetail || '',
-        refundAmount: Number(refundAmount) || 0,
-        refundMethod: refundMethod || 'نقدي (كاش)',
-        notes: notes || '',
-      },
-      update: {
-        reason: reason !== undefined ? reason : undefined,
-        itemsDetail: itemsDetail !== undefined ? itemsDetail : undefined,
-        refundAmount: refundAmount !== undefined ? Number(refundAmount) : undefined,
-        refundMethod: refundMethod || undefined,
-        notes: notes !== undefined ? notes : undefined,
-      },
-    });
+    // #FIX (مبدأ عدم تطابق الأكواد): كان retId بيتحدد من returnNumber مباشرة لو
+    // id مش متبعوت — يعني تعارض فى الرقم كان بيتحول تلقائيًا لتعارض فى الـ id
+    // ويعمل upsert (تعديل صامت) بدل ما يترفض أو يتولّد له رقم بديل. دلوقتى:
+    // id هو مفتاح التعديل الحقيقى الوحيد، ورقم المرتجع الجديد بيتولّد ويتحقق منه
+    // فعليًا من قاعدة البيانات عند الإنشاء.
+    const existingById = id ? await prisma.purchaseReturn.findUnique({ where: { id } }) : null;
+    let ret;
+    if (existingById) {
+      ret = await prisma.purchaseReturn.update({
+        where: { id: existingById.id },
+        data: {
+          reason: reason !== undefined ? reason : undefined,
+          itemsDetail: itemsDetail !== undefined ? itemsDetail : undefined,
+          refundAmount: refundAmount !== undefined ? Number(refundAmount) : undefined,
+          refundMethod: refundMethod || undefined,
+          notes: notes !== undefined ? notes : undefined,
+        },
+      });
+    } else {
+      let retNum = (returnNumber || '').trim();
+      if (!retNum || (await prisma.purchaseReturn.findUnique({ where: { returnNumber: retNum } }))) {
+        retNum = await generateUniquePurchaseReturnNumber();
+      }
+      ret = await prisma.purchaseReturn.create({
+        data: {
+          id: `PRET-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`,
+          returnNumber: retNum,
+          date: date || new Date().toISOString().split('T')[0],
+          invoiceNumber: invoiceNumber || '—',
+          supplierName,
+          supplierPhone: supplierPhone || '',
+          branch: effectiveCreateBranch(scope, branch),
+          reason: reason || '',
+          itemsDetail: itemsDetail || '',
+          refundAmount: Number(refundAmount) || 0,
+          refundMethod: refundMethod || 'نقدي (كاش)',
+          notes: notes || '',
+        },
+      });
+    }
 
     return NextResponse.json({ success: true, return: ret });
   } catch (error: any) {

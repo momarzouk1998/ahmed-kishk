@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getBranchScope, branchWhere, effectiveCreateBranch } from '@/lib/branchScope';
+import { generateUniqueSalesInvoiceNumber } from '@/lib/uniqueCode';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,9 +51,6 @@ export async function POST(request: Request) {
     }
 
     let invNum = (invoiceNumber || '').trim();
-    if (!invNum) {
-      invNum = `INV-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}-${Math.floor(10 + Math.random() * 90)}`;
-    }
 
     // Check if this is an update to an existing record
     const existingById = id ? await prisma.salesInvoice.findUnique({ where: { id } }) : null;
@@ -75,11 +73,11 @@ export async function POST(request: Request) {
         },
       });
     } else {
-      // New invoice creation — ensure invoiceNumber is completely unique and doesn't overwrite an old one
-      const existingByNumber = await prisma.salesInvoice.findUnique({ where: { invoiceNumber: invNum } });
-      if (existingByNumber) {
-        // Collision detected: generate a guaranteed unique serial so we never overwrite the old invoice
-        invNum = `INV-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`;
+      // New invoice creation — مبدأ عدم تطابق الأكواد: لو رقم الفاتورة المقترح من
+      // الواجهة (أو الفاضي) مكرر بالفعل، ولّد رقم بديل متحقق فعليًا من قاعدة
+      // البيانات (retry loop) بدل محاولة واحدة بس.
+      if (!invNum || (await prisma.salesInvoice.findUnique({ where: { invoiceNumber: invNum } }))) {
+        invNum = await generateUniqueSalesInvoiceNumber();
       }
 
       invoice = await prisma.salesInvoice.create({
