@@ -170,12 +170,12 @@ export default function DashboardPage() {
     return false;
   };
 
-  // Dynamic Branch Sales Calculation (100% Real data)
+  // Dynamic Branch Sales & Treasury Calculation (100% Real data)
   const branchList = [
-    { name: 'الفرع الرئيسي (73 سعد زغلول)', type: 'ستائر وأقمشة تنجيد', key: 'الرئيسي' },
-    { name: 'فرع عرابي (18 ش عدلي)', type: 'ستائر وأقمشة تنجيد', key: 'عرابي' },
-    { name: 'فرع عمر أفندي', type: 'أقمشة فقط', key: 'عمر أفندي' },
-    { name: 'فرع الثلاثيني', type: 'أقمشة فقط', key: 'الثلاثيني' },
+    { name: 'الفرع الرئيسي (73 سعد زغلول)', treasuryName: 'خزينة الفرع الرئيسي (سعد زغلول)', type: 'ستائر وأقمشة تنجيد', key: 'الرئيسي', color: 'border-amber-300 bg-amber-50/70', badgeBg: 'bg-amber-100 text-amber-900 border-amber-300' },
+    { name: 'فرع عرابي (18 ش عدلي)', treasuryName: 'خزينة فرع عرابي', type: 'ستائر وأقمشة تنجيد', key: 'عرابي', color: 'border-sky-300 bg-sky-50/70', badgeBg: 'bg-sky-100 text-sky-900 border-sky-300' },
+    { name: 'فرع عمر أفندي', treasuryName: 'خزينة فرع عمر أفندي', type: 'أقمشة فقط', key: 'عمر أفندي', color: 'border-emerald-300 bg-emerald-50/70', badgeBg: 'bg-emerald-100 text-emerald-900 border-emerald-300' },
+    { name: 'فرع الثلاثيني', treasuryName: 'خزينة فرع الثلاثيني', type: 'أقمشة فقط', key: 'الثلاثيني', color: 'border-purple-300 bg-purple-50/70', badgeBg: 'bg-purple-100 text-purple-900 border-purple-300' },
   ];
 
   const dynamicBranchSales = branchList.map(b => {
@@ -195,15 +195,75 @@ export default function DashboardPage() {
       ? Math.round((totalCollectedAmount / totalSalesAmount) * 100)
       : (totalOps > 0 ? 100 : 0);
 
+    // Calculate cash in treasury (POS cash + Split cash + Quotation deposits + customer collections)
+    let treasuryCash = 0;
+    let treasuryInstapay = 0;
+    let treasuryVodafone = 0;
+    let treasuryVisa = 0;
+
+    bSales.forEach((s: any) => {
+      let split = s.splitPayments;
+      if (!split && s.notes && s.notes.includes('[SPLIT:')) {
+        try {
+          const match = s.notes.match(/\[SPLIT:([^\]]+)\]/);
+          if (match && match[1]) split = JSON.parse(match[1]);
+        } catch {}
+      }
+      if (split) {
+        treasuryCash += Number(split.cash || 0);
+        treasuryInstapay += Number(split.instapay || 0);
+        treasuryVodafone += Number(split.vodafone || 0);
+        treasuryVisa += Number(split.visa || 0);
+      } else {
+        const m = (s.paymentMethod || '').trim();
+        const paid = Number(s.paidAmount || 0);
+        if (m.includes('فودافون')) treasuryVodafone += paid;
+        else if (m.includes('إنستا') || m.includes('انستا')) treasuryInstapay += paid;
+        else if (m.includes('فيزا') || m.includes('كارت')) treasuryVisa += paid;
+        else treasuryCash += paid;
+      }
+    });
+
+    bQot.forEach((q: any) => {
+      let split = q.depositSplit;
+      if (!split && q.notes && q.notes.includes('[DEPOSIT_SPLIT:')) {
+        try {
+          const match = q.notes.match(/\[DEPOSIT_SPLIT:([^\]]+)\]/);
+          if (match && match[1]) split = JSON.parse(match[1]);
+        } catch {}
+      }
+      if (split) {
+        treasuryCash += Number(split.cash || 0);
+        treasuryInstapay += Number(split.instapay || 0);
+        treasuryVodafone += Number(split.vodafone || 0);
+        treasuryVisa += Number(split.visa || 0);
+      } else {
+        const m = (q.depositMethod || '').trim();
+        const deposit = Number(q.depositPaid || 0);
+        if (m.includes('فودافون')) treasuryVodafone += deposit;
+        else if (m.includes('إنستا') || m.includes('انستا')) treasuryInstapay += deposit;
+        else if (m.includes('فيزا') || m.includes('كارت')) treasuryVisa += deposit;
+        else treasuryCash += deposit;
+      }
+    });
+
     return {
       name: b.name,
+      treasuryName: b.treasuryName,
       type: b.type,
+      color: b.color,
+      badgeBg: b.badgeBg,
       sales: `${totalSalesAmount.toLocaleString()} ج`,
       collected: `${totalCollectedAmount.toLocaleString()} ج`,
       remaining: `${totalRemainingAmount.toLocaleString()} ج`,
       orders: totalOps,
       target: `${collectionRate}% محصَّل`,
       rateNum: collectionRate,
+      treasuryCash,
+      treasuryInstapay,
+      treasuryVodafone,
+      treasuryVisa,
+      treasuryTotal: totalCollectedAmount,
     };
   });
 
@@ -353,6 +413,66 @@ export default function DashboardPage() {
               </div>
               <div className="text-[10px] text-rose-100 font-bold mt-1.5">مبالغ وعقود قيد التنفيذ والتحصيل</div>
             </div>
+          </div>
+        </div>
+
+        {/* 4 Branch Treasuries Live Balances (أرصدة خزن الفروع الأربعة) */}
+        <div className="bg-white rounded-3xl border border-slate-200 p-5 sm:p-6 shadow-soft">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-amber-500 text-xl">savings</span>
+                <h2 className="font-display font-black text-base text-slate-900">أرصدة خزن الفروع النقدية والتحصيل الحى</h2>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">الرصيد الفعلى بالدرج/الخزينة لكل فرع مستقل (كاش، إنستاباي، فودافون، وفيزا)</p>
+            </div>
+            <div className="text-xs font-mono font-black text-slate-700 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200 self-start sm:self-auto">
+              إجمالي خزن الفروع: <span className="text-emerald-700">{dynamicBranchSales.reduce((s, b) => s + b.treasuryTotal, 0).toLocaleString()} ج.م</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {dynamicBranchSales.map((b, idx) => (
+              <div
+                key={idx}
+                className={`p-4 rounded-2xl border ${b.color} flex flex-col justify-between hover:shadow-md transition-all relative overflow-hidden`}
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-black text-xs text-slate-900 truncate">{b.name}</span>
+                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-white/80 border border-slate-200 text-slate-700">
+                      {b.orders} عملية
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-slate-500 font-bold mb-3 truncate">{b.treasuryName}</div>
+
+                  <div className="bg-white/90 p-3 rounded-xl border border-slate-200/80 mb-3 shadow-xs">
+                    <div className="text-[10px] text-slate-500 font-bold">الرصيد المحصل بالخزينة</div>
+                    <div className="font-display font-black text-xl text-emerald-700 tracking-tight mt-0.5">
+                      {b.treasuryTotal.toLocaleString()} <span className="text-xs font-bold text-emerald-900">ج.م</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5 pt-2 border-t border-slate-200/60 text-[11px]">
+                  <div className="flex justify-between items-center text-slate-700">
+                    <span className="flex items-center gap-1">💵 كاش:</span>
+                    <span className="font-mono font-black text-slate-900">{b.treasuryCash.toLocaleString()} ج</span>
+                  </div>
+                  {(b.treasuryInstapay > 0 || b.treasuryVodafone > 0 || b.treasuryVisa > 0) && (
+                    <div className="flex items-center justify-between text-[10px] text-slate-500 pt-1 border-t border-slate-100 flex-wrap gap-1">
+                      {b.treasuryInstapay > 0 && <span>⚡ إنستا: <strong className="font-mono text-purple-700">{b.treasuryInstapay.toLocaleString()}</strong></span>}
+                      {b.treasuryVodafone > 0 && <span>📱 فودافون: <strong className="font-mono text-rose-700">{b.treasuryVodafone.toLocaleString()}</strong></span>}
+                      {b.treasuryVisa > 0 && <span>💳 فيزا: <strong className="font-mono text-blue-700">{b.treasuryVisa.toLocaleString()}</strong></span>}
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center text-slate-500 pt-1 text-[10px]">
+                    <span>معدل التحصيل:</span>
+                    <span className="font-bold text-amber-800">{b.target}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 

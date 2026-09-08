@@ -243,8 +243,103 @@ export default function ReportsPage() {
     });
 
     const totalCollected = cash + instapay + vodafone + visa + other;
-    return { cash, instapay, vodafone, visa, deferred, other, grand, remaining, totalCollected, totalDirectCollections };
-  }, [fInvoices, fCollections]);
+
+    // ─── 4 Branch Treasury Balances ───
+    const branchesData = [
+      { name: 'الفرع الرئيسي (73 سعد زغلول)', treasury: 'خزينة الفرع الرئيسي (سعد زغلول)', key: 'الرئيسي', color: 'border-amber-300 bg-amber-50/60', text: 'text-amber-900' },
+      { name: 'فرع عرابي (18 ش عدلي)', treasury: 'خزينة فرع عرابي', key: 'عرابي', color: 'border-sky-300 bg-sky-50/60', text: 'text-sky-900' },
+      { name: 'فرع عمر أفندي', treasury: 'خزينة فرع عمر أفندي', key: 'عمر أفندي', color: 'border-emerald-300 bg-emerald-50/60', text: 'text-emerald-900' },
+      { name: 'فرع الثلاثيني', treasury: 'خزينة فرع الثلاثيني', key: 'الثلاثيني', color: 'border-purple-300 bg-purple-50/60', text: 'text-purple-900' },
+    ];
+
+    const branchTreasuries = branchesData.map(b => {
+      let bCash = 0, bInstapay = 0, bVodafone = 0, bVisa = 0;
+      let bCount = 0;
+
+      const matchB = (val: string) => {
+        const s = String(val || '').trim();
+        if (b.key === 'الرئيسي') return s.includes('رئيسي') || s.includes('سعد زغلول') || s.includes('القاهرة');
+        if (b.key === 'عرابي') return s.includes('عرابي') || s.includes('عدلي');
+        if (b.key === 'عمر أفندي') return s.includes('عمر أفندي') || s.includes('عمر افندي') || s.includes('عمر');
+        if (b.key === 'الثلاثيني') return s.includes('الثلاثيني');
+        return false;
+      };
+
+      // From Invoices in this period (irrespective of global filter or respecting period)
+      invoices.filter(i => matchB(i.branch) && inPeriod(i.date)).forEach(inv => {
+        bCount++;
+        let split = inv.splitPayments;
+        if (!split && inv.notes && inv.notes.includes('[SPLIT:')) {
+          try {
+            const match = inv.notes.match(/\[SPLIT:([^\]]+)\]/);
+            if (match && match[1]) split = JSON.parse(match[1]);
+          } catch {}
+        }
+        if (split) {
+          bCash += Number(split.cash || 0);
+          bInstapay += Number(split.instapay || 0);
+          bVodafone += Number(split.vodafone || 0);
+          bVisa += Number(split.visa || 0);
+        } else {
+          const m = ((inv.paymentMethod || (inv as any).paymentType || '') as string).trim();
+          const paid = Number(inv.paidAmount || 0);
+          if (m.includes('فودافون')) bVodafone += paid;
+          else if (m.includes('إنستا') || m.includes('انستا')) bInstapay += paid;
+          else if (m.includes('فيزا') || m.includes('كارت')) bVisa += paid;
+          else bCash += paid;
+        }
+      });
+
+      // From direct collections in this period
+      collections.filter(c => matchB(c.treasury || '') && inPeriod(c.date)).forEach(col => {
+        bCount++;
+        const amt = Number(col.amount || 0);
+        const m = (col.method || '').trim();
+        if (m.includes('فودافون')) bVodafone += amt;
+        else if (m.includes('إنستا') || m.includes('انستا')) bInstapay += amt;
+        else if (m.includes('فيزا') || m.includes('كارت')) bVisa += amt;
+        else bCash += amt;
+      });
+
+      // From Quotation Deposits in this period
+      quotations.filter(q => matchB(q.branch) && inPeriod(q.date || q.createdAt)).forEach(q => {
+        bCount++;
+        let split = q.depositSplit;
+        if (!split && q.notes && q.notes.includes('[DEPOSIT_SPLIT:')) {
+          try {
+            const match = q.notes.match(/\[DEPOSIT_SPLIT:([^\]]+)\]/);
+            if (match && match[1]) split = JSON.parse(match[1]);
+          } catch {}
+        }
+        if (split) {
+          bCash += Number(split.cash || 0);
+          bInstapay += Number(split.instapay || 0);
+          bVodafone += Number(split.vodafone || 0);
+          bVisa += Number(split.visa || 0);
+        } else {
+          const m = (q.depositMethod || '').trim();
+          const deposit = Number(q.depositPaid || 0);
+          if (m.includes('فودافون')) bVodafone += deposit;
+          else if (m.includes('إنستا') || m.includes('انستا')) bInstapay += deposit;
+          else if (m.includes('فيزا') || m.includes('كارت')) bVisa += deposit;
+          else bCash += deposit;
+        }
+      });
+
+      const total = bCash + bInstapay + bVodafone + bVisa;
+      return {
+        ...b,
+        cash: bCash,
+        instapay: bInstapay,
+        vodafone: bVodafone,
+        visa: bVisa,
+        total,
+        count: bCount,
+      };
+    });
+
+    return { cash, instapay, vodafone, visa, deferred, other, grand, remaining, totalCollected, totalDirectCollections, branchTreasuries };
+  }, [fInvoices, fCollections, invoices, collections, quotations, period]);
 
   // ─── Profits (real cost from inventory) ──────────────────────
   const profitStats = useMemo(() => {
@@ -495,6 +590,60 @@ function SalesReport({ kpis, invoices, collections, branchLabel, periodLabel }: 
           )}
           {kpis.deferred > 0 && <span>مسجل كآجل: <span className="font-mono text-amber-700">{kpis.deferred.toLocaleString()} ج</span></span>}
           {kpis.other > 0 && <span>طرق دفع أخرى: <span className="font-mono text-slate-700">{kpis.other.toLocaleString()} ج</span></span>}
+        </div>
+      )}
+
+      {/* 🏛️ 4 Branch Treasuries Live Summary */}
+      {kpis.branchTreasuries && (
+        <div className="card bg-white rounded-2xl border border-slate-200 p-4 shadow-soft">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3 pb-2 border-b border-slate-100">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-amber-500 text-lg">savings</span>
+              <h3 className="font-black text-xs text-slate-900">
+                أرصدة خزن الفروع النقدية والمحصلة — ({periodLabel})
+              </h3>
+            </div>
+            <div className="text-xs font-mono font-black text-slate-700 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
+              إجمالي كل الخزن: <span className="text-emerald-700">{kpis.branchTreasuries.reduce((s: number, b: any) => s + b.total, 0).toLocaleString()} ج.م</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {kpis.branchTreasuries.map((b: any, idx: number) => (
+              <div key={idx} className={`p-3 rounded-xl border ${b.color} flex flex-col justify-between`}>
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-black text-xs text-slate-900 truncate">{b.name}</span>
+                    <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-white/80 border border-slate-200 text-slate-700">
+                      {b.count} عملية
+                    </span>
+                  </div>
+                  <div className="text-[10.5px] text-slate-500 font-bold mb-2 truncate">{b.treasury}</div>
+
+                  <div className="bg-white/90 p-2.5 rounded-lg border border-slate-200/80 mb-2 shadow-xs">
+                    <div className="text-[10px] text-slate-500 font-bold">المحصل بالخزينة فى الفترة</div>
+                    <div className="font-mono font-black text-lg text-emerald-700 mt-0.5">
+                      {b.total.toLocaleString()} <span className="text-xs font-normal">ج</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-1 pt-1.5 border-t border-slate-200/60 text-[10.5px]">
+                  <div className="flex justify-between items-center text-slate-700">
+                    <span>💵 كاش بالدرج:</span>
+                    <strong className="font-mono">{b.cash.toLocaleString()} ج</strong>
+                  </div>
+                  {(b.instapay > 0 || b.vodafone > 0 || b.visa > 0) && (
+                    <div className="flex items-center justify-between text-[10px] text-slate-500 pt-1 border-t border-slate-100 flex-wrap gap-1">
+                      {b.instapay > 0 && <span>⚡ إنستا: <strong className="font-mono text-purple-700">{b.instapay.toLocaleString()}</strong></span>}
+                      {b.vodafone > 0 && <span>📱 فودافون: <strong className="font-mono text-rose-700">{b.vodafone.toLocaleString()}</strong></span>}
+                      {b.visa > 0 && <span>💳 فيزا: <strong className="font-mono text-blue-700">{b.visa.toLocaleString()}</strong></span>}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
