@@ -5,6 +5,7 @@ import PageShell from '@/components/PageShell';
 import { useRouter } from 'next/navigation';
 import { formatDateOnly } from '@/lib/dateUtils';
 import Pagination from '@/components/Pagination';
+import { BRANCHES_LIST } from '@/lib/branches';
 
 interface PurchaseInvoiceItem {
   code: string;
@@ -27,7 +28,7 @@ interface PurchaseInvoice {
   discountValue: number;
   discountAmount: number;
   totalAmount: number;
-  paymentMethod: 'نقدي (كاش)' | 'شيكات بنكية' | 'على دفعات / آجل';
+  paymentMethod: 'نقدي (كاش)' | 'شيكات بنكية' | 'على دفعات / آجل' | 'إنستاباي' | 'فودافون كاش' | 'فيزا / كارت' | string;
   paidAmount: number;
   remainingAmount: number;
   status: 'مسدد بالكامل' | 'مسدد جزئياً' | 'آجل / غير مسدد';
@@ -144,6 +145,162 @@ export default function PurchasesPage() {
     } catch (err) {
       console.error('Failed to delete purchase return from server:', err);
     }
+  };
+
+  const handleStartEditPurchase = (pur: PurchaseInvoice) => {
+    let parsedItems: PurchaseInvoiceItem[] = [];
+    if (Array.isArray(pur.items)) {
+      parsedItems = pur.items.map((it: any) => ({
+        code: it.code || '',
+        name: it.name || '',
+        meters: Number(it.meters ?? it.quantity) || 0,
+        unitCost: Number(it.unitCost ?? it.pricePerMeter ?? it.costPrice) || 0,
+        totalCost: Number(it.totalCost) || ((Number(it.meters ?? it.quantity) || 0) * (Number(it.unitCost ?? it.pricePerMeter ?? it.costPrice) || 0)),
+      }));
+    }
+    const subtotal = Number(pur.subtotal) || parsedItems.reduce((acc, it) => acc + (it.totalCost || 0), 0);
+    const discountType = pur.discountType || 'EGP';
+    const discountValue = pur.discountValue !== undefined ? Number(pur.discountValue) : (Number(pur.discountAmount) || 0);
+    let discountAmount = Number(pur.discountAmount) || 0;
+    if (discountType === 'PERCENT') {
+      discountAmount = (subtotal * discountValue) / 100;
+    }
+    const totalAmount = Number(pur.totalAmount) || Math.max(0, subtotal - discountAmount);
+    const paidAmount = Number(pur.paidAmount) || 0;
+    const remainingAmount = Number(pur.remainingAmount) !== undefined ? Number(pur.remainingAmount) : Math.max(0, totalAmount - paidAmount);
+
+    setEditingPurchase({
+      ...pur,
+      items: parsedItems,
+      subtotal,
+      discountType,
+      discountValue,
+      discountAmount,
+      totalAmount,
+      paidAmount,
+      remainingAmount,
+      supplierName: pur.supplierName || '',
+      supplierPhone: pur.supplierPhone || '',
+      branch: pur.branch || 'الفرع الرئيسي',
+      paymentMethod: pur.paymentMethod || 'نقدي (كاش)',
+      date: pur.date ? (pur.date.includes('T') ? pur.date.split('T')[0] : pur.date) : new Date().toISOString().split('T')[0],
+      notes: pur.notes || '',
+    });
+  };
+
+  const recalculateInvoiceTotals = (
+    items: PurchaseInvoiceItem[],
+    discountType: 'EGP' | 'PERCENT',
+    discountValue: number,
+    paidAmount: number,
+    current: PurchaseInvoice
+  ): PurchaseInvoice => {
+    const subtotal = items.reduce((acc, it) => acc + (Number(it.totalCost) || 0), 0);
+    let discountAmount = 0;
+    if (discountType === 'PERCENT') {
+      discountAmount = (subtotal * Math.max(0, discountValue)) / 100;
+    } else {
+      discountAmount = Math.max(0, discountValue);
+    }
+    discountAmount = Math.min(subtotal, discountAmount);
+    const totalAmount = Math.max(0, subtotal - discountAmount);
+    const remainingAmount = Math.max(0, totalAmount - paidAmount);
+    const status: PurchaseInvoice['status'] =
+      remainingAmount === 0
+        ? 'مسدد بالكامل'
+        : paidAmount > 0
+        ? 'مسدد جزئياً'
+        : 'آجل / غير مسدد';
+
+    return {
+      ...current,
+      items,
+      subtotal,
+      discountType,
+      discountValue,
+      discountAmount,
+      totalAmount,
+      paidAmount,
+      remainingAmount,
+      status,
+    };
+  };
+
+  const handleEditItemChange = (index: number, field: keyof PurchaseInvoiceItem, value: any) => {
+    if (!editingPurchase) return;
+    const newItems = [...editingPurchase.items];
+    const currentItem = { ...newItems[index] };
+
+    if (field === 'meters' || field === 'unitCost') {
+      const numVal = Math.max(0, Number(value) || 0);
+      (currentItem as any)[field] = numVal;
+      currentItem.totalCost = (currentItem.meters || 0) * (currentItem.unitCost || 0);
+    } else {
+      (currentItem as any)[field] = value;
+    }
+    newItems[index] = currentItem;
+
+    setEditingPurchase(recalculateInvoiceTotals(
+      newItems,
+      editingPurchase.discountType || 'EGP',
+      editingPurchase.discountValue || 0,
+      editingPurchase.paidAmount || 0,
+      editingPurchase
+    ));
+  };
+
+  const handleEditAddItem = () => {
+    if (!editingPurchase) return;
+    const newItem: PurchaseInvoiceItem = {
+      code: '',
+      name: 'صنف / خامة جديدة',
+      meters: 1,
+      unitCost: 0,
+      totalCost: 0,
+    };
+    const newItems = [...editingPurchase.items, newItem];
+    setEditingPurchase(recalculateInvoiceTotals(
+      newItems,
+      editingPurchase.discountType || 'EGP',
+      editingPurchase.discountValue || 0,
+      editingPurchase.paidAmount || 0,
+      editingPurchase
+    ));
+  };
+
+  const handleEditDeleteItem = (index: number) => {
+    if (!editingPurchase) return;
+    const newItems = editingPurchase.items.filter((_, i) => i !== index);
+    setEditingPurchase(recalculateInvoiceTotals(
+      newItems,
+      editingPurchase.discountType || 'EGP',
+      editingPurchase.discountValue || 0,
+      editingPurchase.paidAmount || 0,
+      editingPurchase
+    ));
+  };
+
+  const handleEditDiscountChange = (type: 'EGP' | 'PERCENT', val: number) => {
+    if (!editingPurchase) return;
+    setEditingPurchase(recalculateInvoiceTotals(
+      editingPurchase.items,
+      type,
+      val,
+      editingPurchase.paidAmount || 0,
+      editingPurchase
+    ));
+  };
+
+  const handleEditPaidChange = (val: number) => {
+    if (!editingPurchase) return;
+    const paid = Math.max(0, val);
+    setEditingPurchase(recalculateInvoiceTotals(
+      editingPurchase.items,
+      editingPurchase.discountType || 'EGP',
+      editingPurchase.discountValue || 0,
+      paid,
+      editingPurchase
+    ));
   };
 
   const handleUpdatePurchase = async (e: React.FormEvent) => {
@@ -429,7 +586,7 @@ export default function PurchasesPage() {
 
                               <button
                                 type="button"
-                                onClick={() => setEditingPurchase(pur)}
+                                onClick={() => handleStartEditPurchase(pur)}
                                 className="bg-amber-100 text-amber-950 px-2 py-1 rounded-lg text-xs font-bold cursor-pointer"
                               >
                                 ✏️
@@ -586,61 +743,353 @@ export default function PurchasesPage() {
         )}
       </div>
 
-      {/* ✏️ Modal: Edit Purchase Invoice */}
+      {/* ✏️ Modal: Full Comprehensive Edit Purchase Invoice */}
       {editingPurchase && (
-        <div className="modal-overlay fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-200">
-            <div className="flex justify-between items-center pb-2 border-b border-slate-100">
-              <h3 className="font-bold text-slate-900 text-sm">تعديل فاتورة الشراء #{editingPurchase.invoiceNumber}</h3>
-              <button onClick={() => setEditingPurchase(null)} className="w-7 h-7 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-xs cursor-pointer">✕</button>
+        <div className="modal-overlay fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-4xl w-full my-auto flex flex-col max-h-[92vh] shadow-2xl border border-slate-200 overflow-hidden text-right">
+            {/* Header */}
+            <div className="p-4 sm:p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/70 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-2xl bg-amber-50 border border-amber-200/60 flex items-center justify-center text-base">
+                  📝
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-slate-900 text-sm sm:text-base">تعديل فاتورة الشراء #{editingPurchase.invoiceNumber}</h3>
+                    <span className="px-2.5 py-0.5 rounded-full font-bold text-[10px] bg-slate-100 text-slate-700 border border-slate-200">
+                      {editingPurchase.status}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 font-medium">تعديل كافة بيانات الفاتورة، تفاصيل الأصناف والكميات، والبيانات المالية</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingPurchase(null)}
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-xs cursor-pointer transition-colors"
+              >
+                ✕
+              </button>
             </div>
 
-            <form onSubmit={handleUpdatePurchase} className="space-y-3 text-xs">
-              <div>
-                <label className="text-slate-700 font-bold block mb-1">اسم المورد:</label>
-                <input
-                  type="text"
-                  required
-                  value={editingPurchase.supplierName}
-                  onChange={e => setEditingPurchase({ ...editingPurchase, supplierName: e.target.value })}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900"
-                />
+            {/* Scrollable Form Body */}
+            <form id="edit-purchase-form" onSubmit={handleUpdatePurchase} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 text-xs">
+              {/* القسم 1: بيانات الفاتورة والمورد */}
+              <div className="bg-slate-50/50 rounded-2xl p-4 border border-slate-100 space-y-3">
+                <h4 className="font-black text-slate-800 text-xs flex items-center gap-1.5">
+                  <span className="text-amber-600">🏢</span>
+                  <span>بيانات الفاتورة والمورد</span>
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  <div>
+                    <label className="text-slate-700 font-bold block mb-1">اسم المورد *</label>
+                    <input
+                      type="text"
+                      required
+                      value={editingPurchase.supplierName}
+                      onChange={e => setEditingPurchase({ ...editingPurchase, supplierName: e.target.value })}
+                      placeholder="اسم التاجر / المورد"
+                      className="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900 bg-white focus:border-brand-gold focus:ring-1 focus:ring-brand-gold/20 outline-hidden"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-slate-700 font-bold block mb-1">هاتف المورد</label>
+                    <input
+                      type="tel"
+                      value={editingPurchase.supplierPhone || ''}
+                      onChange={e => setEditingPurchase({ ...editingPurchase, supplierPhone: e.target.value })}
+                      placeholder="01xxxxxxxxx"
+                      className="w-full border border-slate-200 rounded-xl px-3 py-2 font-mono font-bold text-slate-900 bg-white focus:border-brand-gold focus:ring-1 focus:ring-brand-gold/20 outline-hidden"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-slate-700 font-bold block mb-1">الفرع</label>
+                    <select
+                      value={editingPurchase.branch}
+                      onChange={e => setEditingPurchase({ ...editingPurchase, branch: e.target.value })}
+                      className="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900 bg-white focus:border-brand-gold focus:ring-1 focus:ring-brand-gold/20 outline-hidden"
+                    >
+                      {BRANCHES_LIST.map(b => (
+                        <option key={b.id} value={b.name}>{b.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-slate-700 font-bold block mb-1">تاريخ الفاتورة</label>
+                    <input
+                      type="date"
+                      value={editingPurchase.date || ''}
+                      onChange={e => setEditingPurchase({ ...editingPurchase, date: e.target.value })}
+                      className="w-full border border-slate-200 rounded-xl px-3 py-2 font-mono font-bold text-slate-900 bg-white focus:border-brand-gold focus:ring-1 focus:ring-brand-gold/20 outline-hidden"
+                    />
+                  </div>
+                </div>
               </div>
 
-              <div>
-                <label className="text-slate-700 font-bold block mb-1">المبلغ المسدد (ج.م):</label>
-                <input
-                  type="number"
-                  required
-                  min="0"
-                  value={editingPurchase.paidAmount}
-                  onChange={e => setEditingPurchase({ ...editingPurchase, paidAmount: Number(e.target.value) })}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 font-mono font-bold text-slate-900"
-                />
+              {/* القسم 2: جدول بنود وأصناف الفاتورة */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-black text-slate-800 text-xs flex items-center gap-1.5">
+                    <span className="text-amber-600">📦</span>
+                    <span>أصناف وبنود الفاتورة ({editingPurchase.items?.length || 0})</span>
+                  </h4>
+                  <button
+                    type="button"
+                    onClick={handleEditAddItem}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1 shadow-xs transition-colors cursor-pointer"
+                  >
+                    <span>+ إضافة صنف جديد</span>
+                  </button>
+                </div>
+
+                <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
+                  <div className="overflow-x-auto max-h-60 overflow-y-auto">
+                    <table className="w-full text-right text-xs border-collapse">
+                      <thead className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200 sticky top-0 z-10">
+                        <tr>
+                          <th className="p-2.5 text-center w-10">#</th>
+                          <th className="p-2.5 min-w-[180px]">اسم الصنف / الخامة *</th>
+                          <th className="p-2.5 w-28 text-center">الكود</th>
+                          <th className="p-2.5 w-28 text-center">الكمية / الأمتار</th>
+                          <th className="p-2.5 w-32 text-center">سعر المتر (ج.م)</th>
+                          <th className="p-2.5 w-28 text-center">الإجمالي</th>
+                          <th className="p-2.5 w-12 text-center">حذف</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 bg-white">
+                        {editingPurchase.items?.length === 0 ? (
+                          <tr>
+                            <td colSpan={7} className="p-6 text-center text-slate-400 font-medium">
+                              لا توجد أصناف في هذه الفاتورة. اضغط على زر &quot;إضافة صنف جديد&quot; لإضافة بنود.
+                            </td>
+                          </tr>
+                        ) : (
+                          editingPurchase.items?.map((item, idx) => (
+                            <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
+                              <td className="p-2 text-center font-mono text-slate-400 font-bold">{idx + 1}</td>
+                              <td className="p-2">
+                                <input
+                                  type="text"
+                                  required
+                                  value={item.name}
+                                  onChange={e => handleEditItemChange(idx, 'name', e.target.value)}
+                                  placeholder="اسم القماش أو الخامة"
+                                  className="w-full border border-slate-200 rounded-lg px-2.5 py-1.5 font-bold text-slate-900 bg-white focus:border-brand-gold outline-hidden"
+                                />
+                              </td>
+                              <td className="p-2">
+                                <input
+                                  type="text"
+                                  value={item.code || ''}
+                                  onChange={e => handleEditItemChange(idx, 'code', e.target.value)}
+                                  placeholder="كود"
+                                  className="w-full border border-slate-200 rounded-lg px-2 py-1.5 font-mono text-center text-slate-700 bg-white focus:border-brand-gold outline-hidden"
+                                />
+                              </td>
+                              <td className="p-2">
+                                <input
+                                  type="number"
+                                  step="any"
+                                  min="0"
+                                  required
+                                  value={item.meters ?? ''}
+                                  onChange={e => handleEditItemChange(idx, 'meters', e.target.value)}
+                                  className="w-full border border-slate-200 rounded-lg px-2 py-1.5 font-mono font-bold text-center text-slate-900 bg-white focus:border-brand-gold outline-hidden"
+                                />
+                              </td>
+                              <td className="p-2">
+                                <input
+                                  type="number"
+                                  step="any"
+                                  min="0"
+                                  required
+                                  value={item.unitCost ?? ''}
+                                  onChange={e => handleEditItemChange(idx, 'unitCost', e.target.value)}
+                                  className="w-full border border-slate-200 rounded-lg px-2 py-1.5 font-mono font-bold text-center text-slate-900 bg-white focus:border-brand-gold outline-hidden"
+                                />
+                              </td>
+                              <td className="p-2 text-center font-mono font-black text-slate-950">
+                                {(Number(item.totalCost) || 0).toLocaleString()} ج
+                              </td>
+                              <td className="p-2 text-center">
+                                <button
+                                  type="button"
+                                  onClick={() => handleEditDeleteItem(idx)}
+                                  className="w-7 h-7 rounded-lg text-rose-600 hover:bg-rose-50 hover:text-rose-700 flex items-center justify-center mx-auto cursor-pointer transition-colors"
+                                  title="حذف هذا الصنف"
+                                >
+                                  🗑️
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
 
-              <div>
-                <label className="text-slate-700 font-bold block mb-1">طريقة الدفع للمورد:</label>
-                <select
-                  value={editingPurchase.paymentMethod}
-                  onChange={e => setEditingPurchase({ ...editingPurchase, paymentMethod: e.target.value as any })}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900"
-                >
-                  <option value="نقدي (كاش)">1. نقدي (كاش)</option>
-                  <option value="شيكات بنكية">2. شيكات بنكية مؤجلة</option>
-                  <option value="على دفعات / آجل">3. على دفعات / بالآجل</option>
-                </select>
-              </div>
+              {/* القسم 3: الحسابات والخصم وطريقة الدفع */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* السداد والملاحظات */}
+                <div className="bg-slate-50/50 rounded-2xl p-4 border border-slate-100 space-y-3">
+                  <h4 className="font-black text-slate-800 text-xs flex items-center gap-1.5">
+                    <span className="text-amber-600">💳</span>
+                    <span>طريقة السداد والملاحظات</span>
+                  </h4>
 
-              <div className="pt-2 flex gap-2">
-                <button type="submit" className="flex-1 bg-brand-gold hover:bg-amber-400 text-slate-950 py-2.5 rounded-xl font-black text-xs shadow-gold cursor-pointer">
-                  حفظ التعديلات ✓
-                </button>
-                <button type="button" onClick={() => setEditingPurchase(null)} className="flex-1 bg-slate-100 text-slate-700 py-2.5 rounded-xl font-bold text-xs cursor-pointer">
-                  إلغاء
-                </button>
+                  <div>
+                    <label className="text-slate-700 font-bold block mb-1">طريقة الدفع للمورد *</label>
+                    <select
+                      value={editingPurchase.paymentMethod}
+                      onChange={e => setEditingPurchase({ ...editingPurchase, paymentMethod: e.target.value })}
+                      className="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900 bg-white focus:border-brand-gold outline-hidden"
+                    >
+                      <option value="نقدي (كاش)">💵 نقدي (كاش)</option>
+                      <option value="شيكات بنكية">🏦 شيكات بنكية مؤجلة</option>
+                      <option value="على دفعات / آجل">⏳ على دفعات / بالآجل</option>
+                      <option value="إنستاباي">⚡ إنستاباي</option>
+                      <option value="فودافون كاش">📱 فودافون كاش</option>
+                      <option value="فيزا / كارت">💳 فيزا / كارت</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-slate-700 font-bold block mb-1">المبلغ المسدد حالياً (ج.م) *</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max={editingPurchase.totalAmount}
+                      step="any"
+                      required
+                      value={editingPurchase.paidAmount ?? 0}
+                      onChange={e => handleEditPaidChange(Number(e.target.value))}
+                      className="w-full border border-slate-200 rounded-xl px-3 py-2 font-mono font-black text-slate-900 bg-white focus:border-brand-gold outline-hidden"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-slate-700 font-bold block mb-1">ملاحظات الفاتورة</label>
+                    <textarea
+                      rows={2}
+                      value={editingPurchase.notes || ''}
+                      onChange={e => setEditingPurchase({ ...editingPurchase, notes: e.target.value })}
+                      placeholder="أية ملاحظات خاصة بالاستلام أو الشحن أو المورد..."
+                      className="w-full border border-slate-200 rounded-xl px-3 py-2 text-slate-900 bg-white focus:border-brand-gold outline-hidden resize-none"
+                    />
+                  </div>
+                </div>
+
+                {/* الملخص المالي */}
+                <div className="bg-slate-900 text-white rounded-2xl p-4.5 space-y-3.5 flex flex-col justify-between shadow-lg">
+                  <div className="space-y-2.5">
+                    <h4 className="font-black text-amber-400 text-xs flex items-center gap-1.5 pb-2 border-b border-slate-800">
+                      <span>💰</span>
+                      <span>الملخص المالي للفاتورة</span>
+                    </h4>
+
+                    <div className="flex justify-between items-center text-slate-300">
+                      <span>إجمالي الأصناف:</span>
+                      <span className="font-mono font-bold text-white text-sm">
+                        {(Number(editingPurchase.subtotal) || 0).toLocaleString()} ج.م
+                      </span>
+                    </div>
+
+                    {/* الخصم */}
+                    <div className="bg-slate-800/80 p-2.5 rounded-xl space-y-2 border border-slate-700/50">
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-300 font-bold">الخصم المكتسب:</span>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleEditDiscountChange('EGP', editingPurchase.discountValue || 0)}
+                            className={`px-2 py-0.5 rounded-md font-bold text-[10px] cursor-pointer transition-colors ${
+                              (editingPurchase.discountType || 'EGP') === 'EGP'
+                                ? 'bg-brand-gold text-slate-950 font-black'
+                                : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                            }`}
+                          >
+                            ج.م
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleEditDiscountChange('PERCENT', editingPurchase.discountValue || 0)}
+                            className={`px-2 py-0.5 rounded-md font-bold text-[10px] cursor-pointer transition-colors ${
+                              editingPurchase.discountType === 'PERCENT'
+                                ? 'bg-brand-gold text-slate-950 font-black'
+                                : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                            }`}
+                          >
+                            %
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          step="any"
+                          min="0"
+                          value={editingPurchase.discountValue || ''}
+                          onChange={e => handleEditDiscountChange(editingPurchase.discountType || 'EGP', Number(e.target.value))}
+                          placeholder="قيمة الخصم"
+                          className="flex-1 border border-slate-600 bg-slate-900 rounded-lg px-2.5 py-1 text-center font-mono font-bold text-white text-xs focus:border-brand-gold outline-hidden"
+                        />
+                        <span className="font-mono text-amber-400 font-bold text-xs shrink-0">
+                          -{(Number(editingPurchase.discountAmount) || 0).toLocaleString()} ج
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* صافي الإجمالي */}
+                    <div className="flex justify-between items-center pt-2 border-t border-slate-800">
+                      <span className="font-black text-white text-sm">صافي إجمالي الفاتورة:</span>
+                      <span className="font-mono font-black text-amber-400 text-lg">
+                        {(Number(editingPurchase.totalAmount) || 0).toLocaleString()} ج.م
+                      </span>
+                    </div>
+
+                    {/* المسدد والمتبقي */}
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                      <div className="bg-emerald-950/60 border border-emerald-800/60 p-2 rounded-xl text-center">
+                        <div className="text-[10px] text-emerald-400 font-bold">المدفوع</div>
+                        <div className="font-mono font-black text-emerald-300 text-xs">
+                          {(Number(editingPurchase.paidAmount) || 0).toLocaleString()} ج
+                        </div>
+                      </div>
+                      <div className="bg-rose-950/60 border border-rose-800/60 p-2 rounded-xl text-center">
+                        <div className="text-[10px] text-rose-400 font-bold">المتبقي الآجل</div>
+                        <div className="font-mono font-black text-rose-300 text-xs">
+                          {(Number(editingPurchase.remainingAmount) || 0).toLocaleString()} ج
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </form>
+
+            {/* Footer */}
+            <div className="p-4 sm:p-5 border-t border-slate-100 flex items-center justify-end gap-2.5 bg-slate-50/70 shrink-0">
+              <button
+                type="button"
+                onClick={() => setEditingPurchase(null)}
+                className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs cursor-pointer transition-colors"
+              >
+                إلغاء
+              </button>
+              <button
+                type="submit"
+                form="edit-purchase-form"
+                className="px-6 py-2.5 bg-brand-gold hover:bg-amber-400 text-slate-950 font-black rounded-xl text-xs shadow-gold cursor-pointer transition-all"
+              >
+                حفظ التعديلات وتحديث الفاتورة ✓
+              </button>
+            </div>
           </div>
         </div>
       )}

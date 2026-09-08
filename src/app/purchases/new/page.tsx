@@ -570,9 +570,9 @@ export default function NewPurchaseInvoicePage() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-2.5 items-start">
 
           {/* ========================================================= */}
-          {/* COLUMN 1 (7 cols - RIGHT): High-Density Products Catalog Table */}
+          {/* COLUMN 1 (5 cols - RIGHT): High-Density Products Catalog Table */}
           {/* ========================================================= */}
-          <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200 shadow-soft overflow-hidden flex flex-col" style={{ height: 'calc(100vh - 135px)' }}>
+          <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200 shadow-soft overflow-hidden flex flex-col" style={{ height: 'calc(100vh - 135px)' }}>
             
             {/* Search & Dynamic Category Filter Top Bar */}
             <div className="p-2.5 border-b border-slate-200 bg-slate-50/70 space-y-2 shrink-0">
@@ -667,7 +667,6 @@ export default function NewPurchaseInvoicePage() {
                       <th className="p-2">التصنيف</th>
                       <th className="p-2 text-center">رصيد المخزن</th>
                       <th className="p-2 text-center">سعر التكلفة</th>
-                      <th className="p-2 text-center w-20">إجراء</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
@@ -679,12 +678,20 @@ export default function NewPurchaseInvoicePage() {
                         <tr
                           key={p.id || p.code}
                           onClick={() => handleAddProductToCart(p)}
-                          className={`hover:bg-amber-50/60 cursor-pointer transition-colors ${
-                            inCart ? 'bg-amber-50/80 font-bold' : ''
+                          className={`hover:bg-amber-50/70 cursor-pointer transition-colors ${
+                            inCart ? 'bg-amber-50/90 font-bold' : ''
                           }`}
+                          title="اضغط لإضافة هذا الصنف للفاتورة"
                         >
-                          <td className="p-2 pr-3 font-bold text-slate-900 max-w-[240px] truncate" title={p.name}>
-                            {p.name}
+                          <td className="p-2 pr-3 font-bold text-slate-900 max-w-[200px]" title={p.name}>
+                            <div className="flex items-center gap-1.5">
+                              <span className="truncate">{p.name}</span>
+                              {inCart && (
+                                <span className="bg-amber-500 text-slate-950 text-[10px] font-black px-1.5 py-0.5 rounded shadow-3xs shrink-0 font-mono">
+                                  ✓ {inCart.meters}
+                                </span>
+                              )}
+                            </div>
                           </td>
 
                           <td className="p-2 whitespace-nowrap">
@@ -700,21 +707,6 @@ export default function NewPurchaseInvoicePage() {
                           <td className="p-2 text-center font-mono font-bold text-emerald-800 whitespace-nowrap">
                             {cost.toLocaleString()} ج
                           </td>
-
-                          <td className="p-2 text-center whitespace-nowrap" onClick={e => e.stopPropagation()}>
-                            <button
-                              type="button"
-                              onClick={() => handleAddProductToCart(p)}
-                              className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer shadow-3xs ${
-                                inCart
-                                  ? 'bg-amber-500 text-slate-950 hover:bg-amber-600'
-                                  : 'bg-slate-900 hover:bg-slate-800 text-white'
-                              }`}
-                              title="إضافة للسلة"
-                            >
-                              {inCart ? `✓ ${inCart.meters}` : '+ أضف'}
-                            </button>
-                          </td>
                         </tr>
                       );
                     })}
@@ -726,15 +718,15 @@ export default function NewPurchaseInvoicePage() {
           </div>
 
           {/* ========================================================= */}
-          {/* COLUMN 2 (5 cols - LEFT): Cart Items Table & Settlement */}
+          {/* COLUMN 2 (7 cols - LEFT): Cart Items Table & Settlement */}
           {/* ========================================================= */}
-          <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200 shadow-soft overflow-hidden flex flex-col" style={{ height: 'calc(100vh - 135px)' }}>
+          <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200 shadow-soft overflow-hidden flex flex-col" style={{ height: 'calc(100vh - 135px)' }}>
             
             {/* Header */}
             <div className="px-3 py-2 border-b border-slate-200 bg-slate-50/70 flex justify-between items-center shrink-0">
               <div className="flex items-center gap-1.5">
                 <span className="material-symbols-outlined text-amber-500 text-base">receipt_long</span>
-                <span className="font-black text-slate-900 text-xs sm:text-sm">أصناف الفاتورة</span>
+                <span className="font-black text-slate-900 text-xs sm:text-sm">أصناف الفاتورة والتسعير</span>
                 <span className="bg-amber-100 text-amber-950 text-xs px-2 py-0.2 rounded-full font-mono font-black border border-amber-300">
                   {items.length}
                 </span>
@@ -762,75 +754,80 @@ export default function NewPurchaseInvoicePage() {
                 <table className="w-full text-right text-xs border-collapse">
                   <thead className="bg-slate-100 text-slate-600 font-bold border-b border-slate-200 sticky top-0 z-10 text-[11px]">
                     <tr>
-                      <th className="p-1.5 pr-2">الصنف</th>
-                      <th className="p-1.5 text-center w-28">الكمية</th>
-                      <th className="p-1.5 text-center w-20">السعر (ج)</th>
-                      <th className="p-1.5 text-center w-20">الإجمالي</th>
-                      <th className="p-1.5 text-center w-6"></th>
+                      <th className="p-2 pr-3">الصنف والكود</th>
+                      <th className="p-2 text-center w-36">الكمية (متر/قطعة)</th>
+                      <th className="p-2 text-center w-28">سعر الوحدة (ج)</th>
+                      <th className="p-2 text-center w-28">الإجمالي</th>
+                      <th className="p-2 text-center w-8"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {items.map(it => (
                       <tr key={it.id} className="hover:bg-slate-50 transition-colors">
-                        <td className="p-1.5 pr-2">
-                          <div className="font-bold text-slate-900 truncate max-w-[130px]" title={it.name}>
+                        <td className="p-2 pr-3">
+                          <div className="font-bold text-slate-900 truncate max-w-[200px]" title={it.name}>
                             {it.name}
                           </div>
                           <div className="text-[10px] text-slate-400 font-mono" dir="ltr">{it.code}</div>
                         </td>
 
-                        {/* Inline Quantity Stepper */}
-                        <td className="p-1.5 text-center">
-                          <div className="inline-flex items-center gap-0.5 border border-slate-300 rounded-lg p-0.5 bg-white">
+                        {/* Inline Quantity Stepper - Spacious */}
+                        <td className="p-2 text-center">
+                          <div className="inline-flex items-center gap-1 border border-slate-300 rounded-xl p-0.5 bg-white shadow-2xs">
                             <button
                               type="button"
                               onClick={() => updateItem(it.id, 'meters', Math.max(0.25, it.meters - 1))}
-                              className="w-5 h-5 rounded bg-slate-100 hover:bg-slate-200 text-slate-800 font-black text-xs flex items-center justify-center cursor-pointer"
+                              className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 font-black text-sm flex items-center justify-center cursor-pointer transition-colors"
                             >
                               -
                             </button>
                             <input
                               type="number"
-                              step="0.5"
-                              min="0.1"
+                              step="any"
+                              min="0.01"
                               value={it.meters}
                               onChange={e => updateItem(it.id, 'meters', parseFloat(e.target.value) || 0)}
-                              className="w-11 text-center font-mono font-black text-xs bg-transparent text-slate-900 focus:outline-none"
+                              className="w-16 text-center font-mono font-black text-xs sm:text-sm bg-transparent text-slate-900 focus:outline-none"
                             />
                             <button
                               type="button"
                               onClick={() => updateItem(it.id, 'meters', it.meters + 1)}
-                              className="w-5 h-5 rounded bg-slate-100 hover:bg-slate-200 text-slate-800 font-black text-xs flex items-center justify-center cursor-pointer"
+                              className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 font-black text-sm flex items-center justify-center cursor-pointer transition-colors"
                             >
                               +
                             </button>
                           </div>
                         </td>
 
-                        {/* Inline Unit Cost Input */}
-                        <td className="p-1.5 text-center">
-                          <input
-                            type="number"
-                            min="0"
-                            value={it.unitCost === 0 ? '' : it.unitCost}
-                            onChange={e => updateItem(it.id, 'unitCost', parseFloat(e.target.value) || 0)}
-                            placeholder="0"
-                            className="w-16 border border-slate-300 rounded-lg py-1 px-1 text-center font-mono font-black text-xs text-slate-900 bg-white focus:outline-none focus:border-amber-500"
-                          />
+                        {/* Inline Unit Cost Input - Spacious */}
+                        <td className="p-2 text-center">
+                          <div className="inline-block relative">
+                            <input
+                              type="number"
+                              min="0"
+                              step="any"
+                              value={it.unitCost === 0 ? '' : it.unitCost}
+                              onChange={e => updateItem(it.id, 'unitCost', parseFloat(e.target.value) || 0)}
+                              placeholder="0"
+                              className="w-24 border border-slate-300 rounded-xl py-1.5 px-2 text-center font-mono font-black text-xs sm:text-sm text-slate-900 bg-white focus:outline-none focus:border-amber-500 shadow-2xs"
+                            />
+                          </div>
                         </td>
 
                         {/* Total */}
-                        <td className="p-1.5 text-center font-mono font-bold text-amber-950 whitespace-nowrap">
-                          {it.totalCost.toLocaleString()}
+                        <td className="p-2 text-center font-mono font-bold text-amber-950 whitespace-nowrap">
+                          <span className="bg-amber-50 border border-amber-200 text-amber-950 px-2.5 py-1 rounded-xl text-xs font-black inline-block">
+                            {it.totalCost.toLocaleString()} ج
+                          </span>
                         </td>
 
                         {/* Remove Button */}
-                        <td className="p-1.5 text-center">
+                        <td className="p-2 text-center">
                           <button
                             type="button"
                             onClick={() => removeItem(it.id)}
-                            className="text-slate-400 hover:text-rose-600 font-bold cursor-pointer"
-                            title="حذف"
+                            className="text-slate-400 hover:text-rose-600 hover:bg-rose-50 p-1.5 rounded-lg font-bold cursor-pointer transition-colors"
+                            title="حذف هذا الصنف"
                           >
                             ✕
                           </button>
