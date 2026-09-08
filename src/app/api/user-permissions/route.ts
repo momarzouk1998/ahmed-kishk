@@ -35,31 +35,31 @@ const DEFAULT_PERMS_ROSTER: PermsMap = {
   },
   // أحمد عبدالله (فرع عرابي)
   '01023232370': {
-    allowedPageIds: ['p_inspections', 'p_pricing', 'p_cutting', 'p_tailoring', 'p_accessories', 'p_delivery', 'p_installation', 'p_orders', 'p_dashboard', 'p_fabric_sales', 'p_purchases', 'p_customers', 'p_suppliers', 'p_inventory', 'p_reports', 'p_fabric_sales_edit_price', 'p_purchases_edit_price', 'p_inventory_edit_price', 'p_inspections_edit_price', 'p_pricing_edit_price', 'p_orders_edit_price'],
+    allowedPageIds: ['p_inspections', 'p_pricing', 'p_cutting', 'p_tailoring', 'p_accessories', 'p_delivery', 'p_installation', 'p_orders', 'p_fabric_sales', 'p_purchases', 'p_customers', 'p_suppliers', 'p_inventory', 'p_reports', 'p_fabric_sales_edit_price', 'p_purchases_edit_price', 'p_inventory_edit_price', 'p_inspections_edit_price', 'p_pricing_edit_price', 'p_orders_edit_price'],
     restrictToBranch: true,
     branch: 'فرع عرابي',
   },
   // محمد نصار (كاشير عرابي)
   '01055288214': {
-    allowedPageIds: ['p_inspections', 'p_pricing', 'p_fabric_sales', 'p_customers', 'p_inventory', 'p_dashboard'],
+    allowedPageIds: ['p_inspections', 'p_pricing', 'p_fabric_sales', 'p_customers', 'p_inventory'],
     restrictToBranch: true,
     branch: 'فرع عرابي',
   },
   // محمد كشك (مدير فرع عمر أفندي - فرع أقمشة فقط بدون مراحل ستائر)
   '01018728640': {
-    allowedPageIds: ['p_fabric_sales', 'p_purchases', 'p_customers', 'p_suppliers', 'p_inventory', 'p_dashboard', 'p_fabric_sales_edit_price', 'p_purchases_edit_price', 'p_inventory_edit_price'],
+    allowedPageIds: ['p_fabric_sales', 'p_purchases', 'p_customers', 'p_suppliers', 'p_inventory', 'p_fabric_sales_edit_price', 'p_purchases_edit_price', 'p_inventory_edit_price'],
     restrictToBranch: true,
     branch: 'فرع عمر أفندي',
   },
   // أحمد عبدالعال (كاشير فرع عمر أفندي - فرع أقمشة فقط بدون مراحل ستائر وبدون تعديل أسعار)
   '01275763008': {
-    allowedPageIds: ['p_fabric_sales', 'p_customers', 'p_inventory', 'p_dashboard'],
+    allowedPageIds: ['p_fabric_sales', 'p_customers', 'p_inventory'],
     restrictToBranch: true,
     branch: 'فرع عمر أفندي',
   },
   // عبدالله كشك (مدير فرع الثلاثيني - فرع أقمشة فقط بدون مراحل ستائر)
   '01033447262': {
-    allowedPageIds: ['p_fabric_sales', 'p_purchases', 'p_customers', 'p_suppliers', 'p_inventory', 'p_dashboard', 'p_fabric_sales_edit_price', 'p_purchases_edit_price', 'p_inventory_edit_price'],
+    allowedPageIds: ['p_fabric_sales', 'p_purchases', 'p_customers', 'p_suppliers', 'p_inventory', 'p_fabric_sales_edit_price', 'p_purchases_edit_price', 'p_inventory_edit_price'],
     restrictToBranch: true,
     branch: 'فرع الثلاثيني',
   },
@@ -91,11 +91,20 @@ export async function GET(request: Request) {
     if (!phone) return NextResponse.json({ error: 'phone required' }, { status: 400 });
 
     const map = await readAllPerms();
-    const entry = map[phone] || DEFAULT_PERMS_ROSTER[phone] || {
-      allowedPageIds: ['p_fabric_sales', 'p_dashboard', 'p_inventory', 'p_customers'],
+    let entry = map[phone] || DEFAULT_PERMS_ROSTER[phone] || {
+      allowedPageIds: ['p_fabric_sales', 'p_inventory', 'p_customers'],
       restrictToBranch: true,
       branch: 'الفرع الرئيسي',
     };
+
+    // ضمان إخفاء الصفحة الرئيسية لأحمد عبدالله إذا لم يكن محدداً بغير ذلك
+    if (phone === '01023232370') {
+      entry = {
+        ...entry,
+        allowedPageIds: (entry.allowedPageIds || []).filter((id: string) => id !== 'p_dashboard'),
+      };
+    }
+
     return NextResponse.json(entry);
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });

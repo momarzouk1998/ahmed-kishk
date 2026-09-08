@@ -326,36 +326,6 @@ export default function DashboardPage() {
     };
   });
 
-  // Dynamic Fabric Stock Breakdown Calculation
-  const dynamicFabricStats = [
-    {
-      category: 'أقمشة سواريه وحرير',
-      availableMeters: rawInventory.filter((i: any) => i.category?.includes('سواريه') || i.category?.includes('حرير') || i.name?.includes('حرير')).reduce((s: number, i: any) => s + (Number(i.totalQuantity) || 0), 0),
-      reservedMeters: rawInventory.filter((i: any) => i.category?.includes('سواريه') || i.category?.includes('حرير') || i.name?.includes('حرير')).reduce((s: number, i: any) => s + (Number(i.reservedQuantity) || 0), 0),
-      salesAmount: `${(rawInventory.filter((i: any) => i.category?.includes('سواريه') || i.category?.includes('حرير') || i.name?.includes('حرير')).reduce((s: number, i: any) => s + ((Number(i.totalQuantity) || 0) * (Number(i.sellPrice) || 0)), 0)).toLocaleString()} ج`,
-    },
-    {
-      category: 'قطيفة وكتان ستائر',
-      availableMeters: rawInventory.filter((i: any) => i.category?.includes('ستائر') || i.name?.includes('قطيفة') || i.name?.includes('كتان')).reduce((s: number, i: any) => s + (Number(i.totalQuantity) || 0), 0),
-      reservedMeters: rawInventory.filter((i: any) => i.category?.includes('ستائر') || i.name?.includes('قطيفة') || i.name?.includes('كتان')).reduce((s: number, i: any) => s + (Number(i.reservedQuantity) || 0), 0),
-      salesAmount: `${(rawInventory.filter((i: any) => i.category?.includes('ستائر') || i.name?.includes('قطيفة') || i.name?.includes('كتان')).reduce((s: number, i: any) => s + ((Number(i.totalQuantity) || 0) * (Number(i.sellPrice) || 0)), 0)).toLocaleString()} ج`,
-    },
-    {
-      category: 'تول وشيفون ناعم',
-      availableMeters: rawInventory.filter((i: any) => i.category?.includes('شيفون') || i.name?.includes('شيفون') || i.name?.includes('تول')).reduce((s: number, i: any) => s + (Number(i.totalQuantity) || 0), 0),
-      reservedMeters: rawInventory.filter((i: any) => i.category?.includes('شيفون') || i.name?.includes('شيفون') || i.name?.includes('تول')).reduce((s: number, i: any) => s + (Number(i.reservedQuantity) || 0), 0),
-      salesAmount: `${(rawInventory.filter((i: any) => i.category?.includes('شيفون') || i.name?.includes('شيفون') || i.name?.includes('تول')).reduce((s: number, i: any) => s + ((Number(i.totalQuantity) || 0) * (Number(i.sellPrice) || 0)), 0)).toLocaleString()} ج`,
-    },
-    {
-      category: 'بلاك آوت عازل ضوء',
-      availableMeters: rawInventory.filter((i: any) => i.category?.includes('بلاك') || i.name?.includes('بلاك')).reduce((s: number, i: any) => s + (Number(i.totalQuantity) || 0), 0),
-      reservedMeters: rawInventory.filter((i: any) => i.category?.includes('بلاك') || i.name?.includes('بلاك')).reduce((s: number, i: any) => s + (Number(i.reservedQuantity) || 0), 0),
-      salesAmount: `${(rawInventory.filter((i: any) => i.category?.includes('بلاك') || i.name?.includes('بلاك')).reduce((s: number, i: any) => s + ((Number(i.totalQuantity) || 0) * (Number(i.sellPrice) || 0)), 0)).toLocaleString()} ج`,
-    },
-  ];
-
-  const totalWarehouseMeters = dynamicFabricStats.reduce((sum, f) => sum + f.availableMeters + f.reservedMeters, 0);
-
   const displaySales = totalSales.toLocaleString();
   const displayContracts = contractsSales.toLocaleString();
   const displayPos = posSales.toLocaleString();
@@ -587,76 +557,38 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Reports Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-          {/* Branch Performance Report (4 Branches) */}
-          <div className="lg:col-span-7 bg-white rounded-3xl border border-slate-200 p-5 sm:p-6 shadow-soft">
-            <div className="flex justify-between items-center mb-4">
-              <div>
-                <h2 className="font-display font-black text-base text-slate-900">تقرير المبيعات والنشاط للفروع الأربعة</h2>
-                <p className="text-xs text-slate-500 mt-0.5">مبيعات كل فرع وعدد العمليات التي تمت بنجاح</p>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              {dynamicBranchSales.map((b, i) => (
-                <div key={i} className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-100/50 transition-colors">
-                  <div>
-                    <div className="font-black text-sm text-slate-900">{b.name}</div>
-                    <span className="text-[11px] text-slate-500 font-bold">{b.type} • {b.orders} عملية</span>
-                  </div>
-                  <div className="flex items-center justify-between sm:justify-end gap-3 flex-wrap">
-                    <div className="text-right sm:text-left">
-                      <div className="text-[10px] text-slate-500 font-bold">إجمالي المبيعات / العقود</div>
-                      <div className="font-mono font-black text-sm text-slate-900">{b.sales}</div>
-                    </div>
-                    <div className="text-right sm:text-left bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-200">
-                      <div className="text-[10px] text-emerald-800 font-bold">المحصَّل بالدرج</div>
-                      <div className="font-mono font-black text-xs text-emerald-700">{b.collected}</div>
-                    </div>
-                    <div className="text-right sm:text-left bg-amber-50 px-2.5 py-1 rounded-xl border border-amber-200">
-                      <div className="text-[10px] text-amber-800 font-bold">{b.target}</div>
-                      <div className="font-mono font-bold text-[10px] text-amber-900">آجل: {b.remaining}</div>
-                    </div>
-                  </div>
-                </div>
-              ))}
+        {/* Branch Performance Report (4 Branches) */}
+        <div className="bg-white rounded-3xl border border-slate-200 p-5 sm:p-6 shadow-soft">
+          <div className="flex justify-between items-center mb-4">
+            <div>
+              <h2 className="font-display font-black text-base text-slate-900">تقرير المبيعات والنشاط للفروع الأربعة</h2>
+              <p className="text-xs text-slate-500 mt-0.5">مبيعات كل فرع وعدد العمليات التي تمت بنجاح</p>
             </div>
           </div>
 
-          {/* Inventory Report */}
-          <div className="lg:col-span-5 bg-white rounded-3xl border border-slate-200 p-5 sm:p-6 shadow-soft flex flex-col justify-between">
-            <div>
-              <div className="flex justify-between items-center mb-4">
+          <div className="space-y-3">
+            {dynamicBranchSales.map((b, i) => (
+              <div key={i} className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-100/50 transition-colors">
                 <div>
-                  <h2 className="font-display font-black text-base text-slate-900">تقرير الأقمشة وحجز المخازن</h2>
-                  <p className="text-xs text-slate-500 mt-0.5">متابعة الأمتار المتاحة والمحجوزة للستائر</p>
+                  <div className="font-black text-sm text-slate-900">{b.name}</div>
+                  <span className="text-[11px] text-slate-500 font-bold">{b.type} • {b.orders} عملية</span>
                 </div>
-                <Link href="/inventory" className="text-xs font-bold text-brand-gold-dark hover:underline">
-                  إدارة المخزن ←
-                </Link>
-              </div>
-
-              <div className="space-y-2.5">
-                {dynamicFabricStats.map((f, i) => (
-                  <div key={i} className="p-3 bg-slate-50 rounded-2xl border border-slate-200 text-xs hover:border-slate-300 transition-colors">
-                    <div className="flex justify-between items-center font-bold text-slate-900 mb-1.5">
-                      <span>{f.category}</span>
-                      <span className="font-mono text-brand-gold-dark font-black">{f.salesAmount}</span>
-                    </div>
-                    <div className="flex justify-between text-slate-500 text-[11px] font-medium">
-                      <span>المتاح للبيع: <strong className="text-emerald-700 font-mono">{f.availableMeters} متر</strong></span>
-                      <span>المحجوز للتفصيل: <strong className="text-amber-700 font-mono">{f.reservedMeters} متر</strong></span>
-                    </div>
+                <div className="flex items-center justify-between sm:justify-end gap-3 flex-wrap">
+                  <div className="text-right sm:text-left">
+                    <div className="text-[10px] text-slate-500 font-bold">إجمالي المبيعات / العقود</div>
+                    <div className="font-mono font-black text-sm text-slate-900">{b.sales}</div>
                   </div>
-                ))}
+                  <div className="text-right sm:text-left bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-200">
+                    <div className="text-[10px] text-emerald-800 font-bold">المحصَّل بالدرج</div>
+                    <div className="font-mono font-black text-xs text-emerald-700">{b.collected}</div>
+                  </div>
+                  <div className="text-right sm:text-left bg-amber-50 px-2.5 py-1 rounded-xl border border-amber-200">
+                    <div className="text-[10px] text-amber-800 font-bold">{b.target}</div>
+                    <div className="font-mono font-bold text-[10px] text-amber-900">آجل: {b.remaining}</div>
+                  </div>
+                </div>
               </div>
-            </div>
-
-            <div className="pt-4 mt-4 border-t border-slate-100 flex justify-between items-center text-xs font-bold">
-              <span className="text-slate-500">إجمالي أمتار المخزن:</span>
-              <span className="font-mono font-black text-slate-900 text-sm">{totalWarehouseMeters.toLocaleString()} متر</span>
-            </div>
+            ))}
           </div>
         </div>
       </div>

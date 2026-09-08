@@ -56,7 +56,7 @@ const initialEmployees: Employee[] = [
     role: 'مدير فرع عرابي',
     branch: 'فرع عرابي',
     restrictToBranch: true,
-    allowedPageIds: ALL_SYSTEM_PAGES.map(p => p.id),
+    allowedPageIds: ALL_SYSTEM_PAGES.filter(p => p.id !== 'p_dashboard').map(p => p.id),
   },
   {
     id: 'EMP-05',
