@@ -8,7 +8,7 @@ import { getStoredPipelineOrders } from '@/lib/pipelineStore';
 import { getTodayDateStr } from '@/lib/dateUtils';
 
 export default function DashboardPage() {
-  const [timeRange, setTimeRange] = useState<'MONTH' | 'WEEK' | 'TODAY' | 'ALL'>('ALL');
+  const [timeRange, setTimeRange] = useState<'MONTH' | 'WEEK' | 'TODAY' | 'ALL'>('TODAY');
 
   const [rawInspections, setRawInspections] = useState<any[]>([]);
   const [rawQuotations, setRawQuotations] = useState<any[]>([]);
@@ -340,39 +340,39 @@ export default function DashboardPage() {
             </p>
           </div>
 
-          {/* Time Range Filter Buttons */}
-          <div className="flex bg-slate-100 p-1 rounded-xl gap-1 self-start sm:self-auto border border-slate-200">
+          {/* Time Range Filter Buttons (Today -> Week -> Month -> All) */}
+          <div className="flex bg-slate-100/90 p-1 rounded-2xl gap-1 self-start sm:self-auto border border-slate-200 shadow-xs">
             <button
-              onClick={() => setTimeRange('ALL')}
-              className={`px-4.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                timeRange === 'ALL' ? 'bg-brand-gold text-slate-950 font-black shadow-md' : 'text-slate-600 hover:text-slate-900'
+              onClick={() => setTimeRange('TODAY')}
+              className={`px-4 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                timeRange === 'TODAY' ? 'bg-amber-500 text-white shadow-sm ring-1 ring-amber-400' : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
               }`}
             >
-              الكل
-            </button>
-            <button
-              onClick={() => setTimeRange('MONTH')}
-              className={`px-4.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                timeRange === 'MONTH' ? 'bg-brand-gold text-slate-950 font-black shadow-md' : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              هذا الشهر
+              اليوم
             </button>
             <button
               onClick={() => setTimeRange('WEEK')}
-              className={`px-4.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                timeRange === 'WEEK' ? 'bg-brand-gold text-slate-950 font-black shadow-md' : 'text-slate-600 hover:text-slate-900'
+              className={`px-4 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                timeRange === 'WEEK' ? 'bg-amber-500 text-white shadow-sm ring-1 ring-amber-400' : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
               }`}
             >
               هذا الأسبوع
             </button>
             <button
-              onClick={() => setTimeRange('TODAY')}
-              className={`px-4.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                timeRange === 'TODAY' ? 'bg-brand-gold text-slate-950 font-black shadow-md' : 'text-slate-600 hover:text-slate-900'
+              onClick={() => setTimeRange('MONTH')}
+              className={`px-4 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                timeRange === 'MONTH' ? 'bg-amber-500 text-white shadow-sm ring-1 ring-amber-400' : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
               }`}
             >
-              اليوم
+              هذا الشهر
+            </button>
+            <button
+              onClick={() => setTimeRange('ALL')}
+              className={`px-4 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                timeRange === 'ALL' ? 'bg-amber-500 text-white shadow-sm ring-1 ring-amber-400' : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+              }`}
+            >
+              الكل
             </button>
           </div>
         </div>
