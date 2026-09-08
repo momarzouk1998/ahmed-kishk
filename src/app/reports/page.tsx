@@ -629,17 +629,24 @@ function SalesReport({ kpis, invoices, collections, branchLabel, periodLabel }: 
                 </div>
 
                 <div className="space-y-1 pt-1.5 border-t border-slate-200/60 text-[10.5px]">
-                  <div className="flex justify-between items-center text-slate-700">
-                    <span>💵 كاش بالدرج:</span>
+                  <div className="flex justify-between items-center text-slate-700 bg-white/60 px-2 py-0.5 rounded border border-slate-200/50">
+                    <span className="font-bold">💵 كاش (الدرج):</span>
                     <strong className="font-mono">{b.cash.toLocaleString()} ج</strong>
                   </div>
-                  {(b.instapay > 0 || b.vodafone > 0 || b.visa > 0) && (
-                    <div className="flex items-center justify-between text-[10px] text-slate-500 pt-1 border-t border-slate-100 flex-wrap gap-1">
-                      {b.instapay > 0 && <span>⚡ إنستا: <strong className="font-mono text-purple-700">{b.instapay.toLocaleString()}</strong></span>}
-                      {b.vodafone > 0 && <span>📱 فودافون: <strong className="font-mono text-rose-700">{b.vodafone.toLocaleString()}</strong></span>}
-                      {b.visa > 0 && <span>💳 فيزا: <strong className="font-mono text-blue-700">{b.visa.toLocaleString()}</strong></span>}
+                  <div className="grid grid-cols-3 gap-1 pt-1 text-[9.5px]">
+                    <div className="bg-purple-50 border border-purple-200 rounded p-1 text-center">
+                      <div className="text-purple-900 font-bold">⚡ إنستاباي</div>
+                      <div className="font-mono font-black text-purple-700">{b.instapay.toLocaleString()}</div>
                     </div>
-                  )}
+                    <div className="bg-rose-50 border border-rose-200 rounded p-1 text-center">
+                      <div className="text-rose-900 font-bold">📱 فودافون</div>
+                      <div className="font-mono font-black text-rose-700">{b.vodafone.toLocaleString()}</div>
+                    </div>
+                    <div className="bg-blue-50 border border-blue-200 rounded p-1 text-center">
+                      <div className="text-blue-900 font-bold">💳 فيزا</div>
+                      <div className="font-mono font-black text-blue-700">{b.visa.toLocaleString()}</div>
+                    </div>
+                  </div>
                 </div>
               </div>
             ))}

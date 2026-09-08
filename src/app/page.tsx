@@ -8,13 +8,14 @@ import { getStoredPipelineOrders } from '@/lib/pipelineStore';
 import { getTodayDateStr } from '@/lib/dateUtils';
 
 export default function DashboardPage() {
-  const [timeRange, setTimeRange] = useState<'MONTH' | 'WEEK' | 'TODAY'>('TODAY');
+  const [timeRange, setTimeRange] = useState<'MONTH' | 'WEEK' | 'TODAY' | 'ALL'>('ALL');
 
   const [rawInspections, setRawInspections] = useState<any[]>([]);
   const [rawQuotations, setRawQuotations] = useState<any[]>([]);
   const [rawOrders, setRawOrders] = useState<any[]>([]);
   const [rawInventory, setRawInventory] = useState<any[]>([]);
   const [rawCustomers, setRawCustomers] = useState<any[]>([]);
+  const [rawCollections, setRawCollections] = useState<any[]>([]);
   const [rawFabricSales, setRawFabricSales] = useState<any[]>([]);
 
   useEffect(() => {
@@ -25,7 +26,7 @@ export default function DashboardPage() {
           fetch('/api/pricing', { cache: 'no-store' }).then(r => r.ok ? r.json() : { quotations: [] }).catch(() => ({ quotations: [] })),
           fetch('/api/pipeline-orders', { cache: 'no-store' }).then(r => r.ok ? r.json() : { orders: [] }).catch(() => ({ orders: [] })),
           fetch('/api/inventory', { cache: 'no-store' }).then(r => r.ok ? r.json() : { items: [] }).catch(() => ({ items: [] })),
-          fetch('/api/customers', { cache: 'no-store' }).then(r => r.ok ? r.json() : { customers: [] }).catch(() => ({ customers: [] })),
+          fetch('/api/customers', { cache: 'no-store' }).then(r => r.ok ? r.json() : { customers: [], collections: [] }).catch(() => ({ customers: [], collections: [] })),
           fetch('/api/fabric-sales', { cache: 'no-store' }).then(r => r.ok ? r.json() : { invoices: [] }).catch(() => ({ invoices: [] })),
         ]);
 
@@ -34,6 +35,7 @@ export default function DashboardPage() {
         const orders = (resOrd.success && Array.isArray(resOrd.orders)) ? resOrd.orders : getStoredPipelineOrders();
         const invItems = (resInv.success && Array.isArray(resInv.items)) ? resInv.items : [];
         const customers = (resCust.success && Array.isArray(resCust.customers)) ? resCust.customers : [];
+        const collections = (resCust.success && Array.isArray(resCust.collections)) ? resCust.collections : [];
         const sales = (resSales.success && Array.isArray(resSales.sales)) ? resSales.sales : [];
 
         setRawInspections(ins || []);
@@ -41,6 +43,7 @@ export default function DashboardPage() {
         setRawOrders(orders || []);
         setRawInventory(invItems || []);
         setRawCustomers(customers || []);
+        setRawCollections(collections || []);
         setRawFabricSales(sales || []);
       } catch (e) {
         console.error('Error loading dashboard data:', e);
@@ -53,6 +56,7 @@ export default function DashboardPage() {
   // Helper to filter data by timeRange (Cairo local time 12:00 AM boundary)
   const filterByRange = (items: any[], dateField = 'createdAt') => {
     if (!items || items.length === 0) return [];
+    if (timeRange === 'ALL') return items;
     const todayStr = getTodayDateStr();
 
     return items.filter(item => {
@@ -181,16 +185,26 @@ export default function DashboardPage() {
   const dynamicBranchSales = branchList.map(b => {
     const bQot = rangedQuotations.filter((q: any) => matchBranch(q.branch, b.key));
     const bSales = rangedSales.filter((s: any) => matchBranch(s.branch, b.key));
+    const bCollections = filterByRange(rawCollections, 'date').filter((c: any) => {
+      const treasury = c.treasury || '';
+      if (matchBranch(treasury, b.key)) return true;
+      const cust = rawCustomers.find(cust => cust.phone === c.phone || cust.name === c.customerName);
+      if (cust && (cust.branch || cust.city) && matchBranch(cust.branch || cust.city, b.key)) return true;
+      return false;
+    });
 
     const totalSalesAmount = bQot.reduce((sum: number, q: any) => sum + (Number(q.totalAmount) || 0), 0)
       + bSales.reduce((sum: number, s: any) => sum + (Number(s.totalAmount) || 0), 0);
 
-    const totalCollectedAmount = bQot.reduce((sum: number, q: any) => sum + (Number(q.depositPaid) || 0), 0)
+    const totalQuotAndPosCollected = bQot.reduce((sum: number, q: any) => sum + (Number(q.depositPaid) || 0), 0)
       + bSales.reduce((sum: number, s: any) => sum + (Number(s.paidAmount) || 0), 0);
 
-    const totalRemainingAmount = Math.max(0, totalSalesAmount - totalCollectedAmount);
+    const totalDirectCollections = bCollections.reduce((sum: number, c: any) => sum + (Number(c.amount) || 0), 0);
+    const totalCollectedAmount = totalQuotAndPosCollected + totalDirectCollections;
 
-    const totalOps = bQot.length + bSales.length;
+    const totalRemainingAmount = Math.max(0, totalSalesAmount - totalQuotAndPosCollected);
+
+    const totalOps = bQot.length + bSales.length + bCollections.length;
     const collectionRate = totalSalesAmount > 0
       ? Math.round((totalCollectedAmount / totalSalesAmount) * 100)
       : (totalOps > 0 ? 100 : 0);
@@ -247,6 +261,15 @@ export default function DashboardPage() {
       }
     });
 
+    bCollections.forEach((col: any) => {
+      const amt = Number(col.amount || 0);
+      const m = (col.method || '').trim();
+      if (m.includes('فودافون')) treasuryVodafone += amt;
+      else if (m.includes('إنستا') || m.includes('انستا')) treasuryInstapay += amt;
+      else if (m.includes('فيزا') || m.includes('كارت')) treasuryVisa += amt;
+      else treasuryCash += amt;
+    });
+
     return {
       name: b.name,
       treasuryName: b.treasuryName,
@@ -264,6 +287,7 @@ export default function DashboardPage() {
       treasuryVodafone,
       treasuryVisa,
       treasuryTotal: totalCollectedAmount,
+      directCollectionsCount: bCollections.length,
     };
   });
 
@@ -318,6 +342,14 @@ export default function DashboardPage() {
 
           {/* Time Range Filter Buttons */}
           <div className="flex bg-slate-100 p-1 rounded-xl gap-1 self-start sm:self-auto border border-slate-200">
+            <button
+              onClick={() => setTimeRange('ALL')}
+              className={`px-4.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                timeRange === 'ALL' ? 'bg-brand-gold text-slate-950 font-black shadow-md' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              الكل
+            </button>
             <button
               onClick={() => setTimeRange('MONTH')}
               className={`px-4.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
@@ -455,20 +487,33 @@ export default function DashboardPage() {
                 </div>
 
                 <div className="space-y-1.5 pt-2 border-t border-slate-200/60 text-[11px]">
-                  <div className="flex justify-between items-center text-slate-700">
-                    <span className="flex items-center gap-1">💵 كاش:</span>
+                  <div className="flex justify-between items-center text-slate-700 bg-white/60 px-2 py-1 rounded-lg border border-slate-200/50">
+                    <span className="flex items-center gap-1 font-bold">💵 كاش (الدرج):</span>
                     <span className="font-mono font-black text-slate-900">{b.treasuryCash.toLocaleString()} ج</span>
                   </div>
-                  {(b.treasuryInstapay > 0 || b.treasuryVodafone > 0 || b.treasuryVisa > 0) && (
-                    <div className="flex items-center justify-between text-[10px] text-slate-500 pt-1 border-t border-slate-100 flex-wrap gap-1">
-                      {b.treasuryInstapay > 0 && <span>⚡ إنستا: <strong className="font-mono text-purple-700">{b.treasuryInstapay.toLocaleString()}</strong></span>}
-                      {b.treasuryVodafone > 0 && <span>📱 فودافون: <strong className="font-mono text-rose-700">{b.treasuryVodafone.toLocaleString()}</strong></span>}
-                      {b.treasuryVisa > 0 && <span>💳 فيزا: <strong className="font-mono text-blue-700">{b.treasuryVisa.toLocaleString()}</strong></span>}
+
+                  <div className="grid grid-cols-3 gap-1 pt-1 text-[10px]">
+                    <div className="bg-purple-50/80 border border-purple-200/80 rounded-lg p-1 text-center">
+                      <div className="text-purple-900 font-bold">⚡ إنستاباي</div>
+                      <div className="font-mono font-black text-purple-700">{b.treasuryInstapay.toLocaleString()}</div>
                     </div>
-                  )}
-                  <div className="flex justify-between items-center text-slate-500 pt-1 text-[10px]">
-                    <span>معدل التحصيل:</span>
-                    <span className="font-bold text-amber-800">{b.target}</span>
+                    <div className="bg-rose-50/80 border border-rose-200/80 rounded-lg p-1 text-center">
+                      <div className="text-rose-900 font-bold">📱 فودافون</div>
+                      <div className="font-mono font-black text-rose-700">{b.treasuryVodafone.toLocaleString()}</div>
+                    </div>
+                    <div className="bg-blue-50/80 border border-blue-200/80 rounded-lg p-1 text-center">
+                      <div className="text-blue-900 font-bold">💳 فيزا</div>
+                      <div className="font-mono font-black text-blue-700">{b.treasuryVisa.toLocaleString()}</div>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between items-center text-slate-500 pt-1.5 text-[10px]">
+                    <span>معدل التحصيل: <strong className="text-amber-800 font-bold">{b.target}</strong></span>
+                    {b.directCollectionsCount > 0 && (
+                      <span className="text-purple-700 font-bold bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200">
+                        {b.directCollectionsCount} سند تحصيل
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
