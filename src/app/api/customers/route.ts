@@ -430,28 +430,81 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'الاسم ورقم الهاتف مطلوبان' }, { status: 400 });
     }
 
-    const customer = await prisma.customer.upsert({
-      where: { phone: phone.trim() },
-      create: {
-        id: id || undefined,
-        name: name.trim(),
-        phone: phone.trim(),
-        address: address || '',
-        city: effectiveCreateBranch(scope, city, 'غير مسجل'),
-        balance: Number(balance) || 0,
-        notes: notes || '',
-      },
-      update: {
-        name: name.trim(),
-        address: address || '',
-        city: scope && !scope.isAdmin ? scope.branch : (city || 'غير مسجل'),
-        balance: Number(balance) || 0,
-        notes: notes || '',
-      },
-    });
+    const targetId = (id || '').trim();
+    const existingById = targetId ? await prisma.customer.findUnique({ where: { id: targetId } }).catch(() => null) : null;
+    let customer;
+
+    if (existingById) {
+      customer = await prisma.customer.update({
+        where: { id: existingById.id },
+        data: {
+          name: name.trim(),
+          phone: phone.trim(),
+          address: address !== undefined ? address : undefined,
+          city: scope && !scope.isAdmin ? scope.branch : (city || undefined),
+          balance: balance !== undefined ? Number(balance) : undefined,
+          notes: notes !== undefined ? notes : undefined,
+        },
+      });
+    } else {
+      customer = await prisma.customer.upsert({
+        where: { phone: phone.trim() },
+        create: {
+          name: name.trim(),
+          phone: phone.trim(),
+          address: address || '',
+          city: effectiveCreateBranch(scope, city, 'غير مسجل'),
+          balance: Number(balance) || 0,
+          notes: notes || '',
+        },
+        update: {
+          name: name.trim(),
+          address: address || '',
+          city: scope && !scope.isAdmin ? scope.branch : (city || 'غير مسجل'),
+          balance: Number(balance) || 0,
+          notes: notes || '',
+        },
+      });
+    }
 
     return NextResponse.json({ success: true, customer });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
+
+export async function DELETE(request: Request) {
+  try {
+    const scope = await getBranchScope(request);
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    const phone = searchParams.get('phone');
+
+    if (!id && !phone) {
+      return NextResponse.json({ success: false, error: 'المعرف أو رقم الهاتف مطلوب للحذف' }, { status: 400 });
+    }
+
+    const whereClause: any = {};
+    if (id && !id.startsWith('CUST-') && id.length > 10) {
+      whereClause.id = id;
+    } else if (phone) {
+      whereClause.phone = phone.trim();
+    } else if (id) {
+      whereClause.OR = [{ id }, { phone: id }];
+    }
+
+    if (scope && !scope.isAdmin) {
+      whereClause.city = scope.branch;
+    }
+
+    await prisma.customer.deleteMany({
+      where: whereClause,
+    });
+
+    return NextResponse.json({ success: true, message: 'تم حذف العميل بنجاح' });
+  } catch (error: any) {
+    console.error('Delete customer error:', error);
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+

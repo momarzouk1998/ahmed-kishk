@@ -2,10 +2,12 @@
 
 import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
+import { useRouter } from 'next/navigation';
 import { formatDateOnly } from '@/lib/dateUtils';
 import PdfPrintButton from '@/components/PdfPrintButton';
 import { useCurrentUser } from '@/lib/useCurrentUser';
 import Pagination from '@/components/Pagination';
+import { BRANCHES_LIST, BRANCH_TREASURIES, getBranchTreasury } from '@/lib/branches';
 
 interface CustomerLedgerEntry {
   id: string;
@@ -51,6 +53,7 @@ const CUSTOMERS_KEY = 'ahmed_kishk_customers_v3';
 const COLLECTIONS_KEY = 'ahmed_kishk_collections_v3';
 
 export default function CustomersPage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<'CUSTOMERS' | 'COLLECTIONS'>('CUSTOMERS');
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [collections, setCollections] = useState<CustomerCollection[]>([]);
@@ -58,6 +61,22 @@ export default function CustomersPage() {
 
   // Selected Customer for Full Details & Statement Modal
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+
+  // Inline Editing State for Collections Tab
+  const [editingColId, setEditingColId] = useState<string | null>(null);
+  const [inlineColForm, setInlineColForm] = useState<{
+    date: string;
+    amount: number;
+    method: 'نقدي' | 'إنستاباي' | 'فيزا' | 'فودافون كاش' | 'تحويل بنكي' | 'شيك';
+    treasury: string;
+    notes: string;
+  }>({
+    date: '',
+    amount: 0,
+    method: 'نقدي',
+    treasury: 'خزينة الفرع الرئيسي (سعد زغلول)',
+    notes: '',
+  });
 
   // Filters
   const [search, setSearch] = useState('');
@@ -76,7 +95,10 @@ export default function CustomersPage() {
   const { user: currentUser, isAdmin } = useCurrentUser();
   // موظف مقيّد بفرع: أى عميل جديد يُسجَّل على فرعه هو فقط
   useEffect(() => {
-    if (!isAdmin && currentUser?.branch) setCustCity(currentUser.branch);
+    if (!isAdmin && currentUser?.branch) {
+      setCustCity(currentUser.branch);
+      setColTreasury(getBranchTreasury(currentUser.branch));
+    }
   }, [isAdmin, currentUser]);
   const [custNotes, setCustNotes] = useState('');
 
@@ -84,7 +106,8 @@ export default function CustomersPage() {
   const [colCustomerId, setColCustomerId] = useState('');
   const [colAmount, setColAmount] = useState<number>(1000);
   const [colMethod, setColMethod] = useState<'نقدي' | 'إنستاباي' | 'فيزا' | 'فودافون كاش' | 'تحويل بنكي' | 'شيك'>('نقدي');
-  const [colTreasury, setColTreasury] = useState('الخزينة الرئيسية');
+  const [colTreasury, setColTreasury] = useState('خزينة الفرع الرئيسي (سعد زغلول)');
+  const [colDate, setColDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [colNotes, setColNotes] = useState('');
 
   // #FIX: كان بيرجع لنسخة قديمة محفوظة على قرص الجهاز (localStorage) لو فشل الطلب —
@@ -186,8 +209,8 @@ export default function CustomersPage() {
     if (!targetCustomer || colAmount <= 0) return;
 
     const newCol: CustomerCollection = {
-      id: `COL-${100 + collections.length + 1}`,
-      date: new Date().toISOString().split('T')[0],
+      id: `COL-${Date.now()}`,
+      date: colDate || new Date().toISOString().split('T')[0],
       customerId: targetCustomer.id,
       customerName: targetCustomer.name,
       phone: targetCustomer.phone,
@@ -202,12 +225,50 @@ export default function CustomersPage() {
 
     await loadData();
 
-    const refreshed = customers.find(c => c.id === targetCustomer.id || c.phone === targetCustomer.phone);
-    if (refreshed) setSelectedCustomer(refreshed);
-
     setShowAddCollectionModal(false);
     setColAmount(1000);
     setColNotes('');
+  };
+
+  // Inline Collection Editing Handlers
+  const handleStartInlineEdit = (col: CustomerCollection) => {
+    setEditingColId(col.id);
+    setInlineColForm({
+      date: col.date ? (col.date.includes('T') ? col.date.split('T')[0] : col.date) : new Date().toISOString().split('T')[0],
+      amount: Number(col.amount) || 0,
+      method: col.method || 'نقدي',
+      treasury: col.treasury || getBranchTreasury(currentUser?.branch),
+      notes: col.notes || '',
+    });
+  };
+
+  const handleSaveInlineEdit = async (colId: string) => {
+    if ((Number(inlineColForm.amount) || 0) <= 0) {
+      alert('يرجى إدخال مبلغ صحيح أكبر من الصفر');
+      return;
+    }
+
+    const updated = collections.map(col => {
+      if (col.id === colId) {
+        return {
+          ...col,
+          date: inlineColForm.date,
+          amount: Number(inlineColForm.amount) || 0,
+          method: inlineColForm.method,
+          treasury: inlineColForm.treasury,
+          notes: inlineColForm.notes.trim(),
+        };
+      }
+      return col;
+    });
+
+    await saveCollectionsState(updated);
+    setEditingColId(null);
+    await loadData();
+  };
+
+  const handleCancelInlineEdit = () => {
+    setEditingColId(null);
   };
 
   const handleDeleteCustomer = async (id: string, name: string) => {
@@ -215,9 +276,8 @@ export default function CustomersPage() {
     const filteredC = customers.filter(c => c.id !== id);
     saveCustomersState(filteredC);
     if (selectedCustomer?.id === id) setSelectedCustomer(null);
-    // #FIX: حذف حقيقى من قاعدة البيانات — كان يُحذف من الواجهة فقط ويرجع بعد أى ريفريش
     try {
-      await fetch(`/api/system-data?key=${CUSTOMERS_KEY}&id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+      await fetch(`/api/customers?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
     } catch (err) {
       console.error('Failed to delete customer from server:', err);
     }
@@ -416,9 +476,9 @@ export default function CustomersPage() {
                         return (
                           <tr
                             key={cust.id}
-                            onClick={() => setSelectedCustomer(cust)}
+                            onClick={() => router.push('/customers/' + encodeURIComponent(cust.phone || cust.id))}
                             className="hover:bg-amber-50/40 cursor-pointer transition-colors group"
-                            title="اضغط لفتح كشف الحساب والبيانات الكاملة"
+                            title="اضغط لفتح صفحة العميل وتعديل البيانات وكشف الحساب"
                           >
                             {/* Customer Name & Avatar */}
                             <td className="p-3.5 pr-4">
@@ -486,16 +546,26 @@ export default function CustomersPage() {
                               )}
                             </td>
 
-                            {/* Action: Delete */}
+                            {/* Action: Open Page / Delete */}
                             <td className="p-3.5 text-center" onClick={e => e.stopPropagation()}>
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteCustomer(cust.id, cust.name)}
-                                className="text-slate-300 hover:text-rose-600 p-1 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
-                                title="حذف العميل"
-                              >
-                                <span className="material-symbols-outlined text-[18px]">delete</span>
-                              </button>
+                              <div className="flex items-center justify-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => router.push('/customers/' + encodeURIComponent(cust.phone || cust.id))}
+                                  className="text-amber-600 hover:text-amber-800 p-1.5 rounded-lg hover:bg-amber-50 transition-colors cursor-pointer"
+                                  title="فتح ملف العميل وتعديل البيانات"
+                                >
+                                  <span className="material-symbols-outlined text-[18px]">edit_square</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteCustomer(cust.id, cust.name)}
+                                  className="text-slate-300 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
+                                  title="حذف العميل"
+                                >
+                                  <span className="material-symbols-outlined text-[18px]">delete</span>
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         );
@@ -595,41 +665,157 @@ export default function CustomersPage() {
                         </td>
                       </tr>
                     ) : (
-                      paginatedCollections.map(col => (
-                        <tr key={col.id} className="hover:bg-slate-50/70 transition-colors">
-                          <td className="p-3.5 font-mono text-slate-700 font-bold">{col.date ? formatDateOnly(col.date) : 'غير محدد'}</td>
-                          <td className="p-3.5 font-bold text-slate-900">
-                            <div>{col.customerName}</div>
-                            <div className="text-[10px] text-slate-400 font-mono" dir="ltr">{col.phone}</div>
-                          </td>
-                          <td className="p-3.5 text-center font-mono font-black text-sm text-emerald-700">
-                            +{(Number(col.amount) || 0).toLocaleString()} ج
-                          </td>
-                          <td className="p-3.5 text-center">
-                            <span className="px-2.5 py-0.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-800 border border-slate-200">
-                              {col.method}
-                            </span>
-                          </td>
-                          <td className="p-3.5 text-slate-700 font-bold">{col.treasury}</td>
-                          <td className="p-3.5 text-slate-600">{col.notes || '—'}</td>
-                          <td className="p-3.5 text-center">
-                            <button
-                              type="button"
-                              onClick={async () => {
-                                if (confirm(`هل أنت متأكد من حذف سند التحصيل بمبلغ ${col.amount} ج للعميل "${col.customerName}"؟`)) {
-                                  const updated = collections.filter(c => c.id !== col.id);
-                                  await saveCollectionsState(updated);
-                                  await loadData();
-                                }
-                              }}
-                              className="text-slate-300 hover:text-rose-600 p-1 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
-                              title="حذف التحصيل"
-                            >
-                              <span className="material-symbols-outlined text-[18px]">delete</span>
-                            </button>
-                          </td>
-                        </tr>
-                      ))
+                      paginatedCollections.map(col => {
+                        const isEditingThis = editingColId === col.id;
+
+                        if (isEditingThis) {
+                          return (
+                            <tr key={col.id} className="bg-amber-50/60 border-2 border-amber-400/80">
+                              {/* Date Input */}
+                              <td className="p-2.5">
+                                <input
+                                  type="date"
+                                  value={inlineColForm.date}
+                                  onChange={e => setInlineColForm({ ...inlineColForm, date: e.target.value })}
+                                  className="border border-slate-300 rounded-lg px-2 py-1.5 font-mono font-bold text-slate-900 text-xs bg-white w-32 focus:border-amber-500 outline-hidden"
+                                />
+                              </td>
+
+                              {/* Customer (Read-only) */}
+                              <td className="p-2.5 font-bold text-slate-900">
+                                <div>{col.customerName}</div>
+                                <div className="text-[10px] text-slate-400 font-mono" dir="ltr">{col.phone}</div>
+                              </td>
+
+                              {/* Amount Input */}
+                              <td className="p-2.5 text-center">
+                                <input
+                                  type="number"
+                                  step="any"
+                                  min="1"
+                                  value={inlineColForm.amount}
+                                  onChange={e => setInlineColForm({ ...inlineColForm, amount: parseFloat(e.target.value) || 0 })}
+                                  className="border border-emerald-400 rounded-lg px-2 py-1.5 font-mono font-black text-emerald-950 text-xs bg-emerald-50 w-28 text-center focus:border-emerald-600 outline-hidden"
+                                />
+                              </td>
+
+                              {/* Method Select */}
+                              <td className="p-2.5 text-center">
+                                <select
+                                  value={inlineColForm.method}
+                                  onChange={e => setInlineColForm({ ...inlineColForm, method: e.target.value as any })}
+                                  className="border border-slate-300 rounded-lg px-2 py-1.5 font-bold text-slate-900 text-xs bg-white focus:border-amber-500 outline-hidden"
+                                >
+                                  <option value="نقدي">نقدي (كاش)</option>
+                                  <option value="إنستاباي">إنستاباي</option>
+                                  <option value="فيزا">فيزا</option>
+                                  <option value="فودافون كاش">فودافون كاش</option>
+                                  <option value="تحويل بنكي">تحويل بنكي</option>
+                                  <option value="شيك">شيك</option>
+                                </select>
+                              </td>
+
+                              {/* Treasury Select */}
+                              <td className="p-2.5">
+                                <select
+                                  value={inlineColForm.treasury}
+                                  onChange={e => setInlineColForm({ ...inlineColForm, treasury: e.target.value })}
+                                  className="border border-slate-300 rounded-lg px-2 py-1.5 font-bold text-slate-900 text-xs bg-white focus:border-amber-500 outline-hidden max-w-[180px]"
+                                >
+                                  {BRANCH_TREASURIES.map(bt => (
+                                    <option key={bt.branch} value={bt.treasury}>
+                                      {bt.treasury}
+                                    </option>
+                                  ))}
+                                  <option value="محفظة إنستاباي">محفظة إنستاباي</option>
+                                  <option value="محفظة فودافون كاش">محفظة فودافون كاش</option>
+                                  <option value="حساب بنك QNB">حساب بنك QNB</option>
+                                  <option value="حساب بنك مصر">حساب بنك مصر</option>
+                                </select>
+                              </td>
+
+                              {/* Notes Input */}
+                              <td className="p-2.5">
+                                <input
+                                  type="text"
+                                  value={inlineColForm.notes}
+                                  onChange={e => setInlineColForm({ ...inlineColForm, notes: e.target.value })}
+                                  placeholder="ملاحظات..."
+                                  className="border border-slate-300 rounded-lg px-2 py-1.5 text-slate-900 text-xs bg-white w-full focus:border-amber-500 outline-hidden"
+                                />
+                              </td>
+
+                              {/* Actions: Save / Cancel */}
+                              <td className="p-2.5 text-center">
+                                <div className="flex items-center justify-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSaveInlineEdit(col.id)}
+                                    className="bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 rounded-lg text-xs font-black shadow-xs cursor-pointer transition-colors"
+                                    title="حفظ التعديل"
+                                  >
+                                    ✓
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={handleCancelInlineEdit}
+                                    className="bg-slate-200 hover:bg-slate-300 text-slate-700 px-2 py-1 rounded-lg text-xs font-bold cursor-pointer transition-colors"
+                                    title="إلغاء"
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        }
+
+                        return (
+                          <tr key={col.id} className="hover:bg-slate-50/70 transition-colors">
+                            <td className="p-3.5 font-mono text-slate-700 font-bold">{col.date ? formatDateOnly(col.date) : 'غير محدد'}</td>
+                            <td className="p-3.5 font-bold text-slate-900">
+                              <div>{col.customerName}</div>
+                              <div className="text-[10px] text-slate-400 font-mono" dir="ltr">{col.phone}</div>
+                            </td>
+                            <td className="p-3.5 text-center font-mono font-black text-sm text-emerald-700">
+                              +{(Number(col.amount) || 0).toLocaleString()} ج
+                            </td>
+                            <td className="p-3.5 text-center">
+                              <span className="px-2.5 py-0.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-800 border border-slate-200">
+                                {col.method}
+                              </span>
+                            </td>
+                            <td className="p-3.5 text-slate-700 font-bold">{col.treasury}</td>
+                            <td className="p-3.5 text-slate-600">{col.notes || '—'}</td>
+                            <td className="p-3.5 text-center">
+                              <div className="flex items-center justify-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => handleStartInlineEdit(col)}
+                                  className="text-amber-600 hover:text-amber-800 p-1.5 rounded-lg hover:bg-amber-50 transition-colors cursor-pointer"
+                                  title="تعديل السند مباشرة (Inline Edit)"
+                                >
+                                  <span className="material-symbols-outlined text-[18px]">edit</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    if (confirm(`هل أنت متأكد من حذف سند التحصيل بمبلغ ${col.amount} ج للعميل "${col.customerName}"؟`)) {
+                                      const updated = collections.filter(c => c.id !== col.id);
+                                      await saveCollectionsState(updated);
+                                      await loadData();
+                                    }
+                                  }}
+                                  className="text-slate-300 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
+                                  title="حذف التحصيل"
+                                >
+                                  <span className="material-symbols-outlined text-[18px]">delete</span>
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
                     )}
                   </tbody>
                 </table>
@@ -987,12 +1173,13 @@ export default function CustomersPage() {
                   onChange={e => setColTreasury(e.target.value)}
                   className="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900 bg-slate-50 focus:outline-none"
                 >
-                  <option value="الخزينة الرئيسية">الخزينة الرئيسية — سعد زغلول</option>
+                  {BRANCH_TREASURIES.map(bt => (
+                    <option key={bt.branch} value={bt.treasury}>
+                      {bt.treasury}
+                    </option>
+                  ))}
                   <option value="محفظة إنستاباي">محفظة إنستاباي المؤسسة</option>
                   <option value="محفظة فودافون كاش">محفظة فودافون كاش</option>
-                  <option value="خزينة فرع عرابي">خزينة فرع عرابي</option>
-                  <option value="خزينة فرع الثلاثيني">خزينة فرع الثلاثيني</option>
-                  <option value="خزينة فرع عمر أفندي">خزينة فرع عمر أفندي</option>
                   <option value="حساب بنك QNB">حساب بنك QNB</option>
                   <option value="حساب بنك مصر">حساب بنك مصر</option>
                 </select>

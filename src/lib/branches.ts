@@ -64,3 +64,17 @@ export function normalizeBranchName(raw?: string | null): string {
 
 // Renders <option> elements for a branch <select> using the canonical 4-branch list.
 // Callers should map: BRANCHES_LIST.map(b => <option value={b.name}>{b.isMain ? MAIN_BRANCH_LABEL : b.name}</option>)
+
+export const BRANCH_TREASURIES: { branch: string; treasury: string }[] = [
+  { branch: 'الفرع الرئيسي', treasury: 'خزينة الفرع الرئيسي (سعد زغلول)' },
+  { branch: 'فرع عرابي', treasury: 'خزينة فرع عرابي' },
+  { branch: 'فرع عمر أفندي', treasury: 'خزينة فرع عمر أفندي' },
+  { branch: 'فرع الثلاثيني', treasury: 'خزينة فرع الثلاثيني' },
+];
+
+export function getBranchTreasury(branchName?: string | null): string {
+  const norm = normalizeBranchName(branchName);
+  const found = BRANCH_TREASURIES.find(bt => bt.branch === norm);
+  return found ? found.treasury : 'خزينة الفرع الرئيسي (سعد زغلول)';
+}
+
