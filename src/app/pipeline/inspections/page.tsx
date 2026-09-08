@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
 import { useRouter } from 'next/navigation';
-import { getStoredInspections, saveOrUpdateInspection, fetchInspections, InspectionData } from '@/lib/inspectionsStore';
+import { getStoredInspections, saveOrUpdateInspection, fetchInspections, generateInspectionId, InspectionData } from '@/lib/inspectionsStore';
 import { isTodayOrOverdue } from '@/lib/pipelineStore';
 import { formatDate } from '@/lib/dateUtils';
 import InspectionPrintModal from '@/components/InspectionPrintModal';
@@ -181,7 +181,7 @@ export default function PipelineInspectionsPage() {
     syncCustomerToDirectory(name, phone, address);
 
     const currentList = getStoredInspections();
-    const newId = `INS-${String(currentList.length + 1).padStart(3, '0')}`;
+    const newId = generateInspectionId();
     const newItem: InspectionData = {
       id: newId,
       customerName: name.trim(),

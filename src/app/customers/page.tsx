@@ -172,7 +172,7 @@ export default function CustomersPage() {
     if (!custName.trim() || !custPhone.trim()) return;
 
     const newC: Customer = {
-      id: `CUST-${String(customers.length + 1).padStart(3, '0')}`,
+      id: `CUST-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`,
       name: custName.trim(),
       phone: custPhone.trim(),
       address: custAddress.trim(),

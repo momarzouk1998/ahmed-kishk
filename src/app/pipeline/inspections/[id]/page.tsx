@@ -7,6 +7,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Logo from '@/components/Logo';
 import {
   getInspectionById,
+  fetchInspections,
   saveOrUpdateInspection,
   syncInspectionToPricing,
   InspectionData,
@@ -79,10 +80,14 @@ export default function InspectionDetailPage() {
   });
 
   useEffect(() => {
-    const item = getInspectionById(inspectionId);
-    if (item) {
-      setData(item);
+    async function load() {
+      const list = await fetchInspections();
+      const item = list.find(i => i.id.toUpperCase() === inspectionId.toUpperCase()) || getInspectionById(inspectionId);
+      if (item) {
+        setData(item);
+      }
     }
+    load();
   }, [inspectionId]);
 
   // Modal State

@@ -271,6 +271,16 @@ export async function saveAllInspections(list: InspectionData[]): Promise<void> 
   }
 }
 
+export function generateInspectionId(): string {
+  const rand = Math.floor(100 + Math.random() * 900);
+  return `INS-${Date.now().toString().slice(-6)}-${rand}`;
+}
+
+export function generateQuotationId(): string {
+  const rand = Math.floor(100 + Math.random() * 900);
+  return `QOT-${Date.now().toString().slice(-6)}-${rand}`;
+}
+
 export function getInspectionById(id: string): InspectionData | null {
   return inspectionsMemoryCache.find(item => item.id.toUpperCase() === id.toUpperCase()) || null;
 }
@@ -467,7 +477,7 @@ export function syncInspectionToPricing(inspectionOrId: InspectionData | string)
     };
     quotations[existingIdx] = targetQuotation;
   } else {
-    const qotId = `QOT-${100 + quotations.length + 1}`;
+    const qotId = generateQuotationId();
     targetQuotation = {
       id: qotId,
       inspectionId: inspection.id,

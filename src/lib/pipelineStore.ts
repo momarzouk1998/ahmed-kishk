@@ -219,11 +219,16 @@ export async function updatePipelineOrderStatus(
   } catch {}
 }
 
+export function generateOrderId(): string {
+  const rand = Math.floor(100 + Math.random() * 900);
+  return `ORD-${Date.now().toString().slice(-6)}-${rand}`;
+}
+
 export function addPipelineOrder(order: Partial<PipelineMasterOrder>): PipelineMasterOrder {
   const current = getStoredPipelineOrders();
   const newOrder: PipelineMasterOrder = {
     id: order.id || `ORD-${Date.now()}`,
-    orderId: order.orderId || `ORD-00${current.length + 1}`,
+    orderId: order.orderId || generateOrderId(),
     customerName: order.customerName || 'عميل جديد',
     phone: order.phone || '',
     address: order.address || 'غير مسجل',

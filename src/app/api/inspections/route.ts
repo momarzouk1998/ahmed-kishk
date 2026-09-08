@@ -1,4 +1,4 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getBranchScope, branchWhere, effectiveCreateBranch } from '@/lib/branchScope';
 
@@ -11,7 +11,31 @@ export async function GET(request: Request) {
       where: branchWhere(scope),
       orderBy: { updatedAt: 'desc' },
     });
-    return NextResponse.json({ success: true, inspections });
+
+    let fallbackInspections: any[] = [];
+    try {
+      const store = await prisma.systemStore.findUnique({
+        where: { key: 'ahmed_kishk_inspections_data_v4' },
+      });
+      if (store && Array.isArray(store.data)) {
+        fallbackInspections = store.data as any[];
+      }
+    } catch {}
+
+    if (scope && !scope.isAdmin) {
+      fallbackInspections = fallbackInspections.filter((i: any) => i?.branch === scope.branch);
+    }
+
+    const insMap = new Map<string, any>();
+    fallbackInspections.forEach(i => {
+      if (i && i.id) insMap.set(i.id, i);
+    });
+    inspections.forEach(i => {
+      if (i && i.id) insMap.set(i.id, i);
+    });
+
+    const combined = Array.from(insMap.values());
+    return NextResponse.json({ success: true, inspections: combined });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
@@ -23,17 +47,19 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { id, customerName, phone, address, branch, scheduledAt, technician, status, isLocked, notes, rooms } = body;
 
-    if (!id) {
-      return NextResponse.json({ success: false, error: 'Inspection ID is required' }, { status: 400 });
+    let targetId = id;
+    if (!targetId || targetId === 'new' || targetId === 'NEW') {
+      const rand = Math.floor(100 + Math.random() * 900);
+      targetId = `INS-${Date.now().toString().slice(-6)}-${rand}`;
     }
 
     // موظف مقيّد بفرع: لا يمكنه إنشاء أو نقل معاينة لفرع آخر مهما أرسل الـ client.
     const effBranch = effectiveCreateBranch(scope, branch);
 
     const inspection = await prisma.inspectionRequest.upsert({
-      where: { id },
+      where: { id: targetId },
       create: {
-        id,
+        id: targetId,
         customerName: customerName || 'عميل جديد',
         phone: phone || '',
         address: address || '',

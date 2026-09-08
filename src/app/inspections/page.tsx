@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
 import { formatDate } from '@/lib/dateUtils';
+import { generateInspectionId } from '@/lib/inspectionsStore';
 
 interface FabricLayer {
   layer: string;
@@ -228,8 +229,9 @@ export default function InspectionsPage() {
     e.preventDefault();
     if (!custName || !custPhone) return;
 
+    const newId = generateInspectionId();
     const newReq: InspectionRequest = {
-      id: `INS-${String(requests.length + 1).padStart(3, '0')}`,
+      id: newId,
       customerName: custName,
       phone: custPhone,
       address: custAddress,
@@ -250,6 +252,7 @@ export default function InspectionsPage() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        id: newId,
         customerName: custName,
         phone: custPhone,
         address: custAddress,
