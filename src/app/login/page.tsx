@@ -31,6 +31,51 @@ export default function LoginPage() {
         return;
       }
 
+      // Check if user has dashboard permission or redirect to first allowed page
+      try {
+        const isSuperAdmin = data.user?.phone === '01558282760' || data.user?.phone === '01063821000';
+        if (isSuperAdmin) {
+          router.push('/');
+          router.refresh();
+          return;
+        }
+
+        const permRes = await fetch(`/api/user-permissions?phone=${encodeURIComponent(data.user?.phone || '')}`, { cache: 'no-store' });
+        if (permRes.ok) {
+          const pData = await permRes.json();
+          const allowed = pData?.allowedPageIds;
+          if (Array.isArray(allowed)) {
+            if (allowed.includes('p_dashboard')) {
+              router.push('/');
+            } else {
+              // Redirect to first permitted page
+              const ALL_PAGES = [
+                { id: 'p_inspections', href: '/pipeline/inspections' },
+                { id: 'p_pricing', href: '/pipeline/pricing' },
+                { id: 'p_cutting', href: '/pipeline/cutting' },
+                { id: 'p_tailoring', href: '/pipeline/tailoring' },
+                { id: 'p_accessories', href: '/pipeline/accessories' },
+                { id: 'p_delivery', href: '/pipeline/delivery' },
+                { id: 'p_installation', href: '/pipeline/installation' },
+                { id: 'p_orders', href: '/orders' },
+                { id: 'p_fabric_sales', href: '/fabric-sales' },
+                { id: 'p_purchases', href: '/purchases' },
+                { id: 'p_customers', href: '/customers' },
+                { id: 'p_suppliers', href: '/suppliers' },
+                { id: 'p_inventory', href: '/inventory' },
+                { id: 'p_reports', href: '/reports' },
+                { id: 'p_branches', href: '/branches' },
+                { id: 'p_settings', href: '/settings' },
+              ];
+              const firstAllowed = ALL_PAGES.find(p => allowed.includes(p.id));
+              router.push(firstAllowed ? firstAllowed.href : '/fabric-sales');
+            }
+            router.refresh();
+            return;
+          }
+        }
+      } catch {}
+
       router.push('/');
       router.refresh();
     } catch {

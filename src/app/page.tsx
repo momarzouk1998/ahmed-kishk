@@ -3,11 +3,14 @@
 import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { getStoredInspections, getStoredQuotations } from '@/lib/inspectionsStore';
 import { getStoredPipelineOrders } from '@/lib/pipelineStore';
 import { getTodayDateStr } from '@/lib/dateUtils';
+import { ALL_SYSTEM_PAGES } from '@/lib/permissions';
 
 export default function DashboardPage() {
+  const router = useRouter();
   const [timeRange, setTimeRange] = useState<'MONTH' | 'WEEK' | 'TODAY' | 'ALL'>('TODAY');
 
   const [rawInspections, setRawInspections] = useState<any[]>([]);
@@ -17,6 +20,38 @@ export default function DashboardPage() {
   const [rawCustomers, setRawCustomers] = useState<any[]>([]);
   const [rawCollections, setRawCollections] = useState<any[]>([]);
   const [rawFabricSales, setRawFabricSales] = useState<any[]>([]);
+
+  // 🛡️ Client-side Page Guard: التحقق من صلاحية رؤية الصفحة الرئيسية
+  useEffect(() => {
+    async function checkPermission() {
+      try {
+        const userRes = await fetch('/api/auth/profile', { cache: 'no-store' });
+        if (!userRes.ok) return;
+        const userData = await userRes.json();
+        const user = userData.user;
+        if (!user) return;
+
+        // Super admins have full access
+        const isSuperAdmin = user.phone === '01558282760' || user.phone === '01063821000';
+        if (isSuperAdmin) return;
+
+        const permRes = await fetch(`/api/user-permissions?phone=${encodeURIComponent(user.phone)}`, { cache: 'no-store' });
+        if (!permRes.ok) return;
+        const permData = await permRes.json();
+        const allowed = permData?.allowedPageIds;
+
+        if (Array.isArray(allowed) && !allowed.includes('p_dashboard')) {
+          // الصفحة الرئيسية مخفية/ممنوعة لهذا المستخدم — تحويله فوراً لأول صفحة مسموحة له
+          const firstAllowed = ALL_SYSTEM_PAGES.find(p => allowed.includes(p.id) && p.id !== 'p_dashboard');
+          const target = firstAllowed ? firstAllowed.href : '/fabric-sales';
+          router.replace(target);
+        }
+      } catch (err) {
+        console.error('Error checking dashboard permission:', err);
+      }
+    }
+    checkPermission();
+  }, [router]);
 
   useEffect(() => {
     async function loadDashboardData() {

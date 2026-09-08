@@ -65,14 +65,23 @@ export default function Sidebar() {
           const res = await fetch(`/api/user-permissions?phone=${encodeURIComponent(d.user.phone)}`, { cache: 'no-store' });
           if (res.ok) {
             const data = await res.json();
-            if (cancelled) return;
             if (Array.isArray(data?.allowedPageIds)) {
               setAllowedPageIds(data.allowedPageIds);
               try { localStorage.setItem(`user_perms_${d.user.phone}`, JSON.stringify(data.allowedPageIds)); } catch {}
-              // #FEATURE: لو الصفحة الحالية بقت غير مسموحة، اطرد المستخدم منها فورًا
+
+              // #FEATURE: لو الصفحة الحالية بقت غير مسموحة، اطرد المستخدم منها فورًا لأول صفحة مسموحة له
+              const isHome = pathname === '/';
+              const isHomeBlocked = isHome && !data.allowedPageIds.includes('p_dashboard');
               const currentPage = ALL_SYSTEM_PAGES.find(p => pathname === p.href || (p.href !== '/' && pathname.startsWith(p.href + '/')));
-              if (currentPage && !data.allowedPageIds.includes(currentPage.id)) {
-                router.push('/');
+              const isCurrentPageBlocked = (currentPage && !data.allowedPageIds.includes(currentPage.id)) || isHomeBlocked;
+
+              if (isCurrentPageBlocked) {
+                // Find first allowed page to redirect to
+                const firstAllowed = ALL_SYSTEM_PAGES.find(p => data.allowedPageIds.includes(p.id) && p.id !== 'p_dashboard');
+                const targetHref = firstAllowed ? firstAllowed.href : '/fabric-sales';
+                if (pathname !== targetHref) {
+                  router.push(targetHref);
+                }
               }
               return;
             }
