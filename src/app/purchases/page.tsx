@@ -458,10 +458,10 @@ export default function PurchasesPage() {
               <button
                 type="button"
                 onClick={() => router.push('/purchases/new')}
-                className="bg-brand-gold hover:bg-amber-400 text-slate-950 px-5 py-2.5 rounded-xl text-xs font-black shadow-gold flex items-center gap-1.5 cursor-pointer"
+                className="bg-brand-gold hover:bg-amber-400 text-slate-950 px-4 py-2.5 rounded-xl text-xs font-black shadow-gold flex items-center gap-1.5 cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[18px]">add_business</span>
-                <span>+ إنشاء فاتورة شراء من مورد (صفحة كاملة)</span>
+                <span>+ فاتورة شراء</span>
               </button>
             </div>
 

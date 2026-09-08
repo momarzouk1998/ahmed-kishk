@@ -751,29 +751,33 @@ export default function NewPurchaseInvoicePage() {
                   <span>السلة فارغة. اضغط على أي صنف من الجدول يميناً لإضافته 👈</span>
                 </div>
               ) : (
-                <table className="w-full text-right text-xs border-collapse">
-                  <thead className="bg-slate-100 text-slate-600 font-bold border-b border-slate-200 sticky top-0 z-10 text-[11px]">
+                <table className="w-full text-right text-xs border-collapse table-fixed">
+                  <thead className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200 sticky top-0 z-10 text-[11px]">
                     <tr>
-                      <th className="p-2 pr-3">الصنف والكود</th>
-                      <th className="p-2 text-center w-36">الكمية (متر/قطعة)</th>
-                      <th className="p-2 text-center w-28">سعر الوحدة (ج)</th>
-                      <th className="p-2 text-center w-28">الإجمالي</th>
-                      <th className="p-2 text-center w-8"></th>
+                      <th className="p-2.5 pr-3 w-[36%]">الصنف والكود</th>
+                      <th className="p-2.5 text-center w-[24%]">الكمية (متر/قطعة)</th>
+                      <th className="p-2.5 text-center w-[20%]">سعر الوحدة (ج)</th>
+                      <th className="p-2.5 text-center w-[20%]">الإجمالي</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-slate-100 bg-white">
                     {items.map(it => (
-                      <tr key={it.id} className="hover:bg-slate-50 transition-colors">
-                        <td className="p-2 pr-3">
-                          <div className="font-bold text-slate-900 truncate max-w-[200px]" title={it.name}>
+                      <tr key={it.id} className="hover:bg-slate-50/90 transition-colors">
+                        {/* 1. الصنف والكود */}
+                        <td className="p-2.5 pr-3 align-middle">
+                          <div className="font-bold text-slate-900 text-xs leading-snug break-words" title={it.name}>
                             {it.name}
                           </div>
-                          <div className="text-[10px] text-slate-400 font-mono" dir="ltr">{it.code}</div>
+                          {it.code && (
+                            <div className="text-[10px] text-slate-400 font-mono mt-0.5" dir="ltr">
+                              {it.code}
+                            </div>
+                          )}
                         </td>
 
-                        {/* Inline Quantity Stepper - Spacious */}
-                        <td className="p-2 text-center">
-                          <div className="inline-flex items-center gap-1 border border-slate-300 rounded-xl p-0.5 bg-white shadow-2xs">
+                        {/* 2. الكمية (متر/قطعة) - Stepper */}
+                        <td className="p-2 text-center align-middle">
+                          <div className="inline-flex items-center justify-center gap-1 border border-slate-300 rounded-xl p-0.5 bg-white shadow-2xs">
                             <button
                               type="button"
                               onClick={() => updateItem(it.id, 'meters', Math.max(0.25, it.meters - 1))}
@@ -787,7 +791,7 @@ export default function NewPurchaseInvoicePage() {
                               min="0.01"
                               value={it.meters}
                               onChange={e => updateItem(it.id, 'meters', parseFloat(e.target.value) || 0)}
-                              className="w-16 text-center font-mono font-black text-xs sm:text-sm bg-transparent text-slate-900 focus:outline-none"
+                              className="w-14 text-center font-mono font-black text-xs sm:text-sm bg-transparent text-slate-900 focus:outline-none"
                             />
                             <button
                               type="button"
@@ -799,9 +803,9 @@ export default function NewPurchaseInvoicePage() {
                           </div>
                         </td>
 
-                        {/* Inline Unit Cost Input - Spacious */}
-                        <td className="p-2 text-center">
-                          <div className="inline-block relative">
+                        {/* 3. سعر الوحدة */}
+                        <td className="p-2 text-center align-middle">
+                          <div className="flex justify-center">
                             <input
                               type="number"
                               min="0"
@@ -809,28 +813,26 @@ export default function NewPurchaseInvoicePage() {
                               value={it.unitCost === 0 ? '' : it.unitCost}
                               onChange={e => updateItem(it.id, 'unitCost', parseFloat(e.target.value) || 0)}
                               placeholder="0"
-                              className="w-24 border border-slate-300 rounded-xl py-1.5 px-2 text-center font-mono font-black text-xs sm:text-sm text-slate-900 bg-white focus:outline-none focus:border-amber-500 shadow-2xs"
+                              className="w-full max-w-[100px] border border-slate-300 rounded-xl py-1.5 px-2 text-center font-mono font-black text-xs sm:text-sm text-slate-900 bg-white focus:outline-none focus:border-amber-500 shadow-2xs"
                             />
                           </div>
                         </td>
 
-                        {/* Total */}
-                        <td className="p-2 text-center font-mono font-bold text-amber-950 whitespace-nowrap">
-                          <span className="bg-amber-50 border border-amber-200 text-amber-950 px-2.5 py-1 rounded-xl text-xs font-black inline-block">
-                            {it.totalCost.toLocaleString()} ج
-                          </span>
-                        </td>
-
-                        {/* Remove Button */}
-                        <td className="p-2 text-center">
-                          <button
-                            type="button"
-                            onClick={() => removeItem(it.id)}
-                            className="text-slate-400 hover:text-rose-600 hover:bg-rose-50 p-1.5 rounded-lg font-bold cursor-pointer transition-colors"
-                            title="حذف هذا الصنف"
-                          >
-                            ✕
-                          </button>
+                        {/* 4. الإجمالي مع زر الحذف */}
+                        <td className="p-2 text-center align-middle">
+                          <div className="flex items-center justify-center gap-1.5">
+                            <span className="bg-amber-50 border border-amber-200 text-amber-950 px-2.5 py-1 rounded-xl text-xs font-black inline-block font-mono whitespace-nowrap shadow-3xs">
+                              {it.totalCost.toLocaleString()} ج
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => removeItem(it.id)}
+                              className="text-slate-400 hover:text-rose-600 hover:bg-rose-50 w-7 h-7 rounded-lg font-bold flex items-center justify-center cursor-pointer transition-colors"
+                              title="حذف هذا الصنف"
+                            >
+                              ✕
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
