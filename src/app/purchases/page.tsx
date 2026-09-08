@@ -933,21 +933,22 @@ export default function PurchasesPage() {
                 </div>
               </div>
 
-              {/* القسم 3: الحسابات والخصم وطريقة الدفع */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* السداد والملاحظات */}
-                <div className="bg-slate-50/50 rounded-2xl p-4 border border-slate-100 space-y-3">
-                  <h4 className="font-black text-slate-800 text-xs flex items-center gap-1.5">
-                    <span className="text-amber-600">💳</span>
-                    <span>طريقة السداد والملاحظات</span>
-                  </h4>
+              {/* القسم 3: حقول السداد والخصم + شريط الملخص المالي المدمج */}
+              <div className="bg-slate-50/70 rounded-2xl p-4 border border-slate-200/80 space-y-4">
+                <h4 className="font-black text-slate-800 text-xs flex items-center gap-1.5 pb-1 border-b border-slate-200">
+                  <span className="text-amber-600">💳</span>
+                  <span>بيانات السداد، الخصم، والتسوية المالية</span>
+                </h4>
 
+                {/* صف الحقول الأساسية: 4 أعمدة متناسقة */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  {/* 1. طريقة الدفع */}
                   <div>
                     <label className="text-slate-700 font-bold block mb-1">طريقة الدفع للمورد *</label>
                     <select
                       value={editingPurchase.paymentMethod}
                       onChange={e => setEditingPurchase({ ...editingPurchase, paymentMethod: e.target.value })}
-                      className="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900 bg-white focus:border-brand-gold outline-hidden"
+                      className="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900 bg-white focus:border-brand-gold outline-hidden shadow-2xs"
                     >
                       <option value="نقدي (كاش)">💵 نقدي (كاش)</option>
                       <option value="شيكات بنكية">🏦 شيكات بنكية مؤجلة</option>
@@ -958,6 +959,54 @@ export default function PurchasesPage() {
                     </select>
                   </div>
 
+                  {/* 2. الخصم المكتسب */}
+                  <div>
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="text-slate-700 font-bold">الخصم المكتسب:</label>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => handleEditDiscountChange('EGP', editingPurchase.discountValue || 0)}
+                          className={`px-2 py-0.5 rounded-md font-bold text-[10px] cursor-pointer transition-colors ${
+                            (editingPurchase.discountType || 'EGP') === 'EGP'
+                              ? 'bg-amber-400 text-slate-950 font-black shadow-xs'
+                              : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
+                          }`}
+                        >
+                          ج.م
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleEditDiscountChange('PERCENT', editingPurchase.discountValue || 0)}
+                          className={`px-2 py-0.5 rounded-md font-bold text-[10px] cursor-pointer transition-colors ${
+                            editingPurchase.discountType === 'PERCENT'
+                              ? 'bg-amber-400 text-slate-950 font-black shadow-xs'
+                              : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
+                          }`}
+                        >
+                          %
+                        </button>
+                      </div>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        step="any"
+                        min="0"
+                        value={editingPurchase.discountValue || ''}
+                        onChange={e => handleEditDiscountChange(editingPurchase.discountType || 'EGP', Number(e.target.value))}
+                        placeholder="0"
+                        className="w-full border border-slate-200 bg-white rounded-xl px-3 py-2 font-mono font-bold text-slate-900 focus:border-brand-gold outline-hidden shadow-2xs pl-16"
+                      />
+                      {(Number(editingPurchase.discountAmount) || 0) > 0 && (
+                        <span className="absolute left-2.5 top-2 font-mono font-bold text-rose-600 text-[11px] pointer-events-none">
+                          -{(Number(editingPurchase.discountAmount) || 0).toLocaleString()} ج
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 3. المبلغ المسدد */}
                   <div>
                     <label className="text-slate-700 font-bold block mb-1">المبلغ المسدد حالياً (ج.م) *</label>
                     <input
@@ -968,105 +1017,63 @@ export default function PurchasesPage() {
                       required
                       value={editingPurchase.paidAmount ?? 0}
                       onChange={e => handleEditPaidChange(Number(e.target.value))}
-                      className="w-full border border-slate-200 rounded-xl px-3 py-2 font-mono font-black text-slate-900 bg-white focus:border-brand-gold outline-hidden"
+                      className="w-full border border-slate-200 rounded-xl px-3 py-2 font-mono font-black text-slate-900 bg-white focus:border-brand-gold outline-hidden shadow-2xs"
                     />
                   </div>
 
+                  {/* 4. الملاحظات */}
                   <div>
                     <label className="text-slate-700 font-bold block mb-1">ملاحظات الفاتورة</label>
-                    <textarea
-                      rows={2}
+                    <input
+                      type="text"
                       value={editingPurchase.notes || ''}
                       onChange={e => setEditingPurchase({ ...editingPurchase, notes: e.target.value })}
-                      placeholder="أية ملاحظات خاصة بالاستلام أو الشحن أو المورد..."
-                      className="w-full border border-slate-200 rounded-xl px-3 py-2 text-slate-900 bg-white focus:border-brand-gold outline-hidden resize-none"
+                      placeholder="أية ملاحظات خاصة بالاستلام أو الشحن..."
+                      className="w-full border border-slate-200 rounded-xl px-3 py-2 text-slate-900 bg-white focus:border-brand-gold outline-hidden shadow-2xs"
                     />
                   </div>
                 </div>
 
-                {/* الملخص المالي */}
-                <div className="bg-white rounded-2xl p-4.5 space-y-3.5 flex flex-col justify-between border border-slate-200 shadow-soft">
-                  <div className="space-y-3">
-                    <h4 className="font-black text-slate-800 text-xs flex items-center gap-1.5 pb-2 border-b border-slate-100">
-                      <span className="text-amber-600">💰</span>
-                      <span>الملخص المالي للفاتورة</span>
-                    </h4>
+                {/* شريط الكاردات الجمالية للملخص المالي */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 pt-1">
+                  {/* كارت 1: إجمالي الأصناف */}
+                  <div className="bg-white p-3 rounded-xl border border-slate-200/90 shadow-3xs text-center space-y-0.5">
+                    <span className="text-slate-500 font-bold text-[11px] block">إجمالي الأصناف (قبل الخصم)</span>
+                    <strong className="text-base font-black text-slate-900 block font-mono">
+                      {(Number(editingPurchase.subtotal) || 0).toLocaleString()} ج
+                    </strong>
+                  </div>
 
-                    <div className="flex justify-between items-center text-slate-600 font-bold px-1">
-                      <span>إجمالي الأصناف:</span>
-                      <span className="font-mono font-bold text-slate-900 text-sm">
-                        {(Number(editingPurchase.subtotal) || 0).toLocaleString()} ج.م
-                      </span>
+                  {/* كارت 2: الخصم المكتسب */}
+                  <div className="bg-white p-3 rounded-xl border border-slate-200/90 shadow-3xs text-center space-y-0.5">
+                    <span className="text-slate-500 font-bold text-[11px] block">الخصم المكتسب</span>
+                    <strong className="text-base font-black text-rose-600 block font-mono">
+                      {(Number(editingPurchase.discountAmount) || 0) > 0 ? `-${(Number(editingPurchase.discountAmount) || 0).toLocaleString()} ج` : '0 ج'}
+                    </strong>
+                  </div>
+
+                  {/* كارت 3: صافي إجمالي الفاتورة */}
+                  <div className="bg-gradient-to-br from-amber-50 to-amber-100/70 p-3 rounded-xl border border-amber-300 shadow-3xs text-center space-y-0.5">
+                    <span className="text-amber-900 font-black text-[11px] block">صافي إجمالي الفاتورة</span>
+                    <strong className="text-base sm:text-lg font-black text-amber-950 block font-mono">
+                      {(Number(editingPurchase.totalAmount) || 0).toLocaleString()} ج.م
+                    </strong>
+                  </div>
+
+                  {/* كارت 4: المسدد والمتبقي الآجل */}
+                  <div className="bg-white p-2.5 rounded-xl border border-slate-200/90 shadow-3xs flex items-center justify-around text-center">
+                    <div>
+                      <span className="text-[10px] text-emerald-700 font-bold block">المدفوع</span>
+                      <strong className="text-xs font-black text-emerald-900 font-mono block">
+                        {(Number(editingPurchase.paidAmount) || 0).toLocaleString()} ج
+                      </strong>
                     </div>
-
-                    {/* الخصم */}
-                    <div className="bg-slate-50/80 p-2.5 rounded-xl space-y-2 border border-slate-200/80">
-                      <div className="flex justify-between items-center">
-                        <span className="text-slate-700 font-bold">الخصم المكتسب:</span>
-                        <div className="flex items-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => handleEditDiscountChange('EGP', editingPurchase.discountValue || 0)}
-                            className={`px-2 py-0.5 rounded-md font-bold text-[10px] cursor-pointer transition-colors ${
-                              (editingPurchase.discountType || 'EGP') === 'EGP'
-                                ? 'bg-amber-400 text-slate-950 font-black shadow-xs'
-                                : 'bg-slate-200/70 text-slate-700 hover:bg-slate-300'
-                            }`}
-                          >
-                            ج.م
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleEditDiscountChange('PERCENT', editingPurchase.discountValue || 0)}
-                            className={`px-2 py-0.5 rounded-md font-bold text-[10px] cursor-pointer transition-colors ${
-                              editingPurchase.discountType === 'PERCENT'
-                                ? 'bg-amber-400 text-slate-950 font-black shadow-xs'
-                                : 'bg-slate-200/70 text-slate-700 hover:bg-slate-300'
-                            }`}
-                          >
-                            %
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="number"
-                          step="any"
-                          min="0"
-                          value={editingPurchase.discountValue || ''}
-                          onChange={e => handleEditDiscountChange(editingPurchase.discountType || 'EGP', Number(e.target.value))}
-                          placeholder="قيمة الخصم"
-                          className="flex-1 border border-slate-300 bg-white rounded-lg px-2.5 py-1 text-center font-mono font-bold text-slate-900 text-xs focus:border-brand-gold outline-hidden shadow-2xs"
-                        />
-                        <span className="font-mono text-rose-600 font-bold text-xs shrink-0">
-                          -{(Number(editingPurchase.discountAmount) || 0).toLocaleString()} ج
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* صافي الإجمالي */}
-                    <div className="bg-amber-50/80 border border-amber-200 p-3 rounded-xl flex justify-between items-center">
-                      <span className="font-black text-slate-900 text-xs sm:text-sm">صافي إجمالي الفاتورة:</span>
-                      <span className="font-mono font-black text-amber-950 text-base sm:text-lg">
-                        {(Number(editingPurchase.totalAmount) || 0).toLocaleString()} ج.م
-                      </span>
-                    </div>
-
-                    {/* المسدد والمتبقي */}
-                    <div className="grid grid-cols-2 gap-2 pt-1">
-                      <div className="bg-emerald-50 border border-emerald-200 p-2 rounded-xl text-center">
-                        <div className="text-[10px] text-emerald-800 font-bold">المدفوع</div>
-                        <div className="font-mono font-black text-emerald-950 text-xs sm:text-sm">
-                          {(Number(editingPurchase.paidAmount) || 0).toLocaleString()} ج
-                        </div>
-                      </div>
-                      <div className="bg-rose-50 border border-rose-200 p-2 rounded-xl text-center">
-                        <div className="text-[10px] text-rose-800 font-bold">المتبقي الآجل</div>
-                        <div className="font-mono font-black text-rose-950 text-xs sm:text-sm">
-                          {(Number(editingPurchase.remainingAmount) || 0).toLocaleString()} ج
-                        </div>
-                      </div>
+                    <div className="w-px h-7 bg-slate-200"></div>
+                    <div>
+                      <span className="text-[10px] text-rose-700 font-bold block">المتبقي الآجل</span>
+                      <strong className="text-xs font-black text-rose-900 font-mono block">
+                        {(Number(editingPurchase.remainingAmount) || 0).toLocaleString()} ج
+                      </strong>
                     </div>
                   </div>
                 </div>
