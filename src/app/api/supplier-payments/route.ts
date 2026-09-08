@@ -49,7 +49,7 @@ export async function POST(request: Request) {
         supplierName: supplierName || '',
         amount: Number(amount) || 0,
         method: method || 'نقدي',
-        treasury: treasury || 'الخزينة الرئيسية',
+        treasury: treasury || 'خزينة الفرع الرئيسي (سعد زغلول)',
         notes: notes || '',
       },
       update: {

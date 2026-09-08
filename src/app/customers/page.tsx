@@ -7,7 +7,8 @@ import { formatDateOnly } from '@/lib/dateUtils';
 import PdfPrintButton from '@/components/PdfPrintButton';
 import { useCurrentUser } from '@/lib/useCurrentUser';
 import Pagination from '@/components/Pagination';
-import { BRANCHES_LIST, BRANCH_TREASURIES, getBranchTreasury } from '@/lib/branches';
+import BranchSelect from '@/components/BranchSelect';
+import { BRANCHES_LIST, BRANCH_TREASURIES, getBranchTreasury, normalizeBranchName } from '@/lib/branches';
 
 interface CustomerLedgerEntry {
   id: string;
@@ -92,12 +93,14 @@ export default function CustomersPage() {
   const [custPhone, setCustPhone] = useState('');
   const [custAddress, setCustAddress] = useState('');
   const [custCity, setCustCity] = useState('الفرع الرئيسي');
+  const [selectedBranch, setSelectedBranch] = useState<string>('ALL');
   const { user: currentUser, isAdmin } = useCurrentUser();
-  // موظف مقيّد بفرع: أى عميل جديد يُسجَّل على فرعه هو فقط
+  // موظف مقيّد بفرع: أى عميل جديد يُسجَّل على فرعه، والخزينة تلقائياً خزينته، والفلترة على فرعه فقط
   useEffect(() => {
     if (!isAdmin && currentUser?.branch) {
       setCustCity(currentUser.branch);
       setColTreasury(getBranchTreasury(currentUser.branch));
+      setSelectedBranch(currentUser.branch);
     }
   }, [isAdmin, currentUser]);
   const [custNotes, setCustNotes] = useState('');
@@ -285,6 +288,11 @@ export default function CustomersPage() {
 
   // Filtered Customers
   const filteredCustomers = customers.filter(c => {
+    if (selectedBranch !== 'ALL' && selectedBranch !== 'الكل') {
+      const custBranch = c.city || (c as any).branch || '';
+      if (normalizeBranchName(custBranch) !== normalizeBranchName(selectedBranch)) return false;
+    }
+
     const matchSearch =
       c.name.toLowerCase().includes(search.toLowerCase()) ||
       c.phone.includes(search) ||
@@ -298,12 +306,23 @@ export default function CustomersPage() {
     return matchSearch && matchStatus;
   });
 
-  // Filtered Collections
+  // Filtered Collections (Only shows transactions of the selected branch treasury)
   const filteredCollections = collections.filter(col => {
+    if (selectedBranch !== 'ALL' && selectedBranch !== 'الكل') {
+      const targetTreasury = getBranchTreasury(selectedBranch);
+      const matchTreasury = col.treasury === targetTreasury ||
+        (col.treasury && normalizeBranchName(col.treasury) === normalizeBranchName(selectedBranch)) ||
+        (col.treasury && col.treasury.includes(selectedBranch));
+      const cust = customers.find(c => c.phone === col.phone || c.id === col.customerId);
+      const matchCustBranch = cust && normalizeBranchName(cust.city || (cust as any).branch) === normalizeBranchName(selectedBranch);
+      if (!matchTreasury && !matchCustBranch) return false;
+    }
+
     const matchSearch =
       col.customerName.toLowerCase().includes(search.toLowerCase()) ||
       col.phone.includes(search) ||
-      (col.notes && col.notes.toLowerCase().includes(search.toLowerCase()));
+      (col.notes && col.notes.toLowerCase().includes(search.toLowerCase())) ||
+      (col.treasury && col.treasury.toLowerCase().includes(search.toLowerCase()));
     const matchMethod = methodFilter === 'all' || col.method === methodFilter;
     return matchSearch && matchMethod;
   });
@@ -419,7 +438,7 @@ export default function CustomersPage() {
 
             {/* Search & Filter Bar */}
             <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs grid grid-cols-1 sm:grid-cols-12 gap-3 text-xs">
-              <div className="relative sm:col-span-8">
+              <div className={`relative ${isAdmin ? 'sm:col-span-5' : 'sm:col-span-8'}`}>
                 <span className="material-symbols-outlined absolute right-3.5 top-2.5 text-slate-400 text-base">search</span>
                 <input
                   type="text"
@@ -430,7 +449,7 @@ export default function CustomersPage() {
                 />
               </div>
 
-              <div className="sm:col-span-4">
+              <div className={isAdmin ? 'sm:col-span-4' : 'sm:col-span-4'}>
                 <select
                   value={statusFilter}
                   onChange={e => setStatusFilter(e.target.value as any)}
@@ -442,6 +461,19 @@ export default function CustomersPage() {
                   <option value="overpaid">مدفوعات زائدة (علينا)</option>
                 </select>
               </div>
+
+              {isAdmin && (
+                <div className="sm:col-span-3">
+                  <BranchSelect
+                    value={selectedBranch}
+                    onChange={setSelectedBranch}
+                    isAdmin={isAdmin}
+                    allValue="ALL"
+                    allLabel="🌐 جميع الفروع والخزائن"
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 font-bold text-slate-800 focus:outline-none cursor-pointer"
+                  />
+                </div>
+              )}
             </div>
 
             {/* Clean, Elegant Customers Table (Click row to view full file & statement) */}
@@ -615,7 +647,7 @@ export default function CustomersPage() {
 
             {/* Search & Method Filter */}
             <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs grid grid-cols-1 sm:grid-cols-12 gap-3 text-xs">
-              <div className="relative sm:col-span-8">
+              <div className={`relative ${isAdmin ? 'sm:col-span-5' : 'sm:col-span-8'}`}>
                 <span className="material-symbols-outlined absolute right-3.5 top-2.5 text-slate-400 text-base">search</span>
                 <input
                   type="text"
@@ -626,20 +658,34 @@ export default function CustomersPage() {
                 />
               </div>
 
-              <div className="sm:col-span-4">
+              <div className={isAdmin ? 'sm:col-span-4' : 'sm:col-span-4'}>
                 <select
                   value={methodFilter}
                   onChange={e => setMethodFilter(e.target.value)}
                   className="w-full border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 font-bold text-slate-800 focus:outline-none cursor-pointer"
                 >
                   <option value="all">كل طرق السداد</option>
-                  <option value="نقدي">نقدي (كاش)</option>
-                  <option value="إنستاباي">إنستاباي</option>
-                  <option value="فودافون كاش">فودافون كاش</option>
-                  <option value="تحويل بنكي">تحويل بنكي</option>
-                  <option value="شيك">شيك</option>
+                  <option value="نقدي">💵 نقدي (كاش)</option>
+                  <option value="إنستاباي">⚡ إنستاباي</option>
+                  <option value="فودافون كاش">📱 فودافون كاش</option>
+                  <option value="فيزا">💳 فيزا</option>
+                  <option value="تحويل بنكي">🏦 تحويل بنكي</option>
+                  <option value="شيك">🧾 شيك</option>
                 </select>
               </div>
+
+              {isAdmin && (
+                <div className="sm:col-span-3">
+                  <BranchSelect
+                    value={selectedBranch}
+                    onChange={setSelectedBranch}
+                    isAdmin={isAdmin}
+                    allValue="ALL"
+                    allLabel="🌐 جميع الفروع والخزائن"
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 font-bold text-slate-800 focus:outline-none cursor-pointer"
+                  />
+                </div>
+              )}
             </div>
 
             {/* Collections Table View */}
@@ -720,17 +766,20 @@ export default function CustomersPage() {
                                 <select
                                   value={inlineColForm.treasury}
                                   onChange={e => setInlineColForm({ ...inlineColForm, treasury: e.target.value })}
-                                  className="border border-slate-300 rounded-lg px-2 py-1.5 font-bold text-slate-900 text-xs bg-white focus:border-amber-500 outline-hidden max-w-[180px]"
+                                  disabled={!isAdmin && !!currentUser?.branch}
+                                  className="border border-slate-300 rounded-lg px-2 py-1.5 font-bold text-slate-900 text-xs bg-white focus:border-amber-500 outline-hidden max-w-[200px] disabled:bg-slate-100 disabled:cursor-not-allowed"
                                 >
-                                  {BRANCH_TREASURIES.map(bt => (
-                                    <option key={bt.branch} value={bt.treasury}>
-                                      {bt.treasury}
+                                  {isAdmin ? (
+                                    BRANCH_TREASURIES.map(bt => (
+                                      <option key={bt.branch} value={bt.treasury}>
+                                        {bt.treasury}
+                                      </option>
+                                    ))
+                                  ) : (
+                                    <option value={getBranchTreasury(currentUser?.branch)}>
+                                      {getBranchTreasury(currentUser?.branch)}
                                     </option>
-                                  ))}
-                                  <option value="محفظة إنستاباي">محفظة إنستاباي</option>
-                                  <option value="محفظة فودافون كاش">محفظة فودافون كاش</option>
-                                  <option value="حساب بنك QNB">حساب بنك QNB</option>
-                                  <option value="حساب بنك مصر">حساب بنك مصر</option>
+                                  )}
                                 </select>
                               </td>
 
@@ -1171,18 +1220,26 @@ export default function CustomersPage() {
                 <select
                   value={colTreasury}
                   onChange={e => setColTreasury(e.target.value)}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900 bg-slate-50 focus:outline-none"
+                  disabled={!isAdmin && !!currentUser?.branch}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900 bg-slate-50 focus:outline-none disabled:bg-slate-100 disabled:cursor-not-allowed"
                 >
-                  {BRANCH_TREASURIES.map(bt => (
-                    <option key={bt.branch} value={bt.treasury}>
-                      {bt.treasury}
+                  {isAdmin ? (
+                    BRANCH_TREASURIES.map(bt => (
+                      <option key={bt.branch} value={bt.treasury}>
+                        {bt.treasury}
+                      </option>
+                    ))
+                  ) : (
+                    <option value={getBranchTreasury(currentUser?.branch)}>
+                      {getBranchTreasury(currentUser?.branch)}
                     </option>
-                  ))}
-                  <option value="محفظة إنستاباي">محفظة إنستاباي المؤسسة</option>
-                  <option value="محفظة فودافون كاش">محفظة فودافون كاش</option>
-                  <option value="حساب بنك QNB">حساب بنك QNB</option>
-                  <option value="حساب بنك مصر">حساب بنك مصر</option>
+                  )}
                 </select>
+                {!isAdmin && (
+                  <p className="text-[11px] text-amber-700 font-bold mt-1">
+                    🔒 مقيد تلقائياً بخزينة فرعك المخصص ({currentUser?.branch || 'الفرع الرئيسي'}).
+                  </p>
+                )}
               </div>
 
               <div>

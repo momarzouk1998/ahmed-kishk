@@ -7,6 +7,7 @@ import PdfPrintButton from '@/components/PdfPrintButton';
 import { useCurrentUser } from '@/lib/useCurrentUser';
 import BranchSelect from '@/components/BranchSelect';
 import Pagination from '@/components/Pagination';
+import { BRANCH_TREASURIES, getBranchTreasury } from '@/lib/branches';
 
 interface Supplier {
   id: string;
@@ -115,14 +116,17 @@ export default function SuppliersPage() {
   const [supOpeningBalance, setSupOpeningBalance] = useState<number>(0);
   const { user: currentUser, isAdmin } = useCurrentUser();
   useEffect(() => {
-    if (!isAdmin && currentUser?.branch) setSupBranch(currentUser.branch);
+    if (!isAdmin && currentUser?.branch) {
+      setSupBranch(currentUser.branch);
+      setPayTreasury(getBranchTreasury(currentUser.branch));
+    }
   }, [isAdmin, currentUser]);
 
   // New Payment Form
   const [paySupplierId, setPaySupplierId] = useState('');
   const [payAmount, setPayAmount] = useState<number>(1000);
   const [payMethod, setPayMethod] = useState<'نقدي' | 'إنستاباي' | 'فودافون كاش' | 'تحويل بنكي' | 'شيك'>('نقدي');
-  const [payTreasury, setPayTreasury] = useState('الخزينة الرئيسية');
+  const [payTreasury, setPayTreasury] = useState('خزينة الفرع الرئيسي (سعد زغلول)');
   const [payNotes, setPayNotes] = useState('');
 
   // Batch / Multiple Checks Entry State
@@ -1556,13 +1560,30 @@ export default function SuppliersPage() {
               </div>
 
               <div>
-                <label className="text-slate-700 font-bold block mb-1">الخصم من خزينة / حساب:</label>
-                <input
-                  type="text"
+                <label className="text-slate-700 font-bold block mb-1">الخصم من خزينة الفرع:</label>
+                <select
                   value={payTreasury}
                   onChange={e => setPayTreasury(e.target.value)}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-slate-900 focus:outline-none"
-                />
+                  disabled={!isAdmin && !!currentUser?.branch}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900 bg-slate-50 focus:outline-none disabled:bg-slate-100 disabled:cursor-not-allowed"
+                >
+                  {isAdmin ? (
+                    BRANCH_TREASURIES.map(bt => (
+                      <option key={bt.branch} value={bt.treasury}>
+                        {bt.treasury}
+                      </option>
+                    ))
+                  ) : (
+                    <option value={getBranchTreasury(currentUser?.branch)}>
+                      {getBranchTreasury(currentUser?.branch)}
+                    </option>
+                  )}
+                </select>
+                {!isAdmin && (
+                  <p className="text-[11px] text-amber-700 font-bold mt-1">
+                    🔒 يتم السحب تلقائياً من خزينة فرعك المخصص ({currentUser?.branch || 'الفرع الرئيسي'}).
+                  </p>
+                )}
               </div>
 
               <div>

@@ -597,7 +597,7 @@ function SalesReport({ kpis, invoices, collections, branchLabel, periodLabel }: 
                         {col.method || 'نقدي'}
                       </span>
                     </td>
-                    <td className="p-2 font-bold text-slate-700">{col.treasury || 'الخزينة الرئيسية'}</td>
+                    <td className="p-2 font-bold text-slate-700">{col.treasury || 'خزينة الفرع الرئيسي (سعد زغلول)'}</td>
                     <td className="p-2 text-left font-mono font-black text-emerald-700">
                       {(Number(col.amount) || 0).toLocaleString()} ج
                     </td>

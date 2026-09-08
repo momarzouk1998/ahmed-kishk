@@ -611,14 +611,26 @@ export default function CustomerDetailsPage() {
                   <select
                     value={colTreasury}
                     onChange={e => setColTreasury(e.target.value)}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900 bg-slate-50 focus:border-brand-gold outline-hidden"
+                    disabled={!isAdmin && !!currentUser?.branch}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900 bg-slate-50 focus:border-brand-gold outline-hidden disabled:bg-slate-100 disabled:cursor-not-allowed"
                   >
-                    {BRANCH_TREASURIES.map(bt => (
-                      <option key={bt.branch} value={bt.treasury}>
-                        {bt.treasury}
+                    {isAdmin ? (
+                      BRANCH_TREASURIES.map(bt => (
+                        <option key={bt.branch} value={bt.treasury}>
+                          {bt.treasury}
+                        </option>
+                      ))
+                    ) : (
+                      <option value={getBranchTreasury(currentUser?.branch)}>
+                        {getBranchTreasury(currentUser?.branch)}
                       </option>
-                    ))}
+                    )}
                   </select>
+                  {!isAdmin && (
+                    <p className="text-[11px] text-amber-700 font-bold mt-1">
+                      🔒 يتم الإيداع تلقائياً في خزينة فرعك ({currentUser?.branch || 'الفرع الرئيسي'}).
+                    </p>
+                  )}
                 </div>
 
                 <div>
