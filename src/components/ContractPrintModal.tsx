@@ -73,6 +73,14 @@ export interface PrintContractData {
   discountAmount?: number;
   depositPaid: number;
   remainingAmount: number;
+  paymentMethod?: string;
+  splitPayments?: {
+    cash?: number;
+    instapay?: number;
+    vodafone?: number;
+    visa?: number;
+  };
+  treasury?: string;
   rooms: PrintRoomItem[];
 }
 
@@ -524,6 +532,21 @@ export default function ContractPrintModal({ isOpen, onClose, data }: ContractPr
               <div class="fin-box fin-box-paid">
                 <span class="fin-label">العربون المسدد (المدفوع)</span>
                 <span class="fin-val">${data.depositPaid.toLocaleString()} <span style="font-size:8pt;">ج.م</span></span>
+                ${data.paymentMethod ? `
+                <div style="margin-top:3px; font-size:7.5pt; font-weight:700; color:#15803d; border-top:1px dashed #86efac; padding-top:2px;">
+                  طريقة الدفع: ${data.paymentMethod}
+                  ${data.paymentMethod === 'دفع متعدد / مزيج' && data.splitPayments ? `
+                    <div style="font-size:7pt; color:#166534; font-weight:600; margin-top:1px;">
+                      ${[
+                        Number(data.splitPayments.cash) > 0 ? `${Number(data.splitPayments.cash).toLocaleString()}ج كاش` : '',
+                        Number(data.splitPayments.instapay) > 0 ? `${Number(data.splitPayments.instapay).toLocaleString()}ج إنستاباي` : '',
+                        Number(data.splitPayments.vodafone) > 0 ? `${Number(data.splitPayments.vodafone).toLocaleString()}ج فودافون` : '',
+                        Number(data.splitPayments.visa) > 0 ? `${Number(data.splitPayments.visa).toLocaleString()}ج فيزا` : ''
+                      ].filter(Boolean).join(' • ')}
+                    </div>
+                  ` : ''}
+                </div>
+                ` : ''}
               </div>
               <div class="fin-box fin-box-remain">
                 <span class="fin-label">المتبقي للتحصيل عند التركيب</span>
@@ -758,9 +781,24 @@ export default function ContractPrintModal({ isOpen, onClose, data }: ContractPr
                   <span className="font-mono font-black text-base text-rose-800 block">{(data.discountAmount || 0).toLocaleString()} ج.م</span>
                 </div>
               )}
-              <div className="bg-emerald-50/80 border border-emerald-200 p-2 rounded-lg">
-                <span className="text-[10px] text-emerald-800 font-bold block mb-0.5">العربون المسدد</span>
-                <span className="font-mono font-black text-base text-emerald-950 block">{(data.depositPaid || 0).toLocaleString()} ج.م</span>
+              <div className="bg-emerald-50/80 border border-emerald-200 p-2 rounded-lg flex flex-col justify-between">
+                <div>
+                  <span className="text-[10px] text-emerald-800 font-bold block mb-0.5">العربون المسدد</span>
+                  <span className="font-mono font-black text-base text-emerald-950 block">{(data.depositPaid || 0).toLocaleString()} ج.م</span>
+                </div>
+                {data.paymentMethod && (
+                  <div className="mt-1 pt-1 border-t border-emerald-200 text-[10px] font-bold text-emerald-800">
+                    💳 {data.paymentMethod}
+                    {data.paymentMethod === 'دفع متعدد / مزيج' && data.splitPayments && (
+                      <div className="text-[9px] text-emerald-700 flex flex-wrap gap-1 justify-center mt-0.5">
+                        {Number(data.splitPayments.cash) > 0 && <span>{Number(data.splitPayments.cash).toLocaleString()} كاش</span>}
+                        {Number(data.splitPayments.instapay) > 0 && <span>{Number(data.splitPayments.instapay).toLocaleString()} إنستاباي</span>}
+                        {Number(data.splitPayments.vodafone) > 0 && <span>{Number(data.splitPayments.vodafone).toLocaleString()} فودافون</span>}
+                        {Number(data.splitPayments.visa) > 0 && <span>{Number(data.splitPayments.visa).toLocaleString()} فيزا</span>}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
               <div className="bg-rose-50/80 border border-rose-200 p-2 rounded-lg">
                 <span className="text-[10px] text-rose-800 font-bold block mb-0.5">المتبقي للتحصيل</span>

@@ -161,6 +161,14 @@ export interface QuotationOrder {
   discountAmount?: number; // خصم يدوي بالجنيه يُطرح من إجمالي الغرف (subtotal) للحصول على totalAmount
   depositPaid: number;
   remainingAmount: number;
+  paymentMethod?: string;
+  splitPayments?: {
+    cash?: number;
+    instapay?: number;
+    vodafone?: number;
+    visa?: number;
+  };
+  treasury?: string;
   date: string;
   deliveryDate?: string;
   inspectionDate?: string;
@@ -471,6 +479,7 @@ export function syncInspectionToPricing(inspectionOrId: InspectionData | string)
       totalAmount: totalSum,
       depositPaid: 0,
       remainingAmount: totalSum,
+      paymentMethod: 'نقدي (كاش)',
       date: new Date().toISOString().split('T')[0],
       deliveryDate: '',
       estimatorName: 'أحمد كشك',

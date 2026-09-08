@@ -96,8 +96,12 @@ model QuotationOrder {
   branch           String   @default("الفرع الرئيسي")
   status           String   @default("بانتظار التسعير")
   totalAmount      Float    @default(0)
+  discountAmount   Float?   @default(0)
   depositPaid      Float    @default(0)
   remainingAmount  Float    @default(0)
+  paymentMethod    String?  @default("نقدي (كاش)")
+  splitPayments    Json?
+  treasury         String?
   date             String
   inspectionDate   String?
   deliveryDate     String?
@@ -124,8 +128,12 @@ model PipelineOrder {
   status           String   @default("في المقص")
   localStatus      String?  @default("بانتظار القص")
   totalAmount      Float    @default(0)
+  discountAmount   Float?   @default(0)
   depositPaid      Float    @default(0)
   remainingAmount  Float    @default(0)
+  paymentMethod    String?  @default("نقدي (كاش)")
+  splitPayments    Json?
+  treasury         String?
   rooms            Json     @default("[]")
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt

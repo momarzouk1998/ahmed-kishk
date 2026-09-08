@@ -87,7 +87,7 @@ export async function POST(request: Request) {
     const results = [];
     for (const item of rawList) {
       if (!item || !item.id) continue;
-      const { id, inspectionId, customerName, phone, address, branch, status, totalAmount, depositPaid, remainingAmount, date, deliveryDate, inspectionDate, installationDate, estimatorName, rooms } = item;
+      const { id, inspectionId, customerName, phone, address, branch, status, totalAmount, discountAmount, depositPaid, remainingAmount, paymentMethod, splitPayments, treasury, date, deliveryDate, inspectionDate, installationDate, estimatorName, rooms } = item;
       const effBranch = effectiveCreateBranch(scope, branch);
 
       const quotation = await prisma.quotationOrder.upsert({
@@ -101,8 +101,12 @@ export async function POST(request: Request) {
           branch: effBranch,
           status: status || 'بانتظار التسعير',
           totalAmount: Number(totalAmount) || 0,
+          discountAmount: Number(discountAmount) || 0,
           depositPaid: Number(depositPaid) || 0,
           remainingAmount: Number(remainingAmount) || 0,
+          paymentMethod: paymentMethod || 'نقدي (كاش)',
+          splitPayments: splitPayments || undefined,
+          treasury: treasury || undefined,
           date: date || new Date().toISOString().split('T')[0],
           deliveryDate: deliveryDate ? String(deliveryDate) : null,
           inspectionDate: inspectionDate ? String(inspectionDate) : null,
@@ -117,8 +121,12 @@ export async function POST(request: Request) {
           branch: scope && !scope.isAdmin ? scope.branch : (branch || undefined),
           status: status || undefined,
           totalAmount: totalAmount !== undefined ? Number(totalAmount) : undefined,
+          discountAmount: discountAmount !== undefined ? Number(discountAmount) : undefined,
           depositPaid: depositPaid !== undefined ? Number(depositPaid) : undefined,
           remainingAmount: remainingAmount !== undefined ? Number(remainingAmount) : undefined,
+          paymentMethod: paymentMethod || undefined,
+          splitPayments: splitPayments !== undefined ? splitPayments : undefined,
+          treasury: treasury !== undefined ? treasury : undefined,
           deliveryDate: deliveryDate !== undefined ? (deliveryDate ? String(deliveryDate) : null) : undefined,
           inspectionDate: inspectionDate !== undefined ? (inspectionDate ? String(inspectionDate) : null) : undefined,
           installationDate: installationDate !== undefined ? (installationDate ? String(installationDate) : null) : undefined,

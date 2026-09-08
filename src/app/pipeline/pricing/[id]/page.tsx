@@ -520,15 +520,58 @@ export default function PricingDetailPage() {
     saveAllQuotations(updatedList);
   };
 
-  const handleDepositChange = (amount: number) => {
+  const handleDepositChange = (amount: number, method?: string, split?: any) => {
     if (!quotation) return;
     const updatedList = quotations.map(q => {
       if (q.id !== quotation.id) return q;
       const deposit = Math.min(amount, q.totalAmount);
+      const payMethod = method !== undefined ? method : (q.paymentMethod || 'نقدي (كاش)');
       return {
         ...q,
         depositPaid: deposit,
-        remainingAmount: q.totalAmount - deposit,
+        remainingAmount: Math.max(0, q.totalAmount - deposit),
+        paymentMethod: payMethod,
+        splitPayments: split !== undefined ? split : q.splitPayments,
+        status: deposit > 0 ? ('معتمد ومسدد العربون' as const) : q.status,
+      };
+    });
+    setQuotations(updatedList);
+    saveAllQuotations(updatedList);
+  };
+
+  const handlePaymentMethodChange = (method: string) => {
+    if (!quotation) return;
+    let initialSplit = quotation.splitPayments;
+    if (method === 'دفع متعدد / مزيج' && (!initialSplit || (Object.values(initialSplit).reduce((a: number, b: any) => a + (Number(b) || 0), 0) === 0))) {
+      initialSplit = { cash: quotation.depositPaid || 0, instapay: 0, vodafone: 0, visa: 0 };
+    }
+    const updatedList = quotations.map(q => {
+      if (q.id !== quotation.id) return q;
+      return {
+        ...q,
+        paymentMethod: method,
+        splitPayments: initialSplit,
+      };
+    });
+    setQuotations(updatedList);
+    saveAllQuotations(updatedList);
+  };
+
+  const handleSplitPaymentChange = (field: 'cash' | 'instapay' | 'vodafone' | 'visa', val: number) => {
+    if (!quotation) return;
+    const curSplit = quotation.splitPayments || { cash: 0, instapay: 0, vodafone: 0, visa: 0 };
+    const updatedSplit = { ...curSplit, [field]: Math.max(0, val) };
+    const totalDeposit = (Number(updatedSplit.cash) || 0) + (Number(updatedSplit.instapay) || 0) + (Number(updatedSplit.vodafone) || 0) + (Number(updatedSplit.visa) || 0);
+    const deposit = Math.min(totalDeposit, quotation.totalAmount);
+
+    const updatedList = quotations.map(q => {
+      if (q.id !== quotation.id) return q;
+      return {
+        ...q,
+        depositPaid: deposit,
+        remainingAmount: Math.max(0, q.totalAmount - deposit),
+        paymentMethod: 'دفع متعدد / مزيج',
+        splitPayments: updatedSplit,
         status: deposit > 0 ? ('معتمد ومسدد العربون' as const) : q.status,
       };
     });
@@ -666,34 +709,144 @@ export default function PricingDetailPage() {
           </div>
         </div>
 
-        {/* Section 2: Financial Summary Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs text-center">
-            <span className="text-xs text-slate-500 font-bold block">إجمالي المقايسة بالكامل</span>
-            <span className="font-mono font-black text-2xl text-slate-900 mt-1 block">
-              {quotation.totalAmount.toLocaleString()} جنيه
-            </span>
-          </div>
+        {/* Section 2: Financial Summary Cards & Deposit Payment Details */}
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="bg-slate-50/80 p-4 rounded-2xl border border-slate-200 text-center flex flex-col justify-center">
+              <span className="text-xs text-slate-500 font-bold block">إجمالي المقايسة بالكامل</span>
+              <span className="font-mono font-black text-2xl text-slate-900 mt-1 block">
+                {quotation.totalAmount.toLocaleString()} جنيه
+              </span>
+              {(quotation.discountAmount || 0) > 0 && (
+                <span className="text-[11px] text-rose-600 font-bold mt-0.5 block">
+                  (شامل خصم {(quotation.discountAmount || 0).toLocaleString()} ج)
+                </span>
+              )}
+            </div>
 
-          <div className="bg-emerald-50/60 p-4 rounded-2xl border border-emerald-200 shadow-2xs text-center">
-            <span className="text-xs text-emerald-800 font-bold block">العربون المسدد وحجز المخزن</span>
-            <div className="flex items-center justify-center gap-1.5 mt-1">
-              <input
-                type="number"
-                value={quotation.depositPaid || ''}
-                onChange={(e) => handleDepositChange(Number(e.target.value))}
-                className="w-28 bg-white border border-emerald-300 rounded-xl px-3 py-1 text-emerald-950 font-mono font-black text-center text-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                placeholder="0"
-              />
-              <span className="text-sm font-bold text-emerald-900">جنيه</span>
+            <div className="bg-emerald-50/70 p-4 rounded-2xl border border-emerald-200 text-center shadow-3xs">
+              <span className="text-xs text-emerald-800 font-bold block mb-1">العربون المسدد وحجز المخزن</span>
+              <div className="flex items-center justify-center gap-1.5">
+                <input
+                  type="number"
+                  min="0"
+                  value={quotation.depositPaid || ''}
+                  onChange={(e) => handleDepositChange(Number(e.target.value))}
+                  className="w-32 bg-white border border-emerald-300 rounded-xl px-3 py-1.5 text-emerald-950 font-mono font-black text-center text-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-3xs"
+                  placeholder="0"
+                />
+                <span className="text-sm font-bold text-emerald-900">جنيه</span>
+              </div>
+            </div>
+
+            <div className="bg-rose-50/70 p-4 rounded-2xl border border-rose-200 text-center flex flex-col justify-center">
+              <span className="text-xs text-rose-800 font-bold block">المتبقي للتحصيل عند التركيب</span>
+              <span className="font-mono font-black text-2xl text-rose-900 mt-1 block">
+                {quotation.remainingAmount.toLocaleString()} جنيه
+              </span>
             </div>
           </div>
 
-          <div className="bg-rose-50/60 p-4 rounded-2xl border border-rose-200 shadow-2xs text-center">
-            <span className="text-xs text-rose-800 font-bold block">المتبقي للتحصيل عند التركيب</span>
-            <span className="font-mono font-black text-2xl text-rose-900 mt-1 block">
-              {quotation.remainingAmount.toLocaleString()} جنيه
-            </span>
+          {/* Payment Method Selector & Split Breakdown */}
+          <div className="bg-slate-50/70 p-3.5 rounded-xl border border-slate-200/80 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-emerald-700 text-base">payments</span>
+                <span>طريقة دفع العربون (وسيلة السداد):</span>
+              </label>
+              
+              {/* Payment Methods Pills */}
+              <div className="flex flex-wrap items-center gap-1.5">
+                {[
+                  { id: 'نقدي (كاش)', label: '💵 كاش' },
+                  { id: 'إنستا باي', label: '⚡ إنستاباي' },
+                  { id: 'فودافون كاش', label: '📱 فودافون كاش' },
+                  { id: 'فيزا / كارت', label: '💳 فيزا / كارت' },
+                  { id: 'تحويل بنكي', label: '🏦 تحويل بنكي' },
+                  { id: 'دفع متعدد / مزيج', label: '🔀 دفع مقسم / متعدد' },
+                ].map(pm => {
+                  const isSelected = (quotation.paymentMethod || 'نقدي (كاش)') === pm.id;
+                  return (
+                    <button
+                      key={pm.id}
+                      type="button"
+                      onClick={() => handlePaymentMethodChange(pm.id)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                        isSelected
+                          ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      {pm.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Split Payment inputs if 'دفع متعدد / مزيج' */}
+            {(quotation.paymentMethod === 'دفع متعدد / مزيج') && (
+              <div className="bg-amber-50/80 border border-amber-200 p-3 rounded-xl space-y-2 text-xs animate-in fade-in duration-200">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-amber-950 flex items-center gap-1">
+                    <span className="material-symbols-outlined text-amber-700 text-sm">call_split</span>
+                    توزيع مبالغ العربون بين طرق الدفع:
+                  </span>
+                  <span className="font-mono font-bold text-[11px] text-amber-800">
+                    الإجمالي: {((Number(quotation.splitPayments?.cash) || 0) + (Number(quotation.splitPayments?.instapay) || 0) + (Number(quotation.splitPayments?.vodafone) || 0) + (Number(quotation.splitPayments?.visa) || 0)).toLocaleString()} ج
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <div className="bg-white p-2 rounded-lg border border-amber-200">
+                    <label className="font-bold text-slate-700 block mb-1 text-[11px]">💵 كاش:</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={quotation.splitPayments?.cash || ''}
+                      onChange={(e) => handleSplitPaymentChange('cash', Number(e.target.value))}
+                      placeholder="0"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 font-mono font-black text-xs text-slate-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    />
+                  </div>
+
+                  <div className="bg-white p-2 rounded-lg border border-amber-200">
+                    <label className="font-bold text-slate-700 block mb-1 text-[11px]">⚡ إنستاباي:</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={quotation.splitPayments?.instapay || ''}
+                      onChange={(e) => handleSplitPaymentChange('instapay', Number(e.target.value))}
+                      placeholder="0"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 font-mono font-black text-xs text-slate-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    />
+                  </div>
+
+                  <div className="bg-white p-2 rounded-lg border border-amber-200">
+                    <label className="font-bold text-slate-700 block mb-1 text-[11px]">📱 فودافون كاش:</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={quotation.splitPayments?.vodafone || ''}
+                      onChange={(e) => handleSplitPaymentChange('vodafone', Number(e.target.value))}
+                      placeholder="0"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 font-mono font-black text-xs text-slate-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    />
+                  </div>
+
+                  <div className="bg-white p-2 rounded-lg border border-amber-200">
+                    <label className="font-bold text-slate-700 block mb-1 text-[11px]">💳 فيزا / كارت:</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={quotation.splitPayments?.visa || ''}
+                      onChange={(e) => handleSplitPaymentChange('visa', Number(e.target.value))}
+                      placeholder="0"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 font-mono font-black text-xs text-slate-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -1714,8 +1867,12 @@ export default function PricingDetailPage() {
                     localStatus: 'بانتظار القص',
                     createdAt: quotation.date || new Date().toISOString().split('T')[0],
                     totalAmount: Number(quotation.totalAmount) || 0,
+                    discountAmount: Number(quotation.discountAmount) || 0,
                     depositPaid: Number(quotation.depositPaid) || 0,
                     remainingAmount: Number(quotation.remainingAmount) || 0,
+                    paymentMethod: quotation.paymentMethod || 'نقدي (كاش)',
+                    splitPayments: quotation.splitPayments || undefined,
+                    treasury: quotation.treasury || undefined,
                     rooms: mappedRooms.length > 0 ? mappedRooms : quotation.rooms || [],
                   };
 

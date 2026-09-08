@@ -35,9 +35,18 @@ export interface PipelineMasterOrder {
   status: GlobalMasterStage | string;
   localStatus?: LocalTailoringStatus | 'اليوم' | 'مجدول' | string;
   createdAt: string;
+  discountAmount?: number;
   remainingAmount?: number;
   totalAmount?: number;
   depositPaid?: number;
+  paymentMethod?: string;
+  splitPayments?: {
+    cash?: number;
+    instapay?: number;
+    vodafone?: number;
+    visa?: number;
+  };
+  treasury?: string;
   rooms: any[];
 }
 

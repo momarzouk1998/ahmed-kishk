@@ -239,7 +239,12 @@ export default function PipelinePricingPage() {
 
                       {/* Deposit */}
                       <td className="p-3.5 text-left font-mono font-bold text-emerald-800 text-xs align-middle">
-                        {(Number(q.depositPaid) || 0).toLocaleString()} ج
+                        <div>{(Number(q.depositPaid) || 0).toLocaleString()} ج</div>
+                        {Number(q.depositPaid) > 0 && (q as any).paymentMethod && (
+                          <span className="text-[10px] font-sans font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded mt-0.5 inline-block">
+                            {(q as any).paymentMethod}
+                          </span>
+                        )}
                       </td>
 
                       {/* Remaining */}
