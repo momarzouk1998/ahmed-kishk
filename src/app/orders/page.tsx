@@ -91,7 +91,8 @@ export default function CentralOrdersLedgerPage() {
 
     const uniquePipelineMap = new Map<string, PipelineMasterOrder>();
     for (const po of (pipelineOrders || [])) {
-      const key = (po.orderId || po.id || po.customerName || '').trim().toLowerCase();
+      const cleanId = (po.id || po.orderId || '').trim();
+      const key = cleanId ? cleanId.replace(/^ORD-/, '') : `${po.customerName}_${po.phone}_${po.createdAt}`;
       const existing = uniquePipelineMap.get(key);
       if (!existing) {
         uniquePipelineMap.set(key, po);
@@ -105,14 +106,15 @@ export default function CentralOrdersLedgerPage() {
     }
     const dedupedPipelineOrders = Array.from(uniquePipelineMap.values());
 
-    // Map quotations into master list if missing from pipeline
+    // Map quotations into master list if missing from pipeline (Strict ID matching so distinct orders for same customer are never dropped)
     const quotationMasterItems: PipelineMasterOrder[] = (quotations || [])
-      .filter(q => !dedupedPipelineOrders.some(p => 
-        p.orderId === q.id || 
-        p.id === q.id || 
-        p.id === `ORD-${q.id}` || 
-        (p.customerName && q.customerName && p.customerName.trim().toLowerCase() === q.customerName.trim().toLowerCase())
-      ))
+      .filter(q => {
+        const cleanQId = (q.id || '').replace(/^ORD-/, '').trim();
+        return !dedupedPipelineOrders.some(p => {
+          const cleanPId = (p.id || p.orderId || '').replace(/^ORD-/, '').trim();
+          return cleanPId === cleanQId || p.orderId === q.id || p.id === q.id || (p.rooms && q.rooms && (p as any).inspectionId === q.inspectionId);
+        });
+      })
       .map(q => ({
         id: q.id,
         orderId: q.id,
@@ -131,18 +133,12 @@ export default function CentralOrdersLedgerPage() {
 
     // Map un-quoted inspections only (not yet in pipeline and not yet quoted)
     const inspectionMasterItems: PipelineMasterOrder[] = (inspections || [])
-      .filter(insp => 
-        !dedupedPipelineOrders.some(p => 
-          p.id === insp.id || 
-          p.orderId === insp.id || 
-          (p.customerName && insp.customerName && p.customerName.trim().toLowerCase() === insp.customerName.trim().toLowerCase())
-        ) && 
-        !quotations.some(q => 
-          q.inspectionId === insp.id || 
-          q.id === insp.id || 
-          (q.customerName && insp.customerName && q.customerName.trim().toLowerCase() === insp.customerName.trim().toLowerCase())
-        )
-      )
+      .filter(insp => {
+        const inspId = insp.id;
+        const inPipeline = dedupedPipelineOrders.some(p => p.id === inspId || p.orderId === inspId || (p as any).inspectionId === inspId);
+        const inQuotations = (quotations || []).some(q => q.inspectionId === inspId || q.id === inspId);
+        return !inPipeline && !inQuotations;
+      })
       .map(insp => ({
         id: insp.id,
         orderId: insp.id,

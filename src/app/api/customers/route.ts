@@ -10,16 +10,56 @@ export async function GET(request: Request) {
     const restricted = !!(scope && !scope.isAdmin);
 
     // "الفرع" للعميل مُخزَّن فعلياً فى city (لا يوجد عمود branch منفصل — راجع تعليق الـ schema).
-    const [rawCustomers, rawInspections, rawQuotations, rawPipelineOrders, rawSales, collectionsStore] = await Promise.all([
+    const [
+      rawCustomers,
+      rawInspectionsFromDb,
+      rawQuotationsFromDb,
+      rawPipelineOrdersFromDb,
+      rawSales,
+      collectionsStore,
+      quotationsStore,
+      pipelineStore,
+      inspectionsStore
+    ] = await Promise.all([
       prisma.customer.findMany({ where: restricted ? { city: scope!.branch } : {}, orderBy: { updatedAt: 'desc' } }),
       prisma.inspectionRequest.findMany({ where: restricted ? { branch: scope!.branch } : {}, orderBy: { createdAt: 'desc' } }),
       prisma.quotationOrder.findMany({ where: restricted ? { branch: scope!.branch } : {}, orderBy: { createdAt: 'desc' } }),
       prisma.pipelineOrder.findMany({ where: restricted ? { branch: scope!.branch } : {}, orderBy: { createdAt: 'desc' } }),
       prisma.salesInvoice.findMany({ where: restricted ? { branch: scope!.branch } : {}, orderBy: { createdAt: 'desc' } }),
       prisma.systemStore.findUnique({ where: { key: 'ahmed_kishk_collections_v3' } }).catch(() => null),
+      prisma.systemStore.findUnique({ where: { key: 'ahmed_kishk_quotations_data_v4' } }).catch(() => null),
+      prisma.systemStore.findUnique({ where: { key: 'ahmed_kishk_pipeline_orders_v5' } }).catch(() => null),
+      prisma.systemStore.findUnique({ where: { key: 'ahmed_kishk_inspections_data_v4' } }).catch(() => null),
     ]);
 
     const rawCollections: any[] = collectionsStore?.data && Array.isArray(collectionsStore.data) ? collectionsStore.data : [];
+
+    // Merge quotations from DB + SystemStore
+    const qMap = new Map<string, any>();
+    if (quotationsStore?.data && Array.isArray(quotationsStore.data)) {
+      quotationsStore.data.forEach((q: any) => { if (q && q.id) qMap.set(q.id, q); });
+    }
+    rawQuotationsFromDb.forEach(q => { if (q && q.id) qMap.set(q.id, q); });
+    let rawQuotations = Array.from(qMap.values());
+    if (restricted) rawQuotations = rawQuotations.filter((q: any) => q?.branch === scope!.branch);
+
+    // Merge pipeline orders from DB + SystemStore
+    const pMap = new Map<string, any>();
+    if (pipelineStore?.data && Array.isArray(pipelineStore.data)) {
+      pipelineStore.data.forEach((p: any) => { if (p && p.id) pMap.set(p.id, p); });
+    }
+    rawPipelineOrdersFromDb.forEach(p => { if (p && p.id) pMap.set(p.id, p); });
+    let rawPipelineOrders = Array.from(pMap.values());
+    if (restricted) rawPipelineOrders = rawPipelineOrders.filter((p: any) => p?.branch === scope!.branch);
+
+    // Merge inspections from DB + SystemStore
+    const insMap = new Map<string, any>();
+    if (inspectionsStore?.data && Array.isArray(inspectionsStore.data)) {
+      inspectionsStore.data.forEach((i: any) => { if (i && i.id) insMap.set(i.id, i); });
+    }
+    rawInspectionsFromDb.forEach(i => { if (i && i.id) insMap.set(i.id, i); });
+    let rawInspections = Array.from(insMap.values());
+    if (restricted) rawInspections = rawInspections.filter((i: any) => i?.branch === scope!.branch);
 
     // Helper to normalize phone
     const normPhone = (p: string | null | undefined) => (p || '').replace(/\D/g, '').slice(-10);
@@ -61,7 +101,7 @@ export async function GET(request: Request) {
           city: ins.branch || 'غير مسجل',
           openingBalance: 0,
           notes: ins.notes || '',
-          createdAt: ins.createdAt ? ins.createdAt.toISOString().split('T')[0] : (ins.scheduledAt || new Date().toISOString().split('T')[0]),
+          createdAt: ins.createdAt ? (typeof ins.createdAt === 'string' ? ins.createdAt : ins.createdAt.toISOString().split('T')[0]) : (ins.scheduledAt || new Date().toISOString().split('T')[0]),
           inspections: [],
           quotations: [],
           sales: [],
@@ -84,7 +124,7 @@ export async function GET(request: Request) {
           city: qot.branch || 'غير مسجل',
           openingBalance: 0,
           notes: '',
-          createdAt: qot.date || (qot.createdAt ? qot.createdAt.toISOString().split('T')[0] : new Date().toISOString().split('T')[0]),
+          createdAt: qot.date || (qot.createdAt ? (typeof qot.createdAt === 'string' ? qot.createdAt : qot.createdAt.toISOString().split('T')[0]) : new Date().toISOString().split('T')[0]),
           inspections: [],
           quotations: [],
           sales: [],
@@ -94,7 +134,7 @@ export async function GET(request: Request) {
       customerMap.get(key).quotations.push(qot);
     }
 
-    // 4. Discover & match pipeline orders (avoid double counting if quotation has same inspectionId / orderId)
+    // 4. Discover & match pipeline orders (avoid duplicating if quotation has same id)
     for (const p of rawPipelineOrders) {
       const key = normPhone(p.phone) || normName(p.customerName);
       if (!key) continue;
@@ -107,7 +147,7 @@ export async function GET(request: Request) {
           city: p.branch || 'غير مسجل',
           openingBalance: 0,
           notes: '',
-          createdAt: p.createdAt ? p.createdAt.toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          createdAt: p.createdAt ? (typeof p.createdAt === 'string' ? p.createdAt : p.createdAt.toISOString().split('T')[0]) : new Date().toISOString().split('T')[0],
           inspections: [],
           quotations: [],
           sales: [],
@@ -115,7 +155,11 @@ export async function GET(request: Request) {
         });
       }
       const existingQots = customerMap.get(key).quotations;
-      const alreadyHas = existingQots.some((q: any) => q.id === p.orderId || q.id === p.id || (q.customerName === p.customerName && q.totalAmount === p.totalAmount));
+      const cleanPId = (p.id || p.orderId || '').replace(/^ORD-/, '').trim();
+      const alreadyHas = existingQots.some((q: any) => {
+        const cleanQId = (q.id || q.orderId || '').replace(/^ORD-/, '').trim();
+        return cleanQId === cleanPId || q.id === p.orderId || q.id === p.id;
+      });
       if (!alreadyHas) {
         customerMap.get(key).quotations.push(p);
       }
