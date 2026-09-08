@@ -5,6 +5,7 @@ import PageShell from '@/components/PageShell';
 import Link from 'next/link';
 import { getStoredInspections, getStoredQuotations } from '@/lib/inspectionsStore';
 import { getStoredPipelineOrders } from '@/lib/pipelineStore';
+import { getTodayDateStr } from '@/lib/dateUtils';
 
 export default function DashboardPage() {
   const [timeRange, setTimeRange] = useState<'MONTH' | 'WEEK' | 'TODAY'>('TODAY');
@@ -49,16 +50,15 @@ export default function DashboardPage() {
     loadDashboardData();
   }, []);
 
-  // Helper to filter data by timeRange
+  // Helper to filter data by timeRange (Cairo local time 12:00 AM boundary)
   const filterByRange = (items: any[], dateField = 'createdAt') => {
     if (!items || items.length === 0) return [];
-    const now = new Date();
-    const todayStr = now.toISOString().split('T')[0];
+    const todayStr = getTodayDateStr();
 
     return items.filter(item => {
       const d = item[dateField] || item.date || item.scheduledAt || item.createdAt;
       if (!d) return true;
-      const itemDateStr = String(d).split('T')[0].split(' ')[0];
+      const itemDateStr = getTodayDateStr(d) || String(d).split('T')[0].split(' ')[0];
 
       if (timeRange === 'TODAY') {
         return itemDateStr === todayStr;
@@ -66,14 +66,13 @@ export default function DashboardPage() {
 
       if (timeRange === 'WEEK') {
         const itemDate = new Date(itemDateStr);
-        const diffDays = (now.getTime() - itemDate.getTime()) / (1000 * 3600 * 24);
-        return diffDays <= 7;
+        const todayDate = new Date(todayStr);
+        const diffDays = (todayDate.getTime() - itemDate.getTime()) / (1000 * 3600 * 24);
+        return diffDays >= 0 && diffDays <= 7;
       }
 
       if (timeRange === 'MONTH') {
-        const itemDate = new Date(itemDateStr);
-        const diffDays = (now.getTime() - itemDate.getTime()) / (1000 * 3600 * 24);
-        return diffDays <= 30;
+        return itemDateStr.substring(0, 7) === todayStr.substring(0, 7);
       }
 
       return true;

@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
 import { useRouter } from 'next/navigation';
-import { formatDateOnly } from '@/lib/dateUtils';
+import { formatDateOnly, getTodayDateStr, getYesterdayDateStr } from '@/lib/dateUtils';
 import FabricSalesPrintModal from '@/components/FabricSalesPrintModal';
 import PdfPrintButton from '@/components/PdfPrintButton';
 
@@ -305,7 +305,7 @@ export default function FabricSalesPage() {
     const newRet: CustomerSalesReturn = {
       id: `RET-${Date.now()}`,
       returnNumber: retNum,
-      date: new Date().toISOString().split('T')[0],
+      date: getTodayDateStr(),
       invoiceNumber: retInvNumber.trim() || '—',
       customerName: retCustName.trim(),
       customerPhone: retCustPhone.trim(),
@@ -323,8 +323,9 @@ export default function FabricSalesPage() {
         body: JSON.stringify(newRet),
       });
     } catch (err) {
-      console.error('Failed to save sales return to server:', err);
+      console.error(err);
     }
+
     setShowAddReturnModal(false);
     setRetCustName('');
     setRetCustPhone('');
@@ -332,11 +333,11 @@ export default function FabricSalesPage() {
     setRetAmount(500);
   };
 
-  // Date & Branch helpers
+  // Date & Branch helpers (Cairo local time 12:00 AM boundary)
   const matchesDate = (invDateStr: string | undefined): boolean => {
     if (!invDateStr) return dateFilter === 'all';
-    const d = invDateStr.split('T')[0].split(' ')[0];
-    const today = new Date().toISOString().split('T')[0];
+    const d = getTodayDateStr(invDateStr) || invDateStr.split('T')[0].split(' ')[0];
+    const today = getTodayDateStr();
 
     if (dateFrom || dateTo) {
       if (dateFrom && d < dateFrom) return false;
@@ -346,12 +347,14 @@ export default function FabricSalesPage() {
 
     if (dateFilter === 'today') return d === today;
     if (dateFilter === 'yesterday') {
-      const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const yesterday = getYesterdayDateStr();
       return d === yesterday;
     }
     if (dateFilter === 'week') {
-      const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-      return d >= weekAgo;
+      const todayDate = new Date(today);
+      const itemDate = new Date(d);
+      const diffDays = (todayDate.getTime() - itemDate.getTime()) / (1000 * 3600 * 24);
+      return diffDays >= 0 && diffDays <= 7;
     }
     if (dateFilter === 'month') {
       return d.substring(0, 7) === today.substring(0, 7);

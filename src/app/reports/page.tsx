@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import PageShell from '@/components/PageShell';
-import { formatDateOnly } from '@/lib/dateUtils';
+import { formatDateOnly, getTodayDateStr } from '@/lib/dateUtils';
 import PdfPrintButton from '@/components/PdfPrintButton';
 import { useCurrentUser } from '@/lib/useCurrentUser';
 import BranchSelect from '@/components/BranchSelect';
@@ -147,15 +147,17 @@ export default function ReportsPage() {
     })();
   }, []);
 
-  // ─── Date/Branch filtering helper ────────────────────────────
+  // ─── Date/Branch filtering helper (Cairo local time 12:00 AM boundary) ────────────────────────────
   const inPeriod = (dateStr: string | undefined): boolean => {
     if (!dateStr) return period === 'all';
-    const d = dateStr.split('T')[0];
-    const today = new Date().toISOString().split('T')[0];
+    const d = getTodayDateStr(dateStr) || String(dateStr).split('T')[0];
+    const today = getTodayDateStr();
     if (period === 'today') return d === today;
     if (period === 'thisWeek') {
-      const wkAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-      return d >= wkAgo;
+      const todayDate = new Date(today);
+      const itemDate = new Date(d);
+      const diffDays = (todayDate.getTime() - itemDate.getTime()) / (1000 * 3600 * 24);
+      return diffDays >= 0 && diffDays <= 7;
     }
     if (period === 'thisMonth') return d.substring(0, 7) === today.substring(0, 7);
     return true;
