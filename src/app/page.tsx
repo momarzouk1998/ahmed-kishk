@@ -340,7 +340,7 @@ export default function DashboardPage() {
             </p>
           </div>
 
-          {/* Time Range Filter Buttons (Today -> Week -> Month -> All) */}
+          {/* Time Range Filter Buttons (اليوم -> الأسبوع -> الشهر -> الكل) */}
           <div className="flex bg-slate-100/90 p-1 rounded-2xl gap-1 self-start sm:self-auto border border-slate-200 shadow-xs">
             <button
               onClick={() => setTimeRange('TODAY')}
@@ -356,7 +356,7 @@ export default function DashboardPage() {
                 timeRange === 'WEEK' ? 'bg-amber-500 text-white shadow-sm ring-1 ring-amber-400' : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
               }`}
             >
-              هذا الأسبوع
+              الأسبوع
             </button>
             <button
               onClick={() => setTimeRange('MONTH')}
@@ -364,7 +364,7 @@ export default function DashboardPage() {
                 timeRange === 'MONTH' ? 'bg-amber-500 text-white shadow-sm ring-1 ring-amber-400' : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
               }`}
             >
-              هذا الشهر
+              الشهر
             </button>
             <button
               onClick={() => setTimeRange('ALL')}
