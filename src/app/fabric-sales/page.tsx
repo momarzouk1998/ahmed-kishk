@@ -301,9 +301,9 @@ export default function FabricSalesPage() {
     e.preventDefault();
     if (!retCustName.trim() || retAmount <= 0) return;
 
-    const retNum = `RET-2026-${String(returns.length + 1).padStart(3, '0')}`;
+    const retNum = `RET-2026-${Date.now().toString().slice(-6)}${Math.floor(10 + Math.random() * 90)}`;
     const newRet: CustomerSalesReturn = {
-      id: `RET-${Date.now()}`,
+      id: `RET-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`,
       returnNumber: retNum,
       date: getTodayDateStr(),
       invoiceNumber: retInvNumber.trim() || '—',

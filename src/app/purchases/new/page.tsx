@@ -145,14 +145,7 @@ export default function NewPurchaseInvoicePage() {
           }
         }
 
-        let existingCount = 0;
-        if (countRes.ok) {
-          const countJson = await countRes.json();
-          if (Array.isArray(countJson.purchases)) {
-            existingCount = countJson.purchases.length;
-          }
-        }
-        setInvoiceNumber(`PUR-2026-${String(existingCount + 1).padStart(3, '0')}`);
+        setInvoiceNumber(`PUR-2026-${Date.now().toString().slice(-6)}${Math.floor(10 + Math.random() * 90)}`);
       } catch (err) {
         console.error('Error loading purchase page data:', err);
       } finally {
