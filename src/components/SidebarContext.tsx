@@ -12,6 +12,9 @@ interface SidebarContextType {
   // Accordion sections — live here so remounts never reset them
   expandedSections: Record<string, boolean>;
   toggleSection: (key: string) => void;
+  // صفحات بملء الشاشة بدون هيدر (زي نقطة البيع) بتحجب شريط التنقل السريع
+  // أسفل الشاشة عشان مايتغطاش زرار إتمام البيع أو أي عنصر تحت فى الشاشة.
+  hideBottomNav: boolean;
 }
 
 const SidebarContext = createContext<SidebarContextType | null>(null);
@@ -24,7 +27,7 @@ const defaultSections: Record<string, boolean> = {
   admin: false,
 };
 
-export function SidebarProvider({ children }: { children: React.ReactNode }) {
+export function SidebarProvider({ children, hideBottomNav = false }: { children: React.ReactNode; hideBottomNav?: boolean }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
@@ -103,6 +106,7 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
       isOpen, open, close, toggle,
       isCollapsed, toggleCollapse,
       expandedSections, toggleSection,
+      hideBottomNav,
     }}>
       {children}
     </SidebarContext.Provider>

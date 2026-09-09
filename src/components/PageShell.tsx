@@ -16,7 +16,7 @@ interface PageShellProps {
 }
 
 function ShellContent({ title, badge, action, children, fullWidth, noHeader }: PageShellProps) {
-  const { isCollapsed } = useSidebar();
+  const { isCollapsed, hideBottomNav } = useSidebar();
 
   // Track whether the first server→localStorage sync has completed
   const [syncReady, setSyncReady] = React.useState(false);
@@ -35,7 +35,14 @@ function ShellContent({ title, badge, action, children, fullWidth, noHeader }: P
       <Sidebar />
       {!noHeader && <Header title={title} badge={badge} action={action} />}
       <div className={`${noHeader ? 'pt-1' : 'pt-[calc(4rem+env(safe-area-inset-top))]'} transition-all duration-300 ${isCollapsed ? 'lg:pr-20' : 'lg:pr-64'}`}>
-        <main className={fullWidth ? "p-1.5 sm:p-2 lg:p-2.5 w-full max-w-full overflow-x-hidden" : "px-4 sm:px-6 lg:px-8 py-6 lg:py-8 max-w-full overflow-x-hidden"}>
+        {/* pb الإضافي هنا (موبايل بس) عشان يعوّض ارتفاع شريط التنقل السريع الثابت
+            أسفل الشاشة (Sidebar.tsx) + الـ safe-area، عشان آخر محتوى فى أي صفحة
+            ميتغطّاش بيه. على lg+ الشريط أصلاً مش ظاهر فبيرجع للـ padding العادي. */}
+        <main className={
+          fullWidth
+            ? `p-1.5 sm:p-2 lg:pb-2.5 w-full max-w-full overflow-x-hidden ${hideBottomNav ? 'pb-1.5 sm:pb-2' : 'pb-[calc(4.5rem+env(safe-area-inset-bottom))]'}`
+            : `px-4 sm:px-6 lg:px-8 pt-6 lg:pt-8 lg:pb-8 max-w-full overflow-x-hidden ${hideBottomNav ? 'pb-6' : 'pb-[calc(5.5rem+env(safe-area-inset-bottom))]'}`
+        }>
           {children}
         </main>
       </div>
@@ -45,7 +52,7 @@ function ShellContent({ title, badge, action, children, fullWidth, noHeader }: P
 
 export default function PageShell({ title, badge, action, children, fullWidth, noHeader }: PageShellProps) {
   return (
-    <SidebarProvider>
+    <SidebarProvider hideBottomNav={!!noHeader}>
       <ShellContent title={title} badge={badge} action={action} fullWidth={fullWidth} noHeader={noHeader}>{children}</ShellContent>
     </SidebarProvider>
   );

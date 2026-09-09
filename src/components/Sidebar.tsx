@@ -18,7 +18,7 @@ interface CurrentUser {
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { isOpen, close, isCollapsed, toggleCollapse, expandedSections, toggleSection } = useSidebar();
+  const { isOpen, close, isCollapsed, toggleCollapse, expandedSections, toggleSection, hideBottomNav } = useSidebar();
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [allowedPageIds, setAllowedPageIds] = useState<string[] | null>(null);
 
@@ -180,6 +180,14 @@ export default function Sidebar() {
   const pipelinePages = ALL_SYSTEM_PAGES.filter(p => p.category === 'مراحل الستائر' && isAllowed(p.id));
   const salesPages = ALL_SYSTEM_PAGES.filter(p => p.category === 'المبيعات والحسابات' && isAllowed(p.id) && p.id !== 'p_dashboard');
   const adminPages = ALL_SYSTEM_PAGES.filter(p => p.category === 'الإدارة والمخزون' && isAllowed(p.id));
+
+  // شريط تنقّل سريع أسفل الشاشة (موبايل فقط) — 4 صفحات مختارة، وبيحترم صلاحيات
+  // كل موظف زي السايد بار بالظبط (لو صفحة مش مسموحة له، بتختفي من الشريط مش
+  // بتتعرض معطّلة).
+  const BOTTOM_NAV_PAGE_IDS = ['p_dashboard', 'p_fabric_sales', 'p_inspections', 'p_inventory'];
+  const bottomNavPages = BOTTOM_NAV_PAGE_IDS
+    .map(id => ALL_SYSTEM_PAGES.find(p => p.id === id))
+    .filter((p): p is PagePermission => !!p && isAllowed(p.id));
 
   const roleLabels: Record<string, string> = {
     ADMIN: 'مدير النظام',
@@ -504,6 +512,33 @@ export default function Sidebar() {
           {sidebarContent}
         </aside>
       </div>
+
+      {/* Bottom Quick-Nav Bar — mobile only, إضافية بحتة مش بديل عن السايد بار/الدرج */}
+      {!hideBottomNav && bottomNavPages.length > 0 && (
+        <nav
+          className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#0f172a] border-t border-slate-800/80 flex items-stretch shadow-2xl"
+          style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+        >
+          {bottomNavPages.map(page => {
+            const isActive = pathname === page.href || (page.href !== '/' && pathname.startsWith(page.href + '/'));
+            return (
+              <Link
+                key={page.id}
+                href={page.href}
+                onClick={close}
+                className="flex-1 flex flex-col items-center justify-center gap-0.5 py-2 min-h-[52px] transition-colors"
+              >
+                <span className={`material-symbols-outlined text-[22px] ${isActive ? 'text-brand-gold' : 'text-slate-400'}`}>
+                  {page.icon}
+                </span>
+                <span className={`text-[10px] font-bold ${isActive ? 'text-brand-gold' : 'text-slate-400'}`}>
+                  {page.shortName}
+                </span>
+              </Link>
+            );
+          })}
+        </nav>
+      )}
 
       <IosInstallModal isOpen={showIosModal} onClose={() => setShowIosModal(false)} />
     </>
