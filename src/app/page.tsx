@@ -165,131 +165,80 @@ export default function DashboardPage() {
     .filter((q: any) => q.status !== 'ملغي' && q.status !== 'مكتمل')
     .reduce((sum: number, q: any) => sum + (Number(q.remainingAmount) || 0), 0);
 
-  // Pipeline Stages Progress Summary (Live Dynamic - كل أوردر يُحتسب فى مرحلته النشطة الحالية فقط لمنع التكرار)
-  const normP = (p: any) => (p || '').replace(/\D/g, '').slice(-10);
-  const normN = (n: any) => (n || '').trim().toLowerCase();
+  // Pipeline Stages Progress Summary (تطابق تام وموحّد مع جدول الأوردرات /orders بدون أي تكرار)
+  const stageRank: Record<string, number> = {
+    'المعاينات': 1,
+    'انتظار تسعير': 2,
+    'في المقص': 3,
+    'في الورشة': 4,
+    'تجهيز الاكسسوارات': 5,
+    'جاهز للاستلام': 6,
+    'جاهز للتركيب': 7,
+    'مكتمل': 8,
+  };
 
-  // معرّفات وأرقام هواتف العملاء الذين تجاوزوا مراحل المعاينة والتسعير ودخلوا مراحل الورشة
-  const advancedKeys = new Set<string>();
-  const advancedPhones = new Set<string>();
-  const advancedNames = new Set<string>();
-
-  rawOrders.forEach((o: any) => {
-    if (o.id) advancedKeys.add(String(o.id).trim());
-    if (o.orderId) advancedKeys.add(String(o.orderId).trim());
-    if (o.inspectionId) advancedKeys.add(String(o.inspectionId).trim());
-    const p = normP(o.phone);
-    if (p) advancedPhones.add(p);
-    const n = normN(o.customerName);
-    if (n) advancedNames.add(n);
-  });
-
-  rawQuotations.forEach((q: any) => {
-    const normStatus = normalizeQuotationStatus(q.status);
-    const isAdvanced = (Number(q.depositPaid) || 0) > 0 || [
-      'معتمد ومسدد العربون', 'تم التحويل للورشة', 'في المقص', 'في الورشة',
-      'تجهيز الاكسسوارات', 'جاهز للاستلام', 'جاهز للتركيب', 'مكتمل'
-    ].includes(normStatus);
-
-    if (isAdvanced) {
-      if (q.id) advancedKeys.add(String(q.id).trim());
-      if (q.inspectionId) advancedKeys.add(String(q.inspectionId).trim());
-      const p = normP(q.phone);
-      if (p) advancedPhones.add(p);
-      const n = normN(q.customerName);
-      if (n) advancedNames.add(n);
-    }
-  });
-
-  // 1. رفع المقاسات: المعاينات الميدانية الجارية فقط (التي لم تنتقل للتسعير أو الورشة بعد)
-  const stage1Count = rawInspections.filter((i: any) => {
-    if (i.status === 'ملغي' || i.status === 'مكتمل' || i.status === 'قيد التسعير' || i.status === 'في الورشة') return false;
-    if (i.id && advancedKeys.has(String(i.id).trim())) return false;
-    const p = normP(i.phone);
-    if (p && advancedPhones.has(p)) return false;
-    const n = normN(i.customerName);
-    if (n && advancedNames.has(n)) return false;
-
-    const hasQuote = rawQuotations.some((q: any) =>
-      (q.inspectionId && q.inspectionId === i.id) ||
-      (q.id && q.id === i.id) ||
-      (p && normP(q.phone) === p) ||
-      (n && normN(q.customerName) === n)
-    );
-    return !hasQuote;
-  }).length;
-
-  // 2. التسعير والعقد: المقايسات المفتوحة بانتظار العربون والتعاقد (لم تسدد العربون ولم تحول للورشة بعد)
-  const stage2Count = rawQuotations.filter((q: any) => {
-    if (q.status === 'ملغي' || q.status === 'مكتمل') return false;
-    const normStatus = normalizeQuotationStatus(q.status);
-    if ([
-      'معتمد ومسدد العربون', 'تم التحويل للورشة', 'في المقص', 'في الورشة',
-      'تجهيز الاكسسوارات', 'جاهز للاستلام', 'جاهز للتركيب', 'مكتمل'
-    ].includes(normStatus)) return false;
-
-    if ((Number(q.depositPaid) || 0) > 0) return false;
-
-    if (q.id && advancedKeys.has(String(q.id).trim())) return false;
-    if (q.inspectionId && advancedKeys.has(String(q.inspectionId).trim())) return false;
-    const p = normP(q.phone);
-    if (p && advancedPhones.has(p)) return false;
-    const n = normN(q.customerName);
-    if (n && advancedNames.has(n)) return false;
-
-    return true;
-  }).length;
-
-  // أوردرات الورشة والتركيب الفريدة النشطة (مراحل 3، 4، 5، 6)
-  const activeWorkshopOrders = (() => {
-    const map = new Map<string, any>();
-    rawOrders.forEach((o: any) => {
-      const key = o.orderId || o.id || o.inspectionId || normP(o.phone) || normN(o.customerName);
-      if (key && !map.has(key)) map.set(key, o);
-    });
-    rawQuotations.forEach((q: any) => {
-      const normStatus = normalizeQuotationStatus(q.status);
-      const isPaidOrTransferred = (Number(q.depositPaid) || 0) > 0 || [
-        'معتمد ومسدد العربون', 'تم التحويل للورشة', 'في المقص', 'في الورشة',
-        'تجهيز الاكسسوارات', 'جاهز للاستلام', 'جاهز للتركيب'
-      ].includes(normStatus);
-
-      if (isPaidOrTransferred) {
-        const key = q.id || q.orderId || q.inspectionId || normP(q.phone) || normN(q.customerName);
-        if (key && !map.has(key)) {
-          map.set(key, {
-            ...q,
-            status: normStatus === 'معتمد ومسدد العربون' || normStatus === 'تم التحويل للورشة' ? 'في الورشة' : q.status
-          });
-        }
+  const uniquePipelineMap = new Map<string, any>();
+  for (const po of (rawOrders || [])) {
+    const cleanId = (po.id || po.orderId || '').trim();
+    const key = cleanId ? cleanId.replace(/^ORD-/, '') : `${po.customerName}_${po.phone}_${po.createdAt}`;
+    const existing = uniquePipelineMap.get(key);
+    if (!existing) {
+      uniquePipelineMap.set(key, po);
+    } else {
+      const rankExisting = stageRank[normalizeMasterStage(existing.status)] || 0;
+      const rankNew = stageRank[normalizeMasterStage(po.status)] || 0;
+      if (rankNew >= rankExisting) {
+        uniquePipelineMap.set(key, po);
       }
+    }
+  }
+  const dedupedPipelineOrders = Array.from(uniquePipelineMap.values());
+
+  const normClean = (val: any) => (val || '').replace(/\D/g, '').slice(-10);
+  const normCleanName = (val: any) => (val || '').trim().toLowerCase();
+
+  // جلب المقايسات غير المسجلة بعد في الأوردرات
+  const quotationMasterItems = (rawQuotations || []).filter(q => {
+    const cleanQId = (q.id || '').replace(/^ORD-/, '').trim();
+    return !dedupedPipelineOrders.some(p => {
+      const cleanPId = (p.id || p.orderId || '').replace(/^ORD-/, '').trim();
+      const matchId = cleanPId === cleanQId || p.orderId === q.id || p.id === q.id || (p.rooms && q.rooms && (p as any).inspectionId === q.inspectionId);
+      const matchCust = (p.phone && q.phone && normClean(p.phone) === normClean(q.phone)) ||
+        (p.customerName && q.customerName && normCleanName(p.customerName) === normCleanName(q.customerName));
+      return matchId || matchCust;
     });
+  });
 
-    return Array.from(map.values()).filter((o: any) => o.status !== 'مكتمل' && o.status !== 'ملغي');
-  })();
+  // جلب المعاينات الميدانية غير المسجلة بعد في الأوردرات أو المقايسات
+  const inspectionMasterItems = (rawInspections || []).filter(insp => {
+    const inspId = insp.id;
+    const inPipeline = dedupedPipelineOrders.some(p =>
+      p.id === inspId || p.orderId === inspId || (p as any).inspectionId === inspId ||
+      (p.phone && insp.phone && normClean(p.phone) === normClean(insp.phone)) ||
+      (p.customerName && insp.customerName && normCleanName(p.customerName) === normCleanName(insp.customerName))
+    );
+    const inQuotations = (rawQuotations || []).some(q =>
+      q.inspectionId === inspId || q.id === inspId ||
+      (q.phone && insp.phone && normClean(q.phone) === normClean(insp.phone)) ||
+      (q.customerName && insp.customerName && normCleanName(q.customerName) === normCleanName(insp.customerName))
+    );
+    return !inPipeline && !inQuotations && insp.status !== 'ملغي' && insp.status !== 'مكتمل';
+  });
 
-  // 3. قص القماش
-  const stage3Count = activeWorkshopOrders.filter((o: any) => {
-    const st = normalizeMasterStage(o.status);
-    return st === 'في المقص';
-  }).length;
+  const masterPipelineOrders = [
+    ...dedupedPipelineOrders,
+    ...quotationMasterItems.map((q: any) => ({ ...q, status: normalizeMasterStage(q.status) })),
+    ...inspectionMasterItems.map((i: any) => ({ ...i, status: 'المعاينات' })),
+  ].filter((o: any) => o.status !== 'مكتمل' && o.status !== 'ملغي');
 
-  // 4. الورشة والتفصيل
-  const stage4Count = activeWorkshopOrders.filter((o: any) => {
-    const st = normalizeMasterStage(o.status);
-    return st === 'في الورشة';
-  }).length;
-
-  // 5. الإكسسوارات
-  const stage5Count = activeWorkshopOrders.filter((o: any) => {
-    const st = normalizeMasterStage(o.status);
-    return st === 'تجهيز الاكسسوارات';
-  }).length;
-
-  // 6. التركيب والتسليم
-  const stage6Count = activeWorkshopOrders.filter((o: any) => {
-    const st = normalizeMasterStage(o.status);
-    return st === 'جاهز للاستلام' || st === 'جاهز للتركيب';
+  const stage1Count = masterPipelineOrders.filter((o: any) => normalizeMasterStage(o.status) === 'المعاينات').length;
+  const stage2Count = masterPipelineOrders.filter((o: any) => normalizeMasterStage(o.status) === 'انتظار تسعير').length;
+  const stage3Count = masterPipelineOrders.filter((o: any) => normalizeMasterStage(o.status) === 'في المقص').length;
+  const stage4Count = masterPipelineOrders.filter((o: any) => normalizeMasterStage(o.status) === 'في الورشة').length;
+  const stage5Count = masterPipelineOrders.filter((o: any) => normalizeMasterStage(o.status) === 'تجهيز الاكسسوارات').length;
+  const stage6Count = masterPipelineOrders.filter((o: any) => {
+    const s = normalizeMasterStage(o.status);
+    return s === 'جاهز للاستلام' || s === 'جاهز للتركيب';
   }).length;
 
   const pipelineStats = [
