@@ -7,6 +7,7 @@ import PdfPrintButton from '@/components/PdfPrintButton';
 import { useCurrentUser } from '@/lib/useCurrentUser';
 import BranchSelect from '@/components/BranchSelect';
 import { normalizeBranchName } from '@/lib/branches';
+import Pagination from '@/components/Pagination';
 
 interface SalesInvoice {
   id: string;
@@ -703,6 +704,48 @@ function KpiStrip({ items }: { items: { label: string; value: string; color?: st
 }
 
 function SalesReport({ kpis, invoices, quotations, collections, branchLabel, periodLabel, isAdmin, userBranch, selectedBranch }: any) {
+  // Invoices table pagination & search
+  const [invSearch, setInvSearch] = useState('');
+  const [invPage, setInvPage] = useState(1);
+  const [invPageSize, setInvPageSize] = useState(25);
+
+  const filteredInvoices = useMemo(() => {
+    if (!invSearch.trim()) return invoices || [];
+    const q = invSearch.trim().toLowerCase();
+    return (invoices || []).filter((inv: SalesInvoice) =>
+      (inv.invoiceNumber || '').toLowerCase().includes(q) ||
+      (inv.customerName || '').toLowerCase().includes(q) ||
+      (inv.phone || '').includes(q) ||
+      (inv.branch || '').toLowerCase().includes(q) ||
+      (inv.paymentMethod || '').toLowerCase().includes(q)
+    );
+  }, [invoices, invSearch]);
+
+  useEffect(() => {
+    setInvPage(1);
+  }, [invSearch, invPageSize, selectedBranch, periodLabel]);
+
+  const pagedInvoices = useMemo(() => {
+    if (invPageSize <= 0) return filteredInvoices;
+    return filteredInvoices.slice((invPage - 1) * invPageSize, invPage * invPageSize);
+  }, [filteredInvoices, invPage, invPageSize]);
+
+  // Quotations table pagination
+  const [qotPage, setQotPage] = useState(1);
+  const [qotPageSize, setQotPageSize] = useState(25);
+  const pagedQuotations = useMemo(() => {
+    if (qotPageSize <= 0) return quotations || [];
+    return (quotations || []).slice((qotPage - 1) * qotPageSize, qotPage * qotPageSize);
+  }, [quotations, qotPage, qotPageSize]);
+
+  // Collections table pagination
+  const [colPage, setColPage] = useState(1);
+  const [colPageSize, setColPageSize] = useState(25);
+  const pagedCollections = useMemo(() => {
+    if (colPageSize <= 0) return collections || [];
+    return (collections || []).slice((colPage - 1) * colPageSize, colPage * colPageSize);
+  }, [collections, colPage, colPageSize]);
+
   // تصفية الخزن: لو المستخدم أدمن ومحدد الكل تظهر الـ 4، لو مش أدمن تظهر خزنته فقط
   const visibleTreasuries = useMemo(() => {
     if (!kpis.branchTreasuries || !Array.isArray(kpis.branchTreasuries)) return [];
@@ -829,13 +872,41 @@ function SalesReport({ kpis, invoices, quotations, collections, branchLabel, per
 
       {/* 1. Fabric Sales POS Invoices Table */}
       <div className="card bg-white rounded-2xl border border-slate-200 p-3">
-        <div className="flex justify-between items-center pb-2 mb-2 border-b border-slate-100">
-          <h3 className="font-black text-xs text-slate-900 flex items-center gap-1.5">
-            <span className="material-symbols-outlined text-sky-600 text-sm">storefront</span>
-            <span>فواتير بيع الأقمشة بالمتر ({invoices.length}) — {branchLabel} • {periodLabel}</span>
-          </h3>
-          <span className="text-[11px] font-mono font-bold text-emerald-700">مقبوضات فواتير الأقمشة: {(kpis.fabricSalesPaid || 0).toLocaleString()} ج</span>
+        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 pb-2 mb-2 border-b border-slate-100">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="font-black text-xs text-slate-900 flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-sky-600 text-sm">storefront</span>
+              <span>فواتير بيع الأقمشة بالمتر ({invoices?.length || 0}) — {branchLabel} • {periodLabel}</span>
+            </h3>
+            <span className="text-[11px] font-mono font-bold text-emerald-700">
+              (مقبوضات: {(kpis.fabricSalesPaid || 0).toLocaleString()} ج)
+            </span>
+          </div>
+
+          <div className="no-print flex items-center gap-2">
+            <div className="relative">
+              <span className="material-symbols-outlined absolute right-2 top-1.5 text-slate-400 text-sm">search</span>
+              <input
+                type="text"
+                value={invSearch}
+                onChange={e => setInvSearch(e.target.value)}
+                placeholder="بحث برقم الفاتورة أو العميل..."
+                className="pr-7 pl-2 py-1 text-xs border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:outline-none w-44 font-bold"
+              />
+            </div>
+            <select
+              value={invPageSize}
+              onChange={e => setInvPageSize(Number(e.target.value))}
+              className="px-2 py-1 text-xs border border-slate-200 rounded-lg bg-slate-50 font-bold text-slate-700 cursor-pointer"
+            >
+              <option value={25}>25 لكل صفحة</option>
+              <option value={50}>50 لكل صفحة</option>
+              <option value={100}>100 لكل صفحة</option>
+              <option value={0}>عرض الكل</option>
+            </select>
+          </div>
         </div>
+
         <div className="overflow-x-auto">
           <table className="w-full text-right text-[11px] border-collapse">
             <thead className="bg-slate-100 text-slate-700 border-b border-slate-300">
@@ -851,9 +922,9 @@ function SalesReport({ kpis, invoices, quotations, collections, branchLabel, per
               </tr>
             </thead>
             <tbody>
-              {invoices.length === 0 ? (
-                <tr><td colSpan={8} className="p-6 text-center text-slate-400 font-bold">لا توجد فواتير بيع أقمشة فى الفترة المحددة</td></tr>
-              ) : invoices.map((inv: SalesInvoice) => (
+              {pagedInvoices.length === 0 ? (
+                <tr><td colSpan={8} className="p-6 text-center text-slate-400 font-bold">لا توجد فواتير بيع أقمشة مطابقة</td></tr>
+              ) : pagedInvoices.map((inv: SalesInvoice) => (
                 <tr key={inv.id} className="border-b border-slate-100 hover:bg-slate-50">
                   <td className="p-2 font-mono font-bold text-slate-900">{inv.invoiceNumber}</td>
                   <td className="p-2 font-mono text-slate-600">{inv.date ? formatDateOnly(inv.date) : '—'}</td>
@@ -884,6 +955,18 @@ function SalesReport({ kpis, invoices, quotations, collections, branchLabel, per
             )}
           </table>
         </div>
+
+        {invPageSize > 0 && filteredInvoices.length > invPageSize && (
+          <div className="no-print mt-2">
+            <Pagination
+              currentPage={invPage}
+              totalItems={filteredInvoices.length}
+              pageSize={invPageSize}
+              onPageChange={setInvPage}
+              itemName="فاتورة"
+            />
+          </div>
+        )}
       </div>
 
       {/* 2. Curtain Contracts & Quotations Table */}
@@ -911,7 +994,7 @@ function SalesReport({ kpis, invoices, quotations, collections, branchLabel, per
                 </tr>
               </thead>
               <tbody>
-                {quotations.map((q: any) => (
+                {pagedQuotations.map((q: any) => (
                   <tr key={q.id} className="border-b border-slate-100 hover:bg-slate-50">
                     <td className="p-2 font-mono font-bold text-slate-900">{q.id}</td>
                     <td className="p-2 font-mono text-slate-600">{q.date || q.createdAt ? formatDateOnly(q.date || q.createdAt) : '—'}</td>
@@ -940,6 +1023,18 @@ function SalesReport({ kpis, invoices, quotations, collections, branchLabel, per
               </tfoot>
             </table>
           </div>
+
+          {qotPageSize > 0 && quotations.length > qotPageSize && (
+            <div className="no-print mt-2">
+              <Pagination
+                currentPage={qotPage}
+                totalItems={quotations.length}
+                pageSize={qotPageSize}
+                onPageChange={setQotPage}
+                itemName="عقد"
+              />
+            </div>
+          )}
         </div>
       )}
 
@@ -968,13 +1063,13 @@ function SalesReport({ kpis, invoices, quotations, collections, branchLabel, per
               </tr>
             </thead>
             <tbody>
-              {!collections || collections.length === 0 ? (
+              {!pagedCollections || pagedCollections.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="p-6 text-center text-slate-400 font-bold">
                     لا توجد سندات تحصيل مباشرة فى الفترة المحددة
                   </td>
                 </tr>
-              ) : collections.map((col: any) => {
+              ) : pagedCollections.map((col: any) => {
                 const methodBadge = col.method === 'إنستاباي' ? 'bg-purple-100 text-purple-900 border-purple-300'
                   : col.method === 'فيزا' ? 'bg-blue-100 text-blue-900 border-blue-300'
                   : col.method === 'فودافون كاش' ? 'bg-rose-100 text-rose-900 border-rose-300'
@@ -1011,6 +1106,18 @@ function SalesReport({ kpis, invoices, quotations, collections, branchLabel, per
             )}
           </table>
         </div>
+
+        {colPageSize > 0 && (collections?.length || 0) > colPageSize && (
+          <div className="no-print mt-2">
+            <Pagination
+              currentPage={colPage}
+              totalItems={collections.length}
+              pageSize={colPageSize}
+              onPageChange={setColPage}
+              itemName="سند"
+            />
+          </div>
+        )}
       </div>
     </>
   );
@@ -1018,6 +1125,29 @@ function SalesReport({ kpis, invoices, quotations, collections, branchLabel, per
 
 function ProfitsReport({ stats, topItems, branchLabel, periodLabel }: any) {
   const isNegative = Number(stats.profit) < 0;
+
+  const [profitSearch, setProfitSearch] = useState('');
+  const [profitPage, setProfitPage] = useState(1);
+  const [profitPageSize, setProfitPageSize] = useState(25);
+
+  const filteredProfitRows = useMemo(() => {
+    const list = stats.profitItemRows || [];
+    if (!profitSearch.trim()) return list;
+    const q = profitSearch.trim().toLowerCase();
+    return list.filter((r: any) =>
+      (r.invNumber || '').toLowerCase().includes(q) ||
+      (r.name || '').toLowerCase().includes(q)
+    );
+  }, [stats.profitItemRows, profitSearch]);
+
+  useEffect(() => {
+    setProfitPage(1);
+  }, [profitSearch, profitPageSize]);
+
+  const pagedProfitRows = useMemo(() => {
+    if (profitPageSize <= 0) return filteredProfitRows;
+    return filteredProfitRows.slice((profitPage - 1) * profitPageSize, profitPage * profitPageSize);
+  }, [filteredProfitRows, profitPage, profitPageSize]);
 
   return (
     <>
@@ -1046,14 +1176,34 @@ function ProfitsReport({ stats, topItems, branchLabel, periodLabel }: any) {
       {/* 📊 Detailed Profit Breakdown per Sold Item */}
       {stats.profitItemRows && stats.profitItemRows.length > 0 && (
         <div className="card bg-white rounded-2xl border border-slate-200 p-3">
-          <div className="flex justify-between items-center mb-2 pb-2 border-b border-slate-100">
+          <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 mb-2 pb-2 border-b border-slate-100">
             <h3 className="font-black text-xs text-slate-900 flex items-center gap-1.5">
               <span className="material-symbols-outlined text-amber-600 text-sm">analytics</span>
               <span>تحليل أرباح وتكلفة الأصناف المباعة ({stats.profitItemRows.length}) — {branchLabel} • {periodLabel}</span>
             </h3>
-            <span className="text-[11px] font-mono font-bold text-slate-500">
-              إجمالي الأصناف المباعة
-            </span>
+
+            <div className="no-print flex items-center gap-2">
+              <div className="relative">
+                <span className="material-symbols-outlined absolute right-2 top-1.5 text-slate-400 text-sm">search</span>
+                <input
+                  type="text"
+                  value={profitSearch}
+                  onChange={e => setProfitSearch(e.target.value)}
+                  placeholder="بحث برقم الفاتورة أو الصنف..."
+                  className="pr-7 pl-2 py-1 text-xs border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:outline-none w-44 font-bold"
+                />
+              </div>
+              <select
+                value={profitPageSize}
+                onChange={e => setProfitPageSize(Number(e.target.value))}
+                className="px-2 py-1 text-xs border border-slate-200 rounded-lg bg-slate-50 font-bold text-slate-700 cursor-pointer"
+              >
+                <option value={25}>25 لكل صفحة</option>
+                <option value={50}>50 لكل صفحة</option>
+                <option value={100}>100 لكل صفحة</option>
+                <option value={0}>عرض الكل</option>
+              </select>
+            </div>
           </div>
 
           <div className="overflow-x-auto">
@@ -1073,7 +1223,7 @@ function ProfitsReport({ stats, topItems, branchLabel, periodLabel }: any) {
                 </tr>
               </thead>
               <tbody>
-                {stats.profitItemRows.map((row: any, rIdx: number) => {
+                {pagedProfitRows.map((row: any, rIdx: number) => {
                   const itemNegative = row.profit < 0;
                   return (
                     <tr
@@ -1114,6 +1264,18 @@ function ProfitsReport({ stats, topItems, branchLabel, periodLabel }: any) {
               </tfoot>
             </table>
           </div>
+
+          {profitPageSize > 0 && filteredProfitRows.length > profitPageSize && (
+            <div className="no-print mt-2">
+              <Pagination
+                currentPage={profitPage}
+                totalItems={filteredProfitRows.length}
+                pageSize={profitPageSize}
+                onPageChange={setProfitPage}
+                itemName="صنف مباع"
+              />
+            </div>
+          )}
         </div>
       )}
 
@@ -1153,6 +1315,31 @@ function ProfitsReport({ stats, topItems, branchLabel, periodLabel }: any) {
 }
 
 function InventoryReport({ alerts, branchLabel }: any) {
+  const [invSearch, setInvSearch] = useState('');
+  const [invPage, setInvPage] = useState(1);
+  const [invPageSize, setInvPageSize] = useState(25);
+
+  const filteredList = useMemo(() => {
+    const list = alerts.list || [];
+    if (!invSearch.trim()) return list;
+    const q = invSearch.trim().toLowerCase();
+    return list.filter((i: InventoryItem) =>
+      (i.name || '').toLowerCase().includes(q) ||
+      (i.code || '').toLowerCase().includes(q) ||
+      (i.category || '').toLowerCase().includes(q) ||
+      (i.branch || '').toLowerCase().includes(q)
+    );
+  }, [alerts.list, invSearch]);
+
+  useEffect(() => {
+    setInvPage(1);
+  }, [invSearch, invPageSize]);
+
+  const pagedList = useMemo(() => {
+    if (invPageSize <= 0) return filteredList;
+    return filteredList.slice((invPage - 1) * invPageSize, invPage * invPageSize);
+  }, [filteredList, invPage, invPageSize]);
+
   return (
     <>
       <KpiStrip items={[
@@ -1195,9 +1382,35 @@ function InventoryReport({ alerts, branchLabel }: any) {
       )}
 
       <div className="card bg-white rounded-2xl border border-slate-200 p-3">
-        <h3 className="font-black text-xs text-slate-900 mb-2 pb-2 border-b border-slate-100">
-          كامل المخزون — {branchLabel} ({alerts.list.length} صنف)
-        </h3>
+        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 mb-2 pb-2 border-b border-slate-100">
+          <h3 className="font-black text-xs text-slate-900">
+            كامل المخزون — {branchLabel} ({alerts.list.length} صنف)
+          </h3>
+
+          <div className="no-print flex items-center gap-2">
+            <div className="relative">
+              <span className="material-symbols-outlined absolute right-2 top-1.5 text-slate-400 text-sm">search</span>
+              <input
+                type="text"
+                value={invSearch}
+                onChange={e => setInvSearch(e.target.value)}
+                placeholder="بحث باسم الصنف، الكود..."
+                className="pr-7 pl-2 py-1 text-xs border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:outline-none w-44 font-bold"
+              />
+            </div>
+            <select
+              value={invPageSize}
+              onChange={e => setInvPageSize(Number(e.target.value))}
+              className="px-2 py-1 text-xs border border-slate-200 rounded-lg bg-slate-50 font-bold text-slate-700 cursor-pointer"
+            >
+              <option value={25}>25 لكل صفحة</option>
+              <option value={50}>50 لكل صفحة</option>
+              <option value={100}>100 لكل صفحة</option>
+              <option value={0}>عرض الكل</option>
+            </select>
+          </div>
+        </div>
+
         {alerts.list.length === 0 ? (
           <div className="text-center py-6 text-slate-400 text-xs font-bold">لا يوجد أصناف مسجلة</div>
         ) : (
@@ -1215,7 +1428,7 @@ function InventoryReport({ alerts, branchLabel }: any) {
                 </tr>
               </thead>
               <tbody>
-                {alerts.list.map((i: InventoryItem) => (
+                {pagedList.map((i: InventoryItem) => (
                   <tr key={i.id} className="border-b border-slate-100">
                     <td className="p-2 font-mono text-slate-500">{i.code}</td>
                     <td className="p-2 font-bold">{i.name}</td>
@@ -1228,6 +1441,18 @@ function InventoryReport({ alerts, branchLabel }: any) {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {invPageSize > 0 && filteredList.length > invPageSize && (
+          <div className="no-print mt-2">
+            <Pagination
+              currentPage={invPage}
+              totalItems={filteredList.length}
+              pageSize={invPageSize}
+              onPageChange={setInvPage}
+              itemName="صنف"
+            />
           </div>
         )}
       </div>
@@ -1306,6 +1531,29 @@ function CurtainsReport({ stats, branchLabel, periodLabel }: any) {
 }
 
 function LedgersReport({ stats, branchLabel }: any) {
+  const [custSearch, setCustSearch] = useState('');
+  const [custPage, setCustPage] = useState(1);
+  const [custPageSize, setCustPageSize] = useState(25);
+
+  const filteredCustDebts = useMemo(() => {
+    const list = stats.custDebts || [];
+    if (!custSearch.trim()) return list;
+    const q = custSearch.trim().toLowerCase();
+    return list.filter((c: any) =>
+      (c.name || '').toLowerCase().includes(q) ||
+      (c.phone || '').includes(q)
+    );
+  }, [stats.custDebts, custSearch]);
+
+  useEffect(() => {
+    setCustPage(1);
+  }, [custSearch, custPageSize]);
+
+  const pagedCustDebts = useMemo(() => {
+    if (custPageSize <= 0) return filteredCustDebts;
+    return filteredCustDebts.slice((custPage - 1) * custPageSize, custPage * custPageSize);
+  }, [filteredCustDebts, custPage, custPageSize]);
+
   return (
     <>
       <KpiStrip items={[
@@ -1316,9 +1564,35 @@ function LedgersReport({ stats, branchLabel }: any) {
       ]} />
 
       <div className="card bg-white rounded-2xl border border-slate-200 p-3">
-        <h3 className="font-black text-xs text-slate-900 mb-2 pb-2 border-b border-slate-100">
-          كشف ديون العملاء ({stats.custDebts.length}) — {branchLabel}
-        </h3>
+        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 mb-2 pb-2 border-b border-slate-100">
+          <h3 className="font-black text-xs text-slate-900">
+            كشف ديون العملاء ({stats.custDebts.length}) — {branchLabel}
+          </h3>
+
+          <div className="no-print flex items-center gap-2">
+            <div className="relative">
+              <span className="material-symbols-outlined absolute right-2 top-1.5 text-slate-400 text-sm">search</span>
+              <input
+                type="text"
+                value={custSearch}
+                onChange={e => setCustSearch(e.target.value)}
+                placeholder="بحث باسم العميل أو الهاتف..."
+                className="pr-7 pl-2 py-1 text-xs border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:outline-none w-44 font-bold"
+              />
+            </div>
+            <select
+              value={custPageSize}
+              onChange={e => setCustPageSize(Number(e.target.value))}
+              className="px-2 py-1 text-xs border border-slate-200 rounded-lg bg-slate-50 font-bold text-slate-700 cursor-pointer"
+            >
+              <option value={25}>25 لكل صفحة</option>
+              <option value={50}>50 لكل صفحة</option>
+              <option value={100}>100 لكل صفحة</option>
+              <option value={0}>عرض الكل</option>
+            </select>
+          </div>
+        </div>
+
         {stats.custDebts.length === 0 ? (
           <div className="text-center py-6 text-slate-400 text-xs font-bold">لا توجد ديون عملاء مسجلة</div>
         ) : (
@@ -1335,7 +1609,7 @@ function LedgersReport({ stats, branchLabel }: any) {
                 </tr>
               </thead>
               <tbody>
-                {stats.custDebts.map((c: any) => {
+                {pagedCustDebts.map((c: any) => {
                   const bal = Number(c.balance) || 0;
                   const isDebt = bal > 0;
                   return (
@@ -1364,6 +1638,18 @@ function LedgersReport({ stats, branchLabel }: any) {
                 </tr>
               </tfoot>
             </table>
+          </div>
+        )}
+
+        {custPageSize > 0 && filteredCustDebts.length > custPageSize && (
+          <div className="no-print mt-2">
+            <Pagination
+              currentPage={custPage}
+              totalItems={filteredCustDebts.length}
+              pageSize={custPageSize}
+              onPageChange={setCustPage}
+              itemName="عميل"
+            />
           </div>
         )}
       </div>
