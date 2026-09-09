@@ -171,6 +171,10 @@ export default function ReportsPage() {
     () => invoices.filter(i => inBranch(i.branch) && inPeriod(i.date)),
     [invoices, selectedBranch, period]
   );
+  const fQuotations = useMemo(
+    () => quotations.filter(q => inBranch(q.branch) && inPeriod(q.date || q.createdAt)),
+    [quotations, selectedBranch, period]
+  );
   const fPurchases = useMemo(
     () => purchases.filter(p => inBranch(p.branch) && inPeriod(p.date)),
     [purchases, selectedBranch, period]
@@ -195,15 +199,18 @@ export default function ReportsPage() {
     [collections, selectedBranch, period, customers]
   );
 
-  // ─── Sales KPIs & cash-drawer breakdown (Including Collections & Split Payments) ──────────────
+  // ─── Sales KPIs & cash-drawer breakdown (Including Fabric Invoices, Curtain Deposits & Direct Collections) ───
   const salesKpis = useMemo(() => {
     let cash = 0, instapay = 0, vodafone = 0, visa = 0, deferred = 0, other = 0;
-    let grand = 0, remaining = 0;
+    let fabricSalesGrand = 0, fabricSalesRemaining = 0, fabricSalesPaid = 0;
+    let curtainSalesGrand = 0, curtainSalesRemaining = 0, curtainSalesDeposits = 0;
 
+    // 1. Fabric Sales Invoices
     fInvoices.forEach(inv => {
-      grand += Number(inv.totalAmount || 0);
-      remaining += Number(inv.remainingAmount || 0);
+      fabricSalesGrand += Number(inv.totalAmount || 0);
+      fabricSalesRemaining += Number(inv.remainingAmount || 0);
       const paid = Number(inv.paidAmount || 0);
+      fabricSalesPaid += paid;
 
       let split = inv.splitPayments;
       if (!split && inv.notes && inv.notes.includes('[SPLIT:')) {
@@ -230,6 +237,38 @@ export default function ReportsPage() {
       else other += paid;
     });
 
+    // 2. Curtain Contracts (Quotations & Pipeline Deposits)
+    fQuotations.forEach(q => {
+      curtainSalesGrand += Number(q.totalAmount || 0);
+      curtainSalesRemaining += Number(q.remainingAmount || 0);
+      const deposit = Number(q.depositPaid || 0);
+      curtainSalesDeposits += deposit;
+
+      let split = q.depositSplit;
+      if (!split && q.notes && q.notes.includes('[DEPOSIT_SPLIT:')) {
+        try {
+          const match = q.notes.match(/\[DEPOSIT_SPLIT:([^\]]+)\]/);
+          if (match && match[1]) split = JSON.parse(match[1]);
+        } catch {}
+      }
+
+      if (split) {
+        cash += Number(split.cash || 0);
+        instapay += Number(split.instapay || 0);
+        vodafone += Number(split.vodafone || 0);
+        visa += Number(split.visa || 0);
+        return;
+      }
+
+      const m = (q.depositMethod || '').trim();
+      if (m.includes('فودافون') || m.toLowerCase().includes('vodafone')) vodafone += deposit;
+      else if (m.includes('إنستا') || m.includes('انستا') || m.toLowerCase().includes('insta')) instapay += deposit;
+      else if (m.includes('فيزا') || m.includes('كارت') || m.toLowerCase().includes('visa') || m.toLowerCase().includes('card')) visa += deposit;
+      else if (m === 'نقدي' || m === 'كاش' || m === 'نقدي (كاش)' || m.includes('نقدي') || m.includes('كاش') || !m) cash += deposit;
+      else other += deposit;
+    });
+
+    // 3. Direct Customer Collections
     let totalDirectCollections = 0;
     fCollections.forEach(col => {
       const amt = Number(col.amount || 0);
@@ -242,6 +281,8 @@ export default function ReportsPage() {
       else other += amt;
     });
 
+    const grand = fabricSalesGrand + curtainSalesGrand;
+    const remaining = fabricSalesRemaining + curtainSalesRemaining;
     const totalCollected = cash + instapay + vodafone + visa + other;
 
     // ─── 4 Branch Treasury Balances ───
@@ -338,8 +379,26 @@ export default function ReportsPage() {
       };
     });
 
-    return { cash, instapay, vodafone, visa, deferred, other, grand, remaining, totalCollected, totalDirectCollections, branchTreasuries };
-  }, [fInvoices, fCollections, invoices, collections, quotations, period]);
+    return {
+      cash,
+      instapay,
+      vodafone,
+      visa,
+      deferred,
+      other,
+      grand,
+      remaining,
+      totalCollected,
+      totalDirectCollections,
+      fabricSalesGrand,
+      fabricSalesPaid,
+      fabricSalesRemaining,
+      curtainSalesGrand,
+      curtainSalesDeposits,
+      curtainSalesRemaining,
+      branchTreasuries,
+    };
+  }, [fInvoices, fQuotations, fCollections, invoices, collections, quotations, period]);
 
   // ─── Profits (real cost from inventory) ──────────────────────
   const profitStats = useMemo(() => {
@@ -545,6 +604,7 @@ export default function ReportsPage() {
                 <SalesReport
                   kpis={salesKpis}
                   invoices={fInvoices}
+                  quotations={fQuotations}
                   collections={fCollections}
                   branchLabel={branchLabel}
                   periodLabel={periodLabel}
@@ -580,7 +640,7 @@ function KpiStrip({ items }: { items: { label: string; value: string; color?: st
   );
 }
 
-function SalesReport({ kpis, invoices, collections, branchLabel, periodLabel, isAdmin, userBranch, selectedBranch }: any) {
+function SalesReport({ kpis, invoices, quotations, collections, branchLabel, periodLabel, isAdmin, userBranch, selectedBranch }: any) {
   // تصفية الخزن: لو المستخدم أدمن ومحدد الكل تظهر الـ 4، لو مش أدمن تظهر خزنته فقط
   const visibleTreasuries = useMemo(() => {
     if (!kpis.branchTreasuries || !Array.isArray(kpis.branchTreasuries)) return [];
@@ -617,25 +677,30 @@ function SalesReport({ kpis, invoices, collections, branchLabel, periodLabel, is
   return (
     <>
       <KpiStrip items={[
-        { label: 'إجمالى المبيعات', value: `${kpis.grand.toLocaleString()} ج`, color: 'bg-amber-100 border-amber-400' },
+        { label: 'إجمالى المبيعات الشاملة', value: `${kpis.grand.toLocaleString()} ج`, color: 'bg-amber-100 border-amber-400' },
         { label: '💵 كاش بالدرج / الخزائن', value: `${kpis.cash.toLocaleString()} ج`, color: 'bg-emerald-50 border-emerald-300' },
         { label: '⚡ إنستاباى', value: `${kpis.instapay.toLocaleString()} ج`, color: 'bg-purple-50 border-purple-300' },
         { label: '📱 فودافون كاش', value: `${kpis.vodafone.toLocaleString()} ج`, color: 'bg-rose-50 border-rose-300' },
         { label: '💳 فيزا/كارت', value: `${kpis.visa.toLocaleString()} ج`, color: 'bg-blue-50 border-blue-300' },
-        { label: '⏳ آجل/متبقى', value: `${kpis.remaining.toLocaleString()} ج`, color: 'bg-amber-50 border-amber-300' },
+        { label: '⏳ متبقي تحصيله (آجل وعقود)', value: `${kpis.remaining.toLocaleString()} ج`, color: 'bg-amber-50 border-amber-300' },
       ]} />
 
-      {(kpis.deferred > 0 || kpis.other > 0 || (kpis.totalDirectCollections || 0) > 0) && (
-        <div className="text-[11px] font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-lg p-2 flex flex-wrap gap-4">
-          {(kpis.totalDirectCollections || 0) > 0 && (
-            <span className="text-purple-900 bg-purple-100 px-2 py-0.5 rounded font-black">
-              💰 سندات تحصيل عملاء مباشرة: <span className="font-mono">{kpis.totalDirectCollections.toLocaleString()} ج</span>
-            </span>
-          )}
-          {kpis.deferred > 0 && <span>مسجل كآجل: <span className="font-mono text-amber-700">{kpis.deferred.toLocaleString()} ج</span></span>}
-          {kpis.other > 0 && <span>طرق دفع أخرى: <span className="font-mono text-slate-700">{kpis.other.toLocaleString()} ج</span></span>}
-        </div>
-      )}
+      {/* Breakdown Badges */}
+      <div className="text-[11px] font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-xl p-2.5 flex flex-wrap items-center gap-3">
+        <span className="text-sky-950 bg-sky-100 border border-sky-300 px-2.5 py-1 rounded-lg">
+          🏪 فواتير بيع الأقمشة: <span className="font-mono font-black">{kpis.fabricSalesGrand?.toLocaleString() || 0} ج</span> (محصل: <span className="font-mono text-emerald-800 font-bold">{kpis.fabricSalesPaid?.toLocaleString() || 0} ج</span>)
+        </span>
+        <span className="text-indigo-950 bg-indigo-100 border border-indigo-300 px-2.5 py-1 rounded-lg">
+          ✂️ عقود وتفصيل الستائر: <span className="font-mono font-black">{kpis.curtainSalesGrand?.toLocaleString() || 0} ج</span> (عربابين: <span className="font-mono text-emerald-800 font-bold">{kpis.curtainSalesDeposits?.toLocaleString() || 0} ج</span>)
+        </span>
+        {(kpis.totalDirectCollections || 0) > 0 && (
+          <span className="text-purple-950 bg-purple-100 border border-purple-300 px-2.5 py-1 rounded-lg">
+            💰 سندات تحصيل عملاء مباشرة: <span className="font-mono font-black">{kpis.totalDirectCollections.toLocaleString()} ج</span>
+          </span>
+        )}
+        {kpis.deferred > 0 && <span>مسجل كآجل: <span className="font-mono text-amber-700 font-black">{kpis.deferred.toLocaleString()} ج</span></span>}
+        {kpis.other > 0 && <span>طرق أخرى: <span className="font-mono text-slate-700 font-black">{kpis.other.toLocaleString()} ج</span></span>}
+      </div>
 
       {/* 🏛️ Branch Treasuries Live Summary */}
       {visibleTreasuries.length > 0 && (
@@ -700,10 +765,14 @@ function SalesReport({ kpis, invoices, collections, branchLabel, periodLabel, is
         </div>
       )}
 
+      {/* 1. Fabric Sales POS Invoices Table */}
       <div className="card bg-white rounded-2xl border border-slate-200 p-3">
         <div className="flex justify-between items-center pb-2 mb-2 border-b border-slate-100">
-          <h3 className="font-black text-xs text-slate-900">تفاصيل فواتير المبيعات ({invoices.length}) — {branchLabel} • {periodLabel}</h3>
-          <span className="text-[11px] font-mono font-bold text-emerald-700">مقبوضات الفواتير: {(kpis.totalCollected - (kpis.totalDirectCollections || 0)).toLocaleString()} ج</span>
+          <h3 className="font-black text-xs text-slate-900 flex items-center gap-1.5">
+            <span className="material-symbols-outlined text-sky-600 text-sm">storefront</span>
+            <span>فواتير بيع الأقمشة بالمتر ({invoices.length}) — {branchLabel} • {periodLabel}</span>
+          </h3>
+          <span className="text-[11px] font-mono font-bold text-emerald-700">مقبوضات فواتير الأقمشة: {(kpis.fabricSalesPaid || 0).toLocaleString()} ج</span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-right text-[11px] border-collapse">
@@ -721,7 +790,7 @@ function SalesReport({ kpis, invoices, collections, branchLabel, periodLabel, is
             </thead>
             <tbody>
               {invoices.length === 0 ? (
-                <tr><td colSpan={8} className="p-6 text-center text-slate-400 font-bold">لا توجد فواتير مبيعات فى الفترة المحددة</td></tr>
+                <tr><td colSpan={8} className="p-6 text-center text-slate-400 font-bold">لا توجد فواتير بيع أقمشة فى الفترة المحددة</td></tr>
               ) : invoices.map((inv: SalesInvoice) => (
                 <tr key={inv.id} className="border-b border-slate-100 hover:bg-slate-50">
                   <td className="p-2 font-mono font-bold text-slate-900">{inv.invoiceNumber}</td>
@@ -744,16 +813,73 @@ function SalesReport({ kpis, invoices, collections, branchLabel, periodLabel, is
             {invoices.length > 0 && (
               <tfoot className="bg-slate-50 border-t-2 border-slate-300 font-black">
                 <tr>
-                  <td colSpan={5} className="p-2 text-slate-900">الإجمالى</td>
-                  <td className="p-2 text-left font-mono">{kpis.grand.toLocaleString()}</td>
-                  <td className="p-2 text-left font-mono text-emerald-700">{(kpis.grand - kpis.remaining).toLocaleString()}</td>
-                  <td className="p-2 text-left font-mono text-rose-700">{kpis.remaining.toLocaleString()}</td>
+                  <td colSpan={5} className="p-2 text-slate-900">إجمالي فواتير الأقمشة</td>
+                  <td className="p-2 text-left font-mono">{(kpis.fabricSalesGrand || 0).toLocaleString()}</td>
+                  <td className="p-2 text-left font-mono text-emerald-700">{(kpis.fabricSalesPaid || 0).toLocaleString()}</td>
+                  <td className="p-2 text-left font-mono text-rose-700">{(kpis.fabricSalesRemaining || 0).toLocaleString()}</td>
                 </tr>
               </tfoot>
             )}
           </table>
         </div>
       </div>
+
+      {/* 2. Curtain Contracts & Quotations Table */}
+      {quotations && quotations.length > 0 && (
+        <div className="card bg-white rounded-2xl border border-slate-200 p-3">
+          <div className="flex justify-between items-center pb-2 mb-2 border-b border-slate-100">
+            <h3 className="font-black text-xs text-slate-900 flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-indigo-600 text-sm">content_cut</span>
+              <span>عقود وتفصيل الستائر والمقايسات ({quotations.length}) — {branchLabel} • {periodLabel}</span>
+            </h3>
+            <span className="text-[11px] font-mono font-bold text-emerald-700">عرابين الستائر المحصلة: {(kpis.curtainSalesDeposits || 0).toLocaleString()} ج</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-right text-[11px] border-collapse">
+              <thead className="bg-slate-100 text-slate-700 border-b border-slate-300">
+                <tr>
+                  <th className="p-2">رقم المقايسة</th>
+                  <th className="p-2">التاريخ</th>
+                  <th className="p-2">العميل</th>
+                  <th className="p-2">الفرع</th>
+                  <th className="p-2 text-center">طريقة العربون</th>
+                  <th className="p-2 text-left font-mono">إجمالي العقد</th>
+                  <th className="p-2 text-left font-mono">العربون المسدد</th>
+                  <th className="p-2 text-left font-mono">المتبقي عند التركيب</th>
+                </tr>
+              </thead>
+              <tbody>
+                {quotations.map((q: any) => (
+                  <tr key={q.id} className="border-b border-slate-100 hover:bg-slate-50">
+                    <td className="p-2 font-mono font-bold text-slate-900">{q.id}</td>
+                    <td className="p-2 font-mono text-slate-600">{q.date || q.createdAt ? formatDateOnly(q.date || q.createdAt) : '—'}</td>
+                    <td className="p-2 font-bold text-slate-900">{q.customerName}</td>
+                    <td className="p-2 text-slate-600">{q.branch || 'الرئيسي'}</td>
+                    <td className="p-2 text-center text-[10px]">
+                      {q.depositSplit ? (
+                        <span className="bg-purple-100 text-purple-900 border border-purple-300 px-1.5 py-0.5 rounded font-bold">متعدد</span>
+                      ) : (
+                        <span className="bg-slate-100 text-slate-800 border border-slate-200 px-1.5 py-0.5 rounded font-bold">{q.depositMethod || 'نقدي'}</span>
+                      )}
+                    </td>
+                    <td className="p-2 text-left font-mono font-black">{(Number(q.totalAmount) || 0).toLocaleString()}</td>
+                    <td className="p-2 text-left font-mono font-bold text-emerald-700">{(Number(q.depositPaid) || 0).toLocaleString()}</td>
+                    <td className="p-2 text-left font-mono font-bold text-rose-700">{(Number(q.remainingAmount) || 0) > 0 ? (Number(q.remainingAmount)).toLocaleString() : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot className="bg-slate-50 border-t-2 border-slate-300 font-black">
+                <tr>
+                  <td colSpan={5} className="p-2 text-slate-900">إجمالي عقود الستائر</td>
+                  <td className="p-2 text-left font-mono">{(kpis.curtainSalesGrand || 0).toLocaleString()}</td>
+                  <td className="p-2 text-left font-mono text-emerald-700">{(kpis.curtainSalesDeposits || 0).toLocaleString()}</td>
+                  <td className="p-2 text-left font-mono text-rose-700">{(kpis.curtainSalesRemaining || 0).toLocaleString()}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* 💰 Direct Customer Collections Table */}
       <div className="card bg-white rounded-2xl border border-slate-200 p-3">

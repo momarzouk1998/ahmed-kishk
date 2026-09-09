@@ -136,8 +136,14 @@ export default function DashboardPage() {
   const posSales = rangedSales.reduce((sum: number, s: any) => sum + (Number(s.totalAmount) || 0), 0);
   const totalSales = contractsSales + posSales;
 
-  const totalRemaining = rawCustomers.reduce((sum: number, c: any) => sum + (c.balance > 0 ? c.balance : 0), 0)
-    || rawQuotations.reduce((sum: number, q: any) => sum + (Number(q.remainingAmount) || 0), 0);
+  // Active curtain orders remaining upon installation (المتبقي تحصيله عند التركيب للستائر)
+  const curtainRemaining = rawOrders
+    .filter((o: any) => o.status !== 'تم التركيب' && o.status !== 'مكتمل' && o.status !== 'ملغي')
+    .reduce((sum: number, o: any) => sum + (Number(o.remainingAmount) || 0), 0);
+
+  const totalRemaining = curtainRemaining || rawQuotations
+    .filter((q: any) => q.status !== 'ملغي' && q.status !== 'مكتمل')
+    .reduce((sum: number, q: any) => sum + (Number(q.remainingAmount) || 0), 0);
 
   // Pipeline Stages Progress Summary (Live Dynamic)
   const pipelineStats = [
