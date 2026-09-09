@@ -203,7 +203,6 @@ export default function InspectionDetailPage() {
   };
 
   const handleSendToPricing = () => {
-    if (data.rooms.length === 0) return;
     const updatedData: InspectionData = { ...data, status: 'قيد التسعير' };
     setData(updatedData);
     saveOrUpdateInspection(updatedData);
@@ -216,7 +215,7 @@ export default function InspectionDetailPage() {
       <div className="max-w-5xl mx-auto flex flex-col gap-6">
 
         {/* Top Action Bar on Screen */}
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
           <Link
             href="/pipeline/inspections"
             className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold text-slate-700 bg-white hover:bg-slate-100 border border-slate-200 px-4 py-2 rounded-xl transition-all shadow-xs"
@@ -225,14 +224,33 @@ export default function InspectionDetailPage() {
             العودة لقائمة المعاينات
           </Link>
 
-          <button
-            type="button"
-            onClick={() => setShowPrintModal(true)}
-            className="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
-          >
-            <span className="material-symbols-outlined text-[18px]">print</span>
-            <span>🖨️ طباعة كشف المقاسات (PDF)</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowPrintModal(true)}
+              className="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-[18px]">print</span>
+              <span>🖨️ طباعة كشف المقاسات</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                if (data.rooms.length === 0) {
+                  if (confirm('لم يتم تسجيل غرف في المعاينة بعد. هل ترغب في المتابعة إلى شاشة التسعير والعقد؟')) {
+                    handleSendToPricing();
+                  }
+                } else {
+                  setShowApprovalModal(true);
+                }
+              }}
+              className="bg-brand-gold hover:bg-amber-400 text-slate-950 px-4 py-2 rounded-xl text-xs sm:text-sm font-black flex items-center gap-1.5 shadow-gold transition-colors cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-[18px]">calculate</span>
+              <span>تحويل إلى التسعير والعقد ➔</span>
+            </button>
+          </div>
         </div>
 
         {/* Customer Info Card on Screen */}
@@ -424,15 +442,23 @@ export default function InspectionDetailPage() {
               <span>طباعة كشف المقاسات (PDF)</span>
             </button>
 
-            {!isReadOnly && data.rooms.length > 0 && (
-              <button
-                onClick={() => setShowApprovalModal(true)}
-                className="bg-brand-gold hover:bg-brand-gold-hover text-slate-950 px-6 py-3 rounded-xl font-black text-sm shadow-gold flex items-center justify-center gap-2 cursor-pointer transition-all"
-              >
-                <span>إرسال للتسعير والعقد</span>
-                <span className="material-symbols-outlined text-[18px]">arrow_back</span>
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => {
+                if (data.rooms.length === 0) {
+                  if (confirm('لم يتم تسجيل غرف في المعاينة بعد. هل ترغب في المتابعة إلى شاشة التسعير والعقد؟')) {
+                    handleSendToPricing();
+                  }
+                } else {
+                  setShowApprovalModal(true);
+                }
+              }}
+              className="bg-brand-gold hover:bg-amber-400 text-slate-950 px-6 py-3 rounded-xl font-black text-sm shadow-gold flex items-center justify-center gap-2 cursor-pointer transition-all w-full sm:w-auto"
+            >
+              <span className="material-symbols-outlined text-[18px]">calculate</span>
+              <span>تحويل إلى التسعير والعقد</span>
+              <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+            </button>
           </div>
         </div>
       </div>

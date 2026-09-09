@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
 import { useRouter } from 'next/navigation';
-import { getStoredInspections, saveOrUpdateInspection, fetchInspections, generateInspectionId, InspectionData } from '@/lib/inspectionsStore';
+import { getStoredInspections, saveOrUpdateInspection, fetchInspections, generateInspectionId, syncInspectionToPricing, InspectionData } from '@/lib/inspectionsStore';
 import { isTodayOrOverdue } from '@/lib/pipelineStore';
 import { formatDate } from '@/lib/dateUtils';
 import InspectionPrintModal from '@/components/InspectionPrintModal';
@@ -209,6 +209,15 @@ export default function PipelineInspectionsPage() {
       setSuccessToast(`تم تسجيل طلب المعاينة بنجاح للعميل (${newItem.customerName}) ✓`);
       setTimeout(() => setSuccessToast(null), 4000);
     }
+  };
+
+  const handleDirectSendToPricing = (item: InspectionData, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    const updated: InspectionData = { ...item, status: 'قيد التسعير' };
+    saveOrUpdateInspection(updated);
+    syncInspectionToPricing(updated);
+    setInspections(prev => prev.map(i => i.id === item.id ? updated : i));
+    router.push('/pipeline/pricing');
   };
 
   return (
@@ -429,6 +438,16 @@ export default function PipelineInspectionsPage() {
                         <div className="flex items-center justify-center gap-1.5">
                           <button
                             type="button"
+                            onClick={(e) => handleDirectSendToPricing(item, e)}
+                            className="h-8 px-2.5 rounded-lg bg-brand-gold/20 hover:bg-brand-gold text-slate-950 border border-brand-gold/50 flex items-center justify-center gap-1 transition-all shadow-2xs font-bold text-[11px] cursor-pointer"
+                            title="تحويل إلى التسعير والعقد"
+                          >
+                            <span className="material-symbols-outlined text-[16px]">calculate</span>
+                            <span className="hidden xl:inline">تحويل للتسعير</span>
+                          </button>
+
+                          <button
+                            type="button"
                             onClick={() => setPrintItem(item)}
                             className="w-8 h-8 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 flex items-center justify-center transition-colors shadow-2xs cursor-pointer"
                             title="طباعة كشف المقاسات (PDF)"
@@ -503,6 +522,15 @@ export default function PipelineInspectionsPage() {
                     <span className="font-bold text-slate-700">الغرف: {item.rooms?.length || 0}</span>
                     
                     <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        onClick={(e) => handleDirectSendToPricing(item, e)}
+                        className="h-7 px-2 rounded-lg bg-brand-gold/20 hover:bg-brand-gold text-slate-950 border border-brand-gold/50 flex items-center justify-center gap-1 font-bold text-[10.5px] cursor-pointer"
+                        title="تحويل إلى التسعير"
+                      >
+                        <span className="material-symbols-outlined text-[14px]">calculate</span>
+                        <span>تحويل للتسعير</span>
+                      </button>
                       <button
                         type="button"
                         onClick={() => setPrintItem(item)}

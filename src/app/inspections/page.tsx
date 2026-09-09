@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import PageShell from '@/components/PageShell';
 import { formatDate } from '@/lib/dateUtils';
 import { generateInspectionId } from '@/lib/inspectionsStore';
@@ -49,6 +50,7 @@ interface InspectionRequest {
 const defaultRooms: Room[] = [];
 
 export default function InspectionsPage() {
+  const router = useRouter();
   const [requests, setRequests] = useState<InspectionRequest[]>([]);
 
   const [selectedId, setSelectedId] = useState<string>('');
@@ -356,6 +358,16 @@ export default function InspectionsPage() {
                 <p className="text-xs text-slate-500 mt-0.5 truncate" dir="ltr">{selected.phone} {selected.address && `| ${selected.address}`}</p>
               </div>
               <div className="flex gap-2 flex-wrap w-full sm:w-auto">
+                <button
+                  onClick={() => {
+                    if (!selected) return;
+                    router.push(`/pipeline/inspections/${selected.id}`);
+                  }}
+                  className="flex-1 sm:flex-none justify-center bg-brand-gold hover:bg-amber-400 text-slate-950 px-3.5 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 shadow-gold transition-colors cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-[16px]">calculate</span>
+                  <span>تحويل إلى التسعير والعقد ➔</span>
+                </button>
                 <button onClick={handleShareWhatsApp} className="flex-1 sm:flex-none justify-center border border-slate-200 text-slate-700 px-3.5 py-2 rounded-xl text-xs font-bold hover:border-slate-400 flex items-center gap-1.5 shadow-xs">
                   <span className="material-symbols-outlined text-[16px]">share</span> واتساب
                 </button>
