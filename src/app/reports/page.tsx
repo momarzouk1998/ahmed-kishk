@@ -84,7 +84,8 @@ export default function ReportsPage() {
   const { user: currentUser, isAdmin } = useCurrentUser();
   useEffect(() => {
     if (!isAdmin && currentUser?.branch) setSelectedBranch(currentUser.branch);
-  }, [isAdmin, currentUser]);
+    if (!isAdmin && reportType === 'profits') setReportType('sales');
+  }, [isAdmin, currentUser, reportType]);
 
   const [invoices, setInvoices] = useState<SalesInvoice[]>([]);
   const [purchases, setPurchases] = useState<PurchaseInvoice[]>([]);
@@ -606,7 +607,7 @@ export default function ReportsPage() {
         <div className="no-print flex border-b border-slate-200 overflow-x-auto">
           {[
             { id: 'sales', label: 'المبيعات والدرج', icon: 'payments' },
-            { id: 'profits', label: 'الأرباح والتكلفة', icon: 'trending_up' },
+            ...(isAdmin ? [{ id: 'profits', label: 'الأرباح والتكلفة', icon: 'trending_up' }] : []),
             { id: 'inventory', label: 'المخزون', icon: 'inventory_2' },
             { id: 'curtains', label: 'الستائر والفنيين', icon: 'square_foot' },
             { id: 'ledgers', label: 'ديون العملاء والموردين', icon: 'account_balance_wallet' },
@@ -649,7 +650,9 @@ export default function ReportsPage() {
                   selectedBranch={selectedBranch}
                 />
               )}
-              {reportType === 'profits' && <ProfitsReport stats={profitStats} topItems={topItems} branchLabel={branchLabel} periodLabel={periodLabel} />}
+              {reportType === 'profits' && isAdmin && (
+                <ProfitsReport stats={profitStats} topItems={topItems} branchLabel={branchLabel} periodLabel={periodLabel} />
+              )}
               {reportType === 'inventory' && <InventoryReport alerts={invAlerts} branchLabel={branchLabel} />}
               {reportType === 'curtains' && <CurtainsReport stats={curtainStats} branchLabel={branchLabel} periodLabel={periodLabel} />}
               {reportType === 'ledgers' && <LedgersReport stats={ledgerStats} branchLabel={branchLabel} />}
