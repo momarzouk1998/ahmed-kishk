@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import PageShell from '@/components/PageShell';
-import { formatDateOnly, getTodayDateStr } from '@/lib/dateUtils';
+import { formatDateOnly, getTodayDateStr, getYesterdayDateStr } from '@/lib/dateUtils';
 import PdfPrintButton from '@/components/PdfPrintButton';
 import { useCurrentUser } from '@/lib/useCurrentUser';
 import BranchSelect from '@/components/BranchSelect';
@@ -75,7 +75,7 @@ interface PurchaseInvoice {
 }
 
 type ReportTab = 'sales' | 'profits' | 'inventory' | 'curtains' | 'ledgers';
-type Period = 'today' | 'thisWeek' | 'thisMonth' | 'all';
+type Period = 'yesterday' | 'today' | 'thisWeek' | 'thisMonth' | 'all';
 
 export default function ReportsPage() {
   const [reportType, setReportType] = useState<ReportTab>('sales');
@@ -175,6 +175,7 @@ export default function ReportsPage() {
     if (!dateStr) return period === 'all';
     const d = getTodayDateStr(dateStr) || String(dateStr).split('T')[0];
     const today = getTodayDateStr();
+    if (period === 'yesterday') return d === getYesterdayDateStr();
     if (period === 'today') return d === today;
     if (period === 'thisWeek') {
       const todayDate = new Date(today);
@@ -574,7 +575,7 @@ export default function ReportsPage() {
     return { list, belowMin, totalCost, totalValue };
   }, [inventory, selectedBranch]);
 
-  const periodLabel = period === 'today' ? 'اليومى' : period === 'thisWeek' ? 'الأسبوع' : period === 'thisMonth' ? 'الشهر' : 'الكل';
+  const periodLabel = period === 'yesterday' ? 'أمس' : period === 'today' ? 'اليومى' : period === 'thisWeek' ? 'الأسبوع' : period === 'thisMonth' ? 'الشهر' : 'الكل';
   const branchLabel = selectedBranch === 'ALL' ? 'جميع الفروع' : selectedBranch;
 
   return (
@@ -615,10 +616,10 @@ export default function ReportsPage() {
               className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800 focus:outline-none cursor-pointer"
             />
             <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200">
-              {(['today', 'thisWeek', 'thisMonth', 'all'] as Period[]).map(p => (
+              {(['yesterday', 'today', 'thisWeek', 'thisMonth', 'all'] as Period[]).map(p => (
                 <button key={p} onClick={() => setPeriod(p)}
                   className={`px-2.5 py-1 rounded-md text-[11px] font-bold ${period === p ? 'bg-amber-500 text-white' : 'text-slate-700'}`}>
-                  {p === 'today' ? 'اليوم' : p === 'thisWeek' ? 'أسبوع' : p === 'thisMonth' ? 'شهر' : 'الكل'}
+                  {p === 'yesterday' ? 'أمس' : p === 'today' ? 'اليوم' : p === 'thisWeek' ? 'أسبوع' : p === 'thisMonth' ? 'شهر' : 'الكل'}
                 </button>
               ))}
             </div>

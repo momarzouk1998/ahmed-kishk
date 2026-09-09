@@ -6,12 +6,12 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { getStoredInspections, getStoredQuotations } from '@/lib/inspectionsStore';
 import { getStoredPipelineOrders } from '@/lib/pipelineStore';
-import { getTodayDateStr } from '@/lib/dateUtils';
+import { getTodayDateStr, getYesterdayDateStr } from '@/lib/dateUtils';
 import { ALL_SYSTEM_PAGES } from '@/lib/permissions';
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [timeRange, setTimeRange] = useState<'MONTH' | 'WEEK' | 'TODAY' | 'ALL'>('TODAY');
+  const [timeRange, setTimeRange] = useState<'YESTERDAY' | 'TODAY' | 'WEEK' | 'MONTH' | 'ALL'>('TODAY');
 
   const [rawInspections, setRawInspections] = useState<any[]>([]);
   const [rawQuotations, setRawQuotations] = useState<any[]>([]);
@@ -123,6 +123,11 @@ export default function DashboardPage() {
       const d = item.depositDate || item.updatedAt || item[dateField] || item.date || item.scheduledAt || item.createdAt;
       if (!d) return true;
       const itemDateStr = getTodayDateStr(d) || String(d).split('T')[0].split(' ')[0];
+
+      if (timeRange === 'YESTERDAY') {
+        const yesterdayStr = getYesterdayDateStr();
+        return itemDateStr === yesterdayStr;
+      }
 
       if (timeRange === 'TODAY') {
         return itemDateStr === todayStr;
@@ -390,8 +395,16 @@ export default function DashboardPage() {
             </p>
           </div>
 
-          {/* Time Range Filter Buttons (اليوم -> الأسبوع -> الشهر -> الكل) */}
+          {/* Time Range Filter Buttons (أمس -> اليوم -> الأسبوع -> الشهر -> الكل) */}
           <div className="flex bg-slate-100/90 p-1 rounded-2xl gap-1 self-start sm:self-auto border border-slate-200 shadow-xs">
+            <button
+              onClick={() => setTimeRange('YESTERDAY')}
+              className={`px-4 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                timeRange === 'YESTERDAY' ? 'bg-amber-500 text-white shadow-sm ring-1 ring-amber-400' : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+              }`}
+            >
+              أمس
+            </button>
             <button
               onClick={() => setTimeRange('TODAY')}
               className={`px-4 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
