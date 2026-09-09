@@ -34,7 +34,7 @@ function ShellContent({ title, badge, action, children, fullWidth, noHeader }: P
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <Sidebar />
       {!noHeader && <Header title={title} badge={badge} action={action} />}
-      <div className={`${noHeader ? 'pt-1' : 'pt-16'} transition-all duration-300 ${isCollapsed ? 'lg:pr-20' : 'lg:pr-64'}`}>
+      <div className={`${noHeader ? 'pt-1' : 'pt-[calc(4rem+env(safe-area-inset-top))]'} transition-all duration-300 ${isCollapsed ? 'lg:pr-20' : 'lg:pr-64'}`}>
         <main className={fullWidth ? "p-1.5 sm:p-2 lg:p-2.5 w-full max-w-full overflow-x-hidden" : "px-4 sm:px-6 lg:px-8 py-6 lg:py-8 max-w-full overflow-x-hidden"}>
           {children}
         </main>

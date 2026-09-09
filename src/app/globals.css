@@ -60,6 +60,20 @@
   display: none;
 }
 
+/* #MOBILE-FIX: النظام كله بيستخدم text-xs (12px) حتى فى الـ inputs — أي حقل
+   أقل من 16px بيخلي Safari على iPhone يعمل zoom تلقائي عند الضغط عليه ومايرجعش
+   زوم آوت لوحده، وده بيكسر الصفحة فعليًا للمستخدم. الإصلاح هنا مقصور على حقول
+   الإدخال نفسها فى شاشات الموبايل بس (mobile-only، مفيش تأثير على سطح المكتب
+   ولا على مقاس الخط العام لباقي الصفحة) — بديل عن قفل الزوم كله (userScalable)
+   اللي بيكسر accessibility من غير ما يحل المشكلة الحقيقية أصلاً. */
+@media (max-width: 767px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
 /* 🖨️ Professional A4 Printable Template Stylesheet */
 @media print {
   @page {

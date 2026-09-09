@@ -565,7 +565,7 @@ export default function NewPurchaseInvoicePage() {
           {/* ========================================================= */}
           {/* COLUMN 1 (5 cols - RIGHT): High-Density Products Catalog Table */}
           {/* ========================================================= */}
-          <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200 shadow-soft overflow-hidden flex flex-col" style={{ height: 'calc(100vh - 135px)' }}>
+          <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200 shadow-soft overflow-hidden flex flex-col" style={{ height: 'calc(100dvh - 135px)' }}>
             
             {/* Search & Dynamic Category Filter Top Bar */}
             <div className="p-2.5 border-b border-slate-200 bg-slate-50/70 space-y-2 shrink-0">
@@ -713,7 +713,7 @@ export default function NewPurchaseInvoicePage() {
           {/* ========================================================= */}
           {/* COLUMN 2 (7 cols - LEFT): Cart Items Table & Settlement */}
           {/* ========================================================= */}
-          <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200 shadow-soft overflow-hidden flex flex-col" style={{ height: 'calc(100vh - 135px)' }}>
+          <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200 shadow-soft overflow-hidden flex flex-col" style={{ height: 'calc(100dvh - 135px)' }}>
             
             {/* Header */}
             <div className="px-3 py-2 border-b border-slate-200 bg-slate-50/70 flex justify-between items-center shrink-0">

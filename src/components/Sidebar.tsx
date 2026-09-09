@@ -191,7 +191,7 @@ export default function Sidebar() {
   const sidebarContent = (
     <>
       {/* Brand Header & Toggle Button */}
-      <div className="p-3.5 flex items-center justify-between border-b border-slate-800 shrink-0">
+      <div className="p-3.5 pt-[calc(0.875rem+env(safe-area-inset-top))] flex items-center justify-between border-b border-slate-800 shrink-0">
         <div className="flex items-center gap-2.5 overflow-hidden">
           <div className="w-9 h-9 bg-white p-1 rounded-xl flex items-center justify-center border border-brand-gold shadow-gold text-primary shrink-0">
             <Logo size="md" />
@@ -412,7 +412,7 @@ export default function Sidebar() {
       </nav>
 
       {/* User Footer */}
-      <div className="p-2.5 border-t border-slate-800 bg-slate-950/70 space-y-2 shrink-0">
+      <div className="p-2.5 pb-[calc(0.625rem+env(safe-area-inset-bottom))] border-t border-slate-800 bg-slate-950/70 space-y-2 shrink-0">
         <Link
           href="/profile"
           onClick={close}
@@ -495,7 +495,8 @@ export default function Sidebar() {
         >
           <button
             onClick={close}
-            className="absolute top-3 left-3 w-8 h-8 rounded-lg bg-slate-800 text-white flex items-center justify-center transition-colors z-10 cursor-pointer"
+            style={{ top: 'calc(0.75rem + env(safe-area-inset-top))' }}
+            className="absolute left-3 w-10 h-10 rounded-lg bg-slate-800 text-white flex items-center justify-center transition-colors z-10 cursor-pointer"
             aria-label="إغلاق"
           >
             <span className="material-symbols-outlined text-[18px]">close</span>
