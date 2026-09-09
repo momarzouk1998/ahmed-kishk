@@ -65,10 +65,20 @@ const DEFAULT_PERMS_ROSTER: PermsMap = {
   },
 };
 
+function normalizePhone(p: string): string {
+  const clean = (p || '').trim().replace(/\s/g, '');
+  if (!clean) return '';
+  return clean.startsWith('0') ? clean : `0${clean}`;
+}
+
 async function readAllPerms(): Promise<PermsMap> {
-  const rec = await prisma.systemStore.findUnique({ where: { key: STORE_KEY } });
-  const raw = rec?.data as any;
-  if (raw && typeof raw === 'object' && !Array.isArray(raw)) return raw as PermsMap;
+  try {
+    const rec = await prisma.systemStore.findUnique({ where: { key: STORE_KEY } });
+    const raw = rec?.data as any;
+    if (raw && typeof raw === 'object' && !Array.isArray(raw)) return raw as PermsMap;
+  } catch (e) {
+    console.error('Error reading perms from DB:', e);
+  }
   return {};
 }
 
@@ -87,23 +97,18 @@ export async function GET(request: Request) {
     if (!user) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
 
     const url = new URL(request.url);
-    const phone = String(url.searchParams.get('phone') || '').trim();
-    if (!phone) return NextResponse.json({ error: 'phone required' }, { status: 400 });
+    const rawPhone = String(url.searchParams.get('phone') || '').trim();
+    if (!rawPhone) return NextResponse.json({ error: 'phone required' }, { status: 400 });
 
+    const phone = normalizePhone(rawPhone);
+    const normNoZero = phone.replace(/^0/, '');
     const map = await readAllPerms();
-    let entry = map[phone] || DEFAULT_PERMS_ROSTER[phone] || {
+
+    const entry = map[phone] || map[normNoZero] || map[`0${normNoZero}`] || DEFAULT_PERMS_ROSTER[phone] || DEFAULT_PERMS_ROSTER[normNoZero] || {
       allowedPageIds: ['p_fabric_sales', 'p_inventory', 'p_customers'],
       restrictToBranch: true,
       branch: 'الفرع الرئيسي',
     };
-
-    // ضمان إخفاء الصفحة الرئيسية لأحمد عبدالله إذا لم يكن محدداً بغير ذلك
-    if (phone === '01023232370') {
-      entry = {
-        ...entry,
-        allowedPageIds: (entry.allowedPageIds || []).filter((id: string) => id !== 'p_dashboard'),
-      };
-    }
 
     return NextResponse.json(entry);
   } catch (e: any) {
@@ -112,39 +117,56 @@ export async function GET(request: Request) {
 }
 
 // POST { phone, allowedPageIds, restrictToBranch, branch } — يحفظ صلاحيات موظف
-// يتطلب أن يكون المستخدم الحالى ADMIN
 export async function POST(request: Request) {
   try {
     const user = await verifyAuthCookie(request);
     if (!user) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
-    if (user.role !== 'ADMIN') {
+
+    const userPhone = normalizePhone(user.phone || '');
+    const isSuperAdmin = userPhone === '01558282760' || userPhone === '01063821000' || user.role === 'ADMIN' || user.branch === 'المدير العام';
+    if (!isSuperAdmin) {
       return NextResponse.json({ error: 'تحتاج صلاحية مدير لتعديل الصلاحيات' }, { status: 403 });
     }
 
     const body = await request.json();
-    const phone = String(body?.phone || '').trim();
-    if (!phone) return NextResponse.json({ error: 'phone required' }, { status: 400 });
+    const rawPhone = String(body?.phone || '').trim();
+    if (!rawPhone) return NextResponse.json({ error: 'phone required' }, { status: 400 });
 
+    const phone = normalizePhone(rawPhone);
+    const normNoZero = phone.replace(/^0/, '');
     const map = await readAllPerms();
     const targetBranch = String(body?.branch || 'الفرع الرئيسي');
-    map[phone] = {
-      allowedPageIds: Array.isArray(body?.allowedPageIds) ? body.allowedPageIds.map(String) : [],
-      restrictToBranch: !!body?.restrictToBranch,
+    const allowedPageIds = Array.isArray(body?.allowedPageIds) ? body.allowedPageIds.map(String) : [];
+    const restrictToBranch = !!body?.restrictToBranch;
+
+    const newEntry = {
+      allowedPageIds,
+      restrictToBranch,
       branch: targetBranch,
     };
+
+    map[phone] = newEntry;
+    map[normNoZero] = newEntry;
+
     await writeAllPerms(map);
 
     // تحديث فرع الموظف فى جدول المستخدمين
     try {
       await prisma.user.updateMany({
-        where: { phone },
+        where: {
+          OR: [
+            { phone: phone },
+            { phone: normNoZero },
+            { phone: `0${normNoZero}` },
+          ],
+        },
         data: { branch: targetBranch },
       });
     } catch (e) {
       console.error('Error updating user branch in Prisma:', e);
     }
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, phone, allowedCount: allowedPageIds.length });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });
   }

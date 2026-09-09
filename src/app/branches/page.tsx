@@ -112,14 +112,14 @@ export default function BranchesAndPermissionsPage() {
   const [activePerms, setActivePerms] = useState<string[]>([]);
 
   useEffect(() => {
-    // اقرأ الصلاحيات من السيرفر (persistent per-user)، وقع على localStorage كـ fallback
+    // اقرأ الصلاحيات من السيرفر (persistent per-user)
     (async () => {
       const withServerPerms = await Promise.all(initialEmployees.map(async emp => {
         try {
           const res = await fetch(`/api/user-permissions?phone=${encodeURIComponent(emp.phone)}`, { cache: 'no-store' });
           if (res.ok) {
             const data = await res.json();
-            if (Array.isArray(data?.allowedPageIds) && data.allowedPageIds.length) {
+            if (Array.isArray(data?.allowedPageIds)) {
               return {
                 ...emp,
                 branch: data.branch || emp.branch,
@@ -129,18 +129,7 @@ export default function BranchesAndPermissionsPage() {
             }
           }
         } catch {}
-        // fallback إلى localStorage
-        try {
-          const storedPerms = localStorage.getItem(`user_perms_${emp.phone}`);
-          const storedBranch = localStorage.getItem(`user_branch_${emp.phone}`);
-          const storedRestrict = localStorage.getItem(`user_restrict_${emp.phone}`);
-          return {
-            ...emp,
-            branch: storedBranch || emp.branch,
-            restrictToBranch: storedRestrict !== null ? storedRestrict === 'true' : emp.restrictToBranch,
-            allowedPageIds: storedPerms ? JSON.parse(storedPerms) : emp.allowedPageIds,
-          };
-        } catch { return emp; }
+        return emp;
       }));
       setEmployees(withServerPerms);
     })();
@@ -171,13 +160,7 @@ export default function BranchesAndPermissionsPage() {
     setSelectedEmp(emp);
     setActiveBranch(emp.branch);
     setRestrictToBranch(emp.restrictToBranch);
-    try {
-      const storedPerms = localStorage.getItem(`user_perms_${emp.phone}`);
-      const permsList = storedPerms ? JSON.parse(storedPerms) : emp.allowedPageIds;
-      setActivePerms(permsList);
-    } catch {
-      setActivePerms(emp.allowedPageIds);
-    }
+    setActivePerms(emp.allowedPageIds || []);
     setShowPermsModal(true);
   };
 
@@ -240,31 +223,34 @@ export default function BranchesAndPermissionsPage() {
 
   const savePermissions = async () => {
     if (!selectedEmp) return;
+    const empPhone = selectedEmp.phone;
+    const newPerms = [...activePerms];
+    const newBranch = activeBranch;
+    const newRestrict = restrictToBranch;
+
     setEmployees(prev => prev.map(e => e.id === selectedEmp.id ? {
       ...e,
-      branch: activeBranch,
-      restrictToBranch,
-      allowedPageIds: activePerms,
+      branch: newBranch,
+      restrictToBranch: newRestrict,
+      allowedPageIds: newPerms,
     } : e));
 
-    // احفظ محلياً فوراً
     try {
-      localStorage.setItem(`user_perms_${selectedEmp.phone}`, JSON.stringify(activePerms));
-      localStorage.setItem(`user_branch_${selectedEmp.phone}`, activeBranch);
-      localStorage.setItem(`user_restrict_${selectedEmp.phone}`, String(restrictToBranch));
+      localStorage.setItem(`user_perms_${empPhone}`, JSON.stringify(newPerms));
+      localStorage.setItem(`user_branch_${empPhone}`, newBranch);
+      localStorage.setItem(`user_restrict_${empPhone}`, String(newRestrict));
       window.dispatchEvent(new Event('storage'));
     } catch {}
 
-    // مزامنة إلى السيرفر — يجعلها دائمة عبر الجلسات والأجهزة
     try {
       const res = await fetch('/api/user-permissions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          phone: selectedEmp.phone,
-          allowedPageIds: activePerms,
-          restrictToBranch,
-          branch: activeBranch,
+          phone: empPhone,
+          allowedPageIds: newPerms,
+          restrictToBranch: newRestrict,
+          branch: newBranch,
         }),
       });
       if (!res.ok) {
