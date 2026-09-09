@@ -4,8 +4,8 @@ import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { getStoredInspections, getStoredQuotations } from '@/lib/inspectionsStore';
-import { getStoredPipelineOrders } from '@/lib/pipelineStore';
+import { getStoredInspections, getStoredQuotations, normalizeQuotationStatus } from '@/lib/inspectionsStore';
+import { getStoredPipelineOrders, normalizeMasterStage } from '@/lib/pipelineStore';
 import { getTodayDateStr, getYesterdayDateStr } from '@/lib/dateUtils';
 import { ALL_SYSTEM_PAGES } from '@/lib/permissions';
 
@@ -165,12 +165,138 @@ export default function DashboardPage() {
     .filter((q: any) => q.status !== 'ملغي' && q.status !== 'مكتمل')
     .reduce((sum: number, q: any) => sum + (Number(q.remainingAmount) || 0), 0);
 
-  // Pipeline Stages Progress Summary (Live Dynamic)
+  // Pipeline Stages Progress Summary (Live Dynamic - كل أوردر يُحتسب فى مرحلته النشطة الحالية فقط لمنع التكرار)
+  const normP = (p: any) => (p || '').replace(/\D/g, '').slice(-10);
+  const normN = (n: any) => (n || '').trim().toLowerCase();
+
+  // معرّفات وأرقام هواتف العملاء الذين تجاوزوا مراحل المعاينة والتسعير ودخلوا مراحل الورشة
+  const advancedKeys = new Set<string>();
+  const advancedPhones = new Set<string>();
+  const advancedNames = new Set<string>();
+
+  rawOrders.forEach((o: any) => {
+    if (o.id) advancedKeys.add(String(o.id).trim());
+    if (o.orderId) advancedKeys.add(String(o.orderId).trim());
+    if (o.inspectionId) advancedKeys.add(String(o.inspectionId).trim());
+    const p = normP(o.phone);
+    if (p) advancedPhones.add(p);
+    const n = normN(o.customerName);
+    if (n) advancedNames.add(n);
+  });
+
+  rawQuotations.forEach((q: any) => {
+    const normStatus = normalizeQuotationStatus(q.status);
+    const isAdvanced = (Number(q.depositPaid) || 0) > 0 || [
+      'معتمد ومسدد العربون', 'تم التحويل للورشة', 'في المقص', 'في الورشة',
+      'تجهيز الاكسسوارات', 'جاهز للاستلام', 'جاهز للتركيب', 'مكتمل'
+    ].includes(normStatus);
+
+    if (isAdvanced) {
+      if (q.id) advancedKeys.add(String(q.id).trim());
+      if (q.inspectionId) advancedKeys.add(String(q.inspectionId).trim());
+      const p = normP(q.phone);
+      if (p) advancedPhones.add(p);
+      const n = normN(q.customerName);
+      if (n) advancedNames.add(n);
+    }
+  });
+
+  // 1. رفع المقاسات: المعاينات الميدانية الجارية فقط (التي لم تنتقل للتسعير أو الورشة بعد)
+  const stage1Count = rawInspections.filter((i: any) => {
+    if (i.status === 'ملغي' || i.status === 'مكتمل' || i.status === 'قيد التسعير' || i.status === 'في الورشة') return false;
+    if (i.id && advancedKeys.has(String(i.id).trim())) return false;
+    const p = normP(i.phone);
+    if (p && advancedPhones.has(p)) return false;
+    const n = normN(i.customerName);
+    if (n && advancedNames.has(n)) return false;
+
+    const hasQuote = rawQuotations.some((q: any) =>
+      (q.inspectionId && q.inspectionId === i.id) ||
+      (q.id && q.id === i.id) ||
+      (p && normP(q.phone) === p) ||
+      (n && normN(q.customerName) === n)
+    );
+    return !hasQuote;
+  }).length;
+
+  // 2. التسعير والعقد: المقايسات المفتوحة بانتظار العربون والتعاقد (لم تسدد العربون ولم تحول للورشة بعد)
+  const stage2Count = rawQuotations.filter((q: any) => {
+    if (q.status === 'ملغي' || q.status === 'مكتمل') return false;
+    const normStatus = normalizeQuotationStatus(q.status);
+    if ([
+      'معتمد ومسدد العربون', 'تم التحويل للورشة', 'في المقص', 'في الورشة',
+      'تجهيز الاكسسوارات', 'جاهز للاستلام', 'جاهز للتركيب', 'مكتمل'
+    ].includes(normStatus)) return false;
+
+    if ((Number(q.depositPaid) || 0) > 0) return false;
+
+    if (q.id && advancedKeys.has(String(q.id).trim())) return false;
+    if (q.inspectionId && advancedKeys.has(String(q.inspectionId).trim())) return false;
+    const p = normP(q.phone);
+    if (p && advancedPhones.has(p)) return false;
+    const n = normN(q.customerName);
+    if (n && advancedNames.has(n)) return false;
+
+    return true;
+  }).length;
+
+  // أوردرات الورشة والتركيب الفريدة النشطة (مراحل 3، 4، 5، 6)
+  const activeWorkshopOrders = (() => {
+    const map = new Map<string, any>();
+    rawOrders.forEach((o: any) => {
+      const key = o.orderId || o.id || o.inspectionId || normP(o.phone) || normN(o.customerName);
+      if (key && !map.has(key)) map.set(key, o);
+    });
+    rawQuotations.forEach((q: any) => {
+      const normStatus = normalizeQuotationStatus(q.status);
+      const isPaidOrTransferred = (Number(q.depositPaid) || 0) > 0 || [
+        'معتمد ومسدد العربون', 'تم التحويل للورشة', 'في المقص', 'في الورشة',
+        'تجهيز الاكسسوارات', 'جاهز للاستلام', 'جاهز للتركيب'
+      ].includes(normStatus);
+
+      if (isPaidOrTransferred) {
+        const key = q.id || q.orderId || q.inspectionId || normP(q.phone) || normN(q.customerName);
+        if (key && !map.has(key)) {
+          map.set(key, {
+            ...q,
+            status: normStatus === 'معتمد ومسدد العربون' || normStatus === 'تم التحويل للورشة' ? 'في الورشة' : q.status
+          });
+        }
+      }
+    });
+
+    return Array.from(map.values()).filter((o: any) => o.status !== 'مكتمل' && o.status !== 'ملغي');
+  })();
+
+  // 3. قص القماش
+  const stage3Count = activeWorkshopOrders.filter((o: any) => {
+    const st = normalizeMasterStage(o.status);
+    return st === 'في المقص';
+  }).length;
+
+  // 4. الورشة والتفصيل
+  const stage4Count = activeWorkshopOrders.filter((o: any) => {
+    const st = normalizeMasterStage(o.status);
+    return st === 'في الورشة';
+  }).length;
+
+  // 5. الإكسسوارات
+  const stage5Count = activeWorkshopOrders.filter((o: any) => {
+    const st = normalizeMasterStage(o.status);
+    return st === 'تجهيز الاكسسوارات';
+  }).length;
+
+  // 6. التركيب والتسليم
+  const stage6Count = activeWorkshopOrders.filter((o: any) => {
+    const st = normalizeMasterStage(o.status);
+    return st === 'جاهز للاستلام' || st === 'جاهز للتركيب';
+  }).length;
+
   const pipelineStats = [
     {
       id: 1,
       title: '1. رفع المقاسات',
-      count: rawInspections.filter((i: any) => i.status !== 'مكتمل').length,
+      count: stage1Count,
       color: 'bg-amber-500',
       textLight: 'text-amber-800',
       border: 'border-amber-200',
@@ -181,7 +307,7 @@ export default function DashboardPage() {
     {
       id: 2,
       title: '2. التسعير والعقد',
-      count: rawQuotations.length,
+      count: stage2Count,
       color: 'bg-sky-500',
       textLight: 'text-sky-800',
       border: 'border-sky-200',
@@ -192,7 +318,7 @@ export default function DashboardPage() {
     {
       id: 3,
       title: '3. قص القماش',
-      count: rawOrders.filter((o: any) => o.status === 'في المقص' || o.status === 'قص القماش').length,
+      count: stage3Count,
       color: 'bg-indigo-500',
       textLight: 'text-indigo-800',
       border: 'border-indigo-200',
@@ -203,7 +329,7 @@ export default function DashboardPage() {
     {
       id: 4,
       title: '4. الورشة والتفصيل',
-      count: rawOrders.filter((o: any) => o.status === 'في الورشة').length,
+      count: stage4Count,
       color: 'bg-purple-500',
       textLight: 'text-purple-800',
       border: 'border-purple-200',
@@ -214,7 +340,7 @@ export default function DashboardPage() {
     {
       id: 5,
       title: '5. الإكسسوارات',
-      count: rawOrders.filter((o: any) => o.status === 'تجهيز الاكسسوارات').length,
+      count: stage5Count,
       color: 'bg-cyan-500',
       textLight: 'text-cyan-800',
       border: 'border-cyan-200',
@@ -225,7 +351,7 @@ export default function DashboardPage() {
     {
       id: 6,
       title: '6. التركيب والتسليم',
-      count: rawOrders.filter((o: any) => o.status === 'جاهز للاستلام' || o.status === 'جاهز للتركيب').length,
+      count: stage6Count,
       color: 'bg-emerald-500',
       textLight: 'text-emerald-800',
       border: 'border-emerald-200',
