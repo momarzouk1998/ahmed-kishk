@@ -541,7 +541,18 @@ export default function ReportsPage() {
             <div className="bg-white rounded-2xl border border-slate-200 p-10 text-center text-slate-500 text-sm">جارٍ تحميل التقارير...</div>
           ) : (
             <>
-              {reportType === 'sales' && <SalesReport kpis={salesKpis} invoices={fInvoices} collections={fCollections} branchLabel={branchLabel} periodLabel={periodLabel} />}
+              {reportType === 'sales' && (
+                <SalesReport
+                  kpis={salesKpis}
+                  invoices={fInvoices}
+                  collections={fCollections}
+                  branchLabel={branchLabel}
+                  periodLabel={periodLabel}
+                  isAdmin={isAdmin}
+                  userBranch={currentUser?.branch}
+                  selectedBranch={selectedBranch}
+                />
+              )}
               {reportType === 'profits' && <ProfitsReport stats={profitStats} topItems={topItems} branchLabel={branchLabel} periodLabel={periodLabel} />}
               {reportType === 'inventory' && <InventoryReport alerts={invAlerts} branchLabel={branchLabel} />}
               {reportType === 'curtains' && <CurtainsReport stats={curtainStats} branchLabel={branchLabel} periodLabel={periodLabel} />}
@@ -569,7 +580,40 @@ function KpiStrip({ items }: { items: { label: string; value: string; color?: st
   );
 }
 
-function SalesReport({ kpis, invoices, collections, branchLabel, periodLabel }: any) {
+function SalesReport({ kpis, invoices, collections, branchLabel, periodLabel, isAdmin, userBranch, selectedBranch }: any) {
+  // تصفية الخزن: لو المستخدم أدمن ومحدد الكل تظهر الـ 4، لو مش أدمن تظهر خزنته فقط
+  const visibleTreasuries = useMemo(() => {
+    if (!kpis.branchTreasuries || !Array.isArray(kpis.branchTreasuries)) return [];
+
+    if (isAdmin) {
+      if (selectedBranch && selectedBranch !== 'ALL' && selectedBranch !== 'الكل') {
+        return kpis.branchTreasuries.filter((b: any) => {
+          const s = String(selectedBranch || '').trim();
+          if (b.key === 'الرئيسي') return s.includes('رئيسي') || s.includes('سعد زغلول');
+          if (b.key === 'عرابي') return s.includes('عرابي') || s.includes('عدلي');
+          if (b.key === 'عمر أفندي') return s.includes('عمر أفندي') || s.includes('عمر');
+          if (b.key === 'الثلاثيني') return s.includes('الثلاثيني');
+          return false;
+        });
+      }
+      return kpis.branchTreasuries;
+    }
+
+    // موظف فرع: تظهر خزينة فرعه فقط
+    const target = String(userBranch || '').trim();
+    const filtered = kpis.branchTreasuries.filter((b: any) => {
+      if (b.key === 'الرئيسي') return target.includes('رئيسي') || target.includes('سعد زغلول');
+      if (b.key === 'عرابي') return target.includes('عرابي') || target.includes('عدلي');
+      if (b.key === 'عمر أفندي') return target.includes('عمر أفندي') || target.includes('عمر');
+      if (b.key === 'الثلاثيني') return target.includes('الثلاثيني');
+      return false;
+    });
+
+    return filtered.length > 0 ? filtered : kpis.branchTreasuries.slice(0, 1);
+  }, [kpis.branchTreasuries, isAdmin, userBranch, selectedBranch]);
+
+  const showAllFour = isAdmin && (!selectedBranch || selectedBranch === 'ALL' || selectedBranch === 'الكل');
+
   return (
     <>
       <KpiStrip items={[
@@ -593,23 +637,25 @@ function SalesReport({ kpis, invoices, collections, branchLabel, periodLabel }: 
         </div>
       )}
 
-      {/* 🏛️ 4 Branch Treasuries Live Summary */}
-      {kpis.branchTreasuries && (
+      {/* 🏛️ Branch Treasuries Live Summary */}
+      {visibleTreasuries.length > 0 && (
         <div className="card bg-white rounded-2xl border border-slate-200 p-4 shadow-soft">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3 pb-2 border-b border-slate-100">
             <div className="flex items-center gap-2">
               <span className="material-symbols-outlined text-amber-500 text-lg">savings</span>
               <h3 className="font-black text-xs text-slate-900">
-                أرصدة خزن الفروع النقدية والمحصلة — ({periodLabel})
+                {showAllFour
+                  ? `أرصدة خزن الفروع النقدية والمحصلة (4 فروع) — (${periodLabel})`
+                  : `رصيد ${visibleTreasuries[0]?.treasury || 'الخزينة'} — (${periodLabel})`}
               </h3>
             </div>
             <div className="text-xs font-mono font-black text-slate-700 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
-              إجمالي كل الخزن: <span className="text-emerald-700">{kpis.branchTreasuries.reduce((s: number, b: any) => s + b.total, 0).toLocaleString()} ج.م</span>
+              إجمالي {showAllFour ? 'كل الخزن' : 'الخزينة'}: <span className="text-emerald-700">{visibleTreasuries.reduce((s: number, b: any) => s + b.total, 0).toLocaleString()} ج.م</span>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {kpis.branchTreasuries.map((b: any, idx: number) => (
+          <div className={`grid grid-cols-1 ${visibleTreasuries.length === 1 ? 'max-w-md' : visibleTreasuries.length === 2 ? 'sm:grid-cols-2 max-w-2xl' : 'sm:grid-cols-2 lg:grid-cols-4'} gap-3`}>
+            {visibleTreasuries.map((b: any, idx: number) => (
               <div key={idx} className={`p-3 rounded-xl border ${b.color} flex flex-col justify-between`}>
                 <div>
                   <div className="flex items-center justify-between mb-1">

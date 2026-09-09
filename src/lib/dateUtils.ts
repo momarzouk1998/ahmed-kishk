@@ -60,13 +60,20 @@ export function formatTimeOnly(dateString: string | Date): string {
   return `${formattedHours}:${minutes} ${ampm}`;
 }
 
-/**
- * دالة استخراج تاريخ اليوم بدقة بتوقيت القاهرة (تبدأ اليوم الجديد في تمام الساعة 12:00 منتصف الليل).
- * تمنع خطأ الـ UTC السابق (حيث كان اليوم الجديد لا يبدأ إلا الساعة 2 أو 3 صباحاً).
- */
 export function getTodayDateStr(inputDate?: string | Date): string {
+  if (typeof inputDate === 'string') {
+    const s = inputDate.trim();
+    // If it's already in pure YYYY-MM-DD format (no time component)
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  }
   const date = inputDate ? (typeof inputDate === 'string' ? new Date(inputDate) : inputDate) : new Date();
-  if (isNaN(date.getTime())) return '';
+  if (isNaN(date.getTime())) {
+    if (typeof inputDate === 'string') {
+      const parts = inputDate.split('T')[0].split(' ')[0];
+      if (/^\d{4}-\d{2}-\d{2}$/.test(parts)) return parts;
+    }
+    return '';
+  }
   try {
     const formatter = new Intl.DateTimeFormat('en-CA', {
       timeZone: 'Africa/Cairo',
