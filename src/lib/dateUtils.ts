@@ -61,33 +61,65 @@ export function formatTimeOnly(dateString: string | Date): string {
 }
 
 export function getTodayDateStr(inputDate?: string | Date): string {
+  if (!inputDate) {
+    const date = new Date();
+    try {
+      return new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Africa/Cairo',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).format(date);
+    } catch {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+  }
+
   if (typeof inputDate === 'string') {
     const s = inputDate.trim();
-    // If it's already in pure YYYY-MM-DD format (no time component)
+    if (!s) return '';
+    // If it's pure YYYY-MM-DD
     if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
-  }
-  const date = inputDate ? (typeof inputDate === 'string' ? new Date(inputDate) : inputDate) : new Date();
-  if (isNaN(date.getTime())) {
-    if (typeof inputDate === 'string') {
-      const parts = inputDate.split('T')[0].split(' ')[0];
-      if (/^\d{4}-\d{2}-\d{2}$/.test(parts)) return parts;
+    // YYYY/MM/DD or YYYY-M-D
+    const ymdMatch = s.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
+    if (ymdMatch) {
+      return `${ymdMatch[1]}-${ymdMatch[2].padStart(2, '0')}-${ymdMatch[3].padStart(2, '0')}`;
     }
-    return '';
+    // DD/MM/YYYY or DD-MM-YYYY
+    const dmyMatch = s.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})/);
+    if (dmyMatch) {
+      return `${dmyMatch[3]}-${dmyMatch[2].padStart(2, '0')}-${dmyMatch[1].padStart(2, '0')}`;
+    }
+    // DD/MM/YY or D/M/YY (e.g. 22/9/26)
+    const dmyShortMatch = s.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2})/);
+    if (dmyShortMatch) {
+      const year = Number(dmyShortMatch[3]) < 70 ? `20${dmyShortMatch[3]}` : `19${dmyShortMatch[3]}`;
+      return `${year}-${dmyShortMatch[2].padStart(2, '0')}-${dmyShortMatch[1].padStart(2, '0')}`;
+    }
   }
-  try {
-    const formatter = new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'Africa/Cairo',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    });
-    return formatter.format(date); // YYYY-MM-DD
-  } catch {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+
+  const date = typeof inputDate === 'string' ? new Date(inputDate) : inputDate;
+  if (!isNaN(date.getTime())) {
+    try {
+      const formatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Africa/Cairo',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      });
+      return formatter.format(date); // YYYY-MM-DD
+    } catch {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
   }
+
+  return '';
 }
 
 /**

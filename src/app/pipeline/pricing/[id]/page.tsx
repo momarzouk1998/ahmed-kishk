@@ -522,6 +522,8 @@ export default function PricingDetailPage() {
 
   const handleDepositChange = (amount: number, method?: string, split?: any) => {
     if (!quotation) return;
+    const nowIso = new Date().toISOString();
+    const todayStr = nowIso.split('T')[0];
     const updatedList = quotations.map(q => {
       if (q.id !== quotation.id) return q;
       const deposit = Math.min(amount, q.totalAmount);
@@ -533,6 +535,8 @@ export default function PricingDetailPage() {
         paymentMethod: payMethod,
         splitPayments: split !== undefined ? split : q.splitPayments,
         status: deposit > 0 ? ('معتمد ومسدد العربون' as const) : q.status,
+        date: q.date || todayStr,
+        updatedAt: nowIso,
       };
     });
     setQuotations(updatedList);
@@ -545,12 +549,16 @@ export default function PricingDetailPage() {
     if (method === 'دفع متعدد / مزيج' && (!initialSplit || (Object.values(initialSplit).reduce((a: number, b: any) => a + (Number(b) || 0), 0) === 0))) {
       initialSplit = { cash: quotation.depositPaid || 0, instapay: 0, vodafone: 0, visa: 0 };
     }
+    const nowIso = new Date().toISOString();
+    const todayStr = nowIso.split('T')[0];
     const updatedList = quotations.map(q => {
       if (q.id !== quotation.id) return q;
       return {
         ...q,
         paymentMethod: method,
         splitPayments: initialSplit,
+        date: q.date || todayStr,
+        updatedAt: nowIso,
       };
     });
     setQuotations(updatedList);
@@ -564,6 +572,8 @@ export default function PricingDetailPage() {
     const totalDeposit = (Number(updatedSplit.cash) || 0) + (Number(updatedSplit.instapay) || 0) + (Number(updatedSplit.vodafone) || 0) + (Number(updatedSplit.visa) || 0);
     const deposit = Math.min(totalDeposit, quotation.totalAmount);
 
+    const nowIso = new Date().toISOString();
+    const todayStr = nowIso.split('T')[0];
     const updatedList = quotations.map(q => {
       if (q.id !== quotation.id) return q;
       return {
@@ -573,6 +583,8 @@ export default function PricingDetailPage() {
         paymentMethod: 'دفع متعدد / مزيج',
         splitPayments: updatedSplit,
         status: deposit > 0 ? ('معتمد ومسدد العربون' as const) : q.status,
+        date: q.date || todayStr,
+        updatedAt: nowIso,
       };
     });
     setQuotations(updatedList);

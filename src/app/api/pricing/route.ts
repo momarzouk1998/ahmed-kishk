@@ -35,6 +35,68 @@ export async function GET(request: Request) {
       if (q && q.id) qMap.set(q.id, q);
     });
 
+    // دمج أوردرات خط الإنتاج (Pipeline Orders) لضمان ظهور العقود المحولة للقص والورشة
+    try {
+      const pipelineOrders = await prisma.pipelineOrder.findMany({
+        where: branchWhere(scope),
+        orderBy: { updatedAt: 'desc' },
+      });
+      let fallbackOrders: any[] = [];
+      try {
+        const pStore = await prisma.systemStore.findUnique({
+          where: { key: 'ahmed_kishk_pipeline_orders_v5' },
+        });
+        if (pStore && Array.isArray(pStore.data)) {
+          fallbackOrders = pStore.data as any[];
+        }
+      } catch {}
+
+      if (scope && !scope.isAdmin) {
+        fallbackOrders = fallbackOrders.filter((o: any) => o?.branch === scope.branch);
+      }
+
+      const allPipeline = [...fallbackOrders, ...pipelineOrders];
+      allPipeline.forEach(o => {
+        if (!o) return;
+        const key = o.orderId || o.id;
+        if (!key) return;
+        const existing = qMap.get(key) || qMap.get(o.id) || qMap.get(o.orderId) || Array.from(qMap.values()).find(q => q.customerName && o.customerName && q.customerName === o.customerName);
+        if (existing) {
+          qMap.set(existing.id, {
+            ...existing,
+            status: o.status || existing.status,
+            depositPaid: Math.max(Number(existing.depositPaid) || 0, Number(o.depositPaid) || 0),
+            remainingAmount: Number(o.remainingAmount) !== undefined ? Number(o.remainingAmount) : existing.remainingAmount,
+            paymentMethod: o.paymentMethod || existing.paymentMethod,
+            splitPayments: o.splitPayments || existing.splitPayments,
+          });
+        } else {
+          qMap.set(key, {
+            id: key,
+            inspectionId: o.inspectionId || key,
+            customerName: o.customerName || '',
+            phone: o.phone || '',
+            address: o.address || '',
+            branch: o.branch,
+            status: o.status || 'في المقص',
+            totalAmount: Number(o.totalAmount) || 0,
+            discountAmount: Number(o.discountAmount) || 0,
+            depositPaid: Number(o.depositPaid) || 0,
+            remainingAmount: Number(o.remainingAmount) || 0,
+            paymentMethod: o.paymentMethod || 'نقدي (كاش)',
+            splitPayments: o.splitPayments,
+            treasury: o.treasury,
+            date: o.createdAt ? String(o.createdAt).split('T')[0] : new Date().toISOString().split('T')[0],
+            deliveryDate: o.deliveryDate,
+            inspectionDate: o.inspectionDate,
+            installationDate: o.installationDate,
+            estimatorName: o.technicianName || 'أحمد كشك',
+            rooms: o.rooms || [],
+          });
+        }
+      });
+    } catch {}
+
     const combined = Array.from(qMap.values());
 
     // مزامنة المبالغ المسددة من سندات التحصيل فى شاشة العملاء
@@ -127,6 +189,7 @@ export async function POST(request: Request) {
           paymentMethod: paymentMethod || undefined,
           splitPayments: splitPayments !== undefined ? splitPayments : undefined,
           treasury: treasury !== undefined ? treasury : undefined,
+          date: date !== undefined ? (date ? String(date) : undefined) : undefined,
           deliveryDate: deliveryDate !== undefined ? (deliveryDate ? String(deliveryDate) : null) : undefined,
           inspectionDate: inspectionDate !== undefined ? (inspectionDate ? String(inspectionDate) : null) : undefined,
           installationDate: installationDate !== undefined ? (installationDate ? String(installationDate) : null) : undefined,

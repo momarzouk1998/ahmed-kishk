@@ -102,7 +102,7 @@ export default function ReportsPage() {
     (async () => {
       setLoading(true);
       try {
-        const [salesRes, purRes, invRes, custRes, supRes, insRes, priRes] = await Promise.all([
+        const [salesRes, purRes, invRes, custRes, supRes, insRes, priRes, ordRes] = await Promise.all([
           fetch('/api/fabric-sales', { cache: 'no-store' }).catch(() => null),
           fetch('/api/purchases', { cache: 'no-store' }).catch(() => null),
           fetch('/api/inventory', { cache: 'no-store' }).catch(() => null),
@@ -110,6 +110,7 @@ export default function ReportsPage() {
           fetch('/api/suppliers', { cache: 'no-store' }).catch(() => null),
           fetch('/api/inspections', { cache: 'no-store' }).catch(() => null),
           fetch('/api/pricing', { cache: 'no-store' }).catch(() => null),
+          fetch('/api/pipeline-orders', { cache: 'no-store' }).catch(() => null),
         ]);
 
         if (salesRes?.ok) {
@@ -138,10 +139,31 @@ export default function ReportsPage() {
           const j = await insRes.json();
           if (Array.isArray(j?.inspections)) setInspections(j.inspections);
         }
+        
+        const qMap = new Map<string, any>();
         if (priRes?.ok) {
           const j = await priRes.json();
-          if (Array.isArray(j?.quotations)) setQuotations(j.quotations);
+          if (Array.isArray(j?.quotations)) {
+            j.quotations.forEach((q: any) => {
+              if (q && (q.id || q.inspectionId)) qMap.set(q.id || q.inspectionId, q);
+            });
+          }
         }
+        if (ordRes?.ok) {
+          const j = await ordRes.json();
+          if (Array.isArray(j?.orders)) {
+            j.orders.forEach((o: any) => {
+              const key = o.orderId || o.id || o.inspectionId;
+              const existing = qMap.get(key) || qMap.get(o.id) || qMap.get(o.orderId);
+              if (existing) {
+                qMap.set(key, { ...existing, ...o, depositPaid: Math.max(Number(existing.depositPaid) || 0, Number(o.depositPaid) || 0) });
+              } else if (key) {
+                qMap.set(key, o);
+              }
+            });
+          }
+        }
+        setQuotations(Array.from(qMap.values()));
       } finally {
         setLoading(false);
       }
@@ -173,7 +195,7 @@ export default function ReportsPage() {
     [invoices, selectedBranch, period]
   );
   const fQuotations = useMemo(
-    () => quotations.filter(q => inBranch(q.branch) && inPeriod(q.date || q.createdAt)),
+    () => quotations.filter(q => inBranch(q.branch) && inPeriod(q.depositDate || q.updatedAt || q.date || q.createdAt)),
     [quotations, selectedBranch, period]
   );
   const fPurchases = useMemo(
@@ -278,7 +300,7 @@ export default function ReportsPage() {
       }
 
       if (unrecordedDeposit > 0) {
-        let split = q.depositSplit;
+        let split = q.splitPayments || q.depositSplit;
         if (!split && q.notes && q.notes.includes('[DEPOSIT_SPLIT:')) {
           try {
             const match = q.notes.match(/\[DEPOSIT_SPLIT:([^\]]+)\]/);
@@ -292,7 +314,7 @@ export default function ReportsPage() {
           vodafone += Number(split.vodafone || 0);
           visa += Number(split.visa || 0);
         } else {
-          const m = (q.depositMethod || '').trim();
+          const m = (q.paymentMethod || q.depositMethod || (q as any).paymentType || '').trim();
           if (m.includes('فودافون') || m.toLowerCase().includes('vodafone')) vodafone += unrecordedDeposit;
           else if (m.includes('إنستا') || m.includes('انستا') || m.toLowerCase().includes('insta')) instapay += unrecordedDeposit;
           else if (m.includes('فيزا') || m.includes('كارت') || m.toLowerCase().includes('visa') || m.toLowerCase().includes('card')) visa += unrecordedDeposit;
@@ -370,7 +392,7 @@ export default function ReportsPage() {
       });
 
       // 3. From Quotation Deposits in this period (deduplicated)
-      quotations.filter(q => matchB(q.branch) && inPeriod(q.date || q.createdAt)).forEach(q => {
+      quotations.filter(q => matchB(q.branch) && inPeriod(q.depositDate || q.updatedAt || q.date || q.createdAt)).forEach(q => {
         const deposit = Number(q.depositPaid || 0);
         const key = normPhone(q.phone) || normName(q.customerName);
         const pool = key ? (bCollectionsPool.get(key) || 0) : 0;
@@ -382,7 +404,7 @@ export default function ReportsPage() {
 
         if (unrecorded > 0) {
           bCount++;
-          let split = q.depositSplit;
+          let split = q.splitPayments || q.depositSplit;
           if (!split && q.notes && q.notes.includes('[DEPOSIT_SPLIT:')) {
             try {
               const match = q.notes.match(/\[DEPOSIT_SPLIT:([^\]]+)\]/);
@@ -395,7 +417,7 @@ export default function ReportsPage() {
             bVodafone += Number(split.vodafone || 0);
             bVisa += Number(split.visa || 0);
           } else {
-            const m = (q.depositMethod || '').trim();
+            const m = (q.paymentMethod || q.depositMethod || (q as any).paymentType || '').trim();
             if (m.includes('فودافون') || m.toLowerCase().includes('vodafone')) bVodafone += unrecorded;
             else if (m.includes('إنستا') || m.includes('انستا') || m.toLowerCase().includes('insta')) bInstapay += unrecorded;
             else if (m.includes('فيزا') || m.includes('كارت') || m.toLowerCase().includes('visa') || m.toLowerCase().includes('card')) bVisa += unrecorded;

@@ -83,8 +83,23 @@ export default function DashboardPage() {
         const collections = (resCust.success && Array.isArray(resCust.collections)) ? resCust.collections : [];
         const sales = (resSales.success && Array.isArray(resSales.sales)) ? resSales.sales : [];
 
+        const qMap = new Map<string, any>();
+        (qot || []).forEach((q: any) => {
+          if (q && (q.id || q.inspectionId)) qMap.set(q.id || q.inspectionId, q);
+        });
+        (orders || []).forEach((o: any) => {
+          const key = o.orderId || o.id || o.inspectionId;
+          const existing = qMap.get(key) || qMap.get(o.id) || qMap.get(o.orderId);
+          if (existing) {
+            qMap.set(key, { ...existing, ...o, depositPaid: Math.max(Number(existing.depositPaid) || 0, Number(o.depositPaid) || 0) });
+          } else if (key) {
+            qMap.set(key, o);
+          }
+        });
+        const mergedQuotations = Array.from(qMap.values());
+
         setRawInspections(ins || []);
-        setRawQuotations(qot || []);
+        setRawQuotations(mergedQuotations);
         setRawOrders(orders || []);
         setRawInventory(invItems || []);
         setRawCustomers(customers || []);
@@ -105,7 +120,7 @@ export default function DashboardPage() {
     const todayStr = getTodayDateStr();
 
     return items.filter(item => {
-      const d = item[dateField] || item.date || item.scheduledAt || item.createdAt;
+      const d = item.depositDate || item.updatedAt || item[dateField] || item.date || item.scheduledAt || item.createdAt;
       if (!d) return true;
       const itemDateStr = getTodayDateStr(d) || String(d).split('T')[0].split(' ')[0];
 
@@ -305,7 +320,7 @@ export default function DashboardPage() {
       }
 
       if (unrecorded > 0) {
-        let split = q.depositSplit;
+        let split = q.splitPayments || q.depositSplit;
         if (!split && q.notes && q.notes.includes('[DEPOSIT_SPLIT:')) {
           try {
             const match = q.notes.match(/\[DEPOSIT_SPLIT:([^\]]+)\]/);
@@ -318,10 +333,10 @@ export default function DashboardPage() {
           treasuryVodafone += Number(split.vodafone || 0);
           treasuryVisa += Number(split.visa || 0);
         } else {
-          const m = (q.depositMethod || '').trim();
-          if (m.includes('فودافون')) treasuryVodafone += unrecorded;
-          else if (m.includes('إنستا') || m.includes('انستا')) treasuryInstapay += unrecorded;
-          else if (m.includes('فيزا') || m.includes('كارت')) treasuryVisa += unrecorded;
+          const m = (q.paymentMethod || q.depositMethod || (q as any).paymentType || '').trim();
+          if (m.includes('فودافون') || m.toLowerCase().includes('vodafone')) treasuryVodafone += unrecorded;
+          else if (m.includes('إنستا') || m.includes('انستا') || m.toLowerCase().includes('insta')) treasuryInstapay += unrecorded;
+          else if (m.includes('فيزا') || m.includes('كارت') || m.toLowerCase().includes('visa') || m.toLowerCase().includes('card')) treasuryVisa += unrecorded;
           else treasuryCash += unrecorded;
         }
       }

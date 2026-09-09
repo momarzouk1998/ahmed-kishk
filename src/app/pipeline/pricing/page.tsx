@@ -53,7 +53,7 @@ export default function PipelinePricingPage() {
 
   // #9 + #14: مقارنة بعد التطبيع للحالة الرسمية
   const SENT_STATUSES = new Set<string>([
-    'تم التحويل للورشة', 'في المقص', 'في الورشة',
+    'معتمد ومسدد العربون', 'تم التحويل للورشة', 'في المقص', 'في الورشة',
     'تجهيز الاكسسوارات', 'جاهز للاستلام', 'جاهز للتركيب', 'مكتمل',
   ]);
   const isSent = (status: any) => SENT_STATUSES.has(normalizeQuotationStatus(status));
