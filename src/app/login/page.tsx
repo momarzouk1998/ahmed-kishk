@@ -33,7 +33,10 @@ export default function LoginPage() {
 
       // Check if user has dashboard permission or redirect to first allowed page
       try {
-        const isSuperAdmin = data.user?.phone === '01558282760' || data.user?.phone === '01063821000';
+        const userPhone = (data.user?.phone || '').trim().replace(/\s/g, '');
+        const norm = userPhone.replace(/^0/, '');
+        const isSuperAdmin = norm === '1063821000' || norm === '1558282760' || userPhone === '01063821000' || userPhone === '01558282760' || data.user?.branch === 'المدير العام' || data.user?.branch === 'الكل' || data.user?.role === 'SUPER_ADMIN' || (data.user?.role === 'ADMIN' && data.user?.branch === 'الفرع الرئيسي');
+
         if (isSuperAdmin) {
           router.push('/');
           router.refresh();
@@ -45,39 +48,38 @@ export default function LoginPage() {
           const pData = await permRes.json();
           const allowed = pData?.allowedPageIds;
           if (Array.isArray(allowed)) {
-            if (allowed.includes('p_dashboard')) {
-              router.push('/');
-            } else {
-              // Redirect to first permitted page
-              const ALL_PAGES = [
-                { id: 'p_inspections', href: '/pipeline/inspections' },
-                { id: 'p_pricing', href: '/pipeline/pricing' },
-                { id: 'p_cutting', href: '/pipeline/cutting' },
-                { id: 'p_tailoring', href: '/pipeline/tailoring' },
-                { id: 'p_accessories', href: '/pipeline/accessories' },
-                { id: 'p_delivery', href: '/pipeline/delivery' },
-                { id: 'p_installation', href: '/pipeline/installation' },
-                { id: 'p_orders', href: '/orders' },
-                { id: 'p_fabric_sales', href: '/fabric-sales' },
-                { id: 'p_purchases', href: '/purchases' },
-                { id: 'p_customers', href: '/customers' },
-                { id: 'p_suppliers', href: '/suppliers' },
-                { id: 'p_inventory', href: '/inventory' },
-                { id: 'p_reports', href: '/reports' },
-                { id: 'p_branches', href: '/branches' },
-                { id: 'p_settings', href: '/settings' },
-              ];
-              const firstAllowed = ALL_PAGES.find(p => allowed.includes(p.id));
-              router.push(firstAllowed ? firstAllowed.href : '/fabric-sales');
-            }
+            const ALL_PAGES = [
+              { id: 'p_inspections', href: '/pipeline/inspections' },
+              { id: 'p_pricing', href: '/pipeline/pricing' },
+              { id: 'p_cutting', href: '/pipeline/cutting' },
+              { id: 'p_tailoring', href: '/pipeline/tailoring' },
+              { id: 'p_accessories', href: '/pipeline/accessories' },
+              { id: 'p_delivery', href: '/pipeline/delivery' },
+              { id: 'p_installation', href: '/pipeline/installation' },
+              { id: 'p_orders', href: '/orders' },
+              { id: 'p_fabric_sales', href: '/fabric-sales' },
+              { id: 'p_purchases', href: '/purchases' },
+              { id: 'p_customers', href: '/customers' },
+              { id: 'p_suppliers', href: '/suppliers' },
+              { id: 'p_inventory', href: '/inventory' },
+              { id: 'p_reports', href: '/reports' },
+              { id: 'p_branches', href: '/branches' },
+              { id: 'p_settings', href: '/settings' },
+            ];
+            const firstAllowed = ALL_PAGES.find(p => allowed.includes(p.id) && p.id !== 'p_dashboard');
+            router.push(firstAllowed ? firstAllowed.href : '/fabric-sales');
             router.refresh();
             return;
           }
         }
-      } catch {}
 
-      router.push('/');
-      router.refresh();
+        router.push('/fabric-sales');
+        router.refresh();
+      } catch (e) {
+        console.error('Perms check error after login:', e);
+        router.push('/fabric-sales');
+        router.refresh();
+      }
     } catch {
       setError('تعذر الاتصال بالخادم. حاول مرة أخرى.');
     } finally {

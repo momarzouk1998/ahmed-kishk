@@ -30,16 +30,16 @@ export default function Sidebar() {
 
   // Accordion state now lives in SidebarContext — removed from local state
 
+  const isSuperAdminUser = (u?: CurrentUser | null) => {
+    if (!u) return false;
+    const p = (u.phone || '').trim().replace(/\s/g, '');
+    const norm = p.replace(/^0/, '');
+    if (norm === '1063821000' || norm === '1558282760' || p === '01063821000' || p === '01558282760') return true;
+    if (u.branch === 'المدير العام' || u.branch === 'الكل' || u.role === 'SUPER_ADMIN' || (u.role === 'ADMIN' && u.branch === 'الفرع الرئيسي')) return true;
+    return false;
+  };
+
   useEffect(() => {
-    // #FIX: كانت الصلاحيات (خصوصًا قفل تعديل الأسعار) بتتقرأ مرة واحدة بس عند فتح
-    // التاب لأول مرة — لو الأدمن قفل صلاحية موظف وهو شغال فعليًا (تاب مفتوح من قبل)،
-    // التاب ده كان يفضل شغال بالصلاحيات القديمة (المفتوحة) لحد ما يعمل تسجيل خروج
-    // ودخول تانى. دلوقتى بتتحدّث كل 5 ثوانى + فورًا عند رجوع التاب للـ focus/ظهوره
-    // + عند أى تنقل بين الصفحات، عشان أى قفل يطبّقه الأدمن ينفّذ خلال ثوانى معدودة
-    // كأنه لحظى، من غير ما نحتاج نفس آلية الـ localStorage الخطرة اللي شلناها من
-    // النظام الليلة دي (هنا بس بنقرأ من السيرفر، مفيش أي كتابة بترجع بيانات قديمة
-    // فوق الجديدة). ولو الصفحة اللي هو واقف فيها دلوقتى اتقفلت عليه، بيتنقل تلقائيًا
-    // بره منها فورًا بدل ما يفضل شايفها لحد ما يعمل حاجة تانية.
     let cancelled = false;
 
     async function loadUserAndPermissions() {
@@ -55,8 +55,8 @@ export default function Sidebar() {
           localStorage.setItem('userName', d.user.name || '');
         } catch {}
 
-        const isSuperAdmin = d.user.phone === '01558282760' || d.user.phone === '01063821000';
-        if (isSuperAdmin) {
+        const isSuper = isSuperAdminUser(d.user);
+        if (isSuper) {
           setAllowedPageIds(ALL_SYSTEM_PAGES.map(p => p.id));
           return;
         }
@@ -66,18 +66,18 @@ export default function Sidebar() {
           if (res.ok) {
             const data = await res.json();
             if (Array.isArray(data?.allowedPageIds)) {
-              setAllowedPageIds(data.allowedPageIds);
-              try { localStorage.setItem(`user_perms_${d.user.phone}`, JSON.stringify(data.allowedPageIds)); } catch {}
+              // 🛡️ الصفحة الرئيسية محصورة للأدمن فقط
+              const cleanPerms = data.allowedPageIds.filter((id: string) => id !== 'p_dashboard');
+              setAllowedPageIds(cleanPerms);
+              try { localStorage.setItem(`user_perms_${d.user.phone}`, JSON.stringify(cleanPerms)); } catch {}
 
-              // #FEATURE: لو الصفحة الحالية بقت غير مسموحة، اطرد المستخدم منها فورًا لأول صفحة مسموحة له
+              // لو المستخدم العادي يقف على الصفحة الرئيسية أو صفحة محظورة، اطرد فوراً
               const isHome = pathname === '/';
-              const isHomeBlocked = isHome && !data.allowedPageIds.includes('p_dashboard');
               const currentPage = ALL_SYSTEM_PAGES.find(p => pathname === p.href || (p.href !== '/' && pathname.startsWith(p.href + '/')));
-              const isCurrentPageBlocked = (currentPage && !data.allowedPageIds.includes(currentPage.id)) || isHomeBlocked;
+              const isCurrentPageBlocked = isHome || (currentPage && !cleanPerms.includes(currentPage.id));
 
               if (isCurrentPageBlocked) {
-                // Find first allowed page to redirect to
-                const firstAllowed = ALL_SYSTEM_PAGES.find(p => data.allowedPageIds.includes(p.id) && p.id !== 'p_dashboard');
+                const firstAllowed = ALL_SYSTEM_PAGES.find(p => cleanPerms.includes(p.id) && p.id !== 'p_dashboard');
                 const targetHref = firstAllowed ? firstAllowed.href : '/fabric-sales';
                 if (pathname !== targetHref) {
                   router.push(targetHref);
@@ -104,9 +104,6 @@ export default function Sidebar() {
       window.removeEventListener('focus', onVisible);
       window.removeEventListener('storage', onStorage);
     };
-    // #NOTE: بنعتمد على pathname هنا عشان نعرف نطرد المستخدم من الصفحة الحالية لو
-    // اتقفلت عليه — فالـ effect المفروض يعيد التشغيل عند كل تنقل بين الصفحات.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
   useEffect(() => {
@@ -161,11 +158,8 @@ export default function Sidebar() {
     }
   };
 
-
-
   useEffect(() => {
     close();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
   const handleLogout = async () => {
@@ -175,8 +169,10 @@ export default function Sidebar() {
 
   const isAllowed = (pageId: string) => {
     if (!user) return false;
-    const isSuperAdmin = user.phone === '01558282760' || user.phone === '01063821000';
-    if (isSuperAdmin) return true;
+    const isSuper = isSuperAdminUser(user);
+    // 🛡️ الصفحة الرئيسية محصورة وحصرية للأدمن فقط
+    if (pageId === 'p_dashboard') return isSuper;
+    if (isSuper) return true;
     if (!allowedPageIds) return false;
     return allowedPageIds.includes(pageId);
   };

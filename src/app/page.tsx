@@ -21,7 +21,7 @@ export default function DashboardPage() {
   const [rawCollections, setRawCollections] = useState<any[]>([]);
   const [rawFabricSales, setRawFabricSales] = useState<any[]>([]);
 
-  // 🛡️ Client-side Page Guard: التحقق من صلاحية رؤية الصفحة الرئيسية
+  // 🛡️ Client-side Page Guard: الصفحة الرئيسية حصرية للإدارة العليا (الأدمن) فقط
   useEffect(() => {
     async function checkPermission() {
       try {
@@ -29,22 +29,32 @@ export default function DashboardPage() {
         if (!userRes.ok) return;
         const userData = await userRes.json();
         const user = userData.user;
-        if (!user) return;
+        if (!user) {
+          router.replace('/login');
+          return;
+        }
 
-        // Super admins have full access
-        const isSuperAdmin = user.phone === '01558282760' || user.phone === '01063821000';
-        if (isSuperAdmin) return;
+        const phone = (user.phone || '').trim().replace(/\s/g, '');
+        const norm = phone.replace(/^0/, '');
+        const isSuperAdmin = norm === '1063821000' || norm === '1558282760' || phone === '01063821000' || phone === '01558282760' || user.branch === 'المدير العام' || user.branch === 'الكل' || user.role === 'SUPER_ADMIN' || (user.role === 'ADMIN' && user.branch === 'الفرع الرئيسي');
 
-        const permRes = await fetch(`/api/user-permissions?phone=${encodeURIComponent(user.phone)}`, { cache: 'no-store' });
-        if (!permRes.ok) return;
-        const permData = await permRes.json();
-        const allowed = permData?.allowedPageIds;
-
-        if (Array.isArray(allowed) && !allowed.includes('p_dashboard')) {
-          // الصفحة الرئيسية مخفية/ممنوعة لهذا المستخدم — تحويله فوراً لأول صفحة مسموحة له
-          const firstAllowed = ALL_SYSTEM_PAGES.find(p => allowed.includes(p.id) && p.id !== 'p_dashboard');
-          const target = firstAllowed ? firstAllowed.href : '/fabric-sales';
-          router.replace(target);
+        if (!isSuperAdmin) {
+          // مستخدم غير أدمن — تحويله فوراً لأول صفحة مصرح له بها
+          try {
+            const permRes = await fetch(`/api/user-permissions?phone=${encodeURIComponent(user.phone)}`, { cache: 'no-store' });
+            if (permRes.ok) {
+              const permData = await permRes.json();
+              const allowed = permData?.allowedPageIds;
+              if (Array.isArray(allowed)) {
+                const firstAllowed = ALL_SYSTEM_PAGES.find(p => allowed.includes(p.id) && p.id !== 'p_dashboard');
+                if (firstAllowed) {
+                  router.replace(firstAllowed.href);
+                  return;
+                }
+              }
+            }
+          } catch {}
+          router.replace('/fabric-sales');
         }
       } catch (err) {
         console.error('Error checking dashboard permission:', err);
