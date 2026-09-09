@@ -205,6 +205,9 @@ export default function ReportsPage() {
     let fabricSalesGrand = 0, fabricSalesRemaining = 0, fabricSalesPaid = 0;
     let curtainSalesGrand = 0, curtainSalesRemaining = 0, curtainSalesDeposits = 0;
 
+    const normPhone = (p: string | null | undefined) => (p || '').replace(/\D/g, '').slice(-10);
+    const normName = (n: string | null | undefined) => (n || '').trim().toLowerCase();
+
     // 1. Fabric Sales Invoices
     fInvoices.forEach(inv => {
       fabricSalesGrand += Number(inv.totalAmount || 0);
@@ -237,39 +240,10 @@ export default function ReportsPage() {
       else other += paid;
     });
 
-    // 2. Curtain Contracts (Quotations & Pipeline Deposits)
-    fQuotations.forEach(q => {
-      curtainSalesGrand += Number(q.totalAmount || 0);
-      curtainSalesRemaining += Number(q.remainingAmount || 0);
-      const deposit = Number(q.depositPaid || 0);
-      curtainSalesDeposits += deposit;
-
-      let split = q.depositSplit;
-      if (!split && q.notes && q.notes.includes('[DEPOSIT_SPLIT:')) {
-        try {
-          const match = q.notes.match(/\[DEPOSIT_SPLIT:([^\]]+)\]/);
-          if (match && match[1]) split = JSON.parse(match[1]);
-        } catch {}
-      }
-
-      if (split) {
-        cash += Number(split.cash || 0);
-        instapay += Number(split.instapay || 0);
-        vodafone += Number(split.vodafone || 0);
-        visa += Number(split.visa || 0);
-        return;
-      }
-
-      const m = (q.depositMethod || '').trim();
-      if (m.includes('فودافون') || m.toLowerCase().includes('vodafone')) vodafone += deposit;
-      else if (m.includes('إنستا') || m.includes('انستا') || m.toLowerCase().includes('insta')) instapay += deposit;
-      else if (m.includes('فيزا') || m.includes('كارت') || m.toLowerCase().includes('visa') || m.toLowerCase().includes('card')) visa += deposit;
-      else if (m === 'نقدي' || m === 'كاش' || m === 'نقدي (كاش)' || m.includes('نقدي') || m.includes('كاش') || !m) cash += deposit;
-      else other += deposit;
-    });
-
-    // 3. Direct Customer Collections
+    // 2. Direct Customer Collections (Real payment receipts)
     let totalDirectCollections = 0;
+    const collectionsPoolByCust = new Map<string, number>();
+
     fCollections.forEach(col => {
       const amt = Number(col.amount || 0);
       totalDirectCollections += amt;
@@ -279,6 +253,52 @@ export default function ReportsPage() {
       else if (m.includes('فيزا') || m.toLowerCase().includes('visa') || m.includes('كارت')) visa += amt;
       else if (m === 'نقدي' || m === 'كاش' || m === 'نقدي (كاش)' || m.includes('نقدي') || m.includes('كاش') || !m) cash += amt;
       else other += amt;
+
+      const key = normPhone(col.phone) || normName(col.customerName);
+      if (key) {
+        collectionsPoolByCust.set(key, (collectionsPoolByCust.get(key) || 0) + amt);
+      }
+    });
+
+    // 3. Curtain Contracts (Quotations & Pipeline Deposits)
+    fQuotations.forEach(q => {
+      curtainSalesGrand += Number(q.totalAmount || 0);
+      curtainSalesRemaining += Number(q.remainingAmount || 0);
+      const deposit = Number(q.depositPaid || 0);
+      curtainSalesDeposits += deposit;
+
+      // Deduplicate: If deposit is already covered in collections receipt, don't double count
+      const key = normPhone(q.phone) || normName(q.customerName);
+      const pool = key ? (collectionsPoolByCust.get(key) || 0) : 0;
+      const unrecordedDeposit = Math.max(0, deposit - pool);
+
+      if (key && pool > 0) {
+        collectionsPoolByCust.set(key, Math.max(0, pool - deposit));
+      }
+
+      if (unrecordedDeposit > 0) {
+        let split = q.depositSplit;
+        if (!split && q.notes && q.notes.includes('[DEPOSIT_SPLIT:')) {
+          try {
+            const match = q.notes.match(/\[DEPOSIT_SPLIT:([^\]]+)\]/);
+            if (match && match[1]) split = JSON.parse(match[1]);
+          } catch {}
+        }
+
+        if (split) {
+          cash += Number(split.cash || 0);
+          instapay += Number(split.instapay || 0);
+          vodafone += Number(split.vodafone || 0);
+          visa += Number(split.visa || 0);
+        } else {
+          const m = (q.depositMethod || '').trim();
+          if (m.includes('فودافون') || m.toLowerCase().includes('vodafone')) vodafone += unrecordedDeposit;
+          else if (m.includes('إنستا') || m.includes('انستا') || m.toLowerCase().includes('insta')) instapay += unrecordedDeposit;
+          else if (m.includes('فيزا') || m.includes('كارت') || m.toLowerCase().includes('visa') || m.toLowerCase().includes('card')) visa += unrecordedDeposit;
+          else if (m === 'نقدي' || m === 'كاش' || m === 'نقدي (كاش)' || m.includes('نقدي') || m.includes('كاش') || !m) cash += unrecordedDeposit;
+          else other += unrecordedDeposit;
+        }
+      }
     });
 
     const grand = fabricSalesGrand + curtainSalesGrand;
@@ -306,7 +326,7 @@ export default function ReportsPage() {
         return false;
       };
 
-      // From Invoices in this period (irrespective of global filter or respecting period)
+      // 1. From Invoices in this period
       invoices.filter(i => matchB(i.branch) && inPeriod(i.date)).forEach(inv => {
         bCount++;
         let split = inv.splitPayments;
@@ -324,46 +344,62 @@ export default function ReportsPage() {
         } else {
           const m = ((inv.paymentMethod || (inv as any).paymentType || '') as string).trim();
           const paid = Number(inv.paidAmount || 0);
-          if (m.includes('فودافون')) bVodafone += paid;
-          else if (m.includes('إنستا') || m.includes('انستا')) bInstapay += paid;
-          else if (m.includes('فيزا') || m.includes('كارت')) bVisa += paid;
+          if (m.includes('فودافون') || m.toLowerCase().includes('vodafone')) bVodafone += paid;
+          else if (m.includes('إنستا') || m.includes('انستا') || m.toLowerCase().includes('insta')) bInstapay += paid;
+          else if (m.includes('فيزا') || m.includes('كارت') || m.toLowerCase().includes('visa') || m.toLowerCase().includes('card')) bVisa += paid;
           else bCash += paid;
         }
       });
 
-      // From direct collections in this period
+      // 2. From direct collections in this period
+      const bCollectionsPool = new Map<string, number>();
       collections.filter(c => matchB(c.treasury || '') && inPeriod(c.date)).forEach(col => {
         bCount++;
         const amt = Number(col.amount || 0);
         const m = (col.method || '').trim();
-        if (m.includes('فودافون')) bVodafone += amt;
-        else if (m.includes('إنستا') || m.includes('انستا')) bInstapay += amt;
-        else if (m.includes('فيزا') || m.includes('كارت')) bVisa += amt;
+        if (m.includes('فودافون') || m.toLowerCase().includes('vodafone')) bVodafone += amt;
+        else if (m.includes('إنستا') || m.includes('انستا') || m.toLowerCase().includes('insta')) bInstapay += amt;
+        else if (m.includes('فيزا') || m.includes('كارت') || m.toLowerCase().includes('visa') || m.toLowerCase().includes('card')) bVisa += amt;
         else bCash += amt;
+
+        const key = normPhone(col.phone) || normName(col.customerName);
+        if (key) {
+          bCollectionsPool.set(key, (bCollectionsPool.get(key) || 0) + amt);
+        }
       });
 
-      // From Quotation Deposits in this period
+      // 3. From Quotation Deposits in this period (deduplicated)
       quotations.filter(q => matchB(q.branch) && inPeriod(q.date || q.createdAt)).forEach(q => {
-        bCount++;
-        let split = q.depositSplit;
-        if (!split && q.notes && q.notes.includes('[DEPOSIT_SPLIT:')) {
-          try {
-            const match = q.notes.match(/\[DEPOSIT_SPLIT:([^\]]+)\]/);
-            if (match && match[1]) split = JSON.parse(match[1]);
-          } catch {}
+        const deposit = Number(q.depositPaid || 0);
+        const key = normPhone(q.phone) || normName(q.customerName);
+        const pool = key ? (bCollectionsPool.get(key) || 0) : 0;
+        const unrecorded = Math.max(0, deposit - pool);
+
+        if (key && pool > 0) {
+          bCollectionsPool.set(key, Math.max(0, pool - deposit));
         }
-        if (split) {
-          bCash += Number(split.cash || 0);
-          bInstapay += Number(split.instapay || 0);
-          bVodafone += Number(split.vodafone || 0);
-          bVisa += Number(split.visa || 0);
-        } else {
-          const m = (q.depositMethod || '').trim();
-          const deposit = Number(q.depositPaid || 0);
-          if (m.includes('فودافون')) bVodafone += deposit;
-          else if (m.includes('إنستا') || m.includes('انستا')) bInstapay += deposit;
-          else if (m.includes('فيزا') || m.includes('كارت')) bVisa += deposit;
-          else bCash += deposit;
+
+        if (unrecorded > 0) {
+          bCount++;
+          let split = q.depositSplit;
+          if (!split && q.notes && q.notes.includes('[DEPOSIT_SPLIT:')) {
+            try {
+              const match = q.notes.match(/\[DEPOSIT_SPLIT:([^\]]+)\]/);
+              if (match && match[1]) split = JSON.parse(match[1]);
+            } catch {}
+          }
+          if (split) {
+            bCash += Number(split.cash || 0);
+            bInstapay += Number(split.instapay || 0);
+            bVodafone += Number(split.vodafone || 0);
+            bVisa += Number(split.visa || 0);
+          } else {
+            const m = (q.depositMethod || '').trim();
+            if (m.includes('فودافون') || m.toLowerCase().includes('vodafone')) bVodafone += unrecorded;
+            else if (m.includes('إنستا') || m.includes('انستا') || m.toLowerCase().includes('insta')) bInstapay += unrecorded;
+            else if (m.includes('فيزا') || m.includes('كارت') || m.toLowerCase().includes('visa') || m.toLowerCase().includes('card')) bVisa += unrecorded;
+            else bCash += unrecorded;
+          }
         }
       });
 

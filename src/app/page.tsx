@@ -247,20 +247,10 @@ export default function DashboardPage() {
     const totalSalesAmount = bQot.reduce((sum: number, q: any) => sum + (Number(q.totalAmount) || 0), 0)
       + bSales.reduce((sum: number, s: any) => sum + (Number(s.totalAmount) || 0), 0);
 
-    const totalQuotAndPosCollected = bQot.reduce((sum: number, q: any) => sum + (Number(q.depositPaid) || 0), 0)
-      + bSales.reduce((sum: number, s: any) => sum + (Number(s.paidAmount) || 0), 0);
+    const normPhone = (p: string | null | undefined) => (p || '').replace(/\D/g, '').slice(-10);
+    const normName = (n: string | null | undefined) => (n || '').trim().toLowerCase();
 
-    const totalDirectCollections = bCollections.reduce((sum: number, c: any) => sum + (Number(c.amount) || 0), 0);
-    const totalCollectedAmount = totalQuotAndPosCollected + totalDirectCollections;
-
-    const totalRemainingAmount = Math.max(0, totalSalesAmount - totalQuotAndPosCollected);
-
-    const totalOps = bQot.length + bSales.length + bCollections.length;
-    const collectionRate = totalSalesAmount > 0
-      ? Math.round((totalCollectedAmount / totalSalesAmount) * 100)
-      : (totalOps > 0 ? 100 : 0);
-
-    // Calculate cash in treasury (POS cash + Split cash + Quotation deposits + customer collections)
+    // Calculate cash in treasury (POS cash + Split cash + Quotation deposits + customer collections, deduplicated)
     let treasuryCash = 0;
     let treasuryInstapay = 0;
     let treasuryVodafone = 0;
@@ -289,29 +279,7 @@ export default function DashboardPage() {
       }
     });
 
-    bQot.forEach((q: any) => {
-      let split = q.depositSplit;
-      if (!split && q.notes && q.notes.includes('[DEPOSIT_SPLIT:')) {
-        try {
-          const match = q.notes.match(/\[DEPOSIT_SPLIT:([^\]]+)\]/);
-          if (match && match[1]) split = JSON.parse(match[1]);
-        } catch {}
-      }
-      if (split) {
-        treasuryCash += Number(split.cash || 0);
-        treasuryInstapay += Number(split.instapay || 0);
-        treasuryVodafone += Number(split.vodafone || 0);
-        treasuryVisa += Number(split.visa || 0);
-      } else {
-        const m = (q.depositMethod || '').trim();
-        const deposit = Number(q.depositPaid || 0);
-        if (m.includes('فودافون')) treasuryVodafone += deposit;
-        else if (m.includes('إنستا') || m.includes('انستا')) treasuryInstapay += deposit;
-        else if (m.includes('فيزا') || m.includes('كارت')) treasuryVisa += deposit;
-        else treasuryCash += deposit;
-      }
-    });
-
+    const bCollectionsPool = new Map<string, number>();
     bCollections.forEach((col: any) => {
       const amt = Number(col.amount || 0);
       const m = (col.method || '').trim();
@@ -319,7 +287,53 @@ export default function DashboardPage() {
       else if (m.includes('إنستا') || m.includes('انستا')) treasuryInstapay += amt;
       else if (m.includes('فيزا') || m.includes('كارت')) treasuryVisa += amt;
       else treasuryCash += amt;
+
+      const key = normPhone(col.phone) || normName(col.customerName);
+      if (key) {
+        bCollectionsPool.set(key, (bCollectionsPool.get(key) || 0) + amt);
+      }
     });
+
+    bQot.forEach((q: any) => {
+      const deposit = Number(q.depositPaid || 0);
+      const key = normPhone(q.phone) || normName(q.customerName);
+      const pool = key ? (bCollectionsPool.get(key) || 0) : 0;
+      const unrecorded = Math.max(0, deposit - pool);
+
+      if (key && pool > 0) {
+        bCollectionsPool.set(key, Math.max(0, pool - deposit));
+      }
+
+      if (unrecorded > 0) {
+        let split = q.depositSplit;
+        if (!split && q.notes && q.notes.includes('[DEPOSIT_SPLIT:')) {
+          try {
+            const match = q.notes.match(/\[DEPOSIT_SPLIT:([^\]]+)\]/);
+            if (match && match[1]) split = JSON.parse(match[1]);
+          } catch {}
+        }
+        if (split) {
+          treasuryCash += Number(split.cash || 0);
+          treasuryInstapay += Number(split.instapay || 0);
+          treasuryVodafone += Number(split.vodafone || 0);
+          treasuryVisa += Number(split.visa || 0);
+        } else {
+          const m = (q.depositMethod || '').trim();
+          if (m.includes('فودافون')) treasuryVodafone += unrecorded;
+          else if (m.includes('إنستا') || m.includes('انستا')) treasuryInstapay += unrecorded;
+          else if (m.includes('فيزا') || m.includes('كارت')) treasuryVisa += unrecorded;
+          else treasuryCash += unrecorded;
+        }
+      }
+    });
+
+    const totalCollectedAmount = treasuryCash + treasuryInstapay + treasuryVodafone + treasuryVisa;
+    const totalRemainingAmount = Math.max(0, totalSalesAmount - totalCollectedAmount);
+
+    const totalOps = bQot.length + bSales.length + bCollections.length;
+    const collectionRate = totalSalesAmount > 0
+      ? Math.round((totalCollectedAmount / totalSalesAmount) * 100)
+      : (totalOps > 0 ? 100 : 0);
 
     return {
       name: b.name,
