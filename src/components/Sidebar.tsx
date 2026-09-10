@@ -199,7 +199,14 @@ export default function Sidebar() {
     WORKSHOP: 'مسؤول ورشة',
   };
 
-  const sidebarContent = (
+  // #FIX: isCollapsed بيتحفظ فى localStorage ومشترك بين النسخة المكتبية والدرج
+  // على الموبايل لأنهم بيستخدموا نفس الـ JSX (sidebarContent). لو حد طوى
+  // القائمة مرة على سطح المكتب، الدرج على الموبايل كان بيفضل من غير أي أسماء
+  // خالص (أيقونات بس) لحد الأبد لأن نفس الشرط بيتقيّم بره — الدرج مفروض يبقى
+  // موسّع دايمًا (forceExpanded=true) بغض النظر عن حالة الطي على سطح المكتب.
+  const renderSidebarContent = (forceExpanded: boolean) => {
+    const collapsed = forceExpanded ? false : isCollapsed;
+    return (
     <>
       {/* Brand Header & Toggle Button */}
       <div className="p-3.5 pt-[calc(0.875rem+env(safe-area-inset-top))] flex items-center justify-between border-b border-slate-800 shrink-0">
@@ -207,7 +214,7 @@ export default function Sidebar() {
           <div className="w-9 h-9 bg-white p-1 rounded-xl flex items-center justify-center border border-brand-gold shadow-gold text-primary shrink-0">
             <Logo size="md" />
           </div>
-          {!isCollapsed && (
+          {!collapsed && (
             <div className="truncate">
               <span className="font-display font-black text-sm text-white flex items-center leading-tight">
                 أحمد كشك
@@ -221,10 +228,10 @@ export default function Sidebar() {
         <button
           onClick={toggleCollapse}
           className="hidden lg:flex w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white items-center justify-center transition-colors shrink-0 cursor-pointer"
-          title={isCollapsed ? 'توسيع القائمة' : 'طي القائمة'}
+          title={collapsed ? 'توسيع القائمة' : 'طي القائمة'}
         >
           <span className="material-symbols-outlined text-[18px]">
-            {isCollapsed ? 'menu_open' : 'chevron_right'}
+            {collapsed ? 'menu_open' : 'chevron_right'}
           </span>
         </button>
       </div>
@@ -241,12 +248,12 @@ export default function Sidebar() {
               pathname === '/'
                 ? 'bg-brand-gold text-slate-950 font-black shadow-gold'
                 : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
-            } ${isCollapsed ? 'justify-center' : ''}`}
+            } ${collapsed ? 'justify-center' : ''}`}
           >
             <span className={`material-symbols-outlined text-[19px] shrink-0 ${pathname === '/' ? 'text-slate-950' : 'text-slate-400'}`}>
               dashboard
             </span>
-            {!isCollapsed && <span className="text-xs sm:text-sm font-bold truncate">الرئيسية</span>}
+            {!collapsed && <span className="text-xs sm:text-sm font-bold truncate">الرئيسية</span>}
           </Link>
         )}
 
@@ -257,16 +264,16 @@ export default function Sidebar() {
               onClick={() => toggleSection('pipeline')}
               className={`w-full flex items-center justify-between px-3 py-2.5 transition-colors text-right cursor-pointer ${
                 expandedSections.pipeline ? 'bg-slate-800/60 text-brand-gold font-bold' : 'text-slate-300 hover:text-white'
-              } ${isCollapsed ? 'justify-center' : ''}`}
+              } ${collapsed ? 'justify-center' : ''}`}
               title="مراحل الستائر"
             >
               <div className="flex items-center gap-2.5">
                 <span className="material-symbols-outlined text-[19px] text-brand-gold shrink-0">
                   linear_scale
                 </span>
-                {!isCollapsed && <span className="text-xs sm:text-sm font-bold truncate">مراحل الستائر</span>}
+                {!collapsed && <span className="text-xs sm:text-sm font-bold truncate">مراحل الستائر</span>}
               </div>
-              {!isCollapsed && (
+              {!collapsed && (
                 <div className="flex items-center gap-1.5">
                   <span className="text-[10px] px-1.5 py-0.2 rounded bg-brand-gold/20 text-brand-gold font-mono font-bold">
                     {pipelinePages.length}
@@ -280,7 +287,7 @@ export default function Sidebar() {
               )}
             </button>
 
-            {(expandedSections.pipeline || isCollapsed) && (
+            {(expandedSections.pipeline || collapsed) && (
               <div className="px-1.5 py-1.5 space-y-1 bg-slate-950/40 border-t border-slate-800/60">
                 {pipelinePages.map((page, idx) => {
                   const isActive = pathname === page.href || pathname.startsWith(page.href + '/');
@@ -294,15 +301,15 @@ export default function Sidebar() {
                         isActive
                           ? 'bg-brand-gold text-slate-950 font-black shadow-gold'
                           : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-                      } ${isCollapsed ? 'justify-center' : ''}`}
+                      } ${collapsed ? 'justify-center' : ''}`}
                     >
                       <div className="flex items-center gap-2 truncate">
                         <span className={`material-symbols-outlined text-[16px] shrink-0 ${isActive ? 'text-slate-950' : 'text-slate-500'}`}>
                           {page.icon}
                         </span>
-                        {!isCollapsed && <span className="truncate">{page.name}</span>}
+                        {!collapsed && <span className="truncate">{page.name}</span>}
                       </div>
-                      {!isCollapsed && (
+                      {!collapsed && (
                         <span className={`text-[10px] font-mono shrink-0 mr-1 ${isActive ? 'text-slate-900 font-black' : 'text-slate-600'}`}>
                           0{idx + 1}
                         </span>
@@ -322,16 +329,16 @@ export default function Sidebar() {
               onClick={() => toggleSection('sales')}
               className={`w-full flex items-center justify-between px-3 py-2.5 transition-colors text-right cursor-pointer ${
                 expandedSections.sales ? 'bg-slate-800/60 text-brand-gold font-bold' : 'text-slate-300 hover:text-white'
-              } ${isCollapsed ? 'justify-center' : ''}`}
+              } ${collapsed ? 'justify-center' : ''}`}
               title="المبيعات"
             >
               <div className="flex items-center gap-2.5">
                 <span className="material-symbols-outlined text-[19px] text-emerald-400 shrink-0">
                   point_of_sale
                 </span>
-                {!isCollapsed && <span className="text-xs sm:text-sm font-bold truncate">المبيعات</span>}
+                {!collapsed && <span className="text-xs sm:text-sm font-bold truncate">المبيعات</span>}
               </div>
-              {!isCollapsed && (
+              {!collapsed && (
                 <span className={`material-symbols-outlined text-[16px] text-slate-400 transition-transform duration-200 ${
                   expandedSections.sales ? 'rotate-180' : ''
                 }`}>
@@ -340,7 +347,7 @@ export default function Sidebar() {
               )}
             </button>
 
-            {(expandedSections.sales || isCollapsed) && (
+            {(expandedSections.sales || collapsed) && (
               <div className="px-1.5 py-1.5 space-y-1 bg-slate-950/40 border-t border-slate-800/60">
                 {salesPages.map((page) => {
                   const isActive = pathname === page.href || pathname.startsWith(page.href + '/');
@@ -354,12 +361,12 @@ export default function Sidebar() {
                         isActive
                           ? 'bg-brand-gold text-slate-950 font-black shadow-gold'
                           : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-                      } ${isCollapsed ? 'justify-center' : ''}`}
+                      } ${collapsed ? 'justify-center' : ''}`}
                     >
                       <span className={`material-symbols-outlined text-[16px] shrink-0 ${isActive ? 'text-slate-950' : 'text-slate-500'}`}>
                         {page.icon}
                       </span>
-                      {!isCollapsed && <span className="truncate">{page.name}</span>}
+                      {!collapsed && <span className="truncate">{page.name}</span>}
                     </Link>
                   );
                 })}
@@ -375,16 +382,16 @@ export default function Sidebar() {
               onClick={() => toggleSection('admin')}
               className={`w-full flex items-center justify-between px-3 py-2.5 transition-colors text-right cursor-pointer ${
                 expandedSections.admin ? 'bg-slate-800/60 text-brand-gold font-bold' : 'text-slate-300 hover:text-white'
-              } ${isCollapsed ? 'justify-center' : ''}`}
+              } ${collapsed ? 'justify-center' : ''}`}
               title="الإدارة والمخزون"
             >
               <div className="flex items-center gap-2.5">
                 <span className="material-symbols-outlined text-[19px] text-blue-400 shrink-0">
                   admin_panel_settings
                 </span>
-                {!isCollapsed && <span className="text-xs sm:text-sm font-bold truncate">الإدارة والمخزون</span>}
+                {!collapsed && <span className="text-xs sm:text-sm font-bold truncate">الإدارة والمخزون</span>}
               </div>
-              {!isCollapsed && (
+              {!collapsed && (
                 <span className={`material-symbols-outlined text-[16px] text-slate-400 transition-transform duration-200 ${
                   expandedSections.admin ? 'rotate-180' : ''
                 }`}>
@@ -393,7 +400,7 @@ export default function Sidebar() {
               )}
             </button>
 
-            {(expandedSections.admin || isCollapsed) && (
+            {(expandedSections.admin || collapsed) && (
               <div className="px-1.5 py-1.5 space-y-1 bg-slate-950/40 border-t border-slate-800/60">
                 {adminPages.map((page) => {
                   const isActive = pathname === page.href || pathname.startsWith(page.href + '/');
@@ -407,12 +414,12 @@ export default function Sidebar() {
                         isActive
                           ? 'bg-brand-gold text-slate-950 font-black shadow-gold'
                           : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-                      } ${isCollapsed ? 'justify-center' : ''}`}
+                      } ${collapsed ? 'justify-center' : ''}`}
                     >
                       <span className={`material-symbols-outlined text-[16px] shrink-0 ${isActive ? 'text-slate-950' : 'text-slate-500'}`}>
                         {page.icon}
                       </span>
-                      {!isCollapsed && <span className="truncate">{page.name}</span>}
+                      {!collapsed && <span className="truncate">{page.name}</span>}
                     </Link>
                   );
                 })}
@@ -428,14 +435,14 @@ export default function Sidebar() {
           href="/profile"
           onClick={close}
           className={`flex items-center gap-2.5 p-2 rounded-xl bg-slate-900 border border-slate-800 hover:border-brand-gold/60 text-slate-300 transition-colors ${
-            isCollapsed ? 'justify-center' : ''
+            collapsed ? 'justify-center' : ''
           }`}
           title="الملف الشخصي"
         >
           <div className="w-8 h-8 rounded-lg bg-brand-gold text-slate-950 flex items-center justify-center font-black text-xs shadow shrink-0">
             {user?.name?.charAt(0) || 'أ'}
           </div>
-          {!isCollapsed && (
+          {!collapsed && (
             <div className="flex flex-col overflow-hidden flex-1">
               <span className="text-xs font-bold truncate text-white">{user?.name || 'أحمد كشك'}</span>
               <span className="text-[10px] text-brand-gold font-bold truncate">
@@ -444,7 +451,7 @@ export default function Sidebar() {
             </div>
           )}
         </Link>
-        <div className={`grid ${isCollapsed ? 'grid-cols-1' : 'grid-cols-2'} gap-1.5 pt-0.5`}>
+        <div className={`grid ${collapsed ? 'grid-cols-1' : 'grid-cols-2'} gap-1.5 pt-0.5`}>
           {!isStandalone ? (
             <button
               onClick={handleInstallClick}
@@ -454,7 +461,7 @@ export default function Sidebar() {
               <span className="material-symbols-outlined text-[15px] shrink-0">
                 {isIos ? 'phone_iphone' : 'download_for_offline'}
               </span>
-              {!isCollapsed && <span className="truncate">تثبيت</span>}
+              {!collapsed && <span className="truncate">تثبيت</span>}
             </button>
           ) : (
             <div
@@ -462,7 +469,7 @@ export default function Sidebar() {
               title="مُثبَّت"
             >
               <span className="material-symbols-outlined text-[15px] shrink-0">check_circle</span>
-              {!isCollapsed && <span className="truncate">مُثبَّت</span>}
+              {!collapsed && <span className="truncate">مُثبَّت</span>}
             </div>
           )}
 
@@ -472,19 +479,20 @@ export default function Sidebar() {
             title="خروج"
           >
             <span className="material-symbols-outlined text-[15px] shrink-0">logout</span>
-            {!isCollapsed && <span className="truncate">خروج</span>}
+            {!collapsed && <span className="truncate">خروج</span>}
           </button>
         </div>
       </div>
     </>
-  );
+    );
+  };
 
   return (
     <>
       <aside className={`hidden lg:flex fixed right-0 top-0 h-full transition-all duration-300 bg-[#0f172a] text-slate-100 border-l border-slate-800/80 z-50 flex-col shadow-2xl ${
         isCollapsed ? 'w-20' : 'w-64'
       }`}>
-        {sidebarContent}
+        {renderSidebarContent(false)}
       </aside>
 
       <div
@@ -512,7 +520,7 @@ export default function Sidebar() {
           >
             <span className="material-symbols-outlined text-[18px]">close</span>
           </button>
-          {sidebarContent}
+          {renderSidebarContent(true)}
         </aside>
       </div>
 
