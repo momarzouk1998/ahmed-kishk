@@ -422,7 +422,7 @@ export default function FabricSalesPage() {
       <div className="flex flex-col gap-5 max-w-7xl mx-auto pb-12" id="print-area">
 
         {/* Navigation Tabs */}
-        <div className="flex border-b border-slate-200 justify-between items-center gap-2 pb-1">
+        <div className="flex flex-col sm:flex-row border-b border-slate-200 sm:justify-between items-stretch sm:items-center gap-2 pb-1">
           <div className="flex gap-2">
             <button
               type="button"
@@ -447,7 +447,7 @@ export default function FabricSalesPage() {
             </button>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <PdfPrintButton
               documentTitle={activeTab === 'INVOICES' ? 'قائمة-فواتير-المبيعات' : 'قائمة-مرتجعات-العملاء'}
               label="طباعة PDF"
@@ -497,11 +497,11 @@ export default function FabricSalesPage() {
                 <div className="flex bg-slate-100 p-1 rounded-xl gap-1 border border-slate-200 text-xs font-bold overflow-x-auto">
                   {(
                     [
-                      { key: 'today', label: 'اليوم' },
                       { key: 'yesterday', label: 'أمس' },
-                      { key: 'week', label: 'هذا الأسبوع' },
-                      { key: 'month', label: 'هذا الشهر' },
-                      { key: 'all', label: 'كل التواريخ' },
+                      { key: 'today', label: 'اليوم' },
+                      { key: 'week', label: 'الأسبوع' },
+                      { key: 'month', label: 'الشهر' },
+                      { key: 'all', label: 'الكل' },
                     ] as { key: DateFilterType; label: string }[]
                   ).map(t => (
                     <button
