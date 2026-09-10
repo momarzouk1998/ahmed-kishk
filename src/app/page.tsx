@@ -459,15 +459,12 @@ export default function DashboardPage() {
   return (
     <PageShell title="الرئيسية والتقارير التنفيذية">
       <div className="flex flex-col gap-6">
-        {/* Concise Header Bar */}
+        {/* Header Bar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
           <div>
-            <h1 className="font-display font-black text-2xl text-slate-900">
-              التقرير التنفيذي الشامل والمؤشرات
+            <h1 className="font-display font-black text-xl sm:text-2xl text-slate-900">
+              الرئيسية والتقارير التنفيذية
             </h1>
-            <p className="text-slate-500 text-xs mt-0.5 font-bold">
-              متابعة الإيرادات، مراحل تنفيذ الستائر، أداء الفروع الأربعة، وحركة المخزون.
-            </p>
           </div>
 
           {/* Time Range Filter Buttons (أمس -> اليوم -> الأسبوع -> الشهر -> الكل) */}
