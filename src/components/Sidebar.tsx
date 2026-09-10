@@ -181,13 +181,16 @@ export default function Sidebar() {
   const salesPages = ALL_SYSTEM_PAGES.filter(p => p.category === 'المبيعات والحسابات' && isAllowed(p.id) && p.id !== 'p_dashboard');
   const adminPages = ALL_SYSTEM_PAGES.filter(p => p.category === 'الإدارة والمخزون' && isAllowed(p.id));
 
-  // شريط تنقّل سريع أسفل الشاشة (موبايل فقط) — 4 صفحات مختارة، وبيحترم صلاحيات
-  // كل موظف زي السايد بار بالظبط (لو صفحة مش مسموحة له، بتختفي من الشريط مش
-  // بتتعرض معطّلة).
-  const BOTTOM_NAV_PAGE_IDS = ['p_dashboard', 'p_fabric_sales', 'p_inspections', 'p_inventory'];
-  const bottomNavPages = BOTTOM_NAV_PAGE_IDS
-    .map(id => ALL_SYSTEM_PAGES.find(p => p.id === id))
-    .filter((p): p is PagePermission => !!p && isAllowed(p.id));
+  // شريط تنقّل سريع أسفل الشاشة (موبايل فقط) — للأدمن (مدير النظام) بس حسب
+  // طلبه صراحة، بـ4 صفحات اختارها بنفسه: الرئيسية، المبيعات، طلبات الستائر،
+  // التقارير. بيحترم صلاحيات المستخدم زي السايد بار بالظبط لو حصل واتفعّل
+  // لغيره مستقبلاً.
+  const BOTTOM_NAV_PAGE_IDS = ['p_dashboard', 'p_fabric_sales', 'p_orders', 'p_reports'];
+  const bottomNavPages = isSuperAdminUser(user)
+    ? BOTTOM_NAV_PAGE_IDS
+        .map(id => ALL_SYSTEM_PAGES.find(p => p.id === id))
+        .filter((p): p is PagePermission => !!p && isAllowed(p.id))
+    : [];
 
   const roleLabels: Record<string, string> = {
     ADMIN: 'مدير النظام',
