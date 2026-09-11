@@ -104,7 +104,7 @@ export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricS
           ${it.pricePerMeter}
         </td>
         <td style="text-align:left; font-family:monospace; font-weight:900; font-size:8.5pt; padding: 1.5mm 1mm; white-space:nowrap;">
-          ${it.totalPrice.toLocaleString()} ج
+          ${it.totalPrice.toLocaleString()}
         </td>
       </tr>
     `).join('');
@@ -113,7 +113,7 @@ export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricS
     const paymentRowsHtml = activePayments.map(p => `
       <tr>
         <td class="lbl" style="font-size:8pt; padding-right:1mm;">${p.icon} مسدد ${p.label}:</td>
-        <td class="v" style="font-size:8.5pt;">${p.amount.toLocaleString()} ج</td>
+        <td class="v" style="font-size:8.5pt;">${p.amount.toLocaleString()}</td>
       </tr>
     `).join('');
 
@@ -169,13 +169,13 @@ export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricS
         </table>
         <div class="divider"></div>
         <table class="totals">
-          <tr><td class="lbl">إجمالي قبل الخصم:</td><td class="v">${(data.subtotal || 0).toLocaleString()} ج</td></tr>
-          ${data.discountAmount > 0 ? `<tr><td class="lbl">قيمة الخصم:</td><td class="v">-${data.discountAmount.toLocaleString()} ج</td></tr>` : ''}
-          ${data.isOnlineOrder ? `<tr><td class="lbl">مصاريف الشحن:</td><td class="v">+${(data.shippingFee || 110).toLocaleString()} ج</td></tr>` : ''}
-          <tr class="total-row"><td>الصافي المستحق:</td><td class="v">${data.totalAmount.toLocaleString()} ج</td></tr>
+          <tr><td class="lbl">إجمالي قبل الخصم:</td><td class="v">${(data.subtotal || 0).toLocaleString()}</td></tr>
+          ${data.discountAmount > 0 ? `<tr><td class="lbl">قيمة الخصم:</td><td class="v">-${data.discountAmount.toLocaleString()}</td></tr>` : ''}
+          ${data.isOnlineOrder ? `<tr><td class="lbl">مصاريف الشحن:</td><td class="v">+${(data.shippingFee || 110).toLocaleString()}</td></tr>` : ''}
+          <tr class="total-row"><td>الصافي المستحق:</td><td class="v">${data.totalAmount.toLocaleString()}</td></tr>
           ${paymentRowsHtml}
-          <tr><td class="lbl" style="font-weight:900;">إجمالي المدفوع:</td><td class="v" style="font-weight:900;">${data.paidAmount.toLocaleString()} ج</td></tr>
-          ${data.remainingAmount > 0 ? `<tr><td class="lbl" style="font-weight:900; color:#000;">المتبقي آجل:</td><td class="v" style="font-weight:900;">${data.remainingAmount.toLocaleString()} ج</td></tr>` : ''}
+          <tr><td class="lbl" style="font-weight:900;">إجمالي المدفوع:</td><td class="v" style="font-weight:900;">${data.paidAmount.toLocaleString()}</td></tr>
+          ${data.remainingAmount > 0 ? `<tr><td class="lbl" style="font-weight:900; color:#000;">المتبقي آجل:</td><td class="v" style="font-weight:900;">${data.remainingAmount.toLocaleString()}</td></tr>` : ''}
         </table>
         <div class="divider"></div>
         <div class="foot">
@@ -202,9 +202,9 @@ export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricS
           <td>
             <strong style="color:#0f172a; display:block;">${item.name}</strong>
           </td>
-          <td style="text-align:center; font-family:monospace; font-weight:700;">${item.pricePerMeter} ج</td>
+          <td style="text-align:center; font-family:monospace; font-weight:700;">${item.pricePerMeter}</td>
           <td style="text-align:center; font-family:monospace; font-weight:900; color:#0f172a;">${item.meters} م</td>
-          <td style="text-align:center; font-family:monospace; font-weight:900; color:#0f172a;">${item.totalPrice.toLocaleString()} ج</td>
+          <td style="text-align:center; font-family:monospace; font-weight:900; color:#0f172a;">${item.totalPrice.toLocaleString()}</td>
         </tr>
       `;
     });
@@ -276,7 +276,7 @@ export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricS
               <td class="info-val">${branchCfg.name} (${branchCfg.address})</td>
               <td class="info-label">طريقة السداد:</td>
               <td class="info-val">
-                ${activePayments.length > 0 ? activePayments.map(p => `${p.icon} ${p.label}: ${p.amount.toLocaleString()} ج`).join(' | ') : (data.paymentMethod || 'نقدي')}
+                ${activePayments.length > 0 ? activePayments.map(p => `${p.icon} ${p.label}: ${p.amount.toLocaleString()}`).join(' | ') : (data.paymentMethod || 'نقدي')}
               </td>
             </tr>
           </table>
@@ -308,15 +308,15 @@ export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricS
             <div class="fin-grid">
               <div class="fin-box">
                 <span class="fin-label">إجمالي الفاتورة</span>
-                <span class="fin-val">${data.totalAmount.toLocaleString()} <span style="font-size:8pt;">ج.م</span></span>
+                <span class="fin-val">${data.totalAmount.toLocaleString()}</span>
               </div>
               <div class="fin-box" style="background:#f0fdf4; border-color:#86efac;">
                 <span class="fin-label" style="color:#166534;">المسدد (المدفوع)</span>
-                <span class="fin-val" style="color:#14532d;">${data.paidAmount.toLocaleString()} <span style="font-size:8pt;">ج.م</span></span>
+                <span class="fin-val" style="color:#14532d;">${data.paidAmount.toLocaleString()}</span>
               </div>
               <div class="fin-box" style="background:#fff1f2; border-color:#fca5a5;">
                 <span class="fin-label" style="color:#9f1239;">المتبقي</span>
-                <span class="fin-val" style="color:#881337;">${data.remainingAmount.toLocaleString()} <span style="font-size:8pt;">ج.م</span></span>
+                <span class="fin-val" style="color:#881337;">${data.remainingAmount.toLocaleString()}</span>
               </div>
             </div>
           </div>
@@ -387,14 +387,14 @@ export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricS
         </div>
 
         <div class="cod-badge">
-          ${isCod ? `المطلوب تحصيله عند الاستلام: ${codAmount.toLocaleString()} ج` : `✅ مسدد مسبقاً بالكامل (0 ج)`}
+          ${isCod ? `المطلوب تحصيله عند الاستلام: ${codAmount.toLocaleString()}` : `✅ مسدد مسبقاً بالكامل (0)`}
         </div>
 
         <div class="box" style="font-size:8pt;">
           <div class="box-title">📦 تفاصيل المحتويات</div>
           <div><span class="lbl">عدد الأصناف: </span><span class="val">${data.items?.length || 0} أصناف أقمشة</span></div>
           <div><span class="lbl">إجمالي الأمتار: </span><span class="val">${(data.items || []).reduce((s, it) => s + it.meters, 0)} متر</span></div>
-          <div><span class="lbl">مصاريف الشحن: </span><span class="val">${(data.shippingFee || 110).toLocaleString()} ج</span></div>
+          <div><span class="lbl">مصاريف الشحن: </span><span class="val">${(data.shippingFee || 110).toLocaleString()}</span></div>
         </div>
 
         <div class="divider"></div>
@@ -499,7 +499,7 @@ export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricS
                       <div className="flex flex-wrap gap-1.5">
                         {activePayments.map((p, i) => (
                           <span key={i} className="bg-slate-100 border border-slate-300 text-slate-800 px-2 py-0.5 rounded text-[11px] font-bold">
-                            {p.icon} {p.label}: <span className="font-mono text-emerald-800">{p.amount.toLocaleString()} ج</span>
+                            {p.icon} {p.label}: <span className="font-mono text-emerald-800">{p.amount.toLocaleString()}</span>
                           </span>
                         ))}
                       </div>
@@ -532,9 +532,9 @@ export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricS
                     <td className="p-2 border border-slate-300">
                       <strong className="font-bold text-slate-900 block">{item.name}</strong>
                     </td>
-                    <td className="p-2 text-center font-mono font-bold text-slate-700 border border-slate-300">{item.pricePerMeter} ج</td>
-                    <td className="p-2 text-center font-mono font-black text-slate-950 border border-slate-300">{item.meters} م</td>
-                    <td className="p-2 text-center font-mono font-black text-slate-950 border border-slate-300">{item.totalPrice.toLocaleString()} ج</td>
+                    <td className="p-2 text-center font-mono font-bold text-slate-700 border border-slate-300">{item.pricePerMeter}</td>
+                    <td className="p-2 text-center font-mono font-black text-slate-900 border border-slate-300">{item.meters} م</td>
+                    <td className="p-2 text-center font-mono font-black text-slate-900 border border-slate-300">{item.totalPrice.toLocaleString()}</td>
                   </tr>
                 ))}
               </tbody>
@@ -552,15 +552,15 @@ export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricS
             <div className="grid grid-cols-3 gap-2 text-center">
               <div className="bg-white border border-slate-200 p-2 rounded-lg">
                 <span className="text-[10px] text-slate-500 font-bold block mb-0.5">إجمالي الفاتورة</span>
-                <span className="font-mono font-black text-base text-slate-900 block">{data.totalAmount.toLocaleString()} ج.م</span>
+                <span className="font-mono font-black text-base text-slate-900 block">{data.totalAmount.toLocaleString()}</span>
               </div>
               <div className="bg-emerald-50/80 border border-emerald-200 p-2 rounded-lg">
                 <span className="text-[10px] text-emerald-800 font-bold block mb-0.5">المسدد (المدفوع)</span>
-                <span className="font-mono font-black text-base text-emerald-950 block">{data.paidAmount.toLocaleString()} ج.م</span>
+                <span className="font-mono font-black text-base text-emerald-950 block">{data.paidAmount.toLocaleString()}</span>
               </div>
               <div className="bg-rose-50/80 border border-rose-200 p-2 rounded-lg">
                 <span className="text-[10px] text-rose-800 font-bold block mb-0.5">المتبقي</span>
-                <span className="font-mono font-black text-base text-rose-950 block">{data.remainingAmount.toLocaleString()} ج.م</span>
+                <span className="font-mono font-black text-base text-rose-950 block">{data.remainingAmount.toLocaleString()}</span>
               </div>
             </div>
           </div>

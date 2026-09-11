@@ -205,16 +205,16 @@ export default function ShiftsAndDrawerPage() {
         </table>
         <div class="divider"></div>
         <table>
-          <tr><td class="lbl">عهدة البداية (افتتاح):</td><td class="v">${shift.openingDrawerBalance.toLocaleString()} ج</td></tr>
-          <tr><td class="lbl">💵 مبيعات كاش بالدرج:</td><td class="v">${shift.cashSales.toLocaleString()} ج</td></tr>
-          <tr><td class="lbl">⚡ مبيعات إنستاباي:</td><td class="v">${shift.instapaySales.toLocaleString()} ج</td></tr>
-          <tr><td class="lbl">📱 مبيعات فودافون:</td><td class="v">${shift.vodafoneSales.toLocaleString()} ج</td></tr>
-          <tr><td class="lbl">💳 مبيعات فيزا:</td><td class="v">${shift.visaSales.toLocaleString()} ج</td></tr>
-          <tr class="total-row"><td>إجمالي مبيعات الوردية:</td><td class="v">${shift.totalSales.toLocaleString()} ج</td></tr>
-          <tr><td class="lbl">مصروفات وسلف خارجة:</td><td class="v">-${(shift.expensesPaid + shift.advancesPaid).toLocaleString()} ج</td></tr>
-          <tr style="border-top:1px solid #000;"><td class="lbl" style="font-weight:bold;">النقدية المحسوبة بالدرج:</td><td class="v">${shift.expectedCashInDrawer.toLocaleString()} ج</td></tr>
-          <tr><td class="lbl" style="font-weight:bold;">النقدية الفعلية المحصية:</td><td class="v">${(shift.actualClosingCash || 0).toLocaleString()} ج</td></tr>
-          <tr style="border-top:1px dashed #000;"><td class="lbl" style="font-weight:900;">الفارق (عجز / زيادة):</td><td class="v" style="font-weight:900;">${(shift.cashDiscrepancy || 0) >= 0 ? `+${shift.cashDiscrepancy}` : shift.cashDiscrepancy} ج</td></tr>
+          <tr><td class="lbl">عهدة البداية (افتتاح):</td><td class="v">${shift.openingDrawerBalance.toLocaleString()}</td></tr>
+          <tr><td class="lbl">💵 مبيعات كاش بالدرج:</td><td class="v">${shift.cashSales.toLocaleString()}</td></tr>
+          <tr><td class="lbl">⚡ مبيعات إنستاباي:</td><td class="v">${shift.instapaySales.toLocaleString()}</td></tr>
+          <tr><td class="lbl">📱 مبيعات فودافون:</td><td class="v">${shift.vodafoneSales.toLocaleString()}</td></tr>
+          <tr><td class="lbl">💳 مبيعات فيزا:</td><td class="v">${shift.visaSales.toLocaleString()}</td></tr>
+          <tr class="total-row"><td>إجمالي مبيعات الوردية:</td><td class="v">${shift.totalSales.toLocaleString()}</td></tr>
+          <tr><td class="lbl">مصروفات وسلف خارجة:</td><td class="v">-${(shift.expensesPaid + shift.advancesPaid).toLocaleString()}</td></tr>
+          <tr style="border-top:1px solid #000;"><td class="lbl" style="font-weight:bold;">النقدية المحسوبة بالدرج:</td><td class="v">${shift.expectedCashInDrawer.toLocaleString()}</td></tr>
+          <tr><td class="lbl" style="font-weight:bold;">النقدية الفعلية المحصية:</td><td class="v">${(shift.actualClosingCash || 0).toLocaleString()}</td></tr>
+          <tr style="border-top:1px dashed #000;"><td class="lbl" style="font-weight:900;">الفارق (عجز / زيادة):</td><td class="v" style="font-weight:900;">${(shift.cashDiscrepancy || 0) >= 0 ? `+${shift.cashDiscrepancy}` : shift.cashDiscrepancy}</td></tr>
           ${shift.handoverDestination ? `<tr><td class="lbl">جهة التسليم:</td><td class="v">${shift.handoverDestination}</td></tr>` : ''}
           ${shift.handoverReceiverName ? `<tr><td class="lbl">المستلم:</td><td class="v">${shift.handoverReceiverName}</td></tr>` : ''}
         </table>
@@ -290,7 +290,7 @@ export default function ShiftsAndDrawerPage() {
                   </div>
                   <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200">
                     <span className="text-[11px] text-slate-500 font-bold block">عهدة بداية الوردية</span>
-                    <span className="font-mono font-black text-sm text-slate-900">{activeShift.openingDrawerBalance.toLocaleString()} ج</span>
+                    <span className="font-mono font-black text-sm text-slate-900">{activeShift.openingDrawerBalance.toLocaleString()}</span>
                   </div>
                   <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200">
                     <span className="text-[11px] text-slate-500 font-bold block">وقت البدء</span>
@@ -304,24 +304,24 @@ export default function ShiftsAndDrawerPage() {
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     <div className="flex justify-between">
                       <span className="text-slate-600">💵 كاش بالدرج:</span>
-                      <span className="font-mono font-black text-emerald-900">{activeShift.cashSales.toLocaleString()} ج</span>
+                      <span className="font-mono font-black text-emerald-900">{activeShift.cashSales.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-slate-600">⚡ إنستاباي:</span>
-                      <span className="font-mono font-black text-blue-900">{activeShift.instapaySales.toLocaleString()} ج</span>
+                      <span className="font-mono font-black text-blue-900">{activeShift.instapaySales.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-slate-600">📱 فودافون كاش:</span>
-                      <span className="font-mono font-black text-red-900">{activeShift.vodafoneSales.toLocaleString()} ج</span>
+                      <span className="font-mono font-black text-red-900">{activeShift.vodafoneSales.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-slate-600">💳 فيزا / كارت:</span>
-                      <span className="font-mono font-black text-purple-900">{activeShift.visaSales.toLocaleString()} ج</span>
+                      <span className="font-mono font-black text-purple-900">{activeShift.visaSales.toLocaleString()}</span>
                     </div>
                   </div>
                   <div className="border-t border-emerald-200 pt-2 flex justify-between font-black text-sm text-emerald-950">
                     <span>إجمالي المبيعات:</span>
-                    <span className="font-mono">{activeShift.totalSales.toLocaleString()} ج</span>
+                    <span className="font-mono">{activeShift.totalSales.toLocaleString()}</span>
                   </div>
                 </div>
 
@@ -331,7 +331,7 @@ export default function ShiftsAndDrawerPage() {
                     <span className="text-xs text-slate-400 block">النقدية المتوقع وجودها بالدرج:</span>
                     <span className="text-[10px] text-slate-400">عهدة أولية + كاش مبيعات - سلف ومصروفات</span>
                   </div>
-                  <span className="font-mono font-black text-lg text-amber-400">{expectedCash.toLocaleString()} ج.م</span>
+                  <span className="font-mono font-black text-lg text-amber-400">{expectedCash.toLocaleString()}</span>
                 </div>
               </div>
             ) : (
@@ -437,7 +437,7 @@ export default function ShiftsAndDrawerPage() {
                   }`}>
                     <span>حالة مطابقة الدرج:</span>
                     <span className="font-mono text-sm">
-                      {currentDiff === 0 ? '✓ مطابق تماماً (0 ج)' : currentDiff < 0 ? `⚠️ عجز بالدرج (${currentDiff} ج)` : `🔵 زيادة بالدرج (+${currentDiff} ج)`}
+                      {currentDiff === 0 ? '✓ مطابق تماماً (0)' : currentDiff < 0 ? `⚠️ عجز بالدرج (${currentDiff})` : `🔵 زيادة بالدرج (+${currentDiff})`}
                     </span>
                   </div>
                 )}
@@ -575,13 +575,13 @@ export default function ShiftsAndDrawerPage() {
                         </span>
                       </td>
                       <td className="p-3 font-bold">{s.employeeName}</td>
-                      <td className="p-3 font-mono">{s.openingDrawerBalance.toLocaleString()} ج</td>
-                      <td className="p-3 font-mono font-black text-emerald-800">{s.totalSales.toLocaleString()} ج</td>
-                      <td className="p-3 font-mono font-black text-slate-900">{(s.actualClosingCash ?? s.expectedCashInDrawer).toLocaleString()} ج</td>
+                      <td className="p-3 font-mono">{s.openingDrawerBalance.toLocaleString()}</td>
+                      <td className="p-3 font-mono font-black text-emerald-800">{s.totalSales.toLocaleString()}</td>
+                      <td className="p-3 font-mono font-black text-slate-900">{(s.actualClosingCash ?? s.expectedCashInDrawer).toLocaleString()}</td>
                       <td className="p-3 font-mono font-bold">
                         {s.cashDiscrepancy !== undefined ? (
                           <span className={s.cashDiscrepancy === 0 ? 'text-emerald-700' : s.cashDiscrepancy < 0 ? 'text-rose-700' : 'text-blue-700'}>
-                            {s.cashDiscrepancy >= 0 ? `+${s.cashDiscrepancy}` : s.cashDiscrepancy} ج
+                            {s.cashDiscrepancy >= 0 ? `+${s.cashDiscrepancy}` : s.cashDiscrepancy}
                           </span>
                         ) : '—'}
                       </td>
@@ -739,24 +739,24 @@ export default function ShiftsAndDrawerPage() {
                     <div className="grid grid-cols-2 gap-2 text-slate-700">
                       <div className="flex justify-between">
                         <span>💵 كاش بالدرج:</span>
-                        <span className="font-mono font-bold">{selectedShiftForDetails.cashSales.toLocaleString()} ج</span>
+                        <span className="font-mono font-bold">{selectedShiftForDetails.cashSales.toLocaleString()}</span>
                       </div>
                       <div className="flex justify-between">
                         <span>⚡ إنستاباي:</span>
-                        <span className="font-mono font-bold">{selectedShiftForDetails.instapaySales.toLocaleString()} ج</span>
+                        <span className="font-mono font-bold">{selectedShiftForDetails.instapaySales.toLocaleString()}</span>
                       </div>
                       <div className="flex justify-between">
                         <span>📱 فودافون كاش:</span>
-                        <span className="font-mono font-bold">{selectedShiftForDetails.vodafoneSales.toLocaleString()} ج</span>
+                        <span className="font-mono font-bold">{selectedShiftForDetails.vodafoneSales.toLocaleString()}</span>
                       </div>
                       <div className="flex justify-between">
                         <span>💳 فيزا / كارت:</span>
-                        <span className="font-mono font-bold">{selectedShiftForDetails.visaSales.toLocaleString()} ج</span>
+                        <span className="font-mono font-bold">{selectedShiftForDetails.visaSales.toLocaleString()}</span>
                       </div>
                     </div>
                     <div className="border-t border-emerald-200 pt-1.5 flex justify-between font-black text-sm text-emerald-950">
                       <span>إجمالي المبيعات المحققة:</span>
-                      <span className="font-mono">{selectedShiftForDetails.totalSales.toLocaleString()} ج.م</span>
+                      <span className="font-mono">{selectedShiftForDetails.totalSales.toLocaleString()}</span>
                     </div>
                   </div>
 
@@ -764,21 +764,21 @@ export default function ShiftsAndDrawerPage() {
                   <div className="bg-slate-50 border border-slate-200 p-3.5 rounded-2xl space-y-2 font-mono">
                     <div className="flex justify-between text-slate-600 font-sans">
                       <span>عهدة الافتتاح (أول المدة):</span>
-                      <span className="font-mono font-bold">{selectedShiftForDetails.openingDrawerBalance.toLocaleString()} ج</span>
+                      <span className="font-mono font-bold">{selectedShiftForDetails.openingDrawerBalance.toLocaleString()}</span>
                     </div>
                     {(selectedShiftForDetails.expensesPaid + selectedShiftForDetails.advancesPaid) > 0 && (
                       <div className="flex justify-between text-rose-700 font-sans">
                         <span>مصروفات وسلف مسحوبة من الدرج:</span>
-                        <span className="font-mono font-bold">-{(selectedShiftForDetails.expensesPaid + selectedShiftForDetails.advancesPaid).toLocaleString()} ج</span>
+                        <span className="font-mono font-bold">-{(selectedShiftForDetails.expensesPaid + selectedShiftForDetails.advancesPaid).toLocaleString()}</span>
                       </div>
                     )}
                     <div className="flex justify-between text-slate-900 font-bold border-t pt-1 font-sans">
                       <span>النقدية المتوقعة بالدرج:</span>
-                      <span className="font-mono">{selectedShiftForDetails.expectedCashInDrawer.toLocaleString()} ج</span>
+                      <span className="font-mono">{selectedShiftForDetails.expectedCashInDrawer.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between text-slate-950 font-black text-sm font-sans">
                       <span>النقدية الفعلية المحصية:</span>
-                      <span className="font-mono text-emerald-900">{(selectedShiftForDetails.actualClosingCash ?? selectedShiftForDetails.expectedCashInDrawer).toLocaleString()} ج</span>
+                      <span className="font-mono text-emerald-900">{(selectedShiftForDetails.actualClosingCash ?? selectedShiftForDetails.expectedCashInDrawer).toLocaleString()}</span>
                     </div>
                     {selectedShiftForDetails.cashDiscrepancy !== undefined && (
                       <div className={`flex justify-between font-black font-sans p-2 rounded-xl border ${
@@ -791,10 +791,10 @@ export default function ShiftsAndDrawerPage() {
                         <span>حالة الدرج (الفارق):</span>
                         <span className="font-mono text-sm">
                           {selectedShiftForDetails.cashDiscrepancy === 0 
-                            ? 'مطابق تماماً (0 ج)' 
+                            ? 'مطابق تماماً (0)' 
                             : selectedShiftForDetails.cashDiscrepancy < 0 
-                            ? `عجز: ${selectedShiftForDetails.cashDiscrepancy} ج` 
-                            : `زيادة: +${selectedShiftForDetails.cashDiscrepancy} ج`}
+                            ? `عجز: ${selectedShiftForDetails.cashDiscrepancy}` 
+                            : `زيادة: +${selectedShiftForDetails.cashDiscrepancy}`}
                         </span>
                       </div>
                     )}
