@@ -8,6 +8,7 @@ import { useManagerGate, isManagerUnlocked, clearManagerUnlock } from '@/compone
 import { useCurrentUser } from '@/lib/useCurrentUser';
 import BranchSelect from '@/components/BranchSelect';
 import { normalizeBranchName, getBranchConfig } from '@/lib/branches';
+import { getPersistentCategories } from '@/lib/categories';
 
 interface InvoiceLineItem {
   id: string;
@@ -137,17 +138,22 @@ export default function NewSalesInvoicePOSPage() {
     initData();
   }, []);
 
-  // Dynamic categories strictly belonging to the active branch's available inventory (بدون "الكل")
+  // Dynamic categories strictly belonging to the active branch's available inventory (بدون "الكل") + التصنيفات الدائمة المعتمدة
   const dynamicCategories = useMemo(() => {
     const branchScoped = products.filter(p =>
       !branch || branch === 'الكل' || normalizeBranchName(p.branch) === normalizeBranchName(branch)
     );
+    const itemCats = branchScoped
+      .map(p => (p.category || '').trim())
+      .filter(Boolean);
+    
+    const persistent = getPersistentCategories();
+    // دمج تصنيفات الأصناف مع التصنيفات الأساسية لضمان بقاء "خياطة" وتصنيفات الأقمشة متاحة دائماً
     const uniqueCats = Array.from(
-      new Set(
-        branchScoped
-          .map(p => (p.category || '').trim())
-          .filter(Boolean)
-      )
+      new Set([
+        ...itemCats,
+        ...persistent.filter(c => ['جوانب الستاير', 'شيفونات وتل', 'بلاك أوت وعوازل', 'خياطة', 'خياطة وتفصيل', 'تراكات ومواسير', 'إكسسوارات ولوازم'].includes(c)),
+      ])
     );
     return uniqueCats;
   }, [products, branch]);

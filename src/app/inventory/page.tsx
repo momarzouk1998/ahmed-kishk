@@ -9,6 +9,7 @@ import BranchSelect from '@/components/BranchSelect';
 import { BRANCHES_LIST, normalizeBranchName, branchLabel } from '@/lib/branches';
 import initialInventory from '@/data/initialInventory.json';
 import Pagination from '@/components/Pagination';
+import { getPersistentCategories, saveCustomCategory } from '@/lib/categories';
 
 interface InventoryItem {
   id: string;
@@ -120,9 +121,11 @@ export default function InventoryPage() {
         const json = await res.json();
         if (json.success && Array.isArray(json.items)) {
           setItems(json.items);
-          // Extract unique categories dynamically
-          const cats = Array.from(new Set(json.items.map((i: InventoryItem) => i.category).filter(Boolean)));
-          setCategories(['الكل', ...cats as string[]]);
+          // Extract unique categories dynamically + guarantee baseline categories (including خياطة)
+          const persistent = getPersistentCategories();
+          const itemCats = json.items.map((i: InventoryItem) => i.category).filter(Boolean);
+          const allCats = Array.from(new Set([...persistent, ...itemCats]));
+          setCategories(['الكل', ...allCats]);
         }
       }
     } catch (e) {
@@ -165,11 +168,13 @@ export default function InventoryPage() {
     loadAdjustments();
   }, []);
 
-  // Filter items
+  // Filter items & Guarantee categories (e.g. خياطة) never disappear for any branch
   const branchScopedItems = items.filter(item => 
     selectedBranch === 'الكل' || normalizeBranchName(item.branch) === normalizeBranchName(selectedBranch)
   );
-  const dynamicCategories = ['الكل', ...Array.from(new Set(branchScopedItems.map(i => i.category).filter(Boolean)))];
+  const persistentCats = getPersistentCategories();
+  const branchCats = branchScopedItems.map(i => i.category).filter(Boolean);
+  const dynamicCategories = ['الكل', ...Array.from(new Set([...persistentCats, ...branchCats]))];
 
   const filteredItems = items.filter((item) => {
     const matchesCat = activeCategory === 'الكل' || item.category === activeCategory;
@@ -260,9 +265,12 @@ export default function InventoryPage() {
     e.preventDefault();
     if (!name) return;
 
-    const catToUse = category === 'NEW' ? newCatInput : category;
-    if (category === 'NEW' && newCatInput && !categories.includes(newCatInput)) {
-      setCategories([...categories, newCatInput]);
+    const catToUse = category === 'NEW' ? newCatInput.trim() : category;
+    if (category === 'NEW' && newCatInput.trim()) {
+      saveCustomCategory(newCatInput.trim());
+      if (!categories.includes(newCatInput.trim())) {
+        setCategories([...categories, newCatInput.trim()]);
+      }
     }
 
     // #NOTE: كود الصنف بقى بيتولّد من السيرفر فقط (مضمون فريد فعليًا فى قاعدة

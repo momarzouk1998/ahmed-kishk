@@ -80,13 +80,14 @@ export const INITIAL_EMPLOYEES: Employee[] = [
   // فرع عرابي (5)
   { id: 'emp_4', name: 'ابراهيم', branch: 'فرع عرابي', dailyWage: 300, workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'مسؤول فرع عرابي', isActive: true },
   { id: 'emp_5', name: 'نصار', branch: 'فرع عرابي', dailyWage: 270, workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'مبيعات', isActive: true },
-  { id: 'emp_6', name: 'امين', branch: 'فرع عرابي', dailyWage: 200, workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'مبيعات', isActive: true },
-  { id: 'emp_7', name: 'محمد', branch: 'فرع عرابي', dailyWage: 250, workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'مبيعات', isActive: true },
+  { id: 'emp_6', name: 'امين', branch: 'فرع عرابي', dailyWage: 200, workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'فني تركيبات', isActive: true },
+  { id: 'emp_7', name: 'محمد', branch: 'فرع عرابي', dailyWage: 250, workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'سائق ومندوب توصيل', isActive: true },
   { id: 'emp_8', name: 'اسراء', branch: 'فرع عرابي', dailyWage: 130, workStartTime: '12:00 PM', workEndTime: '08:00 PM', role: 'مبيعات وسيدات', isActive: true },
 
-  // فرع عمر أفندي (5)
-  { id: 'emp_9', name: 'بليه', branch: 'فرع عمر أفندي', dailyWage: 400, workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'مدير فرع عمر أفندي', isActive: true },
-  { id: 'emp_10', name: 'محمد كشك', branch: 'فرع عمر أفندي', dailyWage: 350, workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'إدارة ومبيعات', isActive: true },
+  // فرع عمر أفندي (6)
+  { id: 'emp_10', name: 'محمد كشك', branch: 'فرع عمر أفندي', dailyWage: 350, workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'مدير فرع عمر أفندي', isActive: true },
+  { id: 'emp_9', name: 'بليه (شبلية)', branch: 'فرع عمر أفندي', dailyWage: 400, workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'إدارة ومبيعات', isActive: true },
+  { id: 'emp_18', name: 'موسى', branch: 'فرع عمر أفندي', dailyWage: 350, workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'إدارة ومبيعات', isActive: true },
   { id: 'emp_11', name: 'صبحى', branch: 'فرع عمر أفندي', dailyWage: 350, workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'مسؤول وردية وكاشير', isActive: true },
   { id: 'emp_12', name: 'سيد', branch: 'فرع عمر أفندي', dailyWage: 350, workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'مبيعات', isActive: true },
   { id: 'emp_13', name: 'احمد', branch: 'فرع عمر أفندي', dailyWage: 150, workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'مساعد', isActive: true },
@@ -94,7 +95,7 @@ export const INITIAL_EMPLOYEES: Employee[] = [
   // فرع الثلاثيني (1)
   { id: 'emp_14', name: 'كوكو', branch: 'فرع الثلاثيني', dailyWage: 200, workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'مسؤول فرع الثلاثيني', isActive: true },
 
-// الفرع التجاري (2)
+  // الفرع التجاري (2)
   { id: 'emp_15', name: 'عبدالرحمن كشك', phone: '01280042900', branch: 'الفرع التجاري', dailyWage: 400, workStartTime: '12:00 PM', workEndTime: '11:30 PM', role: 'مدير الفرع التجاري', isActive: true },
   { id: 'emp_16', name: 'محمد على', phone: '01220999355', branch: 'الفرع التجاري', dailyWage: 250, workStartTime: '12:00 PM', workEndTime: '11:30 PM', role: 'كاشير الفرع التجاري', isActive: true },
 ];
@@ -110,12 +111,24 @@ export function getEmployees(): Employee[] {
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed) || parsed.length === 0) return INITIAL_EMPLOYEES;
     
-    // Ensure Commercial branch employees are updated with latest official data
-    const merged = INITIAL_EMPLOYEES.map(initEmp => {
-      const found = parsed.find((p: Employee) => p.id === initEmp.id);
-      return found ? { ...initEmp, ...found, phone: initEmp.phone || found.phone, name: initEmp.name } : initEmp;
+    // Merge user edits and new additions with initial baseline
+    const parsedMap = new Map<string, Employee>(parsed.map((p: Employee) => [p.id, p]));
+    const result: Employee[] = [];
+    
+    // Process initial employees
+    for (const initEmp of INITIAL_EMPLOYEES) {
+      if (parsedMap.has(initEmp.id)) {
+        result.push(parsedMap.get(initEmp.id)!);
+        parsedMap.delete(initEmp.id);
+      } else {
+        result.push(initEmp);
+      }
+    }
+    // Append any newly created employees by user
+    Array.from(parsedMap.values()).forEach(remaining => {
+      result.push(remaining);
     });
-    return merged;
+    return result;
   } catch {
     return INITIAL_EMPLOYEES;
   }

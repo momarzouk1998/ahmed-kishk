@@ -33,6 +33,30 @@ export default function EmployeesManagementPage() {
   // Selected Employee for Modal / Share
   const [selectedEmpForSlip, setSelectedEmpForSlip] = useState<any | null>(null);
 
+  // Employee Add / Edit Modal State (Admin only)
+  const [showEmpModal, setShowEmpModal] = useState<boolean>(false);
+  const [editingEmp, setEditingEmp] = useState<Employee | null>(null);
+  const [empForm, setEmpForm] = useState<{
+    id?: string;
+    name: string;
+    branch: string;
+    dailyWage: number;
+    workStartTime: string;
+    workEndTime: string;
+    phone: string;
+    role: string;
+    isActive: boolean;
+  }>({
+    name: '',
+    branch: 'الفرع الرئيسي',
+    dailyWage: 300,
+    workStartTime: '11:00 AM',
+    workEndTime: '11:30 PM',
+    phone: '',
+    role: 'مبيعات',
+    isActive: true,
+  });
+
   useEffect(() => {
     setEmployees(getEmployees());
     setAttendance(getAttendance());
@@ -44,6 +68,79 @@ export default function EmployeesManagementPage() {
     if (selectedBranch === 'الكل') return employees;
     return employees.filter(e => normalizeBranchName(e.branch) === normalizeBranchName(selectedBranch));
   }, [employees, selectedBranch]);
+
+  // Employee CRUD handlers
+  const handleOpenAddEmp = () => {
+    setEditingEmp(null);
+    setEmpForm({
+      name: '',
+      branch: selectedBranch !== 'الكل' ? selectedBranch : 'الفرع الرئيسي',
+      dailyWage: 300,
+      workStartTime: '11:00 AM',
+      workEndTime: '11:30 PM',
+      phone: '',
+      role: 'مبيعات',
+      isActive: true,
+    });
+    setShowEmpModal(true);
+  };
+
+  const handleOpenEditEmp = (emp: Employee) => {
+    setEditingEmp(emp);
+    setEmpForm({
+      id: emp.id,
+      name: emp.name,
+      branch: emp.branch,
+      dailyWage: emp.dailyWage,
+      workStartTime: emp.workStartTime,
+      workEndTime: emp.workEndTime,
+      phone: emp.phone || '',
+      role: emp.role || '',
+      isActive: emp.isActive !== false,
+    });
+    setShowEmpModal(true);
+  };
+
+  const handleSaveEmp = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!empForm.name.trim()) return;
+
+    let updatedList: Employee[];
+    if (editingEmp) {
+      updatedList = employees.map(e => e.id === editingEmp.id ? { 
+        ...e, 
+        ...empForm, 
+        name: empForm.name.trim(), 
+        dailyWage: Number(empForm.dailyWage) || 0,
+        phone: empForm.phone.trim(),
+        role: empForm.role.trim() 
+      } : e);
+    } else {
+      const newEmp: Employee = {
+        id: `emp_${Date.now()}`,
+        name: empForm.name.trim(),
+        branch: empForm.branch,
+        dailyWage: Number(empForm.dailyWage) || 0,
+        workStartTime: empForm.workStartTime,
+        workEndTime: empForm.workEndTime,
+        phone: empForm.phone.trim(),
+        role: empForm.role.trim(),
+        isActive: empForm.isActive,
+      };
+      updatedList = [...employees, newEmp];
+    }
+    setEmployees(updatedList);
+    saveEmployees(updatedList);
+    setShowEmpModal(false);
+    alert(editingEmp ? 'تم تحديث وتثبيت بيانات الموظف بنجاح 💾' : 'تمت إضافة الموظف الجديد بنجاح ✨');
+  };
+
+  const handleDeleteEmp = (empId: string, empName: string) => {
+    if (!confirm(`هل أنت متأكد من حذف الموظف "${empName}" من النظام؟`)) return;
+    const updatedList = employees.filter(e => e.id !== empId);
+    setEmployees(updatedList);
+    saveEmployees(updatedList);
+  };
 
   // Attendance logic
   const handleMarkAttendance = (emp: Employee, status: AttendanceRecord['status']) => {
@@ -640,17 +737,38 @@ export default function EmployeesManagementPage() {
         {/* ── TAB 4: DIRECTORY ── */}
         {activeTab === 'directory' && (
           <div className="bg-white p-5 md:p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
-            <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
-              <span>👥</span>
-              <span>دليل موظفي الفروع</span>
-            </h3>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
+              <div>
+                <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+                  <span>👥</span>
+                  <span>دليل موظفي الفروع</span>
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">إدارة ومتابعة بيانات موظفي الفروع، المسميات الوظيفية ومواعيد العمل</p>
+              </div>
+
+              {canViewWages && (
+                <button
+                  type="button"
+                  onClick={handleOpenAddEmp}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-sm cursor-pointer"
+                >
+                  <span>➕</span>
+                  <span>إضافة موظف جديد</span>
+                </button>
+              )}
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {branchFilteredEmployees.map((emp) => (
-                <div key={emp.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2 hover:border-slate-400 transition-colors">
+                <div key={emp.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3 hover:border-slate-400 transition-colors">
                   <div className="flex justify-between items-start">
                     <div>
-                      <h4 className="font-black text-slate-950 text-base">{emp.name}</h4>
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-black text-slate-950 text-base">{emp.name}</h4>
+                        {emp.isActive === false && (
+                          <span className="text-[10px] bg-rose-100 text-rose-700 px-1.5 py-0.2 rounded font-bold">متوقف</span>
+                        )}
+                      </div>
                       <p className="text-xs text-amber-800 font-bold">{emp.role}</p>
                       {emp.phone && (
                         <p className="text-[11px] font-mono text-slate-500 font-bold mt-0.5">📞 {emp.phone}</p>
@@ -675,8 +793,168 @@ export default function EmployeesManagementPage() {
                       <span className="font-mono font-bold text-slate-700 text-[11px]" dir="ltr">{emp.workStartTime} - {emp.workEndTime}</span>
                     </div>
                   </div>
+
+                  {canViewWages && (
+                    <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEditEmp(emp)}
+                        className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer"
+                      >
+                        <span>✏️</span>
+                        <span>تعديل البيانات</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteEmp(emp.id, emp.name)}
+                        className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-bold border border-rose-200 cursor-pointer"
+                        title="حذف الموظف"
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* Employee Add / Edit Modal (Admin Only) */}
+        {showEmpModal && (
+          <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+            <div className="bg-white max-w-lg w-full rounded-3xl p-6 space-y-4 shadow-2xl border border-slate-200 max-h-[90vh] overflow-y-auto">
+              <div className="flex justify-between items-center border-b pb-3">
+                <h3 className="font-black text-slate-900 text-base flex items-center gap-2">
+                  <span>{editingEmp ? '✏️ تعديل بيانات موظف' : '➕ إضافة موظف جديد'}</span>
+                </h3>
+                <button onClick={() => setShowEmpModal(false)} className="text-slate-400 hover:text-slate-700 font-bold">✕</button>
+              </div>
+
+              <form onSubmit={handleSaveEmp} className="space-y-3.5 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">اسم الموظف *</label>
+                    <input
+                      type="text"
+                      required
+                      value={empForm.name}
+                      onChange={(e) => setEmpForm({ ...empForm, name: e.target.value })}
+                      placeholder="مثال: محمد كشك"
+                      className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-900"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">الفرع *</label>
+                    <select
+                      required
+                      value={empForm.branch}
+                      onChange={(e) => setEmpForm({ ...empForm, branch: e.target.value })}
+                      className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-800"
+                    >
+                      {BRANCHES_LIST.map(b => (
+                        <option key={b.id} value={b.name}>{b.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">المسمى الوظيفي</label>
+                    <input
+                      type="text"
+                      value={empForm.role}
+                      onChange={(e) => setEmpForm({ ...empForm, role: e.target.value })}
+                      placeholder="مثال: مدير الفرع / مبيعات / سائق"
+                      className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">الراتب اليومي (اليومية بالجنيه) *</label>
+                    <input
+                      type="number"
+                      required
+                      min="0"
+                      step="10"
+                      value={empForm.dailyWage}
+                      onChange={(e) => setEmpForm({ ...empForm, dailyWage: Number(e.target.value) })}
+                      placeholder="350"
+                      className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-mono font-bold text-emerald-800"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">رقم الهاتف (واتساب)</label>
+                    <input
+                      type="tel"
+                      value={empForm.phone}
+                      onChange={(e) => setEmpForm({ ...empForm, phone: e.target.value })}
+                      placeholder="010xxxxxxxx"
+                      className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono text-slate-900"
+                      dir="ltr"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">حالة العمل</label>
+                    <select
+                      value={empForm.isActive ? 'true' : 'false'}
+                      onChange={(e) => setEmpForm({ ...empForm, isActive: e.target.value === 'true' })}
+                      className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-800"
+                    >
+                      <option value="true">نشط بالعمل</option>
+                      <option value="false">متوقف / إجازة طويلة</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">وقت الحضور</label>
+                    <input
+                      type="text"
+                      value={empForm.workStartTime}
+                      onChange={(e) => setEmpForm({ ...empForm, workStartTime: e.target.value })}
+                      placeholder="11:00 AM"
+                      className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono text-slate-800"
+                      dir="ltr"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">وقت الانصراف</label>
+                    <input
+                      type="text"
+                      value={empForm.workEndTime}
+                      onChange={(e) => setEmpForm({ ...empForm, workEndTime: e.target.value })}
+                      placeholder="11:30 PM"
+                      className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono text-slate-800"
+                      dir="ltr"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-3 border-t">
+                  <button
+                    type="button"
+                    onClick={() => setShowEmpModal(false)}
+                    className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl"
+                  >
+                    إلغاء
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-6 py-2.5 bg-slate-950 hover:bg-slate-800 text-white font-black rounded-xl shadow-md cursor-pointer"
+                  >
+                    {editingEmp ? 'حفظ التعديلات 💾' : 'إضافة الموظف ✨'}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}
