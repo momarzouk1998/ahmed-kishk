@@ -179,17 +179,24 @@ export default function NewSalesInvoicePOSPage() {
   const [receiverPhone, setReceiverPhone] = useState<string>('');
   const [orderSource, setOrderSource] = useState<string>('صفحة الفيسبوك');
 
-  // Auto-toggle online mode if branch is الفرع التجاري
+  // Commercial Branch Check & Offline confirmation state
+  const isCommercialBranch = normalizeBranchName(branch) === 'الفرع التجاري';
+  const [showOfflineConfirmModal, setShowOfflineConfirmModal] = useState<boolean>(false);
+  const [pendingSaveAndPrint, setPendingSaveAndPrint] = useState<boolean>(false);
+
+  // Auto-toggle online mode if branch is الفرع التجاري, otherwise disable it
   useEffect(() => {
-    if (branch === 'الفرع التجاري') {
+    if (isCommercialBranch) {
       setIsOnlineOrder(true);
+    } else {
+      setIsOnlineOrder(false);
     }
-  }, [branch]);
+  }, [isCommercialBranch]);
 
   // Calculations
   const subtotal = items.reduce((sum, it) => sum + (it.meters * it.pricePerMeter), 0);
   const calculatedDiscount = discountType === 'PERCENT' ? (subtotal * (discountValue || 0)) / 100 : (discountValue || 0);
-  const shippingAmount = isOnlineOrder ? (Number(shippingFee) || 0) : 0;
+  const shippingAmount = (isCommercialBranch && isOnlineOrder) ? (Number(shippingFee) || 0) : 0;
   const totalAmount = Math.max(0, subtotal - calculatedDiscount + shippingAmount);
   const remainingAmount = Math.max(0, totalAmount - (paidAmount || 0));
 
@@ -334,13 +341,24 @@ export default function NewSalesInvoicePOSPage() {
     setKeypadBuffer(String(newMeters));
   };
 
-  // Save invoice handler
+  // Save invoice handler with offline confirmation for commercial branch
   const handleSaveInvoice = async (andPrint: boolean = false) => {
     if (items.length === 0) {
       alert('يرجى إضافة صنف واحد على الأقل للفاتورة!');
       return;
     }
 
+    // تنبيه وتأكيد إضافي خاص بالفرع التجاري في حالة تسجيل الفاتورة بدون شحن/أونلاين
+    if (isCommercialBranch && !isOnlineOrder) {
+      setPendingSaveAndPrint(andPrint);
+      setShowOfflineConfirmModal(true);
+      return;
+    }
+
+    await executeSaveInvoice(andPrint);
+  };
+
+  const executeSaveInvoice = async (andPrint: boolean = false) => {
     const finalCustName = custName.trim() || (customerType === 'WALK_IN' ? 'عميل نقدي' : 'عميل غير مسجل');
     const statusLabel = remainingAmount === 0 ? 'تم السداد بالكامل' : (paidAmount || 0) > 0 ? 'مسدد جزئياً' : 'آجل / غير مسدد';
 
@@ -361,13 +379,13 @@ export default function NewSalesInvoicePOSPage() {
       paidAmount: paidAmount || 0,
       remainingAmount,
       status: statusLabel,
-      isOnlineOrder,
-      shippingFee: isOnlineOrder ? Number(shippingFee) || 0 : 0,
-      shippingCompany: isOnlineOrder ? shippingCompany : undefined,
-      trackingNumber: isOnlineOrder ? trackingNumber.trim() : undefined,
-      shippingAddress: isOnlineOrder ? shippingAddress.trim() : undefined,
-      receiverPhone: isOnlineOrder ? receiverPhone.trim() : undefined,
-      orderSource: isOnlineOrder ? orderSource : undefined,
+      isOnlineOrder: isCommercialBranch ? isOnlineOrder : false,
+      shippingFee: (isCommercialBranch && isOnlineOrder) ? Number(shippingFee) || 0 : 0,
+      shippingCompany: (isCommercialBranch && isOnlineOrder) ? shippingCompany : undefined,
+      trackingNumber: (isCommercialBranch && isOnlineOrder) ? trackingNumber.trim() : undefined,
+      shippingAddress: (isCommercialBranch && isOnlineOrder) ? shippingAddress.trim() : undefined,
+      receiverPhone: (isCommercialBranch && isOnlineOrder) ? receiverPhone.trim() : undefined,
+      orderSource: (isCommercialBranch && isOnlineOrder) ? orderSource : undefined,
       splitPayments: paymentMethod === 'دفع متعدد / مزيج' ? {
         cash: Number(splitCash) || 0,
         instapay: Number(splitInstapay) || 0,
@@ -413,7 +431,7 @@ export default function NewSalesInvoicePOSPage() {
       clearManagerUnlock();
       setMgrUnlocked(false);
       const serial = `${Date.now().toString().slice(-6)}${Math.floor(10 + Math.random() * 90)}`;
-      setInvoiceNumber(`INV-2026-${serial}`);
+      setInvoiceNumber(`AK-${serial}`);
     }
   };
 
@@ -609,38 +627,40 @@ export default function NewSalesInvoicePOSPage() {
                   className="w-full border border-slate-200 rounded-xl px-2.5 py-1.5 font-bold text-slate-900 bg-slate-50 text-xs focus:outline-none"
                 />
 
-                {/* Compact Shipping Button */}
-                <div className="pt-1 border-t border-slate-100 flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setShowShippingModal(true)}
-                    className={`flex-1 py-1.5 px-2.5 rounded-xl text-xs font-black flex items-center justify-between transition-all cursor-pointer border ${
-                      isOnlineOrder
-                        ? 'bg-blue-50 text-blue-900 border-blue-300 hover:bg-blue-100 shadow-2xs'
-                        : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
-                    }`}
-                  >
-                    <span className="flex items-center gap-1.5">
-                      <span>📦</span>
-                      <span className="truncate max-w-[130px]">{isOnlineOrder ? `شحن: ${shippingCompany}` : 'إضافة شحن / أونلاين'}</span>
-                    </span>
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-mono font-bold shrink-0 ${
-                      isOnlineOrder ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-700'
-                    }`}>
-                      {isOnlineOrder ? `+${shippingFee} ج (مفعل ✏️)` : '+ شحن'}
-                    </span>
-                  </button>
-                  {isOnlineOrder && (
+                {/* Compact Shipping Button - ONLY FOR COMMERCIAL BRANCH */}
+                {isCommercialBranch && (
+                  <div className="pt-1 border-t border-slate-100 flex items-center gap-1.5">
                     <button
                       type="button"
-                      onClick={() => setIsOnlineOrder(false)}
-                      className="w-7 h-7 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200 flex items-center justify-center text-xs font-bold transition-colors cursor-pointer shrink-0"
-                      title="إلغاء الشحن والتحويل لبيع مباشر بالفرع"
+                      onClick={() => setShowShippingModal(true)}
+                      className={`flex-1 py-1.5 px-2.5 rounded-xl text-xs font-black flex items-center justify-between transition-all cursor-pointer border ${
+                        isOnlineOrder
+                          ? 'bg-blue-50 text-blue-900 border-blue-300 hover:bg-blue-100 shadow-2xs'
+                          : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                      }`}
                     >
-                      ✕
+                      <span className="flex items-center gap-1.5">
+                        <span>📦</span>
+                        <span className="truncate max-w-[130px]">{isOnlineOrder ? `شحن: ${shippingCompany}` : 'إضافة شحن / أونلاين'}</span>
+                      </span>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-mono font-bold shrink-0 ${
+                        isOnlineOrder ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-700'
+                      }`}>
+                        {isOnlineOrder ? `+${shippingFee} (مفعل ✏️)` : '+ شحن'}
+                      </span>
                     </button>
-                  )}
-                </div>
+                    {isOnlineOrder && (
+                      <button
+                        type="button"
+                        onClick={() => setIsOnlineOrder(false)}
+                        className="w-7 h-7 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200 flex items-center justify-center text-xs font-bold transition-colors cursor-pointer shrink-0"
+                        title="إلغاء الشحن والتحويل لبيع مباشر بالفرع"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1431,6 +1451,64 @@ export default function NewSalesInvoicePOSPage() {
           </div>
         </div>
       )}
+      {/* Offline Order Confirmation Modal for Commercial Branch */}
+      {showOfflineConfirmModal && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-slate-200 text-slate-900 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="w-14 h-14 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center mx-auto text-3xl font-black shadow-inner">
+              ⚠️
+            </div>
+            
+            <div className="text-center space-y-2">
+              <h3 className="text-base font-black text-slate-900">
+                تأكيد نوع الطلب (الفرع التجاري)
+              </h3>
+              <p className="text-xs font-bold text-slate-600 leading-relaxed">
+                الفاتورة مسجلة حالياً كـ <span className="text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded-md font-black border border-amber-200">بيع واستلام مباشر داخل المحل</span> وليست <span className="text-blue-800 bg-blue-50 px-1.5 py-0.5 rounded-md font-black border border-blue-200">طلب أونلاين / شحن</span>.
+              </p>
+              <p className="text-[11px] text-slate-500 font-bold">
+                هل العميل يشتري مباشرة من داخل الفرع، أم نسيت تفعيل وإدخال بيانات الشحن؟
+              </p>
+            </div>
+
+            <div className="space-y-2 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowOfflineConfirmModal(false);
+                  setIsOnlineOrder(true);
+                  setShowShippingModal(true);
+                }}
+                className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-black text-xs rounded-2xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <span>📦</span>
+                <span>الرجوع لتسجيل بيانات الشحن والأونلاين</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowOfflineConfirmModal(false);
+                  executeSaveInvoice(pendingSaveAndPrint);
+                }}
+                className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-black text-xs rounded-2xl transition-colors flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <span>🏪</span>
+                <span>نعم متأكد، حفظ كبيع مباشر داخل المحل</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowOfflineConfirmModal(false)}
+                className="w-full py-1.5 text-slate-400 hover:text-slate-600 text-xs font-bold transition-colors cursor-pointer"
+              >
+                إلغاء الأمر
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {MgrModal}
     </PageShell>
   );
