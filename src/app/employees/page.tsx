@@ -12,7 +12,9 @@ import { formatDateOnly } from '@/lib/dateUtils';
 import { useCurrentUser } from '@/lib/useCurrentUser';
 
 export default function EmployeesManagementPage() {
-  const { user } = useCurrentUser();
+  const { user, isAdmin, isSuperAdmin } = useCurrentUser();
+  const canViewWages = isAdmin || isSuperAdmin;
+
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [advances, setAdvances] = useState<EmployeeAdvance[]>([]);
@@ -232,6 +234,7 @@ export default function EmployeesManagementPage() {
             >
               <span>💰</span>
               <span>تقفيل رواتب الخميس</span>
+              {!canViewWages && <span className="text-[10px] bg-amber-200 text-amber-900 px-1.5 py-0.5 rounded font-bold">🔒 للإدارة</span>}
             </button>
             <button
               onClick={() => setActiveTab('directory')}
@@ -240,7 +243,7 @@ export default function EmployeesManagementPage() {
               }`}
             >
               <span>👥</span>
-              <span>دليل الموظفين (18)</span>
+              <span>دليل الموظفين</span>
             </button>
           </div>
 
@@ -252,7 +255,7 @@ export default function EmployeesManagementPage() {
               onChange={(e) => setSelectedBranch(e.target.value)}
               className="p-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-800 w-full md:w-48 shadow-xs"
             >
-              <option value="الكل">🌐 كل الفروع (18 موظف)</option>
+              <option value="الكل">🌐 كل الفروع</option>
               {BRANCHES_LIST.map(b => (
                 <option key={b.id} value={b.name}>{b.name}</option>
               ))}
@@ -269,7 +272,7 @@ export default function EmployeesManagementPage() {
                   <span>📝</span>
                   <span>تسجيل حضور وانصراف موظفي الفروع</span>
                 </h3>
-                <p className="text-xs text-slate-500 mt-0.5">يسجل مدير كل فرع حضور موظفيه وتثبيت اليومية بضغطة زر</p>
+                <p className="text-xs text-slate-500 mt-0.5">يسجل مدير كل فرع حضور موظفيه وتثبيت الحضور بضغطة زر</p>
               </div>
 
               <div className="flex items-center gap-2">
@@ -314,7 +317,13 @@ export default function EmployeesManagementPage() {
                           </span>
                         </td>
                         <td className="p-3 font-mono font-black text-emerald-800 text-sm">
-                          {emp.dailyWage} ج
+                          {canViewWages ? (
+                            `${emp.dailyWage} ج`
+                          ) : (
+                            <span className="text-[11px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                              🔒 سرية
+                            </span>
+                          )}
                         </td>
                         <td className="p-3 font-mono text-[11px] text-slate-600" dir="ltr">
                           {emp.workStartTime} - {emp.workEndTime}
@@ -404,7 +413,9 @@ export default function EmployeesManagementPage() {
                   >
                     <option value="">-- اختر الموظف --</option>
                     {branchFilteredEmployees.map(e => (
-                      <option key={e.id} value={e.id}>{e.name} ({e.branch} - {e.dailyWage}ج)</option>
+                      <option key={e.id} value={e.id}>
+                        {e.name} ({e.branch}{canViewWages ? ` - ${e.dailyWage}ج` : ''})
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -482,7 +493,7 @@ export default function EmployeesManagementPage() {
                       <th className="p-2.5">النوع</th>
                       <th className="p-2.5 font-mono">المبلغ</th>
                       <th className="p-2.5">السبب</th>
-                      <th className="p-2.5 text-center">حذف</th>
+                      {canViewWages && <th className="p-2.5 text-center">حذف</th>}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200">
@@ -507,14 +518,16 @@ export default function EmployeesManagementPage() {
                           </td>
                           <td className="p-2.5 font-mono font-black text-slate-900">{adv.amount.toLocaleString()} ج</td>
                           <td className="p-2.5 text-slate-500 text-[11px]">{adv.reason}</td>
-                          <td className="p-2.5 text-center">
-                            <button
-                              onClick={() => handleDeleteAdvance(adv.id)}
-                              className="text-rose-600 hover:text-rose-800 font-bold text-xs p-1"
-                            >
-                              ✕
-                            </button>
-                          </td>
+                          {canViewWages && (
+                            <td className="p-2.5 text-center">
+                              <button
+                                onClick={() => handleDeleteAdvance(adv.id)}
+                                className="text-rose-600 hover:text-rose-800 font-bold text-xs p-1"
+                              >
+                                ✕
+                              </button>
+                            </td>
+                          )}
                         </tr>
                       ))
                     )}
@@ -527,95 +540,109 @@ export default function EmployeesManagementPage() {
 
         {/* ── TAB 3: THURSDAY PAYROLL SETTLEMENT ── */}
         {activeTab === 'payroll' && (
-          <div className="bg-white p-5 md:p-6 rounded-3xl border border-slate-200 shadow-sm space-y-5">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
-              <div>
-                <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
-                  <span>💰</span>
-                  <span>كشف حساب وتقفيل رواتب الخميس الأسبوعي</span>
-                </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  احتساب آلي: (أيام الحضور × الأجر اليومي + المكافآت) - (السلف + الخصومات)
-                </p>
+          !canViewWages ? (
+            <div className="bg-linear-to-br from-amber-50 to-orange-50 border-2 border-amber-200 rounded-3xl p-10 text-center space-y-4 shadow-sm">
+              <div className="w-16 h-16 bg-amber-100 text-amber-900 rounded-2xl flex items-center justify-center text-3xl mx-auto border border-amber-300 shadow-inner">
+                🔒
               </div>
-
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-slate-700">تاريخ خميس التقفيل:</span>
-                <input
-                  type="date"
-                  value={settlementThursday}
-                  onChange={(e) => setSettlementThursday(e.target.value)}
-                  className="py-1.5 px-3 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold"
-                />
-              </div>
+              <h3 className="text-lg font-black text-slate-950">شاشة مقفلة — صلاحية خاصة بالمدير العام فقط</h3>
+              <p className="text-xs md:text-sm text-slate-600 max-w-lg mx-auto leading-relaxed font-medium">
+                حفاظاً على سرية وخصوصية رواتب ويوميات الموظفين، كشف حساب الخميس وتقفيل الرواتب متاح لمدير النظام فقط.
+                <br />
+                مديرو الفروع مخولون بتسجيل <span className="font-bold text-slate-900">الحضور والانصراف</span> و <span className="font-bold text-slate-900">السلف النقدية</span> فقط.
+              </p>
             </div>
+          ) : (
+            <div className="bg-white p-5 md:p-6 rounded-3xl border border-slate-200 shadow-sm space-y-5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
+                <div>
+                  <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+                    <span>💰</span>
+                    <span>كشف حساب وتقفيل رواتب الخميس الأسبوعي</span>
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    احتساب آلي: (أيام الحضور × الأجر اليومي + المكافآت) - (السلف + الخصومات)
+                  </p>
+                </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-right text-xs">
-                <thead className="bg-slate-100 text-slate-700 font-bold uppercase border-b border-slate-200">
-                  <tr>
-                    <th className="p-3">الموظف والفرع</th>
-                    <th className="p-3 font-mono">اليومية</th>
-                    <th className="p-3 font-mono">أيام الحضور</th>
-                    <th className="p-3 font-mono">إجمالي الأجر</th>
-                    <th className="p-3 font-mono text-emerald-700">مكافآت</th>
-                    <th className="p-3 font-mono text-amber-800">السلف المسحوبة</th>
-                    <th className="p-3 font-mono text-rose-700">الخصومات</th>
-                    <th className="p-3 font-mono text-slate-950 font-black text-sm bg-emerald-50">صافي المستحق</th>
-                    <th className="p-3 text-center">إجراءات</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200">
-                  {weeklySummary.map((row) => (
-                    <tr key={row.employee.id} className="hover:bg-slate-50">
-                      <td className="p-3">
-                        <div className="font-black text-slate-900 text-sm">{row.employee.name}</div>
-                        <div className="text-[10px] text-slate-500">{row.employee.branch}</div>
-                      </td>
-                      <td className="p-3 font-mono font-bold text-slate-700">{row.employee.dailyWage} ج</td>
-                      <td className="p-3 font-mono font-bold text-slate-900">{row.attendedDays} يوم</td>
-                      <td className="p-3 font-mono font-black text-slate-900">{row.baseEarned.toLocaleString()} ج</td>
-                      <td className="p-3 font-mono text-emerald-700 font-bold">+{row.totalBon.toLocaleString()} ج</td>
-                      <td className="p-3 font-mono text-amber-800 font-bold">-{row.totalAdv.toLocaleString()} ج</td>
-                      <td className="p-3 font-mono text-rose-700 font-bold">-{row.totalDed.toLocaleString()} ج</td>
-                      <td className="p-3 font-mono font-black text-sm bg-emerald-50/80 text-emerald-950 border-r border-l border-emerald-200">
-                        {row.netPayout >= 0 ? `+${row.netPayout.toLocaleString()}` : row.netPayout.toLocaleString()} ج
-                      </td>
-                      <td className="p-3 text-center">
-                        <div className="flex items-center justify-center gap-1.5">
-                          <button
-                            onClick={() => setSelectedEmpForSlip(row)}
-                            className="px-2.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold text-[11px] cursor-pointer"
-                            title="معاينة إيصال القبض"
-                          >
-                            👁️ إيصال
-                          </button>
-                          <a
-                            href={getWhatsAppShareUrl(row)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold text-[11px] flex items-center gap-1"
-                            title="إرسال الحساب للموظف واتساب"
-                          >
-                            <span>📱</span>
-                            <span>واتساب</span>
-                          </a>
-                        </div>
-                      </td>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-slate-700">تاريخ خميس التقفيل:</span>
+                  <input
+                    type="date"
+                    value={settlementThursday}
+                    onChange={(e) => setSettlementThursday(e.target.value)}
+                    className="py-1.5 px-3 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold"
+                  />
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-right text-xs">
+                  <thead className="bg-slate-100 text-slate-700 font-bold uppercase border-b border-slate-200">
+                    <tr>
+                      <th className="p-3">الموظف والفرع</th>
+                      <th className="p-3 font-mono">اليومية</th>
+                      <th className="p-3 font-mono">أيام الحضور</th>
+                      <th className="p-3 font-mono">إجمالي الأجر</th>
+                      <th className="p-3 font-mono text-emerald-700">مكافآت</th>
+                      <th className="p-3 font-mono text-amber-800">السلف المسحوبة</th>
+                      <th className="p-3 font-mono text-rose-700">الخصومات</th>
+                      <th className="p-3 font-mono text-slate-950 font-black text-sm bg-emerald-50">صافي المستحق</th>
+                      <th className="p-3 text-center">إجراءات</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {weeklySummary.map((row) => (
+                      <tr key={row.employee.id} className="hover:bg-slate-50">
+                        <td className="p-3">
+                          <div className="font-black text-slate-900 text-sm">{row.employee.name}</div>
+                          <div className="text-[10px] text-slate-500">{row.employee.branch}</div>
+                        </td>
+                        <td className="p-3 font-mono font-bold text-slate-700">{row.employee.dailyWage} ج</td>
+                        <td className="p-3 font-mono font-bold text-slate-900">{row.attendedDays} يوم</td>
+                        <td className="p-3 font-mono font-black text-slate-900">{row.baseEarned.toLocaleString()} ج</td>
+                        <td className="p-3 font-mono text-emerald-700 font-bold">+{row.totalBon.toLocaleString()} ج</td>
+                        <td className="p-3 font-mono text-amber-800 font-bold">-{row.totalAdv.toLocaleString()} ج</td>
+                        <td className="p-3 font-mono text-rose-700 font-bold">-{row.totalDed.toLocaleString()} ج</td>
+                        <td className="p-3 font-mono font-black text-sm bg-emerald-50/80 text-emerald-950 border-r border-l border-emerald-200">
+                          {row.netPayout >= 0 ? `+${row.netPayout.toLocaleString()}` : row.netPayout.toLocaleString()} ج
+                        </td>
+                        <td className="p-3 text-center">
+                          <div className="flex items-center justify-center gap-1.5">
+                            <button
+                              onClick={() => setSelectedEmpForSlip(row)}
+                              className="px-2.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold text-[11px] cursor-pointer"
+                              title="معاينة إيصال القبض"
+                            >
+                              👁️ إيصال
+                            </button>
+                            <a
+                              href={getWhatsAppShareUrl(row)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold text-[11px] flex items-center gap-1"
+                              title="إرسال الحساب للموظف واتساب"
+                            >
+                              <span>📱</span>
+                              <span>واتساب</span>
+                            </a>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
+          )
         )}
 
-        {/* ── TAB 4: DIRECTORY (18 Employees) ── */}
+        {/* ── TAB 4: DIRECTORY ── */}
         {activeTab === 'directory' && (
           <div className="bg-white p-5 md:p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
             <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
               <span>👥</span>
-              <span>دليل الموظفين المعتمدين بالفروع (18 موظفاً)</span>
+              <span>دليل موظفي الفروع</span>
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -625,6 +652,9 @@ export default function EmployeesManagementPage() {
                     <div>
                       <h4 className="font-black text-slate-950 text-base">{emp.name}</h4>
                       <p className="text-xs text-amber-800 font-bold">{emp.role}</p>
+                      {emp.phone && (
+                        <p className="text-[11px] font-mono text-slate-500 font-bold mt-0.5">📞 {emp.phone}</p>
+                      )}
                     </div>
                     <span className="bg-white border border-slate-300 text-slate-800 px-2.5 py-1 rounded-xl text-xs font-bold">
                       👑 {emp.branch}
@@ -634,7 +664,11 @@ export default function EmployeesManagementPage() {
                   <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-200/60 text-xs">
                     <div>
                       <span className="text-slate-500 block text-[11px]">الراتب اليومي:</span>
-                      <span className="font-mono font-black text-emerald-800 text-sm">{emp.dailyWage} ج / يوم</span>
+                      {canViewWages ? (
+                        <span className="font-mono font-black text-emerald-800 text-sm">{emp.dailyWage} ج / يوم</span>
+                      ) : (
+                        <span className="text-[11px] font-bold text-slate-400">🔒 محمي للسرية</span>
+                      )}
                     </div>
                     <div>
                       <span className="text-slate-500 block text-[11px]">مواعيد العمل:</span>

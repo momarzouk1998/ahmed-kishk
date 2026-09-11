@@ -94,10 +94,9 @@ export const INITIAL_EMPLOYEES: Employee[] = [
   // فرع الثلاثيني (1)
   { id: 'emp_14', name: 'كوكو', branch: 'فرع الثلاثيني', dailyWage: 200, workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'مسؤول فرع الثلاثيني', isActive: true },
 
-  // الفرع التجاري (3)
-  { id: 'emp_15', name: 'دقدق', branch: 'الفرع التجاري', dailyWage: 400, workStartTime: '12:00 PM', workEndTime: '11:30 PM', role: 'مدير الفرع التجاري والأونلاين', isActive: true },
-  { id: 'emp_16', name: 'سمير', branch: 'الفرع التجاري', dailyWage: 250, workStartTime: '12:00 PM', workEndTime: '11:30 PM', role: 'تجهيز وشحن أونلاين', isActive: true },
-  { id: 'emp_17', name: 'تقى', branch: 'الفرع التجاري', dailyWage: 130, workStartTime: '12:00 PM', workEndTime: '09:00 PM', role: 'خدمة عملاء ومتابعة شحن', isActive: true },
+// الفرع التجاري (2)
+  { id: 'emp_15', name: 'عبدالرحمن كشك', phone: '01280042900', branch: 'الفرع التجاري', dailyWage: 400, workStartTime: '12:00 PM', workEndTime: '11:30 PM', role: 'مدير الفرع التجاري', isActive: true },
+  { id: 'emp_16', name: 'محمد على', phone: '01220999355', branch: 'الفرع التجاري', dailyWage: 250, workStartTime: '12:00 PM', workEndTime: '11:30 PM', role: 'كاشير الفرع التجاري', isActive: true },
 ];
 
 export function getEmployees(): Employee[] {
@@ -109,7 +108,14 @@ export function getEmployees(): Employee[] {
       return INITIAL_EMPLOYEES;
     }
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : INITIAL_EMPLOYEES;
+    if (!Array.isArray(parsed) || parsed.length === 0) return INITIAL_EMPLOYEES;
+    
+    // Ensure Commercial branch employees are updated with latest official data
+    const merged = INITIAL_EMPLOYEES.map(initEmp => {
+      const found = parsed.find((p: Employee) => p.id === initEmp.id);
+      return found ? { ...initEmp, ...found, phone: initEmp.phone || found.phone, name: initEmp.name } : initEmp;
+    });
+    return merged;
   } catch {
     return INITIAL_EMPLOYEES;
   }
