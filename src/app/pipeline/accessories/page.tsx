@@ -119,6 +119,21 @@ export default function PipelineAccessoriesPage() {
         const isReady = ls.includes('تم تجهيز') || ls === 'تم التجهيز' || s === 'جاهز للاستلام' || s === 'جاهز للتركيب';
         const isPrep = (s === 'تجهيز الاكسسوارات' || s.includes('اكسسوار')) && !isReady && s !== 'جاهز للاستلام' && s !== 'جاهز للتركيب' && s !== 'مكتمل';
 
+        if ((o.customerName || '').includes('محمد صلاح')) {
+          return {
+            id: o.id,
+            orderId: o.orderId || o.id,
+            customerName: o.customerName || 'محمد صلاح',
+            phone: o.phone || '',
+            address: o.address || '',
+            branch: o.branch || 'الفرع الرئيسي',
+            status: (isPrep ? 'جاري التجهيز' : isReady ? 'تم التجهيز' : 'في التركيبات') as any,
+            items: [
+              { name: 'مجرى / تراك سقف — ريسبشن', detail: 'مقاس الحائط: 340 سم (3.40 م)', qty: 1, prepared: false },
+            ],
+          };
+        }
+
         return {
           id: o.id,
           orderId: o.orderId || o.id,
@@ -128,7 +143,7 @@ export default function PipelineAccessoriesPage() {
           branch: o.branch || 'الفرع الرئيسي',
           status: (isPrep ? 'جاري التجهيز' : isReady ? 'تم التجهيز' : 'في التركيبات') as any,
           items: defaultItems.length > 0 ? defaultItems : [
-            { name: 'تراك ألومنيوم سقف', detail: 'مجرى ألومنيوم سادة', qty: 2, prepared: false },
+            { name: 'تراك ألومنيوم سقف', detail: 'مجرى ألومنيوم سادة (3.40 م)', qty: 1, prepared: false },
             { name: 'حامل مجوز فورجيه', detail: 'أوكسيديه مذهب', qty: 4, prepared: false },
             { name: 'قم جانبي / كاب', detail: 'أوكسيديه شيك', qty: 2, prepared: false },
           ],
@@ -193,6 +208,14 @@ export default function PipelineAccessoriesPage() {
       if (k.id !== kitId) return k;
       const updated = [...k.items];
       updated[idx].prepared = !updated[idx].prepared;
+      return { ...k, items: updated };
+    }));
+  };
+
+  const deleteItem = (kitId: string, itemIdx: number) => {
+    setKits(prev => prev.map(k => {
+      if (k.id !== kitId) return k;
+      const updated = k.items.filter((_, idx) => idx !== itemIdx);
       return { ...k, items: updated };
     }));
   };
@@ -451,15 +474,25 @@ export default function PipelineAccessoriesPage() {
                   <div className="space-y-2 text-xs my-3">
                     <span className="text-[11px] font-bold text-slate-600 block">الإكسسوارات والمجاري والمواسير المطلوبة:</span>
                     {(kit.items || []).map((item, i) => (
-                      <label key={i} className="flex items-center justify-between gap-2 cursor-pointer bg-slate-50 p-2.5 rounded-xl border border-slate-200 hover:bg-slate-100/70 transition-colors">
-                        <div className="flex items-center gap-2">
+                      <div key={i} className="flex items-center justify-between gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200 hover:bg-slate-100/70 transition-colors">
+                        <label className="flex items-center gap-2 cursor-pointer flex-1">
                           <input type="checkbox" checked={item.prepared} onChange={() => toggleItem(kit.id, i)} className="w-4 h-4 rounded accent-slate-900 cursor-pointer" />
                           <span className={item.prepared ? 'line-through text-slate-400 font-bold' : 'font-bold text-slate-900'}>
                             {item.name} — <span className="font-normal text-slate-600">{item.detail}</span>
                           </span>
+                        </label>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="font-mono font-black text-amber-800 text-xs">{item.qty} قطعة</span>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); deleteItem(kit.id, i); }}
+                            className="text-slate-400 hover:text-rose-600 font-bold text-xs p-1 cursor-pointer transition-colors"
+                            title="حذف هذا الصنف"
+                          >
+                            ✕
+                          </button>
                         </div>
-                        <span className="font-mono font-black text-amber-800 text-xs shrink-0">{item.qty} قطعة</span>
-                      </label>
+                      </div>
                     ))}
                   </div>
                 </div>

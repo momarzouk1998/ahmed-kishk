@@ -84,10 +84,9 @@ export const INITIAL_EMPLOYEES: Employee[] = [
   { id: 'emp_7', name: 'محمد', branch: 'فرع عرابي', dailyWage: 250, workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'سائق ومندوب توصيل', isActive: true },
   { id: 'emp_8', name: 'اسراء', branch: 'فرع عرابي', dailyWage: 130, workStartTime: '12:00 PM', workEndTime: '08:00 PM', role: 'مبيعات وسيدات', isActive: true },
 
-  // فرع عمر أفندي (6)
+  // فرع عمر أفندي (5)
   { id: 'emp_10', name: 'محمد كشك', branch: 'فرع عمر أفندي', dailyWage: 350, workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'مدير فرع عمر أفندي', isActive: true },
   { id: 'emp_9', name: 'بليه (شبلية)', branch: 'فرع عمر أفندي', dailyWage: 400, workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'إدارة ومبيعات', isActive: true },
-  { id: 'emp_18', name: 'موسى', branch: 'فرع عمر أفندي', dailyWage: 350, workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'إدارة ومبيعات', isActive: true },
   { id: 'emp_11', name: 'صبحى', branch: 'فرع عمر أفندي', dailyWage: 350, workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'مسؤول وردية وكاشير', isActive: true },
   { id: 'emp_12', name: 'سيد', branch: 'فرع عمر أفندي', dailyWage: 350, workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'مبيعات', isActive: true },
   { id: 'emp_13', name: 'احمد', branch: 'فرع عمر أفندي', dailyWage: 150, workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'مساعد', isActive: true },
@@ -111,24 +110,12 @@ export function getEmployees(): Employee[] {
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed) || parsed.length === 0) return INITIAL_EMPLOYEES;
     
-    // Merge user edits and new additions with initial baseline
-    const parsedMap = new Map<string, Employee>(parsed.map((p: Employee) => [p.id, p]));
-    const result: Employee[] = [];
-    
-    // Process initial employees
-    for (const initEmp of INITIAL_EMPLOYEES) {
-      if (parsedMap.has(initEmp.id)) {
-        result.push(parsedMap.get(initEmp.id)!);
-        parsedMap.delete(initEmp.id);
-      } else {
-        result.push(initEmp);
-      }
+    // Filter out deleted emp_18 (موسى) from legacy storage if exists
+    const cleaned = parsed.filter((e: Employee) => e.id !== 'emp_18' && e.name !== 'موسى');
+    if (cleaned.length !== parsed.length) {
+      localStorage.setItem(EMPLOYEES_STORAGE_KEY, JSON.stringify(cleaned));
     }
-    // Append any newly created employees by user
-    Array.from(parsedMap.values()).forEach(remaining => {
-      result.push(remaining);
-    });
-    return result;
+    return cleaned;
   } catch {
     return INITIAL_EMPLOYEES;
   }

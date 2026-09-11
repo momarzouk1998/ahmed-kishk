@@ -64,6 +64,12 @@ export default function EmployeesManagementPage() {
     setPayrolls(getPayrolls());
   }, []);
 
+  useEffect(() => {
+    if (!isAdmin && !isSuperAdmin && user?.branch) {
+      setSelectedBranch(user.branch);
+    }
+  }, [isAdmin, isSuperAdmin, user]);
+
   const branchFilteredEmployees = useMemo(() => {
     if (selectedBranch === 'الكل') return employees;
     return employees.filter(e => normalizeBranchName(e.branch) === normalizeBranchName(selectedBranch));
@@ -347,16 +353,22 @@ export default function EmployeesManagementPage() {
           {/* Branch Filter */}
           <div className="flex items-center gap-2 w-full md:w-auto">
             <span className="text-xs font-bold text-slate-600 shrink-0">الفرع:</span>
-            <select
-              value={selectedBranch}
-              onChange={(e) => setSelectedBranch(e.target.value)}
-              className="p-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-800 w-full md:w-48 shadow-xs"
-            >
-              <option value="الكل">🌐 كل الفروع</option>
-              {BRANCHES_LIST.map(b => (
-                <option key={b.id} value={b.name}>{b.name}</option>
-              ))}
-            </select>
+            {canViewWages ? (
+              <select
+                value={selectedBranch}
+                onChange={(e) => setSelectedBranch(e.target.value)}
+                className="p-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-800 w-full md:w-48 shadow-xs"
+              >
+                <option value="الكل">🌐 كل الفروع</option>
+                {BRANCHES_LIST.map(b => (
+                  <option key={b.id} value={b.name}>{b.name}</option>
+                ))}
+              </select>
+            ) : (
+              <div className="p-2 bg-slate-100 border border-slate-300 rounded-xl text-xs font-bold text-slate-800 w-full md:w-48">
+                👑 {selectedBranch}
+              </div>
+            )}
           </div>
         </div>
 
