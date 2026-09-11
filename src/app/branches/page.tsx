@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
 import { ALL_SYSTEM_PAGES } from '@/lib/permissions';
-import { BRANCHES_LIST, BranchConfig } from '@/lib/branches';
+import { BRANCHES_LIST, BranchConfig, normalizeBranchName } from '@/lib/branches';
 import BranchPricePasswordsCard from '@/components/BranchPricePasswordsCard';
 import CurtainTechniciansCard from '@/components/CurtainTechniciansCard';
 import CurtainWorkshopsCard from '@/components/CurtainWorkshopsCard';
@@ -96,6 +96,25 @@ const initialEmployees: Employee[] = [
     branch: 'فرع الثلاثيني',
     restrictToBranch: true,
     allowedPageIds: ['p_fabric_sales', 'p_purchases', 'p_customers', 'p_suppliers', 'p_inventory', 'p_dashboard'],
+  },
+  // ═════════ الفرع التجاري (أقمشة وشحن أونلاين) ═════════
+  {
+    id: 'EMP-09',
+    name: 'عبدالرحمن كشك',
+    phone: '01280042900',
+    role: 'مدير الفرع التجاري',
+    branch: 'الفرع التجاري',
+    restrictToBranch: true,
+    allowedPageIds: ['p_fabric_sales', 'p_purchases', 'p_customers', 'p_suppliers', 'p_inventory', 'p_reports', 'p_shifts', 'p_dashboard'],
+  },
+  {
+    id: 'EMP-10',
+    name: 'محمد على',
+    phone: '01220999355',
+    role: 'كاشير الفرع التجاري',
+    branch: 'الفرع التجاري',
+    restrictToBranch: true,
+    allowedPageIds: ['p_fabric_sales', 'p_customers', 'p_inventory', 'p_shifts', 'p_dashboard'],
   },
 ];
 
@@ -286,56 +305,77 @@ export default function BranchesAndPermissionsPage() {
   return (
     <PageShell title="الفروع وصلاحيات الموظفين وعزل البيانات">
       <div className="flex flex-col gap-8">
-        {/* Top Overview */}
-        <div>
-          <span className="px-3 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-200 inline-block mb-1">
-            الفروع الـ 4 الرسمية وهيكل الصلاحيات
-          </span>
-          <h1 className="font-display font-black text-2xl sm:text-3xl text-slate-900">
-            فروع مؤسسة أحمد كشك وصلاحيات الموظفين
-          </h1>
-          <p className="text-slate-500 text-sm mt-0.5 max-w-3xl">
-            توزيع الموظفين على الفروع الـ 4، تطبيق عزل البيانات (لكل موظف رؤية بيانات فرعه فقط)، وتحديد الصفحات المسموحة في السايد بار (ظهور / إخفاء).
-          </p>
+        {/* Concise Modern Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
+          <div>
+            <h1 className="font-display font-black text-2xl sm:text-3xl text-slate-900 flex items-center gap-2.5">
+              <span>🏢</span>
+              <span>فروع المؤسسة وصلاحيات الوصول</span>
+            </h1>
+            <p className="text-slate-500 text-xs mt-1">
+              إدارة الفروع الـ 5، وتوزيع الموظفين، وضبط الصلاحيات وعزل البيانات
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="bg-slate-100 border border-slate-200 text-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold font-mono">
+              5 فروع رسمية
+            </span>
+            <span className="bg-amber-100 border border-amber-300 text-amber-900 px-3 py-1.5 rounded-xl text-xs font-bold font-mono">
+              {employees.length} مستخدم مسجل
+            </span>
+          </div>
         </div>
 
-        {/* 4 Official Branches Cards */}
+        {/* 5 Official Branches Cards */}
         <div>
-          <h2 className="font-bold text-base text-slate-900 mb-3">فروع المؤسسة الرسمية وتخصصاتها (4 فروع):</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3.5">
             {branches.map(b => {
-              const branchStaff = employees.filter(e => e.branch === b.name);
+              const branchStaff = employees.filter(e => normalizeBranchName(e.branch) === normalizeBranchName(b.name));
+              const isMain = b.isMain;
+              const isComm = b.name === 'الفرع التجاري';
               return (
-                <div key={b.id} className="bg-white rounded-2xl border border-slate-200 p-5 shadow-soft flex flex-col justify-between">
+                <div key={b.id} className={`bg-white rounded-2xl border p-4 shadow-xs flex flex-col justify-between transition-all hover:shadow-md ${
+                  isMain ? 'border-amber-300 ring-1 ring-amber-200/60' : isComm ? 'border-indigo-200' : 'border-slate-200'
+                }`}>
                   <div>
-                    <div className="flex justify-between items-start mb-2">
-                      <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-bold border ${
-                        b.type === 'ستائر وأقمشة تنجيد' ? 'bg-amber-100 text-amber-900 border-amber-200' : 'bg-blue-100 text-blue-900 border-blue-200'
+                    <div className="flex justify-between items-center mb-2">
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${
+                        b.type === 'ستائر وأقمشة تنجيد' 
+                          ? 'bg-amber-50 text-amber-900 border-amber-200' 
+                          : b.type === 'أقمشة وشحن أونلاين'
+                          ? 'bg-indigo-50 text-indigo-900 border-indigo-200'
+                          : 'bg-blue-50 text-blue-900 border-blue-200'
                       }`}>
                         {b.type}
                       </span>
-                      <span className="text-xs font-mono font-bold text-slate-400">
-                        {branchStaff.length}/{b.userCapacity} مستخدم
+                      <span className="text-[11px] font-mono font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-md">
+                        {branchStaff.length} مستخدم
                       </span>
                     </div>
 
-                    <h3 className="font-display font-black text-lg text-slate-900 mt-1">{b.name}</h3>
-                    <p className="text-xs text-slate-500 flex items-start gap-1 mt-1">
-                      <span className="material-symbols-outlined text-[15px] shrink-0 text-slate-400">location_on</span>
+                    <h3 className="font-display font-black text-base text-slate-900 mt-1 flex items-center gap-1.5">
+                      <span>{isMain ? '👑' : isComm ? '🌐' : '🏬'}</span>
+                      <span>{b.name}</span>
+                    </h3>
+                    <p className="text-[11px] text-slate-500 flex items-start gap-1 mt-1 leading-snug">
+                      <span className="material-symbols-outlined text-[13px] shrink-0 text-slate-400 mt-0.5">location_on</span>
                       <span>{b.address}</span>
                     </p>
                   </div>
 
-                  <div className="pt-3 mt-3 border-t border-slate-100 text-xs text-slate-600">
-                    <span className="block font-bold mb-1 text-slate-700">الموظفون المسجلون:</span>
+                  <div className="pt-2.5 mt-3 border-t border-slate-100 text-xs text-slate-600">
+                    <span className="block font-bold mb-1 text-slate-700 text-[11px]">الموظفون المسجلون:</span>
                     {branchStaff.length > 0 ? (
-                      <div className="space-y-0.5">
+                      <div className="space-y-1">
                         {branchStaff.map(s => (
-                          <div key={s.id} className="text-slate-800 font-medium truncate">• {s.name} ({s.role})</div>
+                          <div key={s.id} className="text-slate-800 font-bold text-[11px] truncate flex items-center justify-between">
+                            <span className="truncate">• {s.name}</span>
+                            <span className="text-[9px] text-slate-500 bg-slate-100 px-1 py-0.2 rounded shrink-0">{s.role.includes('مدير') ? 'مدير' : s.role.includes('كاشير') ? 'كاشير' : 'موظف'}</span>
+                          </div>
                         ))}
                       </div>
                     ) : (
-                      <span className="text-slate-400 italic">لا يوجد موظفون مخصصون بعد</span>
+                      <span className="text-slate-400 text-[11px] italic">لا يوجد موظفون مخصصون</span>
                     )}
                   </div>
                 </div>
