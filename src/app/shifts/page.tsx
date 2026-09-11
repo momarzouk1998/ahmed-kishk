@@ -23,7 +23,7 @@ export default function ShiftsAndDrawerPage() {
 
   // Close Shift Form State
   const [actualClosingCash, setActualClosingCash] = useState<string>('');
-  const [handoverDestination, setHandoverDestination] = useState<'تسليم لوردية المساء' | 'توريد لخزينة الإدارة' | 'إبقاء بالدرج لليوم التالي'>('تسليم لوردية المساء');
+  const [handoverDestination, setHandoverDestination] = useState<string>('توريد لخزينة الإدارة (فرع عمر أفندي)');
   const [handoverReceiver, setHandoverReceiver] = useState<string>('');
   const [discrepancyReason, setDiscrepancyReason] = useState<string>('');
   const [closingNotes, setClosingNotes] = useState<string>('');
@@ -384,12 +384,13 @@ export default function ShiftsAndDrawerPage() {
                   <label className="block text-xs font-bold text-slate-700 mb-1">وجهة تسليم نقدية الإغلاق *</label>
                   <select
                     value={handoverDestination}
-                    onChange={(e) => setHandoverDestination(e.target.value as any)}
+                    onChange={(e) => setHandoverDestination(e.target.value)}
                     className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-800"
                   >
+                    <option value="توريد لخزينة الإدارة (فرع عمر أفندي)">توريد لخزينة الإدارة (فرع عمر أفندي)</option>
                     <option value="تسليم لوردية المساء">تسليم لوردية المساء (كاشير المساء)</option>
-                    <option value="توريد لخزينة الإدارة">توريد لخزينة الإدارة (الفرع الرئيسي)</option>
                     <option value="إبقاء بالدرج لليوم التالي">إبقاء بالدرج كعهدة افتتاحية لليوم التالي</option>
+                    <option value="توريد لخزينة الفرع الرئيسي">توريد لخزينة الفرع الرئيسي</option>
                   </select>
                 </div>
 

@@ -35,7 +35,7 @@ export interface ShiftSession {
   discrepancyReason?: string;
 
   // Handover destination
-  handoverDestination?: 'تسليم لوردية المساء' | 'توريد لخزينة الإدارة' | 'إبقاء بالدرج لليوم التالي';
+  handoverDestination?: 'تسليم لوردية المساء' | 'توريد لخزينة الإدارة (فرع عمر أفندي)' | 'إبقاء بالدرج لليوم التالي' | string;
   handoverReceiverName?: string;
   closingNotes?: string;
 }
@@ -113,7 +113,7 @@ export function closeActiveShift(params: {
   shiftId: string;
   actualClosingCash: number;
   discrepancyReason?: string;
-  handoverDestination: 'تسليم لوردية المساء' | 'توريد لخزينة الإدارة' | 'إبقاء بالدرج لليوم التالي';
+  handoverDestination: 'تسليم لوردية المساء' | 'توريد لخزينة الإدارة (فرع عمر أفندي)' | 'إبقاء بالدرج لليوم التالي' | string;
   handoverReceiverName?: string;
   closingNotes?: string;
 }): ShiftSession {
