@@ -45,6 +45,13 @@ interface SalesInvoice {
   remainingAmount: number;
   status: 'تم السداد بالكامل' | 'مسدد جزئياً' | 'آجل / غير مسدد';
   notes?: string;
+  isOnlineOrder?: boolean;
+  shippingFee?: number;
+  shippingCompany?: string;
+  trackingNumber?: string;
+  shippingAddress?: string;
+  receiverPhone?: string;
+  orderSource?: string;
 }
 
 interface CustomerSalesReturn {
@@ -68,10 +75,23 @@ export type DateFilterType = 'today' | 'yesterday' | 'week' | 'month' | 'custom'
 
 export default function FabricSalesPage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'INVOICES' | 'RETURNS'>('INVOICES');
+  const [activeTab, setActiveTab] = useState<'INVOICES' | 'ONLINE' | 'RETURNS'>('INVOICES');
   const [invoices, setInvoices] = useState<SalesInvoice[]>([]);
   const [returns, setReturns] = useState<CustomerSalesReturn[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Parse URL tab parameter on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get('tab');
+      if (tabParam === 'online') {
+        setActiveTab('ONLINE');
+      } else if (tabParam === 'returns') {
+        setActiveTab('RETURNS');
+      }
+    }
+  }, []);
 
   // Filters (افتراضي اليوم)
   const [dateFilter, setDateFilter] = useState<DateFilterType>('today');
@@ -394,6 +414,24 @@ export default function FabricSalesPage() {
     return matchSearch && matchPayment && matchStatus && matchDate && matchBr;
   });
 
+  // Filtered Online Invoices (الفرع التجاري أو شحن أونلاين)
+  const filteredOnlineInvoices = invoices.filter(inv => {
+    const isOnline = !!inv.isOnlineOrder || normalizeBranchName(inv.branch) === 'الفرع التجاري';
+    if (!isOnline) return false;
+
+    const custPhone = inv.phone || inv.customerPhone || inv.receiverPhone || '';
+    const matchSearch =
+      !search.trim() ||
+      (inv.customerName && inv.customerName.toLowerCase().includes(search.toLowerCase())) ||
+      (inv.invoiceNumber && inv.invoiceNumber.toLowerCase().includes(search.toLowerCase())) ||
+      (inv.trackingNumber && inv.trackingNumber.toLowerCase().includes(search.toLowerCase())) ||
+      (inv.shippingAddress && inv.shippingAddress.toLowerCase().includes(search.toLowerCase())) ||
+      custPhone.includes(search);
+
+    const matchDate = matchesDate(inv.date);
+    return matchSearch && matchDate;
+  });
+
   // Filtered Returns
   const filteredReturns = returns.filter(ret => {
     const matchSearch =
@@ -412,6 +450,12 @@ export default function FabricSalesPage() {
   const totalSalesRemaining = filteredInvoices.reduce((s, i) => s + (Number(i.remainingAmount) || 0), 0);
   const totalReturnsAmount = filteredReturns.reduce((s, r) => s + (Number(r.refundAmount) || 0), 0);
 
+  // Online Metrics
+  const totalOnlineRevenue = filteredOnlineInvoices.reduce((s, i) => s + (Number(i.totalAmount) || 0), 0);
+  const totalOnlineShipping = filteredOnlineInvoices.reduce((s, i) => s + (Number(i.shippingFee) || (i.isOnlineOrder ? 110 : 0)), 0);
+  const totalOnlinePaid = filteredOnlineInvoices.reduce((s, i) => s + (Number(i.paidAmount) || 0), 0);
+  const totalOnlineCOD = filteredOnlineInvoices.reduce((s, i) => s + (Number(i.remainingAmount) || 0), 0);
+
   // Pagination calculations
   const totalPages = Math.max(1, Math.ceil(filteredInvoices.length / PAGE_SIZE));
   const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
@@ -423,11 +467,11 @@ export default function FabricSalesPage() {
 
         {/* Navigation Tabs */}
         <div className="flex flex-col sm:flex-row border-b border-slate-200 sm:justify-between items-stretch sm:items-center gap-2 pb-1">
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <button
               type="button"
               onClick={() => setActiveTab('INVOICES')}
-              className={`pb-2.5 px-4 text-xs sm:text-sm font-black flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
+              className={`pb-2.5 px-3 sm:px-4 text-xs sm:text-sm font-black flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
                 activeTab === 'INVOICES' ? 'border-amber-500 text-slate-950' : 'border-transparent text-slate-400 hover:text-slate-700'
               }`}
             >
@@ -437,8 +481,21 @@ export default function FabricSalesPage() {
 
             <button
               type="button"
+              onClick={() => setActiveTab('ONLINE')}
+              className={`pb-2.5 px-3 sm:px-4 text-xs sm:text-sm font-black flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
+                activeTab === 'ONLINE' ? 'border-blue-600 text-blue-950 font-black' : 'border-transparent text-slate-400 hover:text-slate-700'
+              }`}
+            >
+              <span>📦 شحنات وفواتير الأونلاين</span>
+              <span className="bg-blue-100 text-blue-950 px-2 py-0.5 rounded-full text-[11px] font-mono font-bold">
+                {invoices.filter(i => i.isOnlineOrder || normalizeBranchName(i.branch) === 'الفرع التجاري').length}
+              </span>
+            </button>
+
+            <button
+              type="button"
               onClick={() => setActiveTab('RETURNS')}
-              className={`pb-2.5 px-4 text-xs sm:text-sm font-black flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
+              className={`pb-2.5 px-3 sm:px-4 text-xs sm:text-sm font-black flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
                 activeTab === 'RETURNS' ? 'border-amber-500 text-slate-950' : 'border-transparent text-slate-400 hover:text-slate-700'
               }`}
             >
@@ -652,7 +709,15 @@ export default function FabricSalesPage() {
 
                             {/* Customer Name & Phone */}
                             <td className="p-3.5 text-slate-700">
-                              <div className="font-bold text-slate-900 text-sm">{inv.customerName}</div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-bold text-slate-900 text-sm">{inv.customerName}</span>
+                                {(inv.isOnlineOrder || normalizeBranchName(inv.branch) === 'الفرع التجاري') && (
+                                  <span className="bg-blue-100 text-blue-900 border border-blue-300 text-[10px] px-1.5 py-0.2 rounded-md font-bold inline-flex items-center gap-0.5">
+                                    <span>📦</span>
+                                    <span>{inv.shippingCompany || 'أونلاين'}</span>
+                                  </span>
+                                )}
+                              </div>
                               <div className="text-[10px] text-slate-500 font-mono font-bold flex items-center gap-1.5 mt-0.5">
                                 <span className="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">{inv.branch}</span>
                                 {phone && <span dir="ltr">{phone}</span>}
@@ -736,11 +801,22 @@ export default function FabricSalesPage() {
                             {/* Actions */}
                             <td className="p-3.5 text-center" onClick={e => e.stopPropagation()}>
                               <div className="flex items-center justify-center gap-1">
+                                {(inv.isOnlineOrder || normalizeBranchName(inv.branch) === 'الفرع التجاري') && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedInvoice(inv)}
+                                    className="text-blue-600 hover:text-blue-800 p-1 rounded-lg hover:bg-blue-50 transition-colors cursor-pointer"
+                                    title="بوليصة الشحن (Waybill)"
+                                  >
+                                    <span className="material-symbols-outlined text-[18px]">local_shipping</span>
+                                  </button>
+                                )}
+
                                 <button
                                   type="button"
                                   onClick={() => setSelectedInvoice(inv)}
                                   className="text-slate-400 hover:text-slate-700 p-1 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
-                                  title="عرض وطباعة"
+                                  title="عرض وطباعة إيصال الفاتورة"
                                 >
                                   <span className="material-symbols-outlined text-[18px]">receipt_long</span>
                                 </button>
@@ -780,6 +856,228 @@ export default function FabricSalesPage() {
                 onPageChange={setCurrentPage}
                 itemName="فاتورة"
               />
+            </div>
+          </div>
+        )}
+
+        {/* TAB 2: ONLINE ORDERS & COMMERCIAL BRANCH */}
+        {activeTab === 'ONLINE' && (
+          <div className="space-y-4">
+            {/* Header with CTA */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-gradient-to-r from-blue-900 to-slate-900 text-white p-4 rounded-3xl shadow-soft">
+              <div className="space-y-1">
+                <h3 className="font-black text-sm sm:text-base flex items-center gap-2">
+                  <span className="material-symbols-outlined text-blue-400 text-xl">local_shipping</span>
+                  <span>الفرع التجاري وشحنات الأونلاين (بوليصات وطبيعة كاشير)</span>
+                </h3>
+                <p className="text-xs text-blue-200">
+                  فواتير البيع الأونلاين والشحن عبر بوسطة وأرامكس مع إصدار بوليصات الشحن المباشرة وطباعة 80mm / A4
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => router.push('/fabric-sales/new')}
+                className="bg-blue-500 hover:bg-blue-400 text-white px-4 py-2.5 rounded-2xl text-xs font-black shadow-md flex items-center gap-2 cursor-pointer transition-all shrink-0"
+              >
+                <span className="material-symbols-outlined text-[18px]">add_circle</span>
+                <span>+ طلب أونلاين / شحن جديد</span>
+              </button>
+            </div>
+
+            {/* Online Metrics */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+              <div className="bg-white p-3.5 rounded-2xl border border-slate-200 text-center shadow-3xs">
+                <span className="text-slate-500 font-bold block text-[11px]">إجمالي قيمة الشحنات والطلبات</span>
+                <strong className="text-lg font-black text-slate-900 mt-0.5 block font-mono">{totalOnlineRevenue.toLocaleString()} ج</strong>
+              </div>
+
+              <div className="bg-blue-50/80 p-3.5 rounded-2xl border border-blue-200 text-center shadow-3xs">
+                <span className="text-blue-900 font-bold block text-[11px]">إجمالي رسوم الشحن (110 ج)</span>
+                <strong className="text-lg font-black text-blue-950 mt-0.5 block font-mono">{totalOnlineShipping.toLocaleString()} ج</strong>
+              </div>
+
+              <div className="bg-emerald-50/80 p-3.5 rounded-2xl border border-emerald-200 text-center shadow-3xs">
+                <span className="text-emerald-800 font-bold block text-[11px]">المحصل مسبقاً (إنستا/فيزا)</span>
+                <strong className="text-lg font-black text-emerald-950 mt-0.5 block font-mono">{totalOnlinePaid.toLocaleString()} ج</strong>
+              </div>
+
+              <div className="bg-amber-50/80 p-3.5 rounded-2xl border border-amber-200 text-center shadow-3xs">
+                <span className="text-amber-900 font-bold block text-[11px]">متبقي للتحصيل عند الاستلام (COD)</span>
+                <strong className="text-lg font-black text-amber-950 mt-0.5 block font-mono">{totalOnlineCOD.toLocaleString()} ج</strong>
+              </div>
+            </div>
+
+            {/* Online Orders Table */}
+            <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-soft">
+              <div className="overflow-x-auto">
+                <table className="w-full text-right text-xs">
+                  <thead className="bg-slate-50 text-slate-700 font-black border-b border-slate-200">
+                    <tr>
+                      <th className="p-3.5 pr-4">رقم الفاتورة والتاريخ</th>
+                      <th className="p-3.5">العميل والمستلم</th>
+                      <th className="p-3.5">عنوان التوصيل وشركة الشحن</th>
+                      <th className="p-3.5 font-mono text-center">أصناف الطرد</th>
+                      <th className="p-3.5 font-mono text-center">الإجمالي والشحن</th>
+                      <th className="p-3.5 font-mono text-center">التحصيل (COD)</th>
+                      <th className="p-3.5 text-center">حالة السداد</th>
+                      <th className="p-3.5 text-center w-[120px]">الإجراءات</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {filteredOnlineInvoices.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} className="p-12 text-center text-slate-400 font-bold">
+                          <span className="material-symbols-outlined text-4xl block mb-2 text-slate-300">local_shipping</span>
+                          لا توجد شحنات أو فواتير أونلاين مسجلة بعد
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredOnlineInvoices.map(inv => {
+                        const paid = Number(inv.paidAmount) || 0;
+                        const remaining = Number(inv.remainingAmount) || 0;
+                        const isFullyPaid = remaining <= 0;
+                        const isPartial = paid > 0 && remaining > 0;
+                        const shipFee = Number(inv.shippingFee) || 110;
+
+                        return (
+                          <tr
+                            key={inv.id}
+                            onClick={() => setSelectedInvoice(inv)}
+                            className="hover:bg-blue-50/40 cursor-pointer transition-colors group"
+                            title="اضغط لفتح بوليصة الشحن وتفاصيل الفاتورة"
+                          >
+                            {/* Invoice Number & Date */}
+                            <td className="p-3.5 pr-4 font-mono font-bold">
+                              <div className="text-blue-900 font-black text-xs group-hover:text-blue-700">{inv.invoiceNumber}</div>
+                              <div className="text-[10px] text-slate-400 font-mono">{inv.date ? formatDateOnly(inv.date) : 'اليوم'}</div>
+                              {inv.orderSource && (
+                                <span className="inline-block mt-0.5 px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 text-[9px] font-bold">
+                                  {inv.orderSource}
+                                </span>
+                              )}
+                            </td>
+
+                            {/* Customer & Phone */}
+                            <td className="p-3.5 text-slate-700">
+                              <div className="font-bold text-slate-900 text-sm">{inv.customerName}</div>
+                              <div className="text-[10px] text-slate-500 font-mono font-bold mt-0.5" dir="ltr">
+                                {inv.phone || inv.customerPhone || '—'}
+                              </div>
+                              {inv.receiverPhone && inv.receiverPhone !== inv.phone && (
+                                <div className="text-[10px] text-blue-700 font-mono font-bold" dir="ltr">
+                                  مستلم: {inv.receiverPhone}
+                                </div>
+                              )}
+                            </td>
+
+                            {/* Shipping Address & Company */}
+                            <td className="p-3.5 text-slate-700 max-w-[200px]">
+                              <div className="font-bold text-xs text-slate-900 flex items-center gap-1">
+                                <span className="material-symbols-outlined text-[14px] text-blue-600 shrink-0">local_shipping</span>
+                                <span>{inv.shippingCompany || 'بوسطة (Bosta)'}</span>
+                              </div>
+                              <div className="text-[11px] text-slate-600 truncate mt-0.5" title={inv.shippingAddress || 'العنوان غير مدخل'}>
+                                {inv.shippingAddress || 'لم يحدد عنوان'}
+                              </div>
+                              {inv.trackingNumber && (
+                                <div className="text-[10px] font-mono text-slate-500 font-bold">
+                                  تتبع: {inv.trackingNumber}
+                                </div>
+                              )}
+                            </td>
+
+                            {/* Items count */}
+                            <td className="p-3.5 text-center font-mono text-xs">
+                              <span className="bg-slate-100 px-2 py-1 rounded-lg font-bold text-slate-800 border border-slate-200">
+                                {Array.isArray(inv.items) ? inv.items.length : 1} أصناف
+                              </span>
+                            </td>
+
+                            {/* Total and shipping fee */}
+                            <td className="p-3.5 text-center font-mono text-xs">
+                              <div className="font-black text-slate-950 text-sm">{(Number(inv.totalAmount) || 0).toLocaleString()} ج</div>
+                              <div className="text-[10px] text-blue-700 font-bold">شحن: +{shipFee.toLocaleString()} ج</div>
+                            </td>
+
+                            {/* Paid / COD */}
+                            <td className="p-3.5 text-center font-mono text-xs">
+                              {remaining > 0 ? (
+                                <div className="text-amber-900 bg-amber-50 px-2 py-1 rounded-lg border border-amber-200 font-black">
+                                  COD: {remaining.toLocaleString()} ج
+                                </div>
+                              ) : (
+                                <div className="text-emerald-800 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-200 font-bold">
+                                  مدفوع بالكامل
+                                </div>
+                              )}
+                            </td>
+
+                            {/* Status */}
+                            <td className="p-3.5 text-center">
+                              {isFullyPaid ? (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-200 whitespace-nowrap">
+                                  مسدد بالكامل ✓
+                                </span>
+                              ) : isPartial ? (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-200 whitespace-nowrap">
+                                  مسدد جزئياً
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-900 border border-rose-200 whitespace-nowrap">
+                                  تحصيل عند الاستلام
+                                </span>
+                              )}
+                            </td>
+
+                            {/* Actions */}
+                            <td className="p-3.5 text-center" onClick={e => e.stopPropagation()}>
+                              <div className="flex items-center justify-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedInvoice(inv)}
+                                  className="bg-blue-600 hover:bg-blue-500 text-white text-[11px] px-2 py-1 rounded-lg font-black flex items-center gap-1 shadow-3xs cursor-pointer"
+                                  title="طباعة بوليصة الشحن (Waybill)"
+                                >
+                                  <span>📦</span>
+                                  <span>بوليصة</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedInvoice(inv)}
+                                  className="text-slate-400 hover:text-slate-700 p-1 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                                  title="عرض وطباعة إيصال الفاتورة"
+                                >
+                                  <span className="material-symbols-outlined text-[18px]">receipt_long</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingInvoice(inv)}
+                                  className="text-amber-600 hover:text-amber-700 p-1 rounded-lg hover:bg-amber-50 transition-colors cursor-pointer"
+                                  title="تعديل الفاتورة"
+                                >
+                                  <span className="material-symbols-outlined text-[18px]">edit</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteInvoice(inv.id, inv.invoiceNumber)}
+                                  className="text-slate-300 hover:text-rose-600 p-1 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
+                                  title="حذف الفاتورة"
+                                >
+                                  <span className="material-symbols-outlined text-[18px]">delete</span>
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}

@@ -167,10 +167,27 @@ export default function NewSalesInvoicePOSPage() {
     }
   }, [dynamicCategories, selectedCategory]);
 
+  // Online Order & Shipping States
+  const [isOnlineOrder, setIsOnlineOrder] = useState<boolean>(false);
+  const [shippingFee, setShippingFee] = useState<number>(110);
+  const [shippingCompany, setShippingCompany] = useState<string>('بوسطة (Bosta)');
+  const [trackingNumber, setTrackingNumber] = useState<string>('');
+  const [shippingAddress, setShippingAddress] = useState<string>('');
+  const [receiverPhone, setReceiverPhone] = useState<string>('');
+  const [orderSource, setOrderSource] = useState<string>('صفحة الفيسبوك');
+
+  // Auto-toggle online mode if branch is الفرع التجاري
+  useEffect(() => {
+    if (branch === 'الفرع التجاري') {
+      setIsOnlineOrder(true);
+    }
+  }, [branch]);
+
   // Calculations
   const subtotal = items.reduce((sum, it) => sum + (it.meters * it.pricePerMeter), 0);
   const calculatedDiscount = discountType === 'PERCENT' ? (subtotal * (discountValue || 0)) / 100 : (discountValue || 0);
-  const totalAmount = Math.max(0, subtotal - calculatedDiscount);
+  const shippingAmount = isOnlineOrder ? (Number(shippingFee) || 0) : 0;
+  const totalAmount = Math.max(0, subtotal - calculatedDiscount + shippingAmount);
   const remainingAmount = Math.max(0, totalAmount - (paidAmount || 0));
 
   // Auto-sync paid amount if full payment is checked
@@ -341,6 +358,13 @@ export default function NewSalesInvoicePOSPage() {
       paidAmount: paidAmount || 0,
       remainingAmount,
       status: statusLabel,
+      isOnlineOrder,
+      shippingFee: isOnlineOrder ? Number(shippingFee) || 0 : 0,
+      shippingCompany: isOnlineOrder ? shippingCompany : undefined,
+      trackingNumber: isOnlineOrder ? trackingNumber.trim() : undefined,
+      shippingAddress: isOnlineOrder ? shippingAddress.trim() : undefined,
+      receiverPhone: isOnlineOrder ? receiverPhone.trim() : undefined,
+      orderSource: isOnlineOrder ? orderSource : undefined,
       splitPayments: paymentMethod === 'دفع متعدد / مزيج' ? {
         cash: Number(splitCash) || 0,
         instapay: Number(splitInstapay) || 0,
@@ -587,6 +611,114 @@ export default function NewSalesInvoicePOSPage() {
                   isAdmin={isAdmin}
                   className="w-full border border-slate-200 rounded-xl px-2.5 py-1.5 font-bold text-slate-900 bg-slate-50 text-xs focus:outline-none"
                 />
+
+                {/* Online Shipping Mode Toggle */}
+                <div className="pt-1 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => setIsOnlineOrder(!isOnlineOrder)}
+                    className={`w-full py-1.5 px-2.5 rounded-xl text-xs font-black flex items-center justify-between transition-all cursor-pointer border ${
+                      isOnlineOrder
+                        ? 'bg-blue-600 text-white border-blue-700 shadow-xs'
+                        : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                    }`}
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <span>📦</span>
+                      <span>شحن أونلاين / الفرع التجاري</span>
+                    </span>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-mono font-bold ${
+                      isOnlineOrder ? 'bg-white text-blue-900' : 'bg-slate-200 text-slate-700'
+                    }`}>
+                      {isOnlineOrder ? `+${shippingFee} ج (مفعل)` : 'مباشر بالفرع'}
+                    </span>
+                  </button>
+
+                  {/* Expanded Online Shipping Fields */}
+                  {isOnlineOrder && (
+                    <div className="mt-1.5 p-2 bg-blue-50/70 rounded-xl border border-blue-200 space-y-1.5 text-xs">
+                      <div>
+                        <label className="text-[10px] font-bold text-blue-950 block mb-0.5">عنوان الشحن بالتفصيل (المحافظة/المدينة/الشارع):</label>
+                        <input
+                          type="text"
+                          placeholder="مثال: الإسماعيلية - الشيخ زايد..."
+                          value={shippingAddress}
+                          onChange={e => setShippingAddress(e.target.value)}
+                          className="w-full bg-white border border-blue-200 rounded-lg px-2 py-1 text-xs text-slate-900 font-bold focus:outline-none focus:border-blue-500"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <div>
+                          <label className="text-[10px] font-bold text-blue-950 block mb-0.5">شركة الشحن:</label>
+                          <select
+                            value={shippingCompany}
+                            onChange={e => setShippingCompany(e.target.value)}
+                            className="w-full bg-white border border-blue-200 rounded-lg px-1.5 py-1 text-[11px] text-slate-900 font-bold focus:outline-none"
+                          >
+                            <option value="بوسطة (Bosta)">بوسطة (Bosta)</option>
+                            <option value="أرامكس (Aramex)">أرامكس (Aramex)</option>
+                            <option value="مندوب الفرع التجاري">مندوب الفرع التجاري</option>
+                            <option value="ريد بوكس (RedBox)">ريد بوكس (RedBox)</option>
+                            <option value="شركة شحن أخرى">شركة شحن أخرى</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] font-bold text-blue-950 block mb-0.5">مصاريف الشحن (ج.م):</label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={shippingFee}
+                            onChange={e => setShippingFee(Number(e.target.value))}
+                            className="w-full bg-white border border-blue-200 rounded-lg px-2 py-1 text-xs text-slate-900 font-mono font-black focus:outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <div>
+                          <label className="text-[10px] font-bold text-blue-950 block mb-0.5">هاتف المستلم (إن اختلف):</label>
+                          <input
+                            type="text"
+                            placeholder={custPhone || 'رقم إضافي...'}
+                            value={receiverPhone}
+                            onChange={e => setReceiverPhone(e.target.value)}
+                            className="w-full bg-white border border-blue-200 rounded-lg px-2 py-1 text-xs text-slate-900 font-mono font-bold focus:outline-none"
+                            dir="ltr"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] font-bold text-blue-950 block mb-0.5">مصدر الطلب:</label>
+                          <select
+                            value={orderSource}
+                            onChange={e => setOrderSource(e.target.value)}
+                            className="w-full bg-white border border-blue-200 rounded-lg px-1.5 py-1 text-[11px] text-slate-900 font-bold focus:outline-none"
+                          >
+                            <option value="صفحة الفيسبوك">صفحة الفيسبوك</option>
+                            <option value="واتساب (WhatsApp)">واتساب</option>
+                            <option value="إنستجرام (Instagram)">إنستجرام</option>
+                            <option value="تيك توك (TikTok)">تيك توك</option>
+                            <option value="الموقع الإلكتروني">الموقع الإلكتروني</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] font-bold text-blue-950 block mb-0.5">رقم البوليصة / التتبع (اختياري):</label>
+                        <input
+                          type="text"
+                          placeholder="مثال: BST-982341..."
+                          value={trackingNumber}
+                          onChange={e => setTrackingNumber(e.target.value)}
+                          className="w-full bg-white border border-blue-200 rounded-lg px-2 py-1 text-xs text-slate-900 font-mono font-bold focus:outline-none"
+                          dir="ltr"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -965,6 +1097,17 @@ export default function NewSalesInvoicePOSPage() {
                     </div>
                   </div>
 
+                  {/* مصاريف الشحن إن وجدت */}
+                  {isOnlineOrder && (
+                    <div className="flex justify-between items-center text-blue-300 text-xs font-bold pt-1 border-t border-slate-800/80">
+                      <span className="flex items-center gap-1">
+                        <span>📦</span>
+                        <span>مصاريف الشحن ({shippingCompany}):</span>
+                      </span>
+                      <span className="font-mono text-xs sm:text-sm font-black text-blue-300">+{Number(shippingFee || 0).toLocaleString()} ج.م</span>
+                    </div>
+                  )}
+
                   <div className="flex justify-between items-center text-white border-t border-slate-800 pt-1.5 font-black">
                     <span className="text-xs sm:text-sm">الصافي المستحق:</span>
                     <span className="font-mono text-lg sm:text-xl text-emerald-400">{totalAmount.toLocaleString()} ج.م</span>
@@ -1124,22 +1267,37 @@ export default function NewSalesInvoicePOSPage() {
                       ))}
                     </div>
 
-                    {/* Totals */}
-                    <div className="space-y-1 text-[11px] font-bold border-b border-dashed border-slate-300 pb-2">
-                      <div className="flex justify-between text-slate-600">
-                        <span>المجموع الفرعي:</span>
-                        <span>{lastSavedInvoice.subtotal} ج.م</span>
-                      </div>
-                      {lastSavedInvoice.discountAmount > 0 && (
-                        <div className="flex justify-between text-amber-700">
-                          <span>الخصم:</span>
-                          <span>- {lastSavedInvoice.discountAmount} ج.م</span>
+                      {lastSavedInvoice.isOnlineOrder && (
+                        <div className="text-[10px] bg-blue-50 p-1.5 rounded-lg border border-blue-200 text-blue-950 space-y-0.5">
+                          <div className="font-black">📦 شحن أونلاين: {lastSavedInvoice.shippingCompany || 'بوسطة'}</div>
+                          {lastSavedInvoice.shippingAddress && <div>📍 {lastSavedInvoice.shippingAddress}</div>}
+                          {lastSavedInvoice.receiverPhone && <div>📞 مستلم: {lastSavedInvoice.receiverPhone}</div>}
+                          {lastSavedInvoice.trackingNumber && <div>🏷️ تتبع: {lastSavedInvoice.trackingNumber}</div>}
                         </div>
                       )}
-                      <div className="flex justify-between font-black text-xs text-slate-950 pt-1 border-t border-slate-200">
-                        <span>الصافي المستحق:</span>
-                        <span>{lastSavedInvoice.totalAmount} ج.م</span>
-                      </div>
+
+                      {/* Totals */}
+                      <div className="space-y-1 text-[11px] font-bold border-b border-dashed border-slate-300 pb-2">
+                        <div className="flex justify-between text-slate-600">
+                          <span>المجموع الفرعي:</span>
+                          <span>{lastSavedInvoice.subtotal} ج.م</span>
+                        </div>
+                        {lastSavedInvoice.discountAmount > 0 && (
+                          <div className="flex justify-between text-amber-700">
+                            <span>الخصم:</span>
+                            <span>- {lastSavedInvoice.discountAmount} ج.م</span>
+                          </div>
+                        )}
+                        {lastSavedInvoice.isOnlineOrder && (
+                          <div className="flex justify-between text-blue-700">
+                            <span>مصاريف الشحن:</span>
+                            <span>+ {lastSavedInvoice.shippingFee || 110} ج.م</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between font-black text-xs text-slate-950 pt-1 border-t border-slate-200">
+                          <span>الصافي المستحق:</span>
+                          <span>{lastSavedInvoice.totalAmount} ج.م</span>
+                        </div>
                       {/* Active Payment Methods Only */}
                       {activePayments.length > 0 && (
                         <div className="space-y-0.5 pt-0.5">

@@ -39,6 +39,13 @@ export interface FabricSalesInvoiceData {
   remainingAmount: number;
   status: 'تم السداد بالكامل' | 'مسدد جزئياً' | 'آجل / غير مسدد';
   notes?: string;
+  isOnlineOrder?: boolean;
+  shippingFee?: number;
+  shippingCompany?: string;
+  trackingNumber?: string;
+  shippingAddress?: string;
+  receiverPhone?: string;
+  orderSource?: string;
 }
 
 interface FabricSalesPrintModalProps {
@@ -309,12 +316,81 @@ export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricS
       </body>
       </html>
     `);
-
     printWindow.document.close();
-    setTimeout(() => {
-      printWindow.print();
-      printWindow.close();
-    }, 400);
+    setTimeout(() => { printWindow.print(); printWindow.close(); }, 300);
+  };
+
+  const handlePrintWaybill = () => {
+    const w = window.open('', '_blank');
+    if (!w) { window.print(); return; }
+
+    const now = new Date();
+    const formattedDateTime = data.date
+      ? (data.date.includes('T') || data.date.includes(':')
+          ? new Date(data.date).toLocaleDateString('ar-EG') + ' - ' + new Date(data.date).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })
+          : formatDateOnly(data.date) + ' - ' + now.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }))
+      : now.toLocaleDateString('ar-EG') + ' - ' + now.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+
+    const isCod = data.remainingAmount > 0;
+    const codAmount = isCod ? data.remainingAmount : 0;
+
+    w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head>
+      <meta charset="UTF-8"><title>بوليصة شحن ${data.invoiceNumber}</title>
+      <style>
+        @page { size: 80mm auto; margin: 3mm 4mm; }
+        * { box-sizing:border-box; margin:0; padding:0; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
+        body { font-family: 'Cairo', system-ui, -apple-system, sans-serif; direction:rtl; color:#000; font-size:8.5pt; width:72mm; margin:0 auto; }
+        .center { text-align:center; }
+        .brand { font-weight:900; font-size:11pt; }
+        .waybill-title { background:#000; color:#fff; font-weight:900; font-size:10pt; padding:1.5mm; border-radius:2mm; margin:2mm 0; text-align:center; }
+        .divider { border-top:1px dashed #000; margin:2mm 0; }
+        .box { border:1.5px solid #000; border-radius:2mm; padding:2mm; margin:2mm 0; }
+        .box-title { font-weight:900; font-size:8.5pt; border-bottom:1px solid #000; padding-bottom:1mm; margin-bottom:1mm; }
+        .lbl { color:#333; font-size:8pt; }
+        .val { font-weight:bold; font-size:9pt; }
+        .cod-badge { background:#fef08a; border:2px solid #000; padding:2mm; text-align:center; font-size:10pt; font-weight:900; border-radius:2mm; margin:2mm 0; }
+        .foot { text-align:center; font-size:7.5pt; color:#222; margin-top:2mm; }
+      </style></head><body>
+        <div class="center">
+          <div class="brand">${brand.storeName || 'مؤسسة كشك للأقمشة والستائر'}</div>
+          <div style="font-size:8pt; font-weight:bold;">الفرع التجاري والأونلاين 🌐</div>
+        </div>
+        <div class="waybill-title">📦 بوليصة شحن طرد أونلاين</div>
+        
+        <div style="display:flex; justify-content:space-between; font-size:8pt; font-weight:bold;">
+          <span>رقم الشحنة: <b style="font-family:monospace;">${data.invoiceNumber}</b></span>
+          <span>${data.trackingNumber ? `تتبع: ${data.trackingNumber}` : ''}</span>
+        </div>
+        <div style="font-size:7.5pt; color:#444; text-align:left;">${formattedDateTime}</div>
+
+        <div class="box">
+          <div class="box-title">👤 بيانات المستلم (العميل)</div>
+          <div><span class="lbl">الاسم: </span><span class="val">${data.customerName}</span></div>
+          <div><span class="lbl">الهاتف: </span><span class="val" style="font-family:monospace; direction:ltr; display:inline-block;">${data.phone || data.customerPhone || '—'}</span></div>
+          ${data.receiverPhone ? `<div><span class="lbl">هاتف بديل: </span><span class="val" style="font-family:monospace; direction:ltr; display:inline-block;">${data.receiverPhone}</span></div>` : ''}
+          <div><span class="lbl">العنوان والمحافظة: </span><span class="val">${data.shippingAddress || branchCfg.address || '—'}</span></div>
+          <div><span class="lbl">شركة الشحن: </span><span class="val">${data.shippingCompany || 'بوسطة'}</span></div>
+        </div>
+
+        <div class="cod-badge">
+          ${isCod ? `المطلوب تحصيله عند الاستلام: ${codAmount.toLocaleString()} ج` : `✅ مسدد مسبقاً بالكامل (0 ج)`}
+        </div>
+
+        <div class="box" style="font-size:8pt;">
+          <div class="box-title">📦 تفاصيل المحتويات</div>
+          <div><span class="lbl">عدد الأصناف: </span><span class="val">${data.items?.length || 0} أصناف أقمشة</span></div>
+          <div><span class="lbl">إجمالي الأمتار: </span><span class="val">${(data.items || []).reduce((s, it) => s + it.meters, 0)} متر</span></div>
+          <div><span class="lbl">مصاريف الشحن: </span><span class="val">${(data.shippingFee || 110).toLocaleString()} ج</span></div>
+        </div>
+
+        <div class="divider"></div>
+        <div class="foot">
+          <div>مؤسسة كشك للأقمشة والستائر ✨</div>
+          <div>خدمة العملاء: 01280042900 / 01220999355</div>
+        </div>
+      </body></html>`);
+    w.document.close();
+    setTimeout(() => { w.print(); w.close(); }, 300);
   };
 
   const activePayments = getActivePaymentLines();
@@ -327,21 +403,31 @@ export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricS
         <div className="flex items-center justify-between pb-4 border-b border-slate-200 mb-4">
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-amber-600 text-2xl">receipt_long</span>
-            <h2 className="font-display font-black text-base sm:text-lg text-slate-900">معاينة فاتورة المبيعات</h2>
+            <h2 className="font-display font-black text-base sm:text-lg text-slate-900">
+              معاينة فاتورة المبيعات {data.isOnlineOrder && <span className="text-xs bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-lg border border-indigo-300">📦 شحن أونلاين</span>}
+            </h2>
           </div>
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={handlePrintCashier}
-              className="bg-amber-500 hover:bg-amber-600 text-slate-950 px-5 py-2 rounded-xl text-xs font-black shadow flex items-center gap-1.5 cursor-pointer transition-colors"
+              className="bg-amber-500 hover:bg-amber-600 text-slate-950 px-4 py-2 rounded-xl text-xs font-black shadow flex items-center gap-1.5 cursor-pointer transition-colors"
               title="طباعة على طابعة الكاشير الحرارية 80 مم"
             >
-              <span>🧾 طباعة كاشير (80mm)</span>
+              <span>🧾 فاتورة (80mm)</span>
+            </button>
+            <button
+              type="button"
+              onClick={handlePrintWaybill}
+              className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-xs font-black shadow flex items-center gap-1.5 cursor-pointer transition-colors"
+              title="طباعة بوليصة شحن للطرد وشركة الشحن"
+            >
+              <span>📦 بوليصة شحن (Waybill)</span>
             </button>
             <button
               type="button"
               onClick={handlePrint}
-              className="bg-slate-950 hover:bg-slate-800 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-xs flex items-center gap-1.5 cursor-pointer transition-colors"
+              className="bg-slate-950 hover:bg-slate-800 text-white px-3.5 py-2 rounded-xl text-xs font-bold shadow-xs flex items-center gap-1.5 cursor-pointer transition-colors"
               title="طباعة على ورق A4 عادى"
             >
               <span>🖨️ A4</span>
