@@ -8,7 +8,7 @@ import {
   getAdvances, saveAdvances, getPayrolls, savePayrolls, INITIAL_EMPLOYEES
 } from '@/lib/employeeStore';
 import { BRANCHES_LIST, normalizeBranchName } from '@/lib/branches';
-import { formatDateOnly } from '@/lib/dateUtils';
+import { formatDateOnly, getTodayDateStr } from '@/lib/dateUtils';
 import { useCurrentUser } from '@/lib/useCurrentUser';
 
 export default function EmployeesManagementPage() {
@@ -22,7 +22,7 @@ export default function EmployeesManagementPage() {
 
   const [activeTab, setActiveTab] = useState<'attendance' | 'advances' | 'payroll' | 'directory'>('attendance');
   const [selectedBranch, setSelectedBranch] = useState<string>('الكل');
-  const [attendanceDate, setAttendanceDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [attendanceDate, setAttendanceDate] = useState<string>(() => getTodayDateStr());
 
   // Advance Form State
   const [advanceEmployeeId, setAdvanceEmployeeId] = useState<string>('');
@@ -68,7 +68,10 @@ export default function EmployeesManagementPage() {
     if (!isAdmin && !isSuperAdmin && user?.branch) {
       setSelectedBranch(user.branch);
     }
-  }, [isAdmin, isSuperAdmin, user]);
+    if (!canViewWages && (activeTab === 'payroll' || activeTab === 'directory')) {
+      setActiveTab('attendance');
+    }
+  }, [isAdmin, isSuperAdmin, user, canViewWages, activeTab]);
 
   const branchFilteredEmployees = useMemo(() => {
     if (selectedBranch === 'الكل') return employees;
@@ -329,25 +332,28 @@ export default function EmployeesManagementPage() {
               <span>💸</span>
               <span>السلف والخصومات</span>
             </button>
-            <button
-              onClick={() => setActiveTab('payroll')}
-              className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer ${
-                activeTab === 'payroll' ? 'bg-emerald-600 text-white shadow-md' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-              }`}
-            >
-              <span>💰</span>
-              <span>تقفيل رواتب الخميس</span>
-              {!canViewWages && <span className="text-[10px] bg-amber-200 text-amber-900 px-1.5 py-0.5 rounded font-bold">🔒 للإدارة</span>}
-            </button>
-            <button
-              onClick={() => setActiveTab('directory')}
-              className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer ${
-                activeTab === 'directory' ? 'bg-slate-900 text-white shadow-md' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-              }`}
-            >
-              <span>👥</span>
-              <span>دليل الموظفين</span>
-            </button>
+            {canViewWages && (
+              <>
+                <button
+                  onClick={() => setActiveTab('payroll')}
+                  className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer ${
+                    activeTab === 'payroll' ? 'bg-emerald-600 text-white shadow-md' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  }`}
+                >
+                  <span>💰</span>
+                  <span>تقفيل رواتب الخميس</span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('directory')}
+                  className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer ${
+                    activeTab === 'directory' ? 'bg-slate-900 text-white shadow-md' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  }`}
+                >
+                  <span>👥</span>
+                  <span>دليل الموظفين</span>
+                </button>
+              </>
+            )}
           </div>
 
           {/* Branch Filter */}
@@ -402,7 +408,7 @@ export default function EmployeesManagementPage() {
                     <th className="p-3">#</th>
                     <th className="p-3">اسم الموظف</th>
                     <th className="p-3">الفرع</th>
-                    <th className="p-3 font-mono">اليومية</th>
+                    {canViewWages && <th className="p-3 font-mono">اليومية</th>}
                     <th className="p-3 font-mono">مواعيد العمل</th>
                     <th className="p-3">الحالة اليوم</th>
                     <th className="p-3 text-center">إجراءات الحضور</th>
@@ -425,15 +431,11 @@ export default function EmployeesManagementPage() {
                             {emp.branch}
                           </span>
                         </td>
-                        <td className="p-3 font-mono font-black text-emerald-800 text-sm">
-                          {canViewWages ? (
-                            `${emp.dailyWage} ج`
-                          ) : (
-                            <span className="text-[11px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
-                              🔒 سرية
-                            </span>
-                          )}
-                        </td>
+                        {canViewWages && (
+                          <td className="p-3 font-mono font-black text-emerald-800 text-sm">
+                            {emp.dailyWage}
+                          </td>
+                        )}
                         <td className="p-3 font-mono text-[11px] text-slate-600" dir="ltr">
                           {emp.workStartTime} - {emp.workEndTime}
                         </td>

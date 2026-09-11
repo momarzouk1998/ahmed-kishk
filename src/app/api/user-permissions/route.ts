@@ -23,45 +23,57 @@ const DEFAULT_PERMS_ROSTER: PermsMap = {
     branch: 'المدير العام',
   },
   '01063821000': {
-    allowedPageIds: ['p_inspections', 'p_pricing', 'p_cutting', 'p_tailoring', 'p_accessories', 'p_delivery', 'p_installation', 'p_orders', 'p_dashboard', 'p_fabric_sales', 'p_purchases', 'p_customers', 'p_suppliers', 'p_inventory', 'p_reports', 'p_branches', 'p_settings'],
+    allowedPageIds: ['p_inspections', 'p_pricing', 'p_cutting', 'p_tailoring', 'p_accessories', 'p_delivery', 'p_installation', 'p_orders', 'p_dashboard', 'p_fabric_sales', 'p_shifts', 'p_purchases', 'p_customers', 'p_suppliers', 'p_employees', 'p_inventory', 'p_reports', 'p_branches', 'p_settings'],
     restrictToBranch: false,
     branch: 'الفرع الرئيسي',
   },
   // يوسف ياسر (الفرع الرئيسي)
   '01279549182': {
-    allowedPageIds: ['p_inspections', 'p_pricing', 'p_cutting', 'p_tailoring', 'p_accessories', 'p_delivery', 'p_installation', 'p_orders', 'p_dashboard', 'p_fabric_sales', 'p_purchases', 'p_customers', 'p_suppliers', 'p_inventory', 'p_reports', 'p_fabric_sales_edit_price', 'p_purchases_edit_price', 'p_inventory_edit_price', 'p_inspections_edit_price', 'p_pricing_edit_price', 'p_orders_edit_price'],
+    allowedPageIds: ['p_inspections', 'p_pricing', 'p_cutting', 'p_tailoring', 'p_accessories', 'p_delivery', 'p_installation', 'p_orders', 'p_dashboard', 'p_fabric_sales', 'p_shifts', 'p_purchases', 'p_customers', 'p_suppliers', 'p_employees', 'p_inventory', 'p_reports', 'p_fabric_sales_edit_price', 'p_purchases_edit_price', 'p_inventory_edit_price', 'p_inspections_edit_price', 'p_pricing_edit_price', 'p_orders_edit_price'],
     restrictToBranch: true,
     branch: 'الفرع الرئيسي',
   },
   // أحمد عبدالله (فرع عرابي)
   '01023232370': {
-    allowedPageIds: ['p_inspections', 'p_pricing', 'p_cutting', 'p_tailoring', 'p_accessories', 'p_delivery', 'p_installation', 'p_orders', 'p_fabric_sales', 'p_purchases', 'p_customers', 'p_suppliers', 'p_inventory', 'p_reports', 'p_fabric_sales_edit_price', 'p_purchases_edit_price', 'p_inventory_edit_price', 'p_inspections_edit_price', 'p_pricing_edit_price', 'p_orders_edit_price'],
+    allowedPageIds: ['p_inspections', 'p_pricing', 'p_cutting', 'p_tailoring', 'p_accessories', 'p_delivery', 'p_installation', 'p_orders', 'p_fabric_sales', 'p_shifts', 'p_purchases', 'p_customers', 'p_suppliers', 'p_employees', 'p_inventory', 'p_reports', 'p_fabric_sales_edit_price', 'p_purchases_edit_price', 'p_inventory_edit_price', 'p_inspections_edit_price', 'p_pricing_edit_price', 'p_orders_edit_price'],
     restrictToBranch: true,
     branch: 'فرع عرابي',
   },
   // محمد نصار (كاشير عرابي)
   '01055288214': {
-    allowedPageIds: ['p_inspections', 'p_pricing', 'p_fabric_sales', 'p_customers', 'p_inventory'],
+    allowedPageIds: ['p_inspections', 'p_pricing', 'p_fabric_sales', 'p_shifts', 'p_customers', 'p_inventory'],
     restrictToBranch: true,
     branch: 'فرع عرابي',
   },
   // محمد كشك (مدير فرع عمر أفندي - فرع أقمشة فقط بدون مراحل ستائر)
   '01018728640': {
-    allowedPageIds: ['p_fabric_sales', 'p_purchases', 'p_customers', 'p_suppliers', 'p_inventory', 'p_fabric_sales_edit_price', 'p_purchases_edit_price', 'p_inventory_edit_price'],
+    allowedPageIds: ['p_fabric_sales', 'p_shifts', 'p_purchases', 'p_customers', 'p_suppliers', 'p_employees', 'p_inventory', 'p_fabric_sales_edit_price', 'p_purchases_edit_price', 'p_inventory_edit_price'],
     restrictToBranch: true,
     branch: 'فرع عمر أفندي',
   },
   // أحمد عبدالعال (كاشير فرع عمر أفندي - فرع أقمشة فقط بدون مراحل ستائر وبدون تعديل أسعار)
   '01275763008': {
-    allowedPageIds: ['p_fabric_sales', 'p_customers', 'p_inventory'],
+    allowedPageIds: ['p_fabric_sales', 'p_shifts', 'p_customers', 'p_inventory'],
     restrictToBranch: true,
     branch: 'فرع عمر أفندي',
   },
   // عبدالله كشك (مدير فرع الثلاثيني - فرع أقمشة فقط بدون مراحل ستائر)
   '01033447262': {
-    allowedPageIds: ['p_fabric_sales', 'p_purchases', 'p_customers', 'p_suppliers', 'p_inventory', 'p_fabric_sales_edit_price', 'p_purchases_edit_price', 'p_inventory_edit_price'],
+    allowedPageIds: ['p_fabric_sales', 'p_shifts', 'p_purchases', 'p_customers', 'p_suppliers', 'p_employees', 'p_inventory', 'p_fabric_sales_edit_price', 'p_purchases_edit_price', 'p_inventory_edit_price'],
     restrictToBranch: true,
     branch: 'فرع الثلاثيني',
+  },
+  // عبدالرحمن كشك (مدير الفرع التجاري)
+  '01280042900': {
+    allowedPageIds: ['p_fabric_sales', 'p_shifts', 'p_purchases', 'p_customers', 'p_suppliers', 'p_employees', 'p_inventory', 'p_reports', 'p_dashboard', 'p_fabric_sales_edit_price', 'p_purchases_edit_price', 'p_inventory_edit_price'],
+    restrictToBranch: true,
+    branch: 'الفرع التجاري',
+  },
+  // محمد على (كاشير الفرع التجاري)
+  '01220999355': {
+    allowedPageIds: ['p_fabric_sales', 'p_shifts', 'p_customers', 'p_inventory', 'p_dashboard'],
+    restrictToBranch: true,
+    branch: 'الفرع التجاري',
   },
 };
 
