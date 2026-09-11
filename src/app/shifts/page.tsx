@@ -55,6 +55,10 @@ export default function ShiftsAndDrawerPage() {
   const [branchFilter, setBranchFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [employeeFilter, setEmployeeFilter] = useState<string>('all');
+  const [startDateFilter, setStartDateFilter] = useState<string>('');
+  const [endDateFilter, setEndDateFilter] = useState<string>('');
+  const [showFilterModal, setShowFilterModal] = useState<boolean>(false);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(10);
 
@@ -70,6 +74,44 @@ export default function ShiftsAndDrawerPage() {
   const branchEmployees = useMemo(() => {
     return employees.filter(e => normalizeBranchName(e.branch) === normalizeBranchName(selectedBranch));
   }, [employees, selectedBranch]);
+
+  const allEmployeesList = useMemo(() => {
+    const map = new Map<string, string>();
+    employees.forEach(e => {
+      if (e.name) map.set(e.id || e.name, e.name);
+    });
+    shifts.forEach(s => {
+      if (s.employeeName && s.employeeId) {
+        map.set(s.employeeId, s.employeeName);
+      } else if (s.employeeName) {
+        map.set(s.employeeName, s.employeeName);
+      }
+    });
+    return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
+  }, [employees, shifts]);
+
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (branchFilter !== 'all') count++;
+    if (typeFilter !== 'all') count++;
+    if (statusFilter !== 'all') count++;
+    if (employeeFilter !== 'all') count++;
+    if (startDateFilter) count++;
+    if (endDateFilter) count++;
+    if (dateFilter !== 'all') count++;
+    return count;
+  }, [branchFilter, typeFilter, statusFilter, employeeFilter, startDateFilter, endDateFilter, dateFilter]);
+
+  const handleResetFilters = () => {
+    setBranchFilter('all');
+    setTypeFilter('all');
+    setStatusFilter('all');
+    setEmployeeFilter('all');
+    setStartDateFilter('');
+    setEndDateFilter('');
+    setDateFilter('all');
+    setSearchQuery('');
+  };
 
   // Filter shifts based on filters & quick date buttons
   const filteredShifts = useMemo(() => {
@@ -89,7 +131,24 @@ export default function ShiftsAndDrawerPage() {
         return false;
       }
 
-      // Date filter
+      // Employee filter
+      if (employeeFilter !== 'all') {
+        if (s.employeeId !== employeeFilter && s.employeeName !== employeeFilter) {
+          return false;
+        }
+      }
+
+      // Specific Date Range
+      if (startDateFilter) {
+        const shiftDateStr = new Date(s.startTime).toISOString().split('T')[0];
+        if (shiftDateStr < startDateFilter) return false;
+      }
+      if (endDateFilter) {
+        const shiftDateStr = new Date(s.startTime).toISOString().split('T')[0];
+        if (shiftDateStr > endDateFilter) return false;
+      }
+
+      // Quick Date filter
       if (dateFilter !== 'all') {
         const shiftDate = new Date(s.startTime);
         const now = new Date();
@@ -125,12 +184,12 @@ export default function ShiftsAndDrawerPage() {
 
       return true;
     });
-  }, [shifts, branchFilter, typeFilter, statusFilter, dateFilter, searchQuery]);
+  }, [shifts, branchFilter, typeFilter, statusFilter, employeeFilter, startDateFilter, endDateFilter, dateFilter, searchQuery]);
 
   // Reset to page 1 on filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [branchFilter, typeFilter, statusFilter, dateFilter, searchQuery, pageSize]);
+  }, [branchFilter, typeFilter, statusFilter, employeeFilter, startDateFilter, endDateFilter, dateFilter, searchQuery, pageSize]);
 
   const totalPages = Math.max(1, Math.ceil(filteredShifts.length / pageSize));
   const paginatedShifts = useMemo(() => {
@@ -603,7 +662,7 @@ export default function ShiftsAndDrawerPage() {
             </div>
           </div>
 
-          {/* Quick Date Filters & Search Toolbar */}
+          {/* Quick Date Filters, Search Toolbar & Filter Modal Trigger */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pt-1">
             
             {/* Quick Date Range Buttons */}
@@ -613,8 +672,8 @@ export default function ShiftsAndDrawerPage() {
                 { id: 'all', label: 'الكل' },
                 { id: 'today', label: 'اليوم' },
                 { id: 'yesterday', label: 'أمس' },
-                { id: 'week', label: 'هذا الأسبوع' },
-                { id: 'month', label: 'هذا الشهر' },
+                { id: 'week', label: 'الأسبوع' },
+                { id: 'month', label: 'الشهر' },
               ].map(tab => (
                 <button
                   key={tab.id}
@@ -631,72 +690,100 @@ export default function ShiftsAndDrawerPage() {
               ))}
             </div>
 
-            {/* Search Box */}
-            <div className="relative flex-1 md:max-w-xs">
-              <input
-                type="text"
-                placeholder="بحث باسم المسؤول، الفرع، الملاحظات..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-8 pr-9 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-amber-500 focus:bg-white"
-              />
-              <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
-                search
-              </span>
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery('')}
-                  className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold cursor-pointer"
-                >
-                  ✕
-                </button>
+            {/* Search Box & Filter Button */}
+            <div className="flex items-center gap-2 w-full md:w-auto">
+              <div className="relative flex-1 md:w-64">
+                <input
+                  type="text"
+                  placeholder="بحث بالمسؤول، الفرع، الملاحظات..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-8 pr-9 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-amber-500 focus:bg-white"
+                />
+                <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
+                  search
+                </span>
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
+              {/* Filter Button */}
+              <button
+                type="button"
+                onClick={() => setShowFilterModal(true)}
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 ${
+                  activeFiltersCount > 0
+                    ? 'bg-amber-500 text-slate-950 font-black shadow-xs ring-2 ring-amber-300'
+                    : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200'
+                }`}
+              >
+                <span>⚙️</span>
+                <span>تصفية</span>
+                {activeFiltersCount > 0 && (
+                  <span className="bg-slate-950 text-white text-[10px] px-1.5 py-0.2 rounded-full font-black">
+                    {activeFiltersCount}
+                  </span>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Active Filter Tags Bar (Shows when filters are applied) */}
+          {activeFiltersCount > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5 pt-1 text-xs">
+              <span className="text-[11px] font-bold text-slate-500">الفلاتر المطبقة:</span>
+              
+              {branchFilter !== 'all' && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 text-amber-900 border border-amber-200 font-bold text-[11px]">
+                  <span>الفرع: {branchFilter}</span>
+                  <button type="button" onClick={() => setBranchFilter('all')} className="hover:text-amber-700 font-bold">✕</button>
+                </span>
               )}
-            </div>
-          </div>
 
-          {/* Filter Dropdowns (Branch, Shift Type, Status) */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
-            <div>
-              <label className="text-[11px] font-bold text-slate-500 block mb-1">تصفية حسب الفرع:</label>
-              <select
-                value={branchFilter}
-                onChange={(e) => setBranchFilter(e.target.value)}
-                className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
-              >
-                <option value="all">كل الفروع (5 فروع)</option>
-                {BRANCHES_LIST.map(b => (
-                  <option key={b.id} value={b.name}>{b.name}</option>
-                ))}
-              </select>
-            </div>
+              {typeFilter !== 'all' && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-900 border border-indigo-200 font-bold text-[11px]">
+                  <span>النوع: {typeFilter}</span>
+                  <button type="button" onClick={() => setTypeFilter('all')} className="hover:text-indigo-700 font-bold">✕</button>
+                </span>
+              )}
 
-            <div>
-              <label className="text-[11px] font-bold text-slate-500 block mb-1">نوع الوردية:</label>
-              <select
-                value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value)}
-                className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
-              >
-                <option value="all">كل الأنواع (صباحي ومسائي)</option>
-                <option value="صباحي">☀️ صباحي</option>
-                <option value="مسائي">🌙 مسائي</option>
-              </select>
-            </div>
+              {statusFilter !== 'all' && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-900 border border-emerald-200 font-bold text-[11px]">
+                  <span>الحالة: {statusFilter === 'OPEN' ? 'مفتوحة' : 'مغلقة'}</span>
+                  <button type="button" onClick={() => setStatusFilter('all')} className="hover:text-emerald-700 font-bold">✕</button>
+                </span>
+              )}
 
-            <div>
-              <label className="text-[11px] font-bold text-slate-500 block mb-1">حالة الوردية:</label>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
+              {employeeFilter !== 'all' && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-purple-50 text-purple-900 border border-purple-200 font-bold text-[11px]">
+                  <span>الموظف: {allEmployeesList.find(e => e.id === employeeFilter)?.name || employeeFilter}</span>
+                  <button type="button" onClick={() => setEmployeeFilter('all')} className="hover:text-purple-700 font-bold">✕</button>
+                </span>
+              )}
+
+              {(startDateFilter || endDateFilter) && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 text-blue-900 border border-blue-200 font-bold text-[11px]">
+                  <span>التاريخ: {startDateFilter || 'البداية'} ⬅️ {endDateFilter || 'الآن'}</span>
+                  <button type="button" onClick={() => { setStartDateFilter(''); setEndDateFilter(''); }} className="hover:text-blue-700 font-bold">✕</button>
+                </span>
+              )}
+
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                className="text-[11px] text-rose-600 hover:text-rose-800 font-bold underline mr-2 cursor-pointer"
               >
-                <option value="all">كل الحالات (مفتوحة ومغلقة)</option>
-                <option value="OPEN">🟢 قيد التشغيل (مفتوحة)</option>
-                <option value="CLOSED">🔒 مغلقة ومسلّمة</option>
-              </select>
+                مسح كل الفلاتر
+              </button>
             </div>
-          </div>
+          )}
 
           {/* Table */}
           <div className="overflow-x-auto pt-2">
@@ -1085,6 +1172,217 @@ export default function ShiftsAndDrawerPage() {
                   </div>
                 </div>
               )}
+
+            </div>
+          </div>
+        )}
+
+        {/* Filter Popup Modal */}
+        {showFilterModal && (
+          <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto">
+            <div className="bg-white max-w-lg w-full rounded-3xl p-6 space-y-5 shadow-2xl border border-slate-200 max-h-[92vh] overflow-y-auto">
+              
+              {/* Modal Header */}
+              <div className="flex justify-between items-center border-b pb-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">⚙️</span>
+                  <div>
+                    <h3 className="font-black text-slate-900 text-base">تصفية سجل الورديات والأدراج</h3>
+                    <p className="text-xs text-slate-500">اختر معايير التصفية والبحث المتقدم</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setShowFilterModal(false)} 
+                  className="text-slate-400 hover:text-slate-700 font-bold text-sm cursor-pointer p-1"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Filter Form Controls */}
+              <div className="space-y-4 text-xs">
+                
+                {/* 1. Branch Filter */}
+                <div>
+                  <label className="font-bold text-slate-800 block mb-1.5 flex items-center justify-between">
+                    <span>🏪 الفرع:</span>
+                    {branchFilter !== 'all' && (
+                      <span className="text-amber-800 font-bold text-[11px] bg-amber-50 px-2 py-0.5 rounded">محدد</span>
+                    )}
+                  </label>
+                  <select
+                    value={branchFilter}
+                    onChange={(e) => setBranchFilter(e.target.value)}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:bg-white"
+                  >
+                    <option value="all">🌐 كل الفروع (الـ 5 فروع)</option>
+                    {BRANCHES_LIST.map(b => (
+                      <option key={b.id} value={b.name}>{b.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* 2. Shift Type Filter */}
+                <div>
+                  <label className="font-bold text-slate-800 block mb-1.5">⏰ نوع الوردية:</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { id: 'all', label: 'الكل' },
+                      { id: 'صباحي', label: '☀️ صباحي' },
+                      { id: 'مسائي', label: '🌙 مسائي' },
+                    ].map(t => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => setTypeFilter(t.id)}
+                        className={`py-2 rounded-xl font-bold text-xs border transition-all cursor-pointer ${
+                          typeFilter === t.id
+                            ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+                            : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 3. Shift Status Filter */}
+                <div>
+                  <label className="font-bold text-slate-800 block mb-1.5">🔒 حالة الوردية:</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { id: 'all', label: 'كل الحالات' },
+                      { id: 'OPEN', label: '🟢 قيد التشغيل' },
+                      { id: 'CLOSED', label: '🔒 مغلقة ومسلّمة' },
+                    ].map(s => (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => setStatusFilter(s.id)}
+                        className={`py-2 rounded-xl font-bold text-xs border transition-all cursor-pointer ${
+                          statusFilter === s.id
+                            ? 'bg-emerald-700 text-white border-emerald-700 shadow-xs'
+                            : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 4. Employee Filter */}
+                <div>
+                  <label className="font-bold text-slate-800 block mb-1.5 flex items-center justify-between">
+                    <span>👤 الموظف / المسؤول عن الوردية:</span>
+                    {employeeFilter !== 'all' && (
+                      <span className="text-purple-800 font-bold text-[11px] bg-purple-50 px-2 py-0.5 rounded">محدد</span>
+                    )}
+                  </label>
+                  <select
+                    value={employeeFilter}
+                    onChange={(e) => setEmployeeFilter(e.target.value)}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:bg-white"
+                  >
+                    <option value="all">👥 كل الموظفين والمسؤولين</option>
+                    {allEmployeesList.map(emp => (
+                      <option key={emp.id} value={emp.id}>{emp.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* 5. Date Range Filter */}
+                <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 space-y-2.5">
+                  <span className="font-black text-slate-800 block text-xs">🗓️ تحديد الفترة والتاريخ:</span>
+                  
+                  {/* Quick Tabs inside modal */}
+                  <div className="grid grid-cols-5 gap-1">
+                    {[
+                      { id: 'all', label: 'الكل' },
+                      { id: 'today', label: 'اليوم' },
+                      { id: 'yesterday', label: 'أمس' },
+                      { id: 'week', label: 'الأسبوع' },
+                      { id: 'month', label: 'الشهر' },
+                    ].map(tab => (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        onClick={() => {
+                          setDateFilter(tab.id as any);
+                          setStartDateFilter('');
+                          setEndDateFilter('');
+                        }}
+                        className={`py-1.5 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${
+                          dateFilter === tab.id && !startDateFilter && !endDateFilter
+                            ? 'bg-amber-500 text-slate-950 border-amber-500 font-black'
+                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        {tab.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Custom Date Inputs */}
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-500 block mb-1">من تاريخ:</span>
+                      <input
+                        type="date"
+                        value={startDateFilter}
+                        onChange={(e) => {
+                          setStartDateFilter(e.target.value);
+                          setDateFilter('all');
+                        }}
+                        className="w-full p-2 bg-white border border-slate-300 rounded-xl font-mono text-xs font-bold"
+                      />
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-500 block mb-1">إلى تاريخ:</span>
+                      <input
+                        type="date"
+                        value={endDateFilter}
+                        onChange={(e) => {
+                          setEndDateFilter(e.target.value);
+                          setDateFilter('all');
+                        }}
+                        className="w-full p-2 bg-white border border-slate-300 rounded-xl font-mono text-xs font-bold"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-2 pt-3 border-t">
+                <button
+                  type="button"
+                  onClick={() => setShowFilterModal(false)}
+                  className="flex-1 py-3 bg-slate-950 hover:bg-slate-800 text-white font-black text-xs rounded-xl shadow-md transition-colors cursor-pointer text-center"
+                >
+                  تطبيق الفلاتر ({filteredShifts.length} وردية مطابقة) ✨
+                </button>
+
+                {activeFiltersCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleResetFilters}
+                    className="px-4 py-3 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl border border-rose-200 transition-colors cursor-pointer"
+                  >
+                    مسح الكل
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setShowFilterModal(false)}
+                  className="px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-colors cursor-pointer"
+                >
+                  إغلاق
+                </button>
+              </div>
 
             </div>
           </div>
