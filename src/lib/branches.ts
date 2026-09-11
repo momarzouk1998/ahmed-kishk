@@ -2,9 +2,10 @@ export interface BranchConfig {
   id: string;
   name: string;
   address: string;
-  type: 'ستائر وأقمشة تنجيد' | 'أقمشة فقط';
+  type: 'ستائر وأقمشة تنجيد' | 'أقمشة فقط' | 'أقمشة وشحن أونلاين';
   userCapacity: number;
   phone?: string;
+  landline?: string;
   isMain?: boolean;
 }
 
@@ -16,31 +17,47 @@ export const BRANCHES_LIST: BranchConfig[] = [
   {
     id: 'br_main',
     name: 'الفرع الرئيسي',
-    address: '73 شارع سعد زغلول والجامع العباسي',
+    address: '73 ش سعد زغلول والجامع العباسي',
     type: 'ستائر وأقمشة تنجيد',
     userCapacity: 2,
+    landline: '064/3931419',
+    phone: '01012161542',
     isMain: true,
   },
   {
     id: 'br_oraby',
     name: 'فرع عرابي',
-    address: '18 شارع عدلي',
+    address: 'الإسماعيلية: 18 ش عدلي أمام عمر أفندي',
     type: 'ستائر وأقمشة تنجيد',
     userCapacity: 2,
+    landline: '064/3915879',
+    phone: '01019999024',
   },
   {
     id: 'br_omareffendi',
     name: 'فرع عمر أفندي',
-    address: 'فرع عمر أفندي',
+    address: 'الإسماعيلية: 162 ش عدلي مبنى عمر أفندي',
     type: 'أقمشة فقط',
     userCapacity: 2,
+    landline: '064/3926630',
+    phone: '01070186618',
   },
   {
     id: 'br_thalatheny',
     name: 'فرع الثلاثيني',
-    address: 'شارع الثلاثيني',
+    address: 'الإسماعيلية: 27 ش سعد زغلول',
     type: 'أقمشة فقط',
     userCapacity: 1,
+    landline: '064/3927021',
+    phone: '01091444432',
+  },
+  {
+    id: 'br_commercial',
+    name: 'الفرع التجاري',
+    address: 'الإسماعيلية: ش التجاري بجوار استوديو عادل',
+    type: 'أقمشة وشحن أونلاين',
+    userCapacity: 2,
+    phone: '01280042900',
   },
 ];
 
@@ -50,7 +67,7 @@ export function branchLabel(value: string): string {
   return value;
 }
 
-// Normalizes any branch name variant to standard 4 canonical branch values
+// Normalizes any branch name variant to standard 5 canonical branch values
 export function normalizeBranchName(raw?: string | null): string {
   if (!raw) return 'الفرع الرئيسي';
   const s = String(raw).trim();
@@ -58,18 +75,23 @@ export function normalizeBranchName(raw?: string | null): string {
   if (s.includes('رئيسي') || s.includes('سعد زغلول') || s.includes('القاهرة')) return 'الفرع الرئيسي';
   if (s.includes('عرابي') || s.includes('عدلي')) return 'فرع عرابي';
   if (s.includes('عمر أفندي') || s.includes('عمر افندي') || s.includes('عمر')) return 'فرع عمر أفندي';
-  if (s.includes('الثلاثيني')) return 'فرع الثلاثيني';
+  if (s.includes('الثلاثيني') || s.includes('ثلاثيني')) return 'فرع الثلاثيني';
+  if (s.includes('تجاري') || s.includes('تجارى') || s.includes('أونلاين') || s.includes('اونلاين')) return 'الفرع التجاري';
   return s;
 }
 
-// Renders <option> elements for a branch <select> using the canonical 4-branch list.
-// Callers should map: BRANCHES_LIST.map(b => <option value={b.name}>{b.isMain ? MAIN_BRANCH_LABEL : b.name}</option>)
+export function getBranchConfig(branchName?: string | null): BranchConfig {
+  const norm = normalizeBranchName(branchName);
+  const found = BRANCHES_LIST.find(b => b.name === norm);
+  return found || BRANCHES_LIST[0];
+}
 
 export const BRANCH_TREASURIES: { branch: string; treasury: string }[] = [
   { branch: 'الفرع الرئيسي', treasury: 'خزينة الفرع الرئيسي (سعد زغلول)' },
   { branch: 'فرع عرابي', treasury: 'خزينة فرع عرابي' },
   { branch: 'فرع عمر أفندي', treasury: 'خزينة فرع عمر أفندي' },
   { branch: 'فرع الثلاثيني', treasury: 'خزينة فرع الثلاثيني' },
+  { branch: 'الفرع التجاري', treasury: 'خزينة الفرع التجاري' },
 ];
 
 export function getBranchTreasury(branchName?: string | null): string {
@@ -77,4 +99,5 @@ export function getBranchTreasury(branchName?: string | null): string {
   const found = BRANCH_TREASURIES.find(bt => bt.branch === norm);
   return found ? found.treasury : 'خزينة الفرع الرئيسي (سعد زغلول)';
 }
+
 

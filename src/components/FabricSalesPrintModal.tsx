@@ -4,6 +4,7 @@ import React from 'react';
 import { formatDateOnly } from '@/lib/dateUtils';
 import Logo from '@/components/Logo';
 import { getBrandSettings } from '@/lib/brandSettings';
+import { getBranchConfig } from '@/lib/branches';
 
 export interface SalesInvoiceItem {
   code: string;
@@ -49,82 +50,115 @@ interface FabricSalesPrintModalProps {
 export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricSalesPrintModalProps) {
   if (!isOpen || !data) return null;
   const brand = getBrandSettings();
+  const branchCfg = getBranchConfig(data.branch);
 
-  // 80mm طباعة على طابعة كاشير ثرمال — الافتراضى الآن
+  // Helper to extract ONLY active payment methods
+  const getActivePaymentLines = () => {
+    const lines: { label: string; amount: number; icon: string }[] = [];
+    if (data.splitPayments && (data.paymentMethod === 'دفع متعدد / مزيج' || data.paymentMethod?.includes('متعدد'))) {
+      if (Number(data.splitPayments.cash) > 0) lines.push({ label: 'كاش', amount: Number(data.splitPayments.cash), icon: '💵' });
+      if (Number(data.splitPayments.instapay) > 0) lines.push({ label: 'إنستاباي', amount: Number(data.splitPayments.instapay), icon: '⚡' });
+      if (Number(data.splitPayments.vodafone) > 0) lines.push({ label: 'فودافون كاش', amount: Number(data.splitPayments.vodafone), icon: '📱' });
+      if (Number(data.splitPayments.visa) > 0) lines.push({ label: 'فيزا', amount: Number(data.splitPayments.visa), icon: '💳' });
+    } else {
+      const meth = data.paymentMethod || 'نقدي';
+      if (data.paidAmount > 0) {
+        let icon = '💵';
+        if (meth.includes('إنستا')) icon = '⚡';
+        else if (meth.includes('فودافون')) icon = '📱';
+        else if (meth.includes('فيزا')) icon = '💳';
+        lines.push({ label: meth, amount: data.paidAmount, icon });
+      }
+    }
+    return lines;
+  };
+
+  // 80mm طباعة على طابعة كاشير ثرمال
   const handlePrintCashier = () => {
-    const brand = getBrandSettings();
     const w = window.open('', '_blank');
     if (!w) { window.print(); return; }
 
+    const now = new Date();
+    const formattedDateTime = data.date
+      ? (data.date.includes('T') || data.date.includes(':')
+          ? new Date(data.date).toLocaleDateString('ar-EG') + ' - ' + new Date(data.date).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })
+          : formatDateOnly(data.date) + ' - ' + now.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }))
+      : now.toLocaleDateString('ar-EG') + ' - ' + now.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+
     const rows = (data.items || []).map((it, i) => `
-      <tr>
-        <td style="width:6mm; text-align:center; font-size:8pt;">${i + 1}</td>
-        <td style="font-size:9pt;">
-          <div style="font-weight:900;">${it.name}</div>
-          <div style="font-size:7.5pt; color:#555;">${it.code} • ${it.meters}م × ${it.pricePerMeter}</div>
+      <tr style="border-bottom: 1px dotted #ccc;">
+        <td style="width:5mm; text-align:center; font-size:8pt; padding:1.5mm 0;">${i + 1}</td>
+        <td style="font-size:8.5pt; padding:1.5mm 1mm;">
+          <div style="font-weight:900; line-height:1.2;">${it.name}</div>
+          <div style="font-size:7.5pt; color:#444; margin-top:0.5mm;">${it.code ? `كود: ${it.code} • ` : ''}${it.meters}م × ${it.pricePerMeter} ج</div>
         </td>
-        <td style="text-align:left; font-family:monospace; font-weight:900; font-size:9pt;">${it.totalPrice.toLocaleString()}</td>
+        <td style="text-align:left; font-family:monospace; font-weight:900; font-size:9pt; padding:1.5mm 0; white-space:nowrap;">${it.totalPrice.toLocaleString()} ج</td>
       </tr>
     `).join('');
 
-    const paymentLine = data.splitPayments && data.paymentMethod === 'دفع متعدد / مزيج'
-      ? [
-          Number(data.splitPayments.cash) > 0 ? `${Number(data.splitPayments.cash).toLocaleString()} كاش` : '',
-          Number(data.splitPayments.instapay) > 0 ? `${Number(data.splitPayments.instapay).toLocaleString()} إنستاباي` : '',
-          Number(data.splitPayments.vodafone) > 0 ? `${Number(data.splitPayments.vodafone).toLocaleString()} فودافون` : '',
-          Number(data.splitPayments.visa) > 0 ? `${Number(data.splitPayments.visa).toLocaleString()} فيزا` : '',
-        ].filter(Boolean).join(' + ')
-      : (data.paymentMethod || 'نقدي');
+    const activePayments = getActivePaymentLines();
+    const paymentRowsHtml = activePayments.map(p => `
+      <tr>
+        <td class="lbl" style="font-size:8pt; padding-right:2mm;">${p.icon} مسدد ${p.label}:</td>
+        <td class="v" style="font-size:8.5pt;">${p.amount.toLocaleString()} ج</td>
+      </tr>
+    `).join('');
+
+    const branchPhones = [branchCfg.landline ? `ت: ${branchCfg.landline}` : '', branchCfg.phone ? `م: ${branchCfg.phone}` : ''].filter(Boolean).join(' | ');
 
     w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head>
       <meta charset="UTF-8"><title>فاتورة ${data.invoiceNumber}</title>
       <style>
-        @page { size: 80mm auto; margin: 3mm; }
+        @page { size: 80mm auto; margin: 3mm 4mm; }
         * { box-sizing:border-box; margin:0; padding:0; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
-        body { font-family: 'Cairo', system-ui, sans-serif; direction:rtl; color:#000; font-size:9pt; width:74mm; }
+        body { font-family: 'Cairo', system-ui, -apple-system, sans-serif; direction:rtl; color:#000; font-size:8.5pt; width:72mm; margin:0 auto; }
         .center { text-align:center; }
-        .brand { font-weight:900; font-size:11pt; margin-top:2mm; }
-        .sub { font-size:8pt; color:#333; }
+        .brand { font-weight:900; font-size:11pt; letter-spacing:-0.2px; }
+        .branch-title { font-weight:800; font-size:9.5pt; margin-top:1mm; }
+        .sub { font-size:7.5pt; color:#222; margin-top:0.5mm; line-height:1.2; }
         .divider { border-top:1px dashed #000; margin:2mm 0; }
         table { width:100%; border-collapse:collapse; }
-        th, td { padding:1mm 0; vertical-align:top; }
-        thead th { border-bottom:1px solid #000; font-size:8pt; text-align:right; }
-        tfoot td { border-top:1px solid #000; padding-top:1.5mm; font-size:9pt; }
-        .totals td { padding: 0.5mm 0; }
-        .totals .lbl { color:#333; font-size:8.5pt; }
-        .totals .v { text-align:left; font-family:monospace; font-weight:900; }
-        .total-row td { font-size:11pt; font-weight:900; border-top:1px solid #000; padding-top:1.5mm; }
-        .foot { text-align:center; font-size:7.5pt; color:#333; margin-top:3mm; }
+        th, td { vertical-align:middle; }
+        thead th { border-bottom:1px solid #000; font-size:8pt; padding-bottom:1mm; text-align:right; font-weight:900; }
+        .totals td { padding: 0.8mm 0; font-size:8.5pt; }
+        .totals .lbl { color:#222; }
+        .totals .v { text-align:left; font-family:monospace; font-weight:900; white-space:nowrap; }
+        .total-row td { font-size:10.5pt; font-weight:900; border-top:1px solid #000; border-bottom:1px solid #000; padding:1.5mm 0; }
+        .foot { text-align:center; font-size:7.5pt; color:#222; margin-top:3mm; line-height:1.4; }
       </style></head><body>
         <div class="center">
-          <div class="brand">${brand.storeName}</div>
-          <div class="sub">${data.branch || 'الفرع الرئيسي (سعد زغلول)'}</div>
-          <div class="sub">${brand.address}</div>
+          <div class="brand">${brand.storeName || 'مؤسسة كشك للأقمشة والستائر'}</div>
+          <div class="branch-title">👑 ${branchCfg.name}</div>
+          <div class="sub">${branchCfg.address}</div>
+          ${branchPhones ? `<div class="sub" style="font-family:monospace; font-weight:bold;">${branchPhones}</div>` : ''}
         </div>
         <div class="divider"></div>
-        <div style="display:flex; justify-content:space-between; font-size:8.5pt;">
-          <span>فاتورة: <b>${data.invoiceNumber}</b></span>
-          <span>${data.date ? formatDateOnly(data.date) : new Date().toISOString().split('T')[0]}</span>
+        <div style="display:flex; justify-content:space-between; font-size:8pt; font-weight:bold;">
+          <span>رقم: <b style="font-family:monospace;">${data.invoiceNumber}</b></span>
+          <span style="font-size:7.5pt;">${formattedDateTime}</span>
         </div>
-        <div style="font-size:8.5pt; margin-top:1mm;">
-          العميل: <b>${data.customerName}</b>${(data.phone || data.customerPhone) ? ` — <span style="font-family:monospace; direction:ltr;">${data.phone || data.customerPhone}</span>` : ''}
+        <div style="font-size:8.5pt; margin-top:1mm; display:flex; justify-content:space-between;">
+          <span>العميل: <b>${data.customerName || 'عميل نقدي'}</b></span>
+          ${(data.phone || data.customerPhone) ? `<span style="font-family:monospace; direction:ltr; font-weight:bold; font-size:8pt;">${data.phone || data.customerPhone}</span>` : ''}
         </div>
         <div class="divider"></div>
         <table>
-          <thead><tr><th>#</th><th>الصنف</th><th style="text-align:left;">الإجمالى</th></tr></thead>
+          <thead><tr><th style="width:5mm; text-align:center;">#</th><th>الصنف والبيان</th><th style="text-align:left;">الإجمالي</th></tr></thead>
           <tbody>${rows}</tbody>
         </table>
         <div class="divider"></div>
         <table class="totals">
-          <tr><td class="lbl">إجمالى قبل الخصم:</td><td class="v">${(data.subtotal || 0).toLocaleString()} ج</td></tr>
-          ${data.discountAmount ? `<tr><td class="lbl">الخصم:</td><td class="v">-${data.discountAmount.toLocaleString()} ج</td></tr>` : ''}
-          <tr class="total-row"><td>الصافى:</td><td class="v">${data.totalAmount.toLocaleString()} ج</td></tr>
-          <tr><td class="lbl">المدفوع (${paymentLine}):</td><td class="v">${data.paidAmount.toLocaleString()} ج</td></tr>
-          ${data.remainingAmount > 0 ? `<tr><td class="lbl">المتبقى:</td><td class="v">${data.remainingAmount.toLocaleString()} ج</td></tr>` : ''}
+          <tr><td class="lbl">إجمالي قبل الخصم:</td><td class="v">${(data.subtotal || 0).toLocaleString()} ج</td></tr>
+          ${data.discountAmount > 0 ? `<tr><td class="lbl">قيمة الخصم:</td><td class="v">-${data.discountAmount.toLocaleString()} ج</td></tr>` : ''}
+          <tr class="total-row"><td>الصافي المستحق:</td><td class="v">${data.totalAmount.toLocaleString()} ج</td></tr>
+          ${paymentRowsHtml}
+          <tr><td class="lbl" style="font-weight:900;">إجمالي المدفوع:</td><td class="v" style="font-weight:900;">${data.paidAmount.toLocaleString()} ج</td></tr>
+          ${data.remainingAmount > 0 ? `<tr><td class="lbl" style="font-weight:900; color:#000;">المتبقي آجل:</td><td class="v" style="font-weight:900;">${data.remainingAmount.toLocaleString()} ج</td></tr>` : ''}
         </table>
+        <div class="divider"></div>
         <div class="foot">
-          ${brand.footerNote}<br>هاتف: ${brand.phone}<br>
-          ${data.status}
+          <div style="font-weight:bold; font-size:8pt;">شكراً لتعاملكم مع مؤسسة كشك للأقمشة والستائر ✨</div>
+          <div>البضاعة المباعة لا ترد ولا تستبدل بعد القص</div>
         </div>
       </body></html>`);
     w.document.close();
@@ -132,7 +166,6 @@ export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricS
   };
 
   const handlePrint = () => {
-    const brand = getBrandSettings();
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
       window.print();
@@ -155,6 +188,9 @@ export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricS
       `;
     });
 
+    const activePayments = getActivePaymentLines();
+    const branchPhones = [branchCfg.landline ? `ت: ${branchCfg.landline}` : '', branchCfg.phone ? `م: ${branchCfg.phone}` : ''].filter(Boolean).join(' | ');
+
     printWindow.document.write(`
       <!DOCTYPE html>
       <html dir="rtl" lang="ar">
@@ -164,208 +200,41 @@ export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricS
         <title>فاتورة مبيعات - ${data.invoiceNumber}</title>
         <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
         <style>
-          @page {
-            size: A4 portrait;
-            margin: 8mm 10mm;
-          }
-          * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-          body {
-            font-family: 'Cairo', system-ui, -apple-system, sans-serif;
-            background: #ffffff;
-            color: #0f172a;
-            direction: rtl;
-            font-size: 9.5pt;
-            line-height: 1.3;
-            padding: 5px;
-          }
-          .sheet-container {
-            width: 100%;
-            max-width: 100%;
-            margin: 0 auto;
-            border: 2px solid #0f172a;
-            border-radius: 8px;
-            padding: 12px 14px;
-            background: #ffffff;
-          }
-          .header-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 2px solid #0f172a;
-            padding-bottom: 8px;
-            margin-bottom: 10px;
-          }
-          .logo-title-group {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-          }
-          .brand-logo-container {
-            width: 44px;
-            height: 44px;
-            min-width: 44px;
-            max-width: 44px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 1px solid #cbd5e1;
-            border-radius: 8px;
-            padding: 2px;
-            background: #ffffff;
-          }
-          .brand-logo-container img {
-            width: 100%;
-            height: 100%;
-            max-width: 40px;
-            max-height: 40px;
-            object-fit: contain;
-            display: block;
-          }
-          .company-name {
-            font-size: 14pt;
-            font-weight: 900;
-            color: #0f172a;
-            line-height: 1.1;
-          }
-          .doc-subtitle {
-            font-size: 9pt;
-            font-weight: 700;
-            color: #b45309;
-            margin-top: 2px;
-          }
-          .header-meta {
-            text-align: left;
-            font-family: monospace;
-          }
-          .meta-badge {
-            background: #f1f5f9;
-            border: 1px solid #94a3b8;
-            padding: 3px 8px;
-            border-radius: 5px;
-            font-weight: 800;
-            font-size: 9.5pt;
-            color: #0f172a;
-            display: inline-block;
-          }
-          .meta-date {
-            font-size: 8pt;
-            color: #64748b;
-            margin-top: 2px;
-          }
-          .info-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 10px;
-            background: #f8fafc;
-            border: 1px solid #cbd5e1;
-            border-radius: 6px;
-            overflow: hidden;
-          }
-          .info-table td {
-            padding: 5px 8px;
-            border: 1px solid #cbd5e1;
-            font-size: 9pt;
-          }
-          .info-label {
-            font-weight: 700;
-            color: #475569;
-            width: 14%;
-            background: #f1f5f9;
-          }
-          .info-val {
-            font-weight: 800;
-            color: #0f172a;
-            width: 36%;
-          }
-          .section-title {
-            font-size: 10pt;
-            font-weight: 900;
-            color: #0f172a;
-            margin-bottom: 5px;
-          }
-          .items-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 10px;
-          }
-          .items-table th, .items-table td {
-            border: 1px solid #334155;
-            padding: 5px 6px;
-            font-size: 8.5pt;
-            vertical-align: middle;
-          }
-          .items-table th {
-            background-color: #0f172a !important;
-            color: #ffffff !important;
-            font-weight: 800;
-            font-size: 8.5pt;
-            text-align: center;
-          }
-          .items-table tr:nth-child(even) {
-            background-color: #f8fafc;
-          }
-          .financial-card {
-            background: #f8fafc;
-            border: 1.5px solid #cbd5e1;
-            border-radius: 6px;
-            padding: 8px 10px;
-            margin-bottom: 8px;
-          }
-          .fin-grid {
-            display: flex;
-            justify-content: space-between;
-            gap: 8px;
-            margin-top: 5px;
-          }
-          .fin-box {
-            flex: 1;
-            padding: 6px 8px;
-            border-radius: 6px;
-            border: 1px solid #cbd5e1;
-            text-align: center;
-            background: #ffffff;
-          }
-          .fin-label {
-            font-size: 8pt;
-            font-weight: 700;
-            color: #64748b;
-            display: block;
-            margin-bottom: 2px;
-          }
-          .fin-val {
-            font-size: 12pt;
-            font-weight: 900;
-            font-family: monospace;
-            color: #0f172a;
-          }
-          .footer-bar {
-            border-top: 1px solid #cbd5e1;
-            padding-top: 5px;
-            display: flex;
-            justify-content: space-between;
-            font-size: 7.5pt;
-            color: #64748b;
-            font-family: monospace;
-          }
+          @page { size: A4 portrait; margin: 8mm 10mm; }
+          * { box-sizing: border-box; margin: 0; padding: 0; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          body { font-family: 'Cairo', system-ui, -apple-system, sans-serif; background: #ffffff; color: #0f172a; direction: rtl; font-size: 9.5pt; line-height: 1.3; padding: 5px; }
+          .sheet-container { width: 100%; max-width: 100%; margin: 0 auto; border: 2px solid #0f172a; border-radius: 8px; padding: 12px 14px; background: #ffffff; }
+          .header-row { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0f172a; padding-bottom: 8px; margin-bottom: 10px; }
+          .logo-title-group { display: flex; align-items: center; gap: 10px; }
+          .company-name { font-size: 14pt; font-weight: 900; color: #0f172a; line-height: 1.1; }
+          .doc-subtitle { font-size: 9pt; font-weight: 700; color: #b45309; margin-top: 2px; }
+          .header-meta { text-align: left; font-family: monospace; }
+          .meta-badge { background: #f1f5f9; border: 1px solid #94a3b8; padding: 3px 8px; border-radius: 5px; font-weight: 800; font-size: 9.5pt; color: #0f172a; display: inline-block; }
+          .meta-date { font-size: 8pt; color: #64748b; margin-top: 2px; }
+          .info-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; overflow: hidden; }
+          .info-table td { padding: 5px 8px; border: 1px solid #cbd5e1; font-size: 9pt; }
+          .info-label { font-weight: 700; color: #475569; width: 14%; background: #f1f5f9; }
+          .info-val { font-weight: 800; color: #0f172a; width: 36%; }
+          .section-title { font-size: 10pt; font-weight: 900; color: #0f172a; margin-bottom: 5px; }
+          .items-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+          .items-table th, .items-table td { border: 1px solid #334155; padding: 5px 6px; font-size: 8.5pt; vertical-align: middle; }
+          .items-table th { background-color: #0f172a !important; color: #ffffff !important; font-weight: 800; font-size: 8.5pt; text-align: center; }
+          .items-table tr:nth-child(even) { background-color: #f8fafc; }
+          .financial-card { background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 6px; padding: 8px 10px; margin-bottom: 8px; }
+          .fin-grid { display: flex; justify-content: space-between; gap: 8px; margin-top: 5px; }
+          .fin-box { flex: 1; padding: 6px 8px; border-radius: 6px; border: 1px solid #cbd5e1; text-align: center; background: #ffffff; }
+          .fin-label { font-size: 8pt; font-weight: 700; color: #64748b; display: block; margin-bottom: 2px; }
+          .fin-val { font-size: 12pt; font-weight: 900; font-family: monospace; color: #0f172a; }
+          .footer-bar { border-top: 1px solid #cbd5e1; padding-top: 5px; display: flex; justify-content: space-between; font-size: 8pt; color: #475569; font-weight: bold; }
         </style>
       </head>
       <body>
         <div class="sheet-container">
-          <!-- Header -->
           <div class="header-row">
             <div class="logo-title-group">
-              <div class="brand-logo-container">
-                <img src="/logo.png" alt="أحمد كشك" style="width:40px; height:40px; max-width:40px; max-height:40px; object-fit:contain; display:block;" onerror="this.onerror=null; this.parentNode.innerHTML='<svg viewBox=\\'0 0 100 100\\' width=\\'40\\' height=\\'40\\' fill=\\'none\\' xmlns=\\'http://www.w3.org/2000/svg\\'><circle cx=\\'50\\' cy=\\'50\\' r=\\'46\\' stroke=\\'#0f172a\\' stroke-width=\\'6\\'/><path d=\\'M25 72 L45 28 L53 28 L73 72 M33 56 L65 56\\' stroke=\\'#0f172a\\' stroke-width=\\'7\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'/><path d=\\'M48 22 L48 78 M48 50 L68 28 M48 50 L72 72\\' stroke=\\'#0f172a\\' stroke-width=\\'7\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'/></svg>';" />
-              </div>
               <div>
                 <div class="company-name">${brand.storeName}</div>
-                <div class="doc-subtitle">فاتورة مبيعات أقمشة سريعة</div>
+                <div class="doc-subtitle">فاتورة مبيعات أقمشة • ${branchCfg.name}</div>
               </div>
             </div>
             <div class="header-meta">
@@ -374,7 +243,6 @@ export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricS
             </div>
           </div>
 
-          <!-- Customer Info Table -->
           <table class="info-table">
             <tr>
               <td class="info-label">اسم العميل:</td>
@@ -384,20 +252,14 @@ export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricS
             </tr>
             <tr>
               <td class="info-label">الفرع:</td>
-              <td class="info-val">${data.branch || 'الفرع الرئيسي'}</td>
+              <td class="info-val">${branchCfg.name} (${branchCfg.address})</td>
               <td class="info-label">طريقة السداد:</td>
               <td class="info-val">
-                ${data.splitPayments && data.paymentMethod === 'دفع متعدد / مزيج' ? `متعدد (${[
-                  Number(data.splitPayments.cash) > 0 ? `${Number(data.splitPayments.cash).toLocaleString()}ج كاش` : '',
-                  Number(data.splitPayments.instapay) > 0 ? `${Number(data.splitPayments.instapay).toLocaleString()}ج إنستاباي` : '',
-                  Number(data.splitPayments.vodafone) > 0 ? `${Number(data.splitPayments.vodafone).toLocaleString()}ج فودافون` : '',
-                  Number(data.splitPayments.visa) > 0 ? `${Number(data.splitPayments.visa).toLocaleString()}ج فيزا` : ''
-                ].filter(Boolean).join(' + ')})` : (data.paymentMethod || 'نقدي')}
+                ${activePayments.length > 0 ? activePayments.map(p => `${p.icon} ${p.label}: ${p.amount.toLocaleString()} ج`).join(' | ') : (data.paymentMethod || 'نقدي')}
               </td>
             </tr>
           </table>
 
-          <!-- Items Table -->
           <div class="section-title">
             الأصناف والأقمشة المشتراة (${data.items?.length || 0} أصناف):
           </div>
@@ -412,12 +274,9 @@ export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricS
                 <th style="width: 18%;">الإجمالي</th>
               </tr>
             </thead>
-            <tbody>
-              ${itemsHtml}
-            </tbody>
+            <tbody>${itemsHtml}</tbody>
           </table>
 
-          <!-- Financial Breakdown Card -->
           <div class="financial-card">
             <div style="display:flex; justify-content:space-between; align-items:center;">
               <span style="font-size:9pt; font-weight:800; color:#0f172a;">الملخص المالي للفاتورة:</span>
@@ -439,23 +298,12 @@ export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricS
                 <span class="fin-val" style="color:#881337;">${data.remainingAmount.toLocaleString()} <span style="font-size:8pt;">ج.م</span></span>
               </div>
             </div>
-            ${data.splitPayments && data.paymentMethod === 'دفع متعدد / مزيج' ? `
-            <div style="border-top:1px solid #e2e8f0; margin-top:6px; padding-top:5px;">
-              <div style="font-size:8pt; font-weight:700; color:#475569; margin-bottom:4px;">تفاصيل الدفع المتعدد:</div>
-              <div style="display:flex; flex-wrap:wrap; gap:6px;">
-                ${Number(data.splitPayments.cash) > 0 ? `<span style="background:#f0fdf4; border:1px solid #86efac; border-radius:4px; padding:2px 8px; font-size:8pt; font-weight:700; color:#166534;">💵 كاش: ${Number(data.splitPayments.cash).toLocaleString()} ج</span>` : ''}
-                ${Number(data.splitPayments.instapay) > 0 ? `<span style="background:#eff6ff; border:1px solid #93c5fd; border-radius:4px; padding:2px 8px; font-size:8pt; font-weight:700; color:#1d4ed8;">⚡ إنستاباي: ${Number(data.splitPayments.instapay).toLocaleString()} ج</span>` : ''}
-                ${Number(data.splitPayments.vodafone) > 0 ? `<span style="background:#fff1f2; border:1px solid #fca5a5; border-radius:4px; padding:2px 8px; font-size:8pt; font-weight:700; color:#b91c1c;">📱 فودافون: ${Number(data.splitPayments.vodafone).toLocaleString()} ج</span>` : ''}
-                ${Number(data.splitPayments.visa) > 0 ? `<span style="background:#faf5ff; border:1px solid #d8b4fe; border-radius:4px; padding:2px 8px; font-size:8pt; font-weight:700; color:#7e22ce;">💳 فيزا: ${Number(data.splitPayments.visa).toLocaleString()} ج</span>` : ''}
-              </div>
-            </div>` : ''}
           </div>
 
-          <!-- Footer -->
           <div class="footer-bar">
-            <span>${brand.storeName}</span>
-            <span>هاتف الإدارة: ${brand.phone}</span>
-            <span>${brand.footerNote}</span>
+            <span>${brand.storeName} • ${branchCfg.name}</span>
+            <span>${branchPhones}</span>
+            <span>البضاعة المباعة لا ترد ولا تستبدل بعد القص</span>
           </div>
         </div>
       </body>
@@ -468,6 +316,9 @@ export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricS
       printWindow.close();
     }, 400);
   };
+
+  const activePayments = getActivePaymentLines();
+  const branchPhones = [branchCfg.landline ? `ت: ${branchCfg.landline}` : '', branchCfg.phone ? `م: ${branchCfg.phone}` : ''].filter(Boolean).join(' | ');
 
   return (
     <div className="modal-overlay fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs">
@@ -515,7 +366,8 @@ export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricS
               </div>
               <div>
                 <h1 className="font-black text-lg text-slate-950 leading-tight">{brand.storeName}</h1>
-                <p className="text-xs font-bold text-amber-700">فاتورة مبيعات أقمشة سريعة</p>
+                <p className="text-xs font-bold text-amber-700">فاتورة مبيعات أقمشة • 👑 {branchCfg.name}</p>
+                <p className="text-[11px] text-slate-500">{branchCfg.address} {branchPhones ? `(${branchPhones})` : ''}</p>
               </div>
             </div>
             <div className="text-left font-mono text-xs">
@@ -540,18 +392,16 @@ export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricS
                 </tr>
                 <tr className="border-t border-slate-200">
                   <td className="p-2 font-bold text-slate-500 bg-slate-100/70">الفرع:</td>
-                  <td className="p-2 font-bold text-slate-900">{data.branch || 'الفرع الرئيسي'}</td>
-                  <td className="p-2 font-bold text-slate-500 bg-slate-100/70">طريقة السداد:</td>
+                  <td className="p-2 font-bold text-slate-900">{branchCfg.name}</td>
+                  <td className="p-2 font-bold text-slate-500 bg-slate-100/70">وسائل الدفع المستخدمة:</td>
                   <td className="p-2 font-bold text-slate-900">
-                    {data.splitPayments && data.paymentMethod === 'دفع متعدد / مزيج' ? (
-                      <div className="space-y-0.5">
-                        <div className="text-[10px] font-black text-blue-700">دفع متعدد / مزيج</div>
-                        <div className="flex flex-wrap gap-1">
-                          {Number(data.splitPayments.cash) > 0 ? <span className="bg-green-100 text-green-800 px-1.5 py-0.5 rounded text-[10px] font-bold">💵 {Number(data.splitPayments.cash).toLocaleString()} ج كاش</span> : null}
-                          {Number(data.splitPayments.instapay) > 0 ? <span className="bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded text-[10px] font-bold">⚡ {Number(data.splitPayments.instapay).toLocaleString()} ج إنستاباي</span> : null}
-                          {Number(data.splitPayments.vodafone) > 0 ? <span className="bg-red-100 text-red-800 px-1.5 py-0.5 rounded text-[10px] font-bold">📱 {Number(data.splitPayments.vodafone).toLocaleString()} ج فودافون</span> : null}
-                          {Number(data.splitPayments.visa) > 0 ? <span className="bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded text-[10px] font-bold">💳 {Number(data.splitPayments.visa).toLocaleString()} ج فيزا</span> : null}
-                        </div>
+                    {activePayments.length > 0 ? (
+                      <div className="flex flex-wrap gap-1.5">
+                        {activePayments.map((p, i) => (
+                          <span key={i} className="bg-slate-100 border border-slate-300 text-slate-800 px-2 py-0.5 rounded text-[11px] font-bold">
+                            {p.icon} {p.label}: <span className="font-mono text-emerald-800">{p.amount.toLocaleString()} ج</span>
+                          </span>
+                        ))}
                       </div>
                     ) : (data.paymentMethod || 'نقدي')}
                   </td>
@@ -614,49 +464,13 @@ export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricS
                 <span className="font-mono font-black text-base text-rose-950 block">{data.remainingAmount.toLocaleString()} ج.م</span>
               </div>
             </div>
-            {/* Split Payment Breakdown */}
-            {data.splitPayments && data.paymentMethod === 'دفع متعدد / مزيج' && (
-              <div className="border-t border-slate-200 pt-2 mt-1">
-                <div className="text-[10px] font-black text-slate-600 mb-1.5">تفاصيل الدفع المتعدد:</div>
-                <div className="flex flex-wrap gap-1.5">
-                  {Number(data.splitPayments.cash) > 0 ? (
-                    <div className="flex items-center gap-1 bg-green-50 border border-green-200 px-2 py-1 rounded-lg">
-                      <span className="text-[10px]">💵</span>
-                      <span className="text-[10px] font-bold text-green-800">كاش:</span>
-                      <span className="text-[10px] font-black text-green-950 font-mono">{Number(data.splitPayments.cash).toLocaleString()} ج</span>
-                    </div>
-                  ) : null}
-                  {Number(data.splitPayments.instapay) > 0 ? (
-                    <div className="flex items-center gap-1 bg-blue-50 border border-blue-200 px-2 py-1 rounded-lg">
-                      <span className="text-[10px]">⚡</span>
-                      <span className="text-[10px] font-bold text-blue-800">إنستاباي:</span>
-                      <span className="text-[10px] font-black text-blue-950 font-mono">{Number(data.splitPayments.instapay).toLocaleString()} ج</span>
-                    </div>
-                  ) : null}
-                  {Number(data.splitPayments.vodafone) > 0 ? (
-                    <div className="flex items-center gap-1 bg-red-50 border border-red-200 px-2 py-1 rounded-lg">
-                      <span className="text-[10px]">📱</span>
-                      <span className="text-[10px] font-bold text-red-800">فودافون:</span>
-                      <span className="text-[10px] font-black text-red-950 font-mono">{Number(data.splitPayments.vodafone).toLocaleString()} ج</span>
-                    </div>
-                  ) : null}
-                  {Number(data.splitPayments.visa) > 0 ? (
-                    <div className="flex items-center gap-1 bg-purple-50 border border-purple-200 px-2 py-1 rounded-lg">
-                      <span className="text-[10px]">💳</span>
-                      <span className="text-[10px] font-bold text-purple-800">فيزا:</span>
-                      <span className="text-[10px] font-black text-purple-950 font-mono">{Number(data.splitPayments.visa).toLocaleString()} ج</span>
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Footer */}
-          <div className="pt-2 border-t border-slate-200 flex justify-between text-[10px] text-slate-400 font-mono">
-            <span>{brand.storeName}</span>
-            <span>هاتف: {brand.phone}</span>
-            <span>نظام كشك لإدارة خطوط الإنتاج</span>
+          <div className="pt-2 border-t border-slate-200 flex justify-between text-[11px] text-slate-500 font-bold">
+            <span>{brand.storeName} • {branchCfg.name}</span>
+            <span>{branchPhones}</span>
+            <span>البضاعة المباعة لا ترد ولا تستبدل بعد القص</span>
           </div>
         </div>
       </div>

@@ -7,7 +7,7 @@ import { canUserEditPrices } from '@/lib/permissions';
 import { useManagerGate, isManagerUnlocked, clearManagerUnlock } from '@/components/ManagerUnlockGate';
 import { useCurrentUser } from '@/lib/useCurrentUser';
 import BranchSelect from '@/components/BranchSelect';
-import { normalizeBranchName } from '@/lib/branches';
+import { normalizeBranchName, getBranchConfig } from '@/lib/branches';
 
 interface InvoiceLineItem {
   id: string;
@@ -1064,83 +1064,106 @@ export default function NewSalesInvoicePOSPage() {
 
             {/* Thermal Slip Content (80mm Style) */}
             <div id="thermal-receipt" className="p-4 bg-slate-50 border border-dashed border-slate-300 rounded-2xl font-mono text-xs text-slate-900 space-y-3">
-              <div className="text-center space-y-0.5 border-b border-dashed border-slate-300 pb-2">
-                <p className="font-black text-sm tracking-wide">أحمد كشك للأقمشة والستائر</p>
-                <p className="text-[10px] text-slate-500">Ahmed Kishk Luxury Fabrics</p>
-                <p className="text-[10px] text-slate-600 font-bold">{lastSavedInvoice.branch}</p>
-                <p className="text-[10px] text-slate-500">فاتورة رقم: {lastSavedInvoice.invoiceNumber}</p>
-                <p className="text-[10px] text-slate-500">التاريخ: {lastSavedInvoice.date}</p>
-              </div>
+              {(() => {
+                const bCfg = getBranchConfig(lastSavedInvoice.branch);
+                const bPhones = [bCfg.landline ? `ت: ${bCfg.landline}` : '', bCfg.phone ? `م: ${bCfg.phone}` : ''].filter(Boolean).join(' | ');
+                const activePayments: { label: string; amount: number; icon: string }[] = [];
+                if (lastSavedInvoice.splitPayments && (lastSavedInvoice.paymentMethod === 'دفع متعدد / مزيج' || lastSavedInvoice.paymentMethod?.includes('متعدد'))) {
+                  if (Number(lastSavedInvoice.splitPayments.cash) > 0) activePayments.push({ label: 'كاش', amount: Number(lastSavedInvoice.splitPayments.cash), icon: '💵' });
+                  if (Number(lastSavedInvoice.splitPayments.instapay) > 0) activePayments.push({ label: 'إنستاباي', amount: Number(lastSavedInvoice.splitPayments.instapay), icon: '⚡' });
+                  if (Number(lastSavedInvoice.splitPayments.vodafone) > 0) activePayments.push({ label: 'فودافون كاش', amount: Number(lastSavedInvoice.splitPayments.vodafone), icon: '📱' });
+                  if (Number(lastSavedInvoice.splitPayments.visa) > 0) activePayments.push({ label: 'فيزا', amount: Number(lastSavedInvoice.splitPayments.visa), icon: '💳' });
+                } else if (lastSavedInvoice.paidAmount > 0) {
+                  const m = lastSavedInvoice.paymentMethod || 'نقدي';
+                  let ic = '💵';
+                  if (m.includes('إنستا')) ic = '⚡';
+                  else if (m.includes('فودافون')) ic = '📱';
+                  else if (m.includes('فيزا')) ic = '💳';
+                  activePayments.push({ label: m, amount: lastSavedInvoice.paidAmount, icon: ic });
+                }
 
-              <div className="text-[11px] space-y-0.5 border-b border-dashed border-slate-300 pb-2">
-                <p><span className="font-bold">العميل:</span> {lastSavedInvoice.customerName}</p>
-                <p><span className="font-bold">الهاتف:</span> {lastSavedInvoice.phone}</p>
-              </div>
-
-              {/* Items Table */}
-              <div className="space-y-1 border-b border-dashed border-slate-300 pb-2">
-                <div className="flex justify-between font-bold text-[10px] text-slate-500">
-                  <span>الصنف</span>
-                  <span>الكمية × السعر</span>
-                  <span>الإجمالي</span>
-                </div>
-                {lastSavedInvoice.items.map((it: any, idx: number) => (
-                  <div key={idx} className="flex justify-between text-[11px] font-bold">
-                    <span className="truncate max-w-[110px]">{it.name}</span>
-                    <span className="font-mono">{it.meters}م × {it.pricePerMeter}</span>
-                    <span className="font-mono">{it.totalPrice} ج</span>
-                  </div>
-                ))}
-              </div>
-
-              {/* Totals */}
-              <div className="space-y-1 text-[11px] font-bold border-b border-dashed border-slate-300 pb-2">
-                <div className="flex justify-between text-slate-600">
-                  <span>المجموع الفرعي:</span>
-                  <span>{lastSavedInvoice.subtotal} ج.م</span>
-                </div>
-                {lastSavedInvoice.discountAmount > 0 && (
-                  <div className="flex justify-between text-amber-700">
-                    <span>الخصم:</span>
-                    <span>- {lastSavedInvoice.discountAmount} ج.م</span>
-                  </div>
-                )}
-                <div className="flex justify-between font-black text-xs text-slate-950 pt-1 border-t border-slate-200">
-                  <span>الصافي المستحق:</span>
-                  <span>{lastSavedInvoice.totalAmount} ج.م</span>
-                </div>
-                {/* Payment Method */}
-                {lastSavedInvoice.splitPayments && lastSavedInvoice.paymentMethod === 'دفع متعدد / مزيج' ? (
-                  <div className="space-y-0.5 pt-0.5">
-                    <div className="flex justify-between text-emerald-700">
-                      <span>المدفوع (دفع متعدد):</span>
-                      <span>{lastSavedInvoice.paidAmount} ج.م</span>
+                return (
+                  <>
+                    <div className="text-center space-y-0.5 border-b border-dashed border-slate-300 pb-2">
+                      <p className="font-black text-sm tracking-wide">مؤسسة كشك للأقمشة والستائر</p>
+                      <p className="text-xs font-bold text-slate-800">👑 {bCfg.name}</p>
+                      <p className="text-[10px] text-slate-600">{bCfg.address}</p>
+                      {bPhones && <p className="text-[10px] font-mono text-slate-700 font-bold">{bPhones}</p>}
+                      <div className="flex justify-between text-[10px] text-slate-500 pt-1 font-bold">
+                        <span>فاتورة: {lastSavedInvoice.invoiceNumber}</span>
+                        <span>{lastSavedInvoice.date || new Date().toLocaleDateString('ar-EG')}</span>
+                      </div>
                     </div>
-                    <div className="flex flex-wrap gap-1 pr-1">
-                      {lastSavedInvoice.splitPayments.cash ? <span className="text-[10px] bg-green-100 text-green-800 px-1.5 py-0.5 rounded font-bold">💵 {lastSavedInvoice.splitPayments.cash} كاش</span> : null}
-                      {lastSavedInvoice.splitPayments.instapay ? <span className="text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded font-bold">⚡ {lastSavedInvoice.splitPayments.instapay} إنستاباي</span> : null}
-                      {lastSavedInvoice.splitPayments.vodafone ? <span className="text-[10px] bg-red-100 text-red-800 px-1.5 py-0.5 rounded font-bold">📱 {lastSavedInvoice.splitPayments.vodafone} فودافون</span> : null}
-                      {lastSavedInvoice.splitPayments.visa ? <span className="text-[10px] bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded font-bold">💳 {lastSavedInvoice.splitPayments.visa} فيزا</span> : null}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex justify-between text-emerald-700">
-                    <span>المدفوع ({lastSavedInvoice.paymentMethod}):</span>
-                    <span>{lastSavedInvoice.paidAmount} ج.م</span>
-                  </div>
-                )}
-                {lastSavedInvoice.remainingAmount > 0 && (
-                  <div className="flex justify-between text-rose-600">
-                    <span>المتبقي:</span>
-                    <span>{lastSavedInvoice.remainingAmount} ج.م</span>
-                  </div>
-                )}
-              </div>
 
-              <div className="text-center text-[10px] text-slate-500 pt-1 space-y-0.5">
-                <p>شكراً لتعاملكم مع أقمشة أحمد كشك ✨</p>
-                <p>البضاعة المباعة تستبدل خلال ١٤ يوماً بالفاتورة</p>
-              </div>
+                    <div className="text-[11px] space-y-0.5 border-b border-dashed border-slate-300 pb-2">
+                      <div className="flex justify-between">
+                        <span><span className="font-bold">العميل:</span> {lastSavedInvoice.customerName}</span>
+                        {lastSavedInvoice.phone && <span className="font-mono">{lastSavedInvoice.phone}</span>}
+                      </div>
+                    </div>
+
+                    {/* Items Table */}
+                    <div className="space-y-1 border-b border-dashed border-slate-300 pb-2">
+                      <div className="flex justify-between font-bold text-[10px] text-slate-500">
+                        <span>الصنف</span>
+                        <span>الكمية × السعر</span>
+                        <span>الإجمالي</span>
+                      </div>
+                      {lastSavedInvoice.items.map((it: any, idx: number) => (
+                        <div key={idx} className="flex justify-between text-[11px] font-bold">
+                          <span className="truncate max-w-[110px]">{it.name}</span>
+                          <span className="font-mono">{it.meters}م × {it.pricePerMeter}</span>
+                          <span className="font-mono">{it.totalPrice} ج</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Totals */}
+                    <div className="space-y-1 text-[11px] font-bold border-b border-dashed border-slate-300 pb-2">
+                      <div className="flex justify-between text-slate-600">
+                        <span>المجموع الفرعي:</span>
+                        <span>{lastSavedInvoice.subtotal} ج.م</span>
+                      </div>
+                      {lastSavedInvoice.discountAmount > 0 && (
+                        <div className="flex justify-between text-amber-700">
+                          <span>الخصم:</span>
+                          <span>- {lastSavedInvoice.discountAmount} ج.م</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between font-black text-xs text-slate-950 pt-1 border-t border-slate-200">
+                        <span>الصافي المستحق:</span>
+                        <span>{lastSavedInvoice.totalAmount} ج.م</span>
+                      </div>
+                      {/* Active Payment Methods Only */}
+                      {activePayments.length > 0 && (
+                        <div className="space-y-0.5 pt-0.5">
+                          {activePayments.map((p, i) => (
+                            <div key={i} className="flex justify-between text-emerald-700 text-[10px]">
+                              <span>{p.icon} مسدد {p.label}:</span>
+                              <span className="font-mono font-bold">{p.amount.toLocaleString()} ج.م</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      <div className="flex justify-between text-slate-900 font-black">
+                        <span>إجمالي المدفوع:</span>
+                        <span>{lastSavedInvoice.paidAmount} ج.م</span>
+                      </div>
+                      {lastSavedInvoice.remainingAmount > 0 && (
+                        <div className="flex justify-between text-rose-600 font-bold">
+                          <span>المتبقي:</span>
+                          <span>{lastSavedInvoice.remainingAmount} ج.م</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="text-center text-[10px] text-slate-600 pt-1 space-y-0.5">
+                      <p className="font-bold">شكراً لتعاملكم مع مؤسسة كشك للأقمشة والستائر ✨</p>
+                      <p>البضاعة المباعة لا ترد ولا تستبدل بعد القص</p>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
 
             {/* Print & Close Buttons */}

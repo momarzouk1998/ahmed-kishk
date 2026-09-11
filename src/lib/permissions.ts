@@ -24,11 +24,14 @@ export const ALL_SYSTEM_PAGES: PagePermission[] = [
   // المبيعات والحسابات
   { id: 'p_dashboard', name: 'الرئيسية ولوحة التحكم', shortName: 'الرئيسية', category: 'المبيعات والحسابات', href: '/', icon: 'dashboard' },
   { id: 'p_fabric_sales', name: 'فواتير المبيعات', shortName: 'المبيعات', category: 'المبيعات والحسابات', href: '/fabric-sales', icon: 'point_of_sale', hasPriceControl: true, hasEditControl: true, hasDeleteControl: true },
+  { id: 'p_online_orders', name: 'الفرع التجاري والأونلاين', shortName: 'الأونلاين', category: 'المبيعات والحسابات', href: '/online-orders', icon: 'local_shipping', hasPriceControl: true, hasEditControl: true, hasDeleteControl: true },
+  { id: 'p_shifts', name: 'الورديات والدرج (Z-Report)', shortName: 'الورديات', category: 'المبيعات والحسابات', href: '/shifts', icon: 'schedule', hasEditControl: true, hasDeleteControl: true },
   { id: 'p_purchases', name: 'فواتير المشتريات', shortName: 'المشتريات', category: 'المبيعات والحسابات', href: '/purchases', icon: 'shopping_bag', hasPriceControl: true, hasEditControl: true, hasDeleteControl: true },
   { id: 'p_customers', name: 'العملاء والديون', shortName: 'العملاء', category: 'المبيعات والحسابات', href: '/customers', icon: 'group', hasEditControl: true, hasDeleteControl: true },
   { id: 'p_suppliers', name: 'الموردون والمستحقات', shortName: 'الموردون', category: 'المبيعات والحسابات', href: '/suppliers', icon: 'local_shipping', hasEditControl: true, hasDeleteControl: true },
 
   // الإدارة والمخزون
+  { id: 'p_employees', name: 'الموظفين والحضور والرواتب', shortName: 'الموظفين', category: 'الإدارة والمخزون', href: '/employees', icon: 'badge', hasEditControl: true, hasDeleteControl: true },
   { id: 'p_inventory', name: 'المخزون والأصناف', shortName: 'المخزون', category: 'الإدارة والمخزون', href: '/inventory', icon: 'texture', hasPriceControl: true, hasEditControl: true, hasDeleteControl: true },
   { id: 'p_reports', name: 'التقارير المالية والتنفيذية', shortName: 'التقارير', category: 'الإدارة والمخزون', href: '/reports', icon: 'bar_chart' },
   { id: 'p_branches', name: 'الفروع والصلاحيات', shortName: 'الفروع', category: 'الإدارة والمخزون', href: '/branches', icon: 'corporate_fare' },

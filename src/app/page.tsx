@@ -317,15 +317,17 @@ export default function DashboardPage() {
     if (branchKey === 'عرابي') return s.includes('عرابي') || s.includes('عدلي');
     if (branchKey === 'عمر أفندي') return s.includes('عمر أفندي') || s.includes('عمر افندي') || s.includes('عمر');
     if (branchKey === 'الثلاثيني') return s.includes('الثلاثيني');
+    if (branchKey === 'التجاري') return s.includes('تجاري') || s.includes('تجارى') || s.includes('أونلاين') || s.includes('اونلاين');
     return false;
   };
 
-  // Dynamic Branch Sales & Treasury Calculation (100% Real data)
+  // Dynamic Branch Sales & Treasury Calculation (100% Real data for 5 branches)
   const branchList = [
     { name: 'الفرع الرئيسي (73 سعد زغلول)', treasuryName: 'خزينة الفرع الرئيسي (سعد زغلول)', type: 'ستائر وأقمشة تنجيد', key: 'الرئيسي', color: 'border-amber-300 bg-amber-50/70', badgeBg: 'bg-amber-100 text-amber-900 border-amber-300' },
     { name: 'فرع عرابي (18 ش عدلي)', treasuryName: 'خزينة فرع عرابي', type: 'ستائر وأقمشة تنجيد', key: 'عرابي', color: 'border-sky-300 bg-sky-50/70', badgeBg: 'bg-sky-100 text-sky-900 border-sky-300' },
     { name: 'فرع عمر أفندي', treasuryName: 'خزينة فرع عمر أفندي', type: 'أقمشة فقط', key: 'عمر أفندي', color: 'border-emerald-300 bg-emerald-50/70', badgeBg: 'bg-emerald-100 text-emerald-900 border-emerald-300' },
     { name: 'فرع الثلاثيني', treasuryName: 'خزينة فرع الثلاثيني', type: 'أقمشة فقط', key: 'الثلاثيني', color: 'border-purple-300 bg-purple-50/70', badgeBg: 'bg-purple-100 text-purple-900 border-purple-300' },
+    { name: 'الفرع التجاري (أونلاين وشحن)', treasuryName: 'خزينة الفرع التجاري', type: 'أقمشة وشحن أونلاين', key: 'التجاري', color: 'border-rose-300 bg-rose-50/70', badgeBg: 'bg-rose-100 text-rose-900 border-rose-300' },
   ];
 
   const dynamicBranchSales = branchList.map(b => {
@@ -598,7 +600,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
             {dynamicBranchSales.map((b, idx) => (
               <div
                 key={idx}
@@ -656,6 +658,51 @@ export default function DashboardPage() {
           </div>
         </div>
 
+        {/* Quick Launch Operations Hub */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <Link
+            href="/employees"
+            className="p-4 bg-gradient-to-r from-indigo-500 to-indigo-700 text-white rounded-3xl shadow-md hover:scale-[1.01] transition-all flex items-center justify-between group"
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-3xl bg-white/20 p-2 rounded-2xl">👥</span>
+              <div>
+                <h3 className="font-black text-sm text-white">الموظفين والحضور والرواتب</h3>
+                <p className="text-[11px] text-indigo-100">سلف، حضور الفروع، وتقفيل الخميس لـ 18 موظفاً</p>
+              </div>
+            </div>
+            <span className="material-symbols-outlined text-white group-hover:-translate-x-1 transition-transform">arrow_back</span>
+          </Link>
+
+          <Link
+            href="/shifts"
+            className="p-4 bg-gradient-to-r from-amber-500 to-amber-700 text-white rounded-3xl shadow-md hover:scale-[1.01] transition-all flex items-center justify-between group"
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-3xl bg-white/20 p-2 rounded-2xl">⏱️</span>
+              <div>
+                <h3 className="font-black text-sm text-white">الورديات والدرج (Z-Report)</h3>
+                <p className="text-[11px] text-amber-100">فصل ورديات عمر أفندي وتسليم عهدة النقدية</p>
+              </div>
+            </div>
+            <span className="material-symbols-outlined text-white group-hover:-translate-x-1 transition-transform">arrow_back</span>
+          </Link>
+
+          <Link
+            href="/online-orders"
+            className="p-4 bg-gradient-to-r from-rose-500 to-rose-700 text-white rounded-3xl shadow-md hover:scale-[1.01] transition-all flex items-center justify-between group"
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-3xl bg-white/20 p-2 rounded-2xl">📦</span>
+              <div>
+                <h3 className="font-black text-sm text-white">الفرع التجاري والأونلاين</h3>
+                <p className="text-[11px] text-rose-100">فواتير شحن موحدة (110 ج) وبوالص الطرود</p>
+              </div>
+            </div>
+            <span className="material-symbols-outlined text-white group-hover:-translate-x-1 transition-transform">arrow_back</span>
+          </Link>
+        </div>
+
         {/* Curtain Pipeline Real-time Progress (6 Stages) - Vibrant UI */}
         <div className="bg-white rounded-3xl border border-slate-200 p-5 sm:p-6 shadow-soft">
           <div className="flex justify-between items-center mb-4">
@@ -687,11 +734,11 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Branch Performance Report (4 Branches) */}
+        {/* Branch Performance Report (5 Branches) */}
         <div className="bg-white rounded-3xl border border-slate-200 p-5 sm:p-6 shadow-soft">
           <div className="flex justify-between items-center mb-4">
             <div>
-              <h2 className="font-display font-black text-base text-slate-900">تقرير المبيعات والنشاط للفروع الأربعة</h2>
+              <h2 className="font-display font-black text-base text-slate-900">تقرير المبيعات والنشاط للفروع الخمسة</h2>
               <p className="text-xs text-slate-500 mt-0.5">مبيعات كل فرع وعدد العمليات التي تمت بنجاح</p>
             </div>
           </div>
