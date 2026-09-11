@@ -24,7 +24,7 @@ const initialEmployees: Employee[] = [
     id: 'EMP-01',
     name: 'openappo',
     phone: '01558282760',
-    role: 'مطور النظام (Super Admin)',
+    role: 'مطور النظام',
     branch: 'الفرع الرئيسي',
     restrictToBranch: false,
     allowedPageIds: ALL_SYSTEM_PAGES.map(p => p.id),
@@ -33,7 +33,7 @@ const initialEmployees: Employee[] = [
     id: 'EMP-02',
     name: 'أحمد كشك',
     phone: '01063821000',
-    role: 'المدير العام للمؤسسة (Store Manager)',
+    role: 'المدير العام للمؤسسة',
     branch: 'الفرع الرئيسي',
     restrictToBranch: false,
     allowedPageIds: ALL_SYSTEM_PAGES.map(p => p.id),
@@ -403,67 +403,86 @@ export default function BranchesAndPermissionsPage() {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-right text-xs min-w-[720px]">
+            <table className="w-full text-right text-xs min-w-[760px]">
               <thead className="bg-slate-50 text-slate-500 font-mono border-b border-slate-200">
                 <tr>
-                  <th className="p-4">الموظف</th>
-                  <th className="p-4">الدور الوظيفي</th>
-                  <th className="p-4">الفرع المخصص</th>
-                  <th className="p-4 text-center">عزل البيانات</th>
-                  <th className="p-4 text-center">الصفحات المسموحة</th>
-                  <th className="p-4 text-center">إجراء</th>
+                  <th className="p-3.5">الموظف</th>
+                  <th className="p-3.5 text-center">الوظيفة</th>
+                  <th className="p-3.5">الدور الوظيفي</th>
+                  <th className="p-3.5">الفرع المخصص</th>
+                  <th className="p-3.5 text-center">عزل البيانات</th>
+                  <th className="p-3.5 text-center">الصفحات المسموحة</th>
+                  <th className="p-3.5 text-center">الإجراء</th>
                 </tr>
               </thead>
               <tbody>
-                {employees.map(emp => (
-                  <tr key={emp.id} className="border-t border-slate-100 hover:bg-slate-50/60 transition-colors">
-                    <td className="p-4">
-                      <div className="font-bold text-sm text-slate-900">{emp.name}</div>
-                      <div className="text-slate-400 font-mono mt-0.5" dir="ltr">{emp.phone}</div>
-                    </td>
-                    <td className="p-4 font-bold text-slate-800">{emp.role}</td>
-                    <td className="p-4">
-                      <select
-                        value={emp.branch}
-                        onChange={(e) => quickChangeBranch(emp, e.target.value)}
-                        className="bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-900 cursor-pointer focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-xs"
-                        title="انقر لتغيير فرع الموظف فوراً"
-                      >
-                        {branches.map(b => (
-                          <option key={b.id} value={b.name}>{b.name}</option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="p-4 text-center">
-                      {emp.restrictToBranch ? (
-                        <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-purple-100 text-purple-900 border border-purple-200">
-                          🔒 فرعه فقط
+                {employees.map(emp => {
+                  const isAdminUser = emp.phone === '01558282760' || emp.phone === '01063821000' || emp.role.includes('Admin') || emp.role.includes('المدير العام');
+                  const isManager = !isAdminUser && emp.role.includes('مدير');
+                  const isCashier = !isAdminUser && emp.role.includes('كاشير');
+
+                  return (
+                    <tr key={emp.id} className="border-t border-slate-100 hover:bg-slate-50/60 transition-colors">
+                      <td className="p-3.5">
+                        <div className="font-bold text-sm text-slate-900">{emp.name}</div>
+                        <div className="text-slate-400 font-mono mt-0.5" dir="ltr">{emp.phone}</div>
+                      </td>
+                      <td className="p-3.5 text-center">
+                        <span className={`px-2.5 py-1 rounded-lg text-xs font-black border inline-flex items-center gap-1 ${
+                          isAdminUser 
+                            ? 'bg-amber-100 text-amber-950 border-amber-300' 
+                            : isManager 
+                            ? 'bg-blue-100 text-blue-950 border-blue-300' 
+                            : isCashier 
+                            ? 'bg-emerald-100 text-emerald-950 border-emerald-300' 
+                            : 'bg-slate-100 text-slate-800 border-slate-200'
+                        }`}>
+                          <span>{isAdminUser ? '👑' : isManager ? '👔' : isCashier ? '💼' : '👤'}</span>
+                          <span>{isAdminUser ? 'ادمن' : isManager ? 'مدير' : isCashier ? 'كاشير' : 'موظف'}</span>
                         </span>
-                      ) : (
-                        <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-900 border border-emerald-200">
-                          🌐 كل الفروع (Admin)
+                      </td>
+                      <td className="p-3.5 font-bold text-slate-800">{emp.role}</td>
+                      <td className="p-3.5">
+                        <select
+                          value={emp.branch}
+                          onChange={(e) => quickChangeBranch(emp, e.target.value)}
+                          className="bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-900 cursor-pointer focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-xs"
+                          title="انقر لتغيير فرع الموظف فوراً"
+                        >
+                          {branches.map(b => (
+                            <option key={b.id} value={b.name}>{b.name}</option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="p-3.5 text-center">
+                        {emp.restrictToBranch ? (
+                          <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-purple-100 text-purple-900 border border-purple-200">
+                            🔒 فرعه فقط
+                          </span>
+                        ) : (
+                          <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-900 border border-emerald-200">
+                            🌐 كل الفروع (Admin)
+                          </span>
+                        )}
+                      </td>
+                      <td className="p-3.5 text-center">
+                        <span className="font-mono font-black text-brand-gold-dark bg-amber-50 border border-amber-200 px-3 py-1 rounded-full">
+                          {ALL_SYSTEM_PAGES.filter(p => emp.allowedPageIds.includes(p.id)).length} من {ALL_SYSTEM_PAGES.length} صفحة
                         </span>
-                      )}
-                    </td>
-                    <td className="p-4 text-center">
-                      <span className="font-mono font-black text-brand-gold-dark bg-amber-50 border border-amber-200 px-3 py-1 rounded-full">
-                        {/* #FIX: allowedPageIds كانت بتحتوى مفاتيح صلاحيات فرعية (_edit_price, _edit, _delete)
-                            بجانب معرّفات الصفحات الحقيقية، فكان العدد بيتجاوز 17 صفحة. العدّ هنا بيقتصر
-                            على المعرّفات الموجودة فعلاً فى ALL_SYSTEM_PAGES فقط. */}
-                        {ALL_SYSTEM_PAGES.filter(p => emp.allowedPageIds.includes(p.id)).length} من {ALL_SYSTEM_PAGES.length} صفحة
-                      </span>
-                    </td>
-                    <td className="p-4 text-center">
-                      <button
-                        onClick={() => openPermsModal(emp)}
-                        className="bg-brand-gold hover:bg-brand-gold-hover text-slate-950 px-4 py-2 rounded-xl font-bold shadow-gold transition-all flex items-center gap-1.5 mx-auto"
-                      >
-                        <span className="material-symbols-outlined text-[16px]">tune</span>
-                        تعديل الفرع والصفحات
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="p-3.5 text-center">
+                        <button
+                          onClick={() => openPermsModal(emp)}
+                          className="bg-brand-gold hover:bg-brand-gold-hover text-slate-950 px-2.5 py-1.5 rounded-xl font-bold shadow-xs transition-all inline-flex items-center gap-1 cursor-pointer text-xs"
+                          title="تعديل الصلاحيات والفرع"
+                        >
+                          <span className="material-symbols-outlined text-[14px]">tune</span>
+                          <span>الصلاحيات</span>
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
