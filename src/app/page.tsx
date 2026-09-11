@@ -114,15 +114,17 @@ export default function DashboardPage() {
   }, []);
 
   // Helper to filter data by timeRange (Cairo local time 12:00 AM boundary)
-  const filterByRange = (items: any[], dateField = 'createdAt') => {
+  const filterByRange = (items: any[], dateField = 'date') => {
     if (!items || items.length === 0) return [];
     if (timeRange === 'ALL') return items;
     const todayStr = getTodayDateStr();
 
     return items.filter(item => {
-      const d = item.depositDate || item.updatedAt || item[dateField] || item.date || item.scheduledAt || item.createdAt;
-      if (!d) return true;
+      // Prioritize explicit date field -> item.date -> item.depositDate -> item.createdAt -> item.scheduledAt
+      const d = item[dateField] || item.date || item.depositDate || item.createdAt || item.scheduledAt;
+      if (!d) return false;
       const itemDateStr = getTodayDateStr(d) || String(d).split('T')[0].split(' ')[0];
+      if (!itemDateStr) return false;
 
       if (timeRange === 'YESTERDAY') {
         const yesterdayStr = getYesterdayDateStr();

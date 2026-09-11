@@ -197,7 +197,7 @@ export default function ReportsPage() {
     [invoices, selectedBranch, period]
   );
   const fQuotations = useMemo(
-    () => quotations.filter(q => inBranch(q.branch) && inPeriod(q.depositDate || q.updatedAt || q.date || q.createdAt)),
+    () => quotations.filter(q => inBranch(q.branch) && inPeriod(q.date || q.depositDate || q.createdAt)),
     [quotations, selectedBranch, period]
   );
   const fPurchases = useMemo(
