@@ -1253,18 +1253,29 @@ export default function NewSalesInvoicePOSPage() {
 
                     {/* Items Table */}
                     <div className="space-y-1 border-b border-dashed border-slate-300 pb-2">
-                      <div className="flex justify-between font-bold text-[10px] text-slate-500">
-                        <span>الصنف</span>
-                        <span>الكمية × السعر</span>
-                        <span>الإجمالي</span>
-                      </div>
-                      {lastSavedInvoice.items.map((it: any, idx: number) => (
-                        <div key={idx} className="flex justify-between text-[11px] font-bold">
-                          <span className="truncate max-w-[110px]">{it.name}</span>
-                          <span className="font-mono">{it.meters}م × {it.pricePerMeter}</span>
-                          <span className="font-mono">{it.totalPrice} ج</span>
-                        </div>
-                      ))}
+                      <table className="w-full border-collapse border border-slate-400 text-[10px]">
+                        <thead>
+                          <tr className="bg-slate-200 text-slate-900 font-black border-b border-slate-400">
+                            <th className="p-1 text-right">الصنف</th>
+                            <th className="p-1 text-center border-r border-l border-slate-400">الأمتار</th>
+                            <th className="p-1 text-center border-l border-slate-400">السعر</th>
+                            <th className="p-1 text-left">الإجمالي</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {lastSavedInvoice.items.map((it: any, idx: number) => (
+                            <tr key={idx} className="border-b border-slate-300 font-bold">
+                              <td className="p-1 text-right">
+                                <div className="font-black text-slate-950 truncate max-w-[90px]">{it.name}</div>
+                                {it.code && <div className="text-[8px] text-slate-500 font-mono">كود: {it.code}</div>}
+                              </td>
+                              <td className="p-1 text-center font-mono font-black border-r border-l border-slate-300">{it.meters}م</td>
+                              <td className="p-1 text-center font-mono border-l border-slate-300">{it.pricePerMeter}</td>
+                              <td className="p-1 text-left font-mono font-black whitespace-nowrap">{it.totalPrice} ج</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
 
                       {lastSavedInvoice.isOnlineOrder && (

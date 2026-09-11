@@ -93,20 +93,27 @@ export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricS
       : now.toLocaleDateString('ar-EG') + ' - ' + now.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
 
     const rows = (data.items || []).map((it, i) => `
-      <tr style="border-bottom: 1px dotted #ccc;">
-        <td style="width:5mm; text-align:center; font-size:8pt; padding:1.5mm 0;">${i + 1}</td>
-        <td style="font-size:8.5pt; padding:1.5mm 1mm;">
-          <div style="font-weight:900; line-height:1.2;">${it.name}</div>
-          <div style="font-size:7.5pt; color:#444; margin-top:0.5mm;">${it.code ? `كود: ${it.code} • ` : ''}${it.meters}م × ${it.pricePerMeter} ج</div>
+      <tr style="border-bottom: 1px solid #000;">
+        <td style="padding: 1.5mm 1mm; text-align:right;">
+          <div style="font-weight:900; font-size:8.5pt; line-height:1.2;">${it.name}</div>
+          ${it.code ? `<div style="font-size:7pt; color:#333; font-family:monospace;">كود: ${it.code}</div>` : ''}
         </td>
-        <td style="text-align:left; font-family:monospace; font-weight:900; font-size:9pt; padding:1.5mm 0; white-space:nowrap;">${it.totalPrice.toLocaleString()} ج</td>
+        <td style="text-align:center; font-family:monospace; font-weight:900; font-size:8.5pt; padding: 1.5mm 0.5mm; border-right: 1px solid #000; border-left: 1px solid #000;">
+          ${it.meters}م
+        </td>
+        <td style="text-align:center; font-family:monospace; font-weight:bold; font-size:8pt; padding: 1.5mm 0.5mm; border-left: 1px solid #000;">
+          ${it.pricePerMeter}
+        </td>
+        <td style="text-align:left; font-family:monospace; font-weight:900; font-size:8.5pt; padding: 1.5mm 1mm; white-space:nowrap;">
+          ${it.totalPrice.toLocaleString()} ج
+        </td>
       </tr>
     `).join('');
 
     const activePayments = getActivePaymentLines();
     const paymentRowsHtml = activePayments.map(p => `
       <tr>
-        <td class="lbl" style="font-size:8pt; padding-right:2mm;">${p.icon} مسدد ${p.label}:</td>
+        <td class="lbl" style="font-size:8pt; padding-right:1mm;">${p.icon} مسدد ${p.label}:</td>
         <td class="v" style="font-size:8.5pt;">${p.amount.toLocaleString()} ج</td>
       </tr>
     `).join('');
@@ -116,22 +123,23 @@ export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricS
     w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head>
       <meta charset="UTF-8"><title>فاتورة ${data.invoiceNumber}</title>
       <style>
-        @page { size: 80mm auto; margin: 3mm 4mm; }
+        @page { size: 80mm auto; margin: 0; }
         * { box-sizing:border-box; margin:0; padding:0; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
-        body { font-family: 'Cairo', system-ui, -apple-system, sans-serif; direction:rtl; color:#000; font-size:8.5pt; width:72mm; margin:0 auto; }
+        body { font-family: 'Cairo', system-ui, -apple-system, sans-serif; direction:rtl; color:#000; font-size:8.5pt; width:68mm; max-width:68mm; margin:0 auto; padding: 2mm 1.5mm; }
         .center { text-align:center; }
         .brand { font-weight:900; font-size:11pt; letter-spacing:-0.2px; }
-        .branch-title { font-weight:800; font-size:9.5pt; margin-top:1mm; }
+        .branch-title { font-weight:800; font-size:9.5pt; margin-top:0.5mm; }
         .sub { font-size:7.5pt; color:#222; margin-top:0.5mm; line-height:1.2; }
-        .divider { border-top:1px dashed #000; margin:2mm 0; }
-        table { width:100%; border-collapse:collapse; }
-        th, td { vertical-align:middle; }
-        thead th { border-bottom:1px solid #000; font-size:8pt; padding-bottom:1mm; text-align:right; font-weight:900; }
-        .totals td { padding: 0.8mm 0; font-size:8.5pt; }
-        .totals .lbl { color:#222; }
-        .totals .v { text-align:left; font-family:monospace; font-weight:900; white-space:nowrap; }
-        .total-row td { font-size:10.5pt; font-weight:900; border-top:1px solid #000; border-bottom:1px solid #000; padding:1.5mm 0; }
-        .foot { text-align:center; font-size:7.5pt; color:#222; margin-top:3mm; line-height:1.4; }
+        .divider { border-top:1px dashed #000; margin:1.5mm 0; }
+        .items-table { width:100%; border-collapse:collapse; border:1.5px solid #000; margin:1.5mm 0; }
+        .items-table th, .items-table td { vertical-align:middle; }
+        .items-table thead th { background:#f0f0f0 !important; font-size:7.5pt; font-weight:900; padding:1.2mm 0.5mm; border-bottom:1.5px solid #000; }
+        .totals { width:100%; border-collapse:collapse; margin-top:1mm; }
+        .totals td { padding: 0.8mm 0.5mm; font-size:8.5pt; }
+        .totals .lbl { color:#111; font-weight:700; }
+        .totals .v { text-align:left; font-family:monospace; font-weight:900; white-space:nowrap; padding-left:1mm; }
+        .total-row td { font-size:10pt; font-weight:900; border-top:1.5px solid #000; border-bottom:1.5px solid #000; padding:1.5mm 0.5mm; }
+        .foot { text-align:center; font-size:7.5pt; color:#222; margin-top:2.5mm; line-height:1.3; }
       </style></head><body>
         <div class="center">
           <div class="brand">${brand.storeName || 'مؤسسة كشك للأقمشة والستائر'}</div>
@@ -149,14 +157,22 @@ export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricS
           ${(data.phone || data.customerPhone) ? `<span style="font-family:monospace; direction:ltr; font-weight:bold; font-size:8pt;">${data.phone || data.customerPhone}</span>` : ''}
         </div>
         <div class="divider"></div>
-        <table>
-          <thead><tr><th style="width:5mm; text-align:center;">#</th><th>الصنف والبيان</th><th style="text-align:left;">الإجمالي</th></tr></thead>
+        <table class="items-table">
+          <thead>
+            <tr>
+              <th style="width:38%; text-align:right; padding-right:1mm;">الصنف</th>
+              <th style="width:18%; text-align:center; border-right: 1px solid #000; border-left: 1px solid #000;">الأمتار</th>
+              <th style="width:18%; text-align:center; border-left: 1px solid #000;">سعر المتر</th>
+              <th style="width:26%; text-align:left; padding-left:1mm;">الإجمالي</th>
+            </tr>
+          </thead>
           <tbody>${rows}</tbody>
         </table>
         <div class="divider"></div>
         <table class="totals">
           <tr><td class="lbl">إجمالي قبل الخصم:</td><td class="v">${(data.subtotal || 0).toLocaleString()} ج</td></tr>
           ${data.discountAmount > 0 ? `<tr><td class="lbl">قيمة الخصم:</td><td class="v">-${data.discountAmount.toLocaleString()} ج</td></tr>` : ''}
+          ${data.isOnlineOrder ? `<tr><td class="lbl">مصاريف الشحن:</td><td class="v">+${(data.shippingFee || 110).toLocaleString()} ج</td></tr>` : ''}
           <tr class="total-row"><td>الصافي المستحق:</td><td class="v">${data.totalAmount.toLocaleString()} ج</td></tr>
           ${paymentRowsHtml}
           <tr><td class="lbl" style="font-weight:900;">إجمالي المدفوع:</td><td class="v" style="font-weight:900;">${data.paidAmount.toLocaleString()} ج</td></tr>
@@ -337,9 +353,9 @@ export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricS
     w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head>
       <meta charset="UTF-8"><title>بوليصة شحن ${data.invoiceNumber}</title>
       <style>
-        @page { size: 80mm auto; margin: 3mm 4mm; }
+        @page { size: 80mm auto; margin: 0; }
         * { box-sizing:border-box; margin:0; padding:0; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
-        body { font-family: 'Cairo', system-ui, -apple-system, sans-serif; direction:rtl; color:#000; font-size:8.5pt; width:72mm; margin:0 auto; }
+        body { font-family: 'Cairo', system-ui, -apple-system, sans-serif; direction:rtl; color:#000; font-size:8.5pt; width:68mm; max-width:68mm; margin:0 auto; padding: 2mm 1.5mm; }
         .center { text-align:center; }
         .brand { font-weight:900; font-size:11pt; }
         .waybill-title { background:#000; color:#fff; font-weight:900; font-size:10pt; padding:1.5mm; border-radius:2mm; margin:2mm 0; text-align:center; }
