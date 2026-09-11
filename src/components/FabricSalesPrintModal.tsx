@@ -96,7 +96,6 @@ export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricS
       <tr style="border-bottom: 1px solid #000;">
         <td style="padding: 1.5mm 1mm; text-align:right;">
           <div style="font-weight:900; font-size:8.5pt; line-height:1.2;">${it.name}</div>
-          ${it.code ? `<div style="font-size:7pt; color:#333; font-family:monospace;">كود: ${it.code}</div>` : ''}
         </td>
         <td style="text-align:center; font-family:monospace; font-weight:900; font-size:8.5pt; padding: 1.5mm 0.5mm; border-right: 1px solid #000; border-left: 1px solid #000;">
           ${it.meters}م
@@ -202,7 +201,6 @@ export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricS
           <td style="text-align:center; font-weight:bold;">${idx + 1}</td>
           <td>
             <strong style="color:#0f172a; display:block;">${item.name}</strong>
-            <span style="font-size:7.5pt; font-family:monospace; color:#64748b;">${item.code}</span>
           </td>
           <td style="text-align:center; font-family:monospace; font-weight:700;">${item.pricePerMeter} ج</td>
           <td style="text-align:center; font-family:monospace; font-weight:900; color:#0f172a;">${item.meters} م</td>
@@ -291,7 +289,7 @@ export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricS
             <thead>
               <tr>
                 <th style="width: 25px;">#</th>
-                <th style="text-align:right;">اسم الصنف والكود</th>
+                <th style="text-align:right;">الصنف</th>
                 <th style="width: 15%;">سعر المتر</th>
                 <th style="width: 15%;">الأمتار</th>
                 <th style="width: 18%;">الإجمالي</th>
@@ -521,7 +519,7 @@ export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricS
               <thead>
                 <tr className="bg-slate-950 text-white font-bold text-center">
                   <th className="p-2 border border-slate-700 w-8">#</th>
-                  <th className="p-2 border border-slate-700 text-right">اسم الصنف والكود</th>
+                  <th className="p-2 border border-slate-700 text-right">الصنف</th>
                   <th className="p-2 border border-slate-700 font-mono w-24">سعر المتر</th>
                   <th className="p-2 border border-slate-700 font-mono w-24">الأمتار</th>
                   <th className="p-2 border border-slate-700 font-mono w-28">الإجمالي</th>
@@ -533,7 +531,6 @@ export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricS
                     <td className="p-2 text-center font-bold border border-slate-300">{idx + 1}</td>
                     <td className="p-2 border border-slate-300">
                       <strong className="font-bold text-slate-900 block">{item.name}</strong>
-                      <span className="text-[10px] text-slate-400 font-mono">{item.code}</span>
                     </td>
                     <td className="p-2 text-center font-mono font-bold text-slate-700 border border-slate-300">{item.pricePerMeter} ج</td>
                     <td className="p-2 text-center font-mono font-black text-slate-950 border border-slate-300">{item.meters} م</td>

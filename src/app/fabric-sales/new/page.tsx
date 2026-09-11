@@ -1266,8 +1266,7 @@ export default function NewSalesInvoicePOSPage() {
                           {lastSavedInvoice.items.map((it: any, idx: number) => (
                             <tr key={idx} className="border-b border-slate-300 font-bold">
                               <td className="p-1 text-right">
-                                <div className="font-black text-slate-950 truncate max-w-[90px]">{it.name}</div>
-                                {it.code && <div className="text-[8px] text-slate-500 font-mono">كود: {it.code}</div>}
+                                <div className="font-black text-slate-950 truncate max-w-[120px]">{it.name}</div>
                               </td>
                               <td className="p-1 text-center font-mono font-black border-r border-l border-slate-300">{it.meters}م</td>
                               <td className="p-1 text-center font-mono border-l border-slate-300">{it.pricePerMeter}</td>
