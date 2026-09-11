@@ -74,9 +74,16 @@ export default function EmployeesManagementPage() {
   }, [isAdmin, isSuperAdmin, user, canViewWages, activeTab]);
 
   const branchFilteredEmployees = useMemo(() => {
-    if (selectedBranch === 'الكل') return employees;
-    return employees.filter(e => normalizeBranchName(e.branch) === normalizeBranchName(selectedBranch));
-  }, [employees, selectedBranch]);
+    const activeBranch = (!isAdmin && !isSuperAdmin && user?.branch) ? user.branch : selectedBranch;
+    if (activeBranch === 'الكل') return employees;
+    return employees.filter(e => normalizeBranchName(e.branch) === normalizeBranchName(activeBranch));
+  }, [employees, selectedBranch, isAdmin, isSuperAdmin, user]);
+
+  const filteredAdvances = useMemo(() => {
+    const activeBranch = (!isAdmin && !isSuperAdmin && user?.branch) ? user.branch : selectedBranch;
+    if (activeBranch === 'الكل') return advances;
+    return advances.filter(a => normalizeBranchName(a.branch) === normalizeBranchName(activeBranch));
+  }, [advances, selectedBranch, isAdmin, isSuperAdmin, user]);
 
   // Employee CRUD handlers
   const handleOpenAddEmp = () => {
@@ -525,7 +532,7 @@ export default function EmployeesManagementPage() {
                     <option value="">-- اختر الموظف --</option>
                     {branchFilteredEmployees.map(e => (
                       <option key={e.id} value={e.id}>
-                        {e.name} ({e.branch}{canViewWages ? ` - ${e.dailyWage}ج` : ''})
+                        {e.name} ({e.branch})
                       </option>
                     ))}
                   </select>
@@ -591,7 +598,7 @@ export default function EmployeesManagementPage() {
             <div className="lg:col-span-2 bg-white p-5 md:p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
               <h3 className="text-base font-black text-slate-900 flex items-center justify-between">
                 <span>📋 سجل السلف والخصومات المسجلة</span>
-                <span className="text-xs font-normal text-slate-500">إجمالي: {advances.length} حركة</span>
+                <span className="text-xs font-normal text-slate-500">إجمالي: {filteredAdvances.length} حركة</span>
               </h3>
 
               <div className="overflow-x-auto">
@@ -608,12 +615,12 @@ export default function EmployeesManagementPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200">
-                    {advances.length === 0 ? (
+                    {filteredAdvances.length === 0 ? (
                       <tr>
                         <td colSpan={7} className="p-8 text-center text-slate-400">لا توجد سلف أو خصومات مسجلة حتى الآن</td>
                       </tr>
                     ) : (
-                      advances.map(adv => (
+                      filteredAdvances.map(adv => (
                         <tr key={adv.id} className="hover:bg-slate-50">
                           <td className="p-2.5 font-mono text-slate-600">{adv.date}</td>
                           <td className="p-2.5 font-bold text-slate-900">{adv.employeeName}</td>
@@ -627,7 +634,7 @@ export default function EmployeesManagementPage() {
                               {adv.type}
                             </span>
                           </td>
-                          <td className="p-2.5 font-mono font-black text-slate-900">{adv.amount.toLocaleString()} ج</td>
+                          <td className="p-2.5 font-mono font-black text-slate-900">{adv.amount.toLocaleString()}</td>
                           <td className="p-2.5 text-slate-500 text-[11px]">{adv.reason}</td>
                           {canViewWages && (
                             <td className="p-2.5 text-center">

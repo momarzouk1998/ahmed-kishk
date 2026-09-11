@@ -51,7 +51,7 @@ export default function ShiftsAndDrawerPage() {
 
   // Table Filters & Pagination State
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'yesterday' | 'week' | 'month'>('all');
+  const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'yesterday' | 'week' | 'month'>('today');
   const [branchFilter, setBranchFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -98,7 +98,7 @@ export default function ShiftsAndDrawerPage() {
     if (employeeFilter !== 'all') count++;
     if (startDateFilter) count++;
     if (endDateFilter) count++;
-    if (dateFilter !== 'all') count++;
+    if (dateFilter !== 'today') count++;
     return count;
   }, [branchFilter, typeFilter, statusFilter, employeeFilter, startDateFilter, endDateFilter, dateFilter]);
 
@@ -109,7 +109,7 @@ export default function ShiftsAndDrawerPage() {
     setEmployeeFilter('all');
     setStartDateFilter('');
     setEndDateFilter('');
-    setDateFilter('all');
+    setDateFilter('today');
     setSearchQuery('');
   };
 
@@ -669,11 +669,11 @@ export default function ShiftsAndDrawerPage() {
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
               <span className="text-xs font-bold text-slate-500 whitespace-nowrap ml-1">الفترة:</span>
               {[
-                { id: 'all', label: 'الكل' },
-                { id: 'today', label: 'اليوم' },
                 { id: 'yesterday', label: 'أمس' },
+                { id: 'today', label: 'اليوم' },
                 { id: 'week', label: 'الأسبوع' },
                 { id: 'month', label: 'الشهر' },
+                { id: 'all', label: 'الكل' },
               ].map(tab => (
                 <button
                   key={tab.id}
@@ -1299,11 +1299,11 @@ export default function ShiftsAndDrawerPage() {
                   {/* Quick Tabs inside modal */}
                   <div className="grid grid-cols-5 gap-1">
                     {[
-                      { id: 'all', label: 'الكل' },
-                      { id: 'today', label: 'اليوم' },
                       { id: 'yesterday', label: 'أمس' },
+                      { id: 'today', label: 'اليوم' },
                       { id: 'week', label: 'الأسبوع' },
                       { id: 'month', label: 'الشهر' },
+                      { id: 'all', label: 'الكل' },
                     ].map(tab => (
                       <button
                         key={tab.id}
