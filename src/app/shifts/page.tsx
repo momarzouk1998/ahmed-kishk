@@ -11,7 +11,9 @@ import { BRANCHES_LIST, normalizeBranchName, getBranchConfig } from '@/lib/branc
 import { useCurrentUser } from '@/lib/useCurrentUser';
 
 export default function ShiftsAndDrawerPage() {
-  const { user } = useCurrentUser();
+  const { user, isAdmin, isSuperAdmin } = useCurrentUser();
+  const canManage = isAdmin || isSuperAdmin;
+
   const [shifts, setShifts] = useState<ShiftSession[]>([]);
   const [selectedBranch, setSelectedBranch] = useState<string>('فرع عمر أفندي');
   const [employees, setEmployees] = useState<any[]>([]);
@@ -28,8 +30,24 @@ export default function ShiftsAndDrawerPage() {
   const [discrepancyReason, setDiscrepancyReason] = useState<string>('');
   const [closingNotes, setClosingNotes] = useState<string>('');
 
-  // Z-Report Modal / Print State
-  const [selectedShiftForZReport, setSelectedShiftForZReport] = useState<ShiftSession | null>(null);
+  // Shift Details / Edit / Print Modal State
+  const [selectedShiftForDetails, setSelectedShiftForDetails] = useState<ShiftSession | null>(null);
+  const [isEditingShift, setIsEditingShift] = useState<boolean>(false);
+  const [editForm, setEditForm] = useState<{
+    openingDrawerBalance: number;
+    actualClosingCash: number;
+    discrepancyReason: string;
+    handoverDestination: string;
+    handoverReceiverName: string;
+    closingNotes: string;
+  }>({
+    openingDrawerBalance: 0,
+    actualClosingCash: 0,
+    discrepancyReason: '',
+    handoverDestination: '',
+    handoverReceiverName: '',
+    closingNotes: '',
+  });
 
   useEffect(() => {
     setShifts(getShifts());
@@ -43,6 +61,16 @@ export default function ShiftsAndDrawerPage() {
   const branchEmployees = useMemo(() => {
     return employees.filter(e => normalizeBranchName(e.branch) === normalizeBranchName(selectedBranch));
   }, [employees, selectedBranch]);
+
+  const formatDateTime = (isoStr?: string) => {
+    if (!isoStr) return '—';
+    try {
+      const d = new Date(isoStr);
+      return `${d.toLocaleDateString('ar-EG')} - ${d.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}`;
+    } catch {
+      return isoStr;
+    }
+  };
 
   const handleStart = (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,7 +115,55 @@ export default function ShiftsAndDrawerPage() {
     setActualClosingCash('');
     setDiscrepancyReason('');
     setClosingNotes('');
-    setSelectedShiftForZReport(closed);
+    setSelectedShiftForDetails(closed);
+  };
+
+  const handleOpenEdit = (s: ShiftSession) => {
+    setEditForm({
+      openingDrawerBalance: s.openingDrawerBalance || 0,
+      actualClosingCash: s.actualClosingCash ?? s.expectedCashInDrawer,
+      discrepancyReason: s.discrepancyReason || '',
+      handoverDestination: s.handoverDestination || 'توريد لخزينة الإدارة (فرع عمر أفندي)',
+      handoverReceiverName: s.handoverReceiverName || '',
+      closingNotes: s.closingNotes || '',
+    });
+    setIsEditingShift(true);
+  };
+
+  const handleSaveEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedShiftForDetails) return;
+
+    const expected = (Number(editForm.openingDrawerBalance) || 0) + (selectedShiftForDetails.cashSales || 0) - ((selectedShiftForDetails.expensesPaid || 0) + (selectedShiftForDetails.advancesPaid || 0));
+    const discrepancy = Number(editForm.actualClosingCash) - expected;
+
+    const updated: ShiftSession = {
+      ...selectedShiftForDetails,
+      openingDrawerBalance: Number(editForm.openingDrawerBalance) || 0,
+      actualClosingCash: Number(editForm.actualClosingCash) || 0,
+      expectedCashInDrawer: expected,
+      cashDiscrepancy: discrepancy,
+      discrepancyReason: editForm.discrepancyReason,
+      handoverDestination: editForm.handoverDestination,
+      handoverReceiverName: editForm.handoverReceiverName,
+      closingNotes: editForm.closingNotes,
+    };
+
+    const updatedList = shifts.map(s => s.id === updated.id ? updated : s);
+    setShifts(updatedList);
+    saveShifts(updatedList);
+    setSelectedShiftForDetails(updated);
+    setIsEditingShift(false);
+    alert('تم تحديث وتثبيت بيانات الوردية بنجاح 💾');
+  };
+
+  const handleDeleteShift = (shiftId: string) => {
+    if (!confirm('هل أنت متأكد من حذف هذا السجل من سجل الورديات نهائياً؟')) return;
+    const updatedList = shifts.filter(s => s.id !== shiftId);
+    setShifts(updatedList);
+    saveShifts(updatedList);
+    setSelectedShiftForDetails(null);
+    alert('تم حذف الوردية بنجاح');
   };
 
   // Discrepancy calculation for active closing
@@ -122,7 +198,6 @@ export default function ShiftsAndDrawerPage() {
         </div>
         <div class="divider"></div>
         <table>
-          <tr><td class="lbl">رقم الوردية:</td><td class="v">${shift.id}</td></tr>
           <tr><td class="lbl">نوع الوردية:</td><td class="v">${shift.shiftType}</td></tr>
           <tr><td class="lbl">المسؤول:</td><td class="v">${shift.employeeName}</td></tr>
           <tr><td class="lbl">وقت البداية:</td><td class="v" style="font-size:7.5pt;">${new Date(shift.startTime).toLocaleString('ar-EG')}</td></tr>
@@ -154,7 +229,7 @@ export default function ShiftsAndDrawerPage() {
   };
 
   return (
-    <PageShell title="نظام الورديات وتسليم وتسلم الأدراج (Z-Report)" badge="إغلاق ومطابقة الخزائن">
+    <PageShell title="الورديات" badge="الورديات والدرج">
       <div className="space-y-6">
         
         {/* Branch Selector Bar */}
@@ -207,7 +282,7 @@ export default function ShiftsAndDrawerPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200">
                     <span className="text-[11px] text-slate-500 font-bold block">نوع الوردية</span>
-                    <span className="font-black text-sm text-slate-900">{activeShift.shiftType === 'صباحي' ? '☀️ صباحية' : '🌙 مسائية'}</span>
+                    <span className="font-black text-sm text-slate-900">{activeShift.shiftType === 'صباحي' ? '☀️ صباحي' : '🌙 مسائي'}</span>
                   </div>
                   <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200">
                     <span className="text-[11px] text-slate-500 font-bold block">المسؤول / الكاشير</span>
@@ -272,7 +347,7 @@ export default function ShiftsAndDrawerPage() {
                       }`}
                     >
                       <span>☀️</span>
-                      <span>وردية الصباح (المدير / مسؤول الصباح)</span>
+                      <span>صباحي</span>
                     </button>
                     <button
                       type="button"
@@ -282,7 +357,7 @@ export default function ShiftsAndDrawerPage() {
                       }`}
                     >
                       <span>🌙</span>
-                      <span>وردية المساء (الكاشير)</span>
+                      <span>مسائي</span>
                     </button>
                   </div>
                 </div>
@@ -330,7 +405,7 @@ export default function ShiftsAndDrawerPage() {
           <div className="bg-white p-5 md:p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
             <h3 className="text-base font-black text-slate-900 flex items-center gap-2 pb-3 border-b border-slate-200">
               <span>🧾</span>
-              <span>تسليم الدرج وتقفيل الوردية (Z-Report)</span>
+              <span>تسليم الدرج وتقفيل الوردية</span>
             </h3>
 
             {activeShift ? (
@@ -381,7 +456,7 @@ export default function ShiftsAndDrawerPage() {
                 )}
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">وجهة تسليم نقدية الإغلاق *</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">جهة تسليم نقدية الإغلاق *</label>
                   <select
                     value={handoverDestination}
                     onChange={(e) => setHandoverDestination(e.target.value)}
@@ -433,18 +508,27 @@ export default function ShiftsAndDrawerPage() {
 
         </div>
 
-        {/* Shift History Log */}
+        {/* Shift History Log Table */}
         <div className="bg-white p-5 md:p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
-          <h3 className="text-base font-black text-slate-900 flex items-center justify-between">
-            <span>📋 سجل تقفيل الورديات والأدراج السابقة</span>
-            <span className="text-xs font-normal text-slate-500">إجمالي الورديات: {shifts.length}</span>
-          </h3>
+          <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+            <div>
+              <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+                <span>📋</span>
+                <span>سجل تقفيل الورديات والأدراج السابقة</span>
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">انقر على أي وردية لعرض كافة الحركات والتفاصيل أو التعديل والطباعة</p>
+            </div>
+            <span className="text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1 rounded-full border border-slate-200">
+              إجمالي الورديات: {shifts.length}
+            </span>
+          </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-right text-xs">
               <thead className="bg-slate-100 text-slate-700 font-bold uppercase border-b border-slate-200">
                 <tr>
-                  <th className="p-3">رقم الوردية</th>
+                  <th className="p-3">بداية الوردية</th>
+                  <th className="p-3">نهاية الوردية</th>
                   <th className="p-3">الفرع</th>
                   <th className="p-3">النوع</th>
                   <th className="p-3">المسؤول</th>
@@ -452,107 +536,333 @@ export default function ShiftsAndDrawerPage() {
                   <th className="p-3 font-mono">المبيعات</th>
                   <th className="p-3 font-mono">الفعلي بالدرج</th>
                   <th className="p-3 font-mono">الفارق</th>
-                  <th className="p-3">الحالة</th>
-                  <th className="p-3 text-center">طباعة Z-Report</th>
+                  <th className="p-3 text-center">الحالة</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
-                {shifts.map((s) => (
-                  <tr key={s.id} className="hover:bg-slate-50">
-                    <td className="p-3 font-mono font-bold text-slate-900">{s.id}</td>
-                    <td className="p-3 font-bold text-slate-800">{s.branch}</td>
-                    <td className="p-3">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                        s.shiftType === 'صباحي' ? 'bg-amber-100 text-amber-800' : 'bg-indigo-100 text-indigo-800'
-                      }`}>
-                        {s.shiftType}
-                      </span>
-                    </td>
-                    <td className="p-3 font-bold">{s.employeeName}</td>
-                    <td className="p-3 font-mono">{s.openingDrawerBalance.toLocaleString()} ج</td>
-                    <td className="p-3 font-mono font-black text-emerald-800">{s.totalSales.toLocaleString()} ج</td>
-                    <td className="p-3 font-mono font-black text-slate-900">{(s.actualClosingCash ?? s.expectedCashInDrawer).toLocaleString()} ج</td>
-                    <td className="p-3 font-mono font-bold">
-                      {s.cashDiscrepancy !== undefined ? (
-                        <span className={s.cashDiscrepancy === 0 ? 'text-emerald-700' : s.cashDiscrepancy < 0 ? 'text-rose-700' : 'text-blue-700'}>
-                          {s.cashDiscrepancy >= 0 ? `+${s.cashDiscrepancy}` : s.cashDiscrepancy} ج
-                        </span>
-                      ) : '—'}
-                    </td>
-                    <td className="p-3">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                        s.status === 'OPEN' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-700'
-                      }`}>
-                        {s.status === 'OPEN' ? 'مفتوحة' : 'مغلقة'}
-                      </span>
-                    </td>
-                    <td className="p-3 text-center">
-                      <button
-                        onClick={() => handlePrintZReport(s)}
-                        className="px-2.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold text-[11px] cursor-pointer"
-                      >
-                        🧾 Z-Report
-                      </button>
+                {shifts.length === 0 ? (
+                  <tr>
+                    <td colSpan={10} className="p-8 text-center text-slate-400 font-bold">
+                      لا توجد ورديات مسجلة حتى الآن
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  shifts.map((s) => (
+                    <tr 
+                      key={s.id} 
+                      onClick={() => { setSelectedShiftForDetails(s); setIsEditingShift(false); }}
+                      className="hover:bg-amber-50/70 transition-colors cursor-pointer group"
+                      title="انقر لعرض تفاصيل وحركات الوردية"
+                    >
+                      <td className="p-3 font-bold text-slate-900 whitespace-nowrap">
+                        {formatDateTime(s.startTime)}
+                      </td>
+                      <td className="p-3 font-bold text-slate-700 whitespace-nowrap">
+                        {s.endTime ? (
+                          formatDateTime(s.endTime)
+                        ) : (
+                          <span className="text-emerald-800 font-bold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                            قيد التشغيل
+                          </span>
+                        )}
+                      </td>
+                      <td className="p-3 font-bold text-slate-800">{s.branch}</td>
+                      <td className="p-3">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                          s.shiftType === 'صباحي' ? 'bg-amber-100 text-amber-800' : 'bg-indigo-100 text-indigo-800'
+                        }`}>
+                          {s.shiftType}
+                        </span>
+                      </td>
+                      <td className="p-3 font-bold">{s.employeeName}</td>
+                      <td className="p-3 font-mono">{s.openingDrawerBalance.toLocaleString()} ج</td>
+                      <td className="p-3 font-mono font-black text-emerald-800">{s.totalSales.toLocaleString()} ج</td>
+                      <td className="p-3 font-mono font-black text-slate-900">{(s.actualClosingCash ?? s.expectedCashInDrawer).toLocaleString()} ج</td>
+                      <td className="p-3 font-mono font-bold">
+                        {s.cashDiscrepancy !== undefined ? (
+                          <span className={s.cashDiscrepancy === 0 ? 'text-emerald-700' : s.cashDiscrepancy < 0 ? 'text-rose-700' : 'text-blue-700'}>
+                            {s.cashDiscrepancy >= 0 ? `+${s.cashDiscrepancy}` : s.cashDiscrepancy} ج
+                          </span>
+                        ) : '—'}
+                      </td>
+                      <td className="p-3 text-center">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                          s.status === 'OPEN' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-slate-100 text-slate-700'
+                        }`}>
+                          {s.status === 'OPEN' ? 'مفتوحة' : 'مغلقة'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
         </div>
 
-        {/* Z-Report Modal */}
-        {selectedShiftForZReport && (
-          <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-            <div className="bg-white max-w-sm w-full rounded-3xl p-6 space-y-4 shadow-2xl border border-slate-200">
-              <div className="flex justify-between items-center border-b pb-2">
-                <h3 className="font-black text-slate-900 text-base">تم إغلاق الوردية بنجاح ✅</h3>
-                <button onClick={() => setSelectedShiftForZReport(null)} className="text-slate-400 hover:text-slate-700 font-bold">✕</button>
-              </div>
-
-              <div className="p-4 bg-slate-50 rounded-2xl border border-dashed border-slate-300 space-y-2 text-xs font-mono">
-                <div className="text-center font-bold pb-2 border-b">
-                  <p className="text-sm font-black text-slate-900">مؤسسة كشك للأقمشة والستائر</p>
-                  <p className="text-xs text-amber-800">إيصال تقفيل وردية {selectedShiftForZReport.id}</p>
+        {/* Shift Details & Actions Popup Modal */}
+        {selectedShiftForDetails && (
+          <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto">
+            <div className="bg-white max-w-lg w-full rounded-3xl p-6 space-y-4 shadow-2xl border border-slate-200 max-h-[90vh] overflow-y-auto">
+              
+              {/* Modal Header */}
+              <div className="flex justify-between items-center border-b pb-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">📋</span>
+                  <div>
+                    <h3 className="font-black text-slate-900 text-base">
+                      {isEditingShift ? '✏️ تعديل بيانات الوردية' : `تفاصيل حركات الوردية (${selectedShiftForDetails.shiftType})`}
+                    </h3>
+                    <p className="text-xs text-slate-500 font-mono">👑 {selectedShiftForDetails.branch}</p>
+                  </div>
                 </div>
-                <div className="flex justify-between">
-                  <span>الفرع:</span>
-                  <span>{selectedShiftForZReport.branch}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>المسؤول:</span>
-                  <span>{selectedShiftForZReport.employeeName}</span>
-                </div>
-                <div className="flex justify-between font-black text-emerald-900 border-t pt-1">
-                  <span>إجمالي المبيعات:</span>
-                  <span>{selectedShiftForZReport.totalSales.toLocaleString()} ج</span>
-                </div>
-                <div className="flex justify-between font-black text-slate-900">
-                  <span>الفعلي بالدرج:</span>
-                  <span>{(selectedShiftForZReport.actualClosingCash || 0).toLocaleString()} ج</span>
-                </div>
-                <div className="flex justify-between font-bold">
-                  <span>الفارق:</span>
-                  <span>{(selectedShiftForZReport.cashDiscrepancy || 0) >= 0 ? `+${selectedShiftForZReport.cashDiscrepancy}` : selectedShiftForZReport.cashDiscrepancy} ج</span>
-                </div>
-              </div>
-
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => handlePrintZReport(selectedShiftForZReport)}
-                  className="flex-1 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs rounded-xl shadow"
+                <button 
+                  onClick={() => { setSelectedShiftForDetails(null); setIsEditingShift(false); }} 
+                  className="text-slate-400 hover:text-slate-700 font-bold text-sm cursor-pointer"
                 >
-                  🖨️ طباعة Z-Report (80mm)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSelectedShiftForZReport(null)}
-                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl"
-                >
-                  تم
+                  ✕
                 </button>
               </div>
+
+              {isEditingShift ? (
+                /* Admin Edit Form */
+                <form onSubmit={handleSaveEdit} className="space-y-3.5 text-xs">
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="font-bold text-slate-700 block mb-1">عهدة الافتتاح بالدرج (ج.م) *</label>
+                      <input
+                        type="number"
+                        required
+                        min="0"
+                        value={editForm.openingDrawerBalance}
+                        onChange={e => setEditForm({ ...editForm, openingDrawerBalance: Number(e.target.value) })}
+                        className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-mono font-bold text-slate-900"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="font-bold text-slate-700 block mb-1">النقدية الفعلية المحصية (ج.م) *</label>
+                      <input
+                        type="number"
+                        required
+                        min="0"
+                        value={editForm.actualClosingCash}
+                        onChange={e => setEditForm({ ...editForm, actualClosingCash: Number(e.target.value) })}
+                        className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-mono font-black text-slate-900"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">سبب العجز أو الزيادة</label>
+                    <input
+                      type="text"
+                      value={editForm.discrepancyReason}
+                      onChange={e => setEditForm({ ...editForm, discrepancyReason: e.target.value })}
+                      placeholder="توضيح سبب الفارق إن وجد..."
+                      className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-800"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">جهة تسليم النقدية</label>
+                    <input
+                      type="text"
+                      value={editForm.handoverDestination}
+                      onChange={e => setEditForm({ ...editForm, handoverDestination: e.target.value })}
+                      className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-800 font-bold"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">اسم المستلم للعهدة</label>
+                    <input
+                      type="text"
+                      value={editForm.handoverReceiverName}
+                      onChange={e => setEditForm({ ...editForm, handoverReceiverName: e.target.value })}
+                      className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-800"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">ملاحظات التقفيل</label>
+                    <textarea
+                      rows={2}
+                      value={editForm.closingNotes}
+                      onChange={e => setEditForm({ ...editForm, closingNotes: e.target.value })}
+                      className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-800"
+                    />
+                  </div>
+
+                  <div className="flex gap-2 pt-2 border-t">
+                    <button
+                      type="submit"
+                      className="flex-1 py-2.5 bg-slate-950 hover:bg-slate-800 text-white font-black rounded-xl cursor-pointer"
+                    >
+                      حفظ وتأكيد التعديلات 💾
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingShift(false)}
+                      className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl cursor-pointer"
+                    >
+                      إلغاء
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                /* Shift Details View */
+                <div className="space-y-3.5 text-xs">
+                  {/* Meta Bar */}
+                  <div className="grid grid-cols-2 gap-2 bg-slate-50 p-3 rounded-2xl border border-slate-200">
+                    <div>
+                      <span className="text-slate-500 block text-[11px]">المسؤول عن الوردية:</span>
+                      <strong className="text-slate-900 font-black">{selectedShiftForDetails.employeeName}</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block text-[11px]">نوع الوردية:</span>
+                      <strong className="text-slate-900 font-bold">{selectedShiftForDetails.shiftType}</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block text-[11px]">وقت البداية:</span>
+                      <span className="font-mono text-slate-700 font-bold">{formatDateTime(selectedShiftForDetails.startTime)}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block text-[11px]">وقت الإغلاق:</span>
+                      <span className="font-mono text-slate-700 font-bold">{selectedShiftForDetails.endTime ? formatDateTime(selectedShiftForDetails.endTime) : 'قيد التشغيل'}</span>
+                    </div>
+                  </div>
+
+                  {/* Financial & Sales Breakdown */}
+                  <div className="bg-emerald-50/70 border border-emerald-200 p-3.5 rounded-2xl space-y-2">
+                    <span className="font-black text-xs text-emerald-950 block">حركات ومبيعات الوردية:</span>
+                    <div className="grid grid-cols-2 gap-2 text-slate-700">
+                      <div className="flex justify-between">
+                        <span>💵 كاش بالدرج:</span>
+                        <span className="font-mono font-bold">{selectedShiftForDetails.cashSales.toLocaleString()} ج</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>⚡ إنستاباي:</span>
+                        <span className="font-mono font-bold">{selectedShiftForDetails.instapaySales.toLocaleString()} ج</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>📱 فودافون كاش:</span>
+                        <span className="font-mono font-bold">{selectedShiftForDetails.vodafoneSales.toLocaleString()} ج</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>💳 فيزا / كارت:</span>
+                        <span className="font-mono font-bold">{selectedShiftForDetails.visaSales.toLocaleString()} ج</span>
+                      </div>
+                    </div>
+                    <div className="border-t border-emerald-200 pt-1.5 flex justify-between font-black text-sm text-emerald-950">
+                      <span>إجمالي المبيعات المحققة:</span>
+                      <span className="font-mono">{selectedShiftForDetails.totalSales.toLocaleString()} ج.م</span>
+                    </div>
+                  </div>
+
+                  {/* Drawer Balancing Card */}
+                  <div className="bg-slate-50 border border-slate-200 p-3.5 rounded-2xl space-y-2 font-mono">
+                    <div className="flex justify-between text-slate-600 font-sans">
+                      <span>عهدة الافتتاح (أول المدة):</span>
+                      <span className="font-mono font-bold">{selectedShiftForDetails.openingDrawerBalance.toLocaleString()} ج</span>
+                    </div>
+                    {(selectedShiftForDetails.expensesPaid + selectedShiftForDetails.advancesPaid) > 0 && (
+                      <div className="flex justify-between text-rose-700 font-sans">
+                        <span>مصروفات وسلف مسحوبة من الدرج:</span>
+                        <span className="font-mono font-bold">-{(selectedShiftForDetails.expensesPaid + selectedShiftForDetails.advancesPaid).toLocaleString()} ج</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-slate-900 font-bold border-t pt-1 font-sans">
+                      <span>النقدية المتوقعة بالدرج:</span>
+                      <span className="font-mono">{selectedShiftForDetails.expectedCashInDrawer.toLocaleString()} ج</span>
+                    </div>
+                    <div className="flex justify-between text-slate-950 font-black text-sm font-sans">
+                      <span>النقدية الفعلية المحصية:</span>
+                      <span className="font-mono text-emerald-900">{(selectedShiftForDetails.actualClosingCash ?? selectedShiftForDetails.expectedCashInDrawer).toLocaleString()} ج</span>
+                    </div>
+                    {selectedShiftForDetails.cashDiscrepancy !== undefined && (
+                      <div className={`flex justify-between font-black font-sans p-2 rounded-xl border ${
+                        selectedShiftForDetails.cashDiscrepancy === 0 
+                          ? 'bg-emerald-100 text-emerald-900 border-emerald-300' 
+                          : selectedShiftForDetails.cashDiscrepancy < 0 
+                          ? 'bg-rose-100 text-rose-900 border-rose-300' 
+                          : 'bg-blue-100 text-blue-900 border-blue-300'
+                      }`}>
+                        <span>حالة الدرج (الفارق):</span>
+                        <span className="font-mono text-sm">
+                          {selectedShiftForDetails.cashDiscrepancy === 0 
+                            ? 'مطابق تماماً (0 ج)' 
+                            : selectedShiftForDetails.cashDiscrepancy < 0 
+                            ? `عجز: ${selectedShiftForDetails.cashDiscrepancy} ج` 
+                            : `زيادة: +${selectedShiftForDetails.cashDiscrepancy} ج`}
+                        </span>
+                      </div>
+                    )}
+                    {selectedShiftForDetails.discrepancyReason && (
+                      <div className="text-[11px] text-rose-800 font-sans">
+                        <span className="font-bold">سبب الفارق: </span>
+                        <span>{selectedShiftForDetails.discrepancyReason}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Handover Details */}
+                  {(selectedShiftForDetails.handoverDestination || selectedShiftForDetails.handoverReceiverName || selectedShiftForDetails.closingNotes) && (
+                    <div className="bg-slate-50 border border-slate-200 p-3 rounded-2xl space-y-1 text-[11px] text-slate-700">
+                      {selectedShiftForDetails.handoverDestination && (
+                        <div><span className="font-bold text-slate-900">جهة التسليم: </span>{selectedShiftForDetails.handoverDestination}</div>
+                      )}
+                      {selectedShiftForDetails.handoverReceiverName && (
+                        <div><span className="font-bold text-slate-900">المستلم: </span>{selectedShiftForDetails.handoverReceiverName}</div>
+                      )}
+                      {selectedShiftForDetails.closingNotes && (
+                        <div><span className="font-bold text-slate-900">ملاحظات: </span>{selectedShiftForDetails.closingNotes}</div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Action Buttons */}
+                  <div className="flex flex-wrap gap-2 pt-2 border-t">
+                    <button
+                      type="button"
+                      onClick={() => handlePrintZReport(selectedShiftForDetails)}
+                      className="flex-1 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs rounded-xl shadow flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <span>🖨️ طباعة تقرير الوردية (Z-Report)</span>
+                    </button>
+
+                    {canManage && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEdit(selectedShiftForDetails)}
+                          className="px-3.5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl flex items-center gap-1 cursor-pointer"
+                          title="تعديل بيانات الوردية (للإدارة)"
+                        >
+                          <span>✏️ تعديل</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteShift(selectedShiftForDetails.id)}
+                          className="px-3.5 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl border border-rose-200 cursor-pointer"
+                          title="حذف الوردية (للإدارة)"
+                        >
+                          <span>🗑️</span>
+                        </button>
+                      </>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => setSelectedShiftForDetails(null)}
+                      className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl cursor-pointer"
+                    >
+                      إغلاق
+                    </button>
+                  </div>
+                </div>
+              )}
+
             </div>
           </div>
         )}

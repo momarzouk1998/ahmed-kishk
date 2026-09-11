@@ -683,8 +683,8 @@ export default function DashboardPage() {
             <div className="flex items-center gap-3">
               <span className="text-3xl bg-white/20 p-2 rounded-2xl">⏱️</span>
               <div>
-                <h3 className="font-black text-sm text-white">الورديات والدرج (Z-Report)</h3>
-                <p className="text-[11px] text-amber-100">فصل ورديات عمر أفندي وتسليم عهدة النقدية</p>
+                <h3 className="font-black text-sm text-white">الورديات</h3>
+                <p className="text-[11px] text-amber-100">فصل ورديات الفروع وتسليم عهدة النقدية</p>
               </div>
             </div>
             <span className="material-symbols-outlined text-white group-hover:-translate-x-1 transition-transform">arrow_back</span>
