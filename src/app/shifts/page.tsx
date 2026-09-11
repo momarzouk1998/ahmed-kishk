@@ -49,6 +49,15 @@ export default function ShiftsAndDrawerPage() {
     closingNotes: '',
   });
 
+  // Table Filters & Pagination State
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'yesterday' | 'week' | 'month'>('all');
+  const [branchFilter, setBranchFilter] = useState<string>('all');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(10);
+
   useEffect(() => {
     setShifts(getShifts());
     setEmployees(getEmployees());
@@ -61,6 +70,73 @@ export default function ShiftsAndDrawerPage() {
   const branchEmployees = useMemo(() => {
     return employees.filter(e => normalizeBranchName(e.branch) === normalizeBranchName(selectedBranch));
   }, [employees, selectedBranch]);
+
+  // Filter shifts based on filters & quick date buttons
+  const filteredShifts = useMemo(() => {
+    return shifts.filter(s => {
+      // Branch filter
+      if (branchFilter !== 'all' && normalizeBranchName(s.branch) !== normalizeBranchName(branchFilter)) {
+        return false;
+      }
+
+      // Type filter
+      if (typeFilter !== 'all' && s.shiftType !== typeFilter) {
+        return false;
+      }
+
+      // Status filter
+      if (statusFilter !== 'all' && s.status !== statusFilter) {
+        return false;
+      }
+
+      // Date filter
+      if (dateFilter !== 'all') {
+        const shiftDate = new Date(s.startTime);
+        const now = new Date();
+        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const startOfYesterday = new Date(startOfToday.getTime() - 24 * 60 * 60 * 1000);
+        const startOfWeek = new Date(startOfToday.getTime() - 7 * 24 * 60 * 60 * 1000);
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+        if (dateFilter === 'today') {
+          if (shiftDate < startOfToday) return false;
+        } else if (dateFilter === 'yesterday') {
+          if (shiftDate < startOfYesterday || shiftDate >= startOfToday) return false;
+        } else if (dateFilter === 'week') {
+          if (shiftDate < startOfWeek) return false;
+        } else if (dateFilter === 'month') {
+          if (shiftDate < startOfMonth) return false;
+        }
+      }
+
+      // Search query
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        const matchEmp = s.employeeName?.toLowerCase().includes(q);
+        const matchBranch = s.branch?.toLowerCase().includes(q);
+        const matchType = s.shiftType?.toLowerCase().includes(q);
+        const matchReceiver = s.handoverReceiverName?.toLowerCase().includes(q);
+        const matchNotes = s.closingNotes?.toLowerCase().includes(q);
+        const matchReason = s.discrepancyReason?.toLowerCase().includes(q);
+        if (!matchEmp && !matchBranch && !matchType && !matchReceiver && !matchNotes && !matchReason) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [shifts, branchFilter, typeFilter, statusFilter, dateFilter, searchQuery]);
+
+  // Reset to page 1 on filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [branchFilter, typeFilter, statusFilter, dateFilter, searchQuery, pageSize]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredShifts.length / pageSize));
+  const paginatedShifts = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredShifts.slice(start, start + pageSize);
+  }, [filteredShifts, currentPage, pageSize]);
 
   const formatDateTime = (isoStr?: string) => {
     if (!isoStr) return '—';
@@ -508,9 +584,11 @@ export default function ShiftsAndDrawerPage() {
 
         </div>
 
-        {/* Shift History Log Table */}
+        {/* Shift History Log Table with Search, Date Quick Filters, and Pagination */}
         <div className="bg-white p-5 md:p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
-          <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+          
+          {/* Header & Badges */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
             <div>
               <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
                 <span>📋</span>
@@ -518,12 +596,110 @@ export default function ShiftsAndDrawerPage() {
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">انقر على أي وردية لعرض كافة الحركات والتفاصيل أو التعديل والطباعة</p>
             </div>
-            <span className="text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1 rounded-full border border-slate-200">
-              إجمالي الورديات: {shifts.length}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1 rounded-full border border-slate-200">
+                المعروض: {filteredShifts.length} من {shifts.length} وردية
+              </span>
+            </div>
           </div>
 
-          <div className="overflow-x-auto">
+          {/* Quick Date Filters & Search Toolbar */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pt-1">
+            
+            {/* Quick Date Range Buttons */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
+              <span className="text-xs font-bold text-slate-500 whitespace-nowrap ml-1">الفترة:</span>
+              {[
+                { id: 'all', label: 'الكل' },
+                { id: 'today', label: 'اليوم' },
+                { id: 'yesterday', label: 'أمس' },
+                { id: 'week', label: 'هذا الأسبوع' },
+                { id: 'month', label: 'هذا الشهر' },
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setDateFilter(tab.id as any)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                    dateFilter === tab.id
+                      ? 'bg-slate-900 text-white shadow-xs font-black'
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Search Box */}
+            <div className="relative flex-1 md:max-w-xs">
+              <input
+                type="text"
+                placeholder="بحث باسم المسؤول، الفرع، الملاحظات..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-8 pr-9 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-amber-500 focus:bg-white"
+              />
+              <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
+                search
+              </span>
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold cursor-pointer"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Filter Dropdowns (Branch, Shift Type, Status) */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+            <div>
+              <label className="text-[11px] font-bold text-slate-500 block mb-1">تصفية حسب الفرع:</label>
+              <select
+                value={branchFilter}
+                onChange={(e) => setBranchFilter(e.target.value)}
+                className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
+              >
+                <option value="all">كل الفروع (5 فروع)</option>
+                {BRANCHES_LIST.map(b => (
+                  <option key={b.id} value={b.name}>{b.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-[11px] font-bold text-slate-500 block mb-1">نوع الوردية:</label>
+              <select
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value)}
+                className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
+              >
+                <option value="all">كل الأنواع (صباحي ومسائي)</option>
+                <option value="صباحي">☀️ صباحي</option>
+                <option value="مسائي">🌙 مسائي</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="text-[11px] font-bold text-slate-500 block mb-1">حالة الوردية:</label>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
+              >
+                <option value="all">كل الحالات (مفتوحة ومغلقة)</option>
+                <option value="OPEN">🟢 قيد التشغيل (مفتوحة)</option>
+                <option value="CLOSED">🔒 مغلقة ومسلّمة</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Table */}
+          <div className="overflow-x-auto pt-2">
             <table className="w-full text-right text-xs">
               <thead className="bg-slate-100 text-slate-700 font-bold uppercase border-b border-slate-200">
                 <tr>
@@ -540,14 +716,14 @@ export default function ShiftsAndDrawerPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
-                {shifts.length === 0 ? (
+                {paginatedShifts.length === 0 ? (
                   <tr>
                     <td colSpan={10} className="p-8 text-center text-slate-400 font-bold">
-                      لا توجد ورديات مسجلة حتى الآن
+                      لا توجد نتائج مطابقة لخيارات البحث والتصفية
                     </td>
                   </tr>
                 ) : (
-                  shifts.map((s) => (
+                  paginatedShifts.map((s) => (
                     <tr 
                       key={s.id} 
                       onClick={() => { setSelectedShiftForDetails(s); setIsEditingShift(false); }}
@@ -598,6 +774,53 @@ export default function ShiftsAndDrawerPage() {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination Controls Bar */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-slate-100 text-xs">
+            <div className="flex items-center gap-2">
+              <span className="text-slate-500 font-bold">
+                عرض {filteredShifts.length === 0 ? 0 : (currentPage - 1) * pageSize + 1} - {Math.min(currentPage * pageSize, filteredShifts.length)} من {filteredShifts.length} وردية
+              </span>
+              <span className="text-slate-300">•</span>
+              <div className="flex items-center gap-1">
+                <span className="text-slate-500 font-bold">عدد السطور:</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => setPageSize(Number(e.target.value))}
+                  className="bg-slate-100 border border-slate-300 rounded-lg px-2 py-1 text-xs font-bold text-slate-800 cursor-pointer"
+                >
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                </select>
+              </div>
+            </div>
+
+            {totalPages > 1 && (
+              <div className="flex items-center gap-1.5 self-center sm:self-auto">
+                <button
+                  type="button"
+                  disabled={currentPage <= 1}
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed text-slate-800 font-bold rounded-xl transition-colors cursor-pointer"
+                >
+                  السابق
+                </button>
+                <span className="px-3 py-1 bg-amber-50 border border-amber-200 text-amber-900 font-mono font-black rounded-xl">
+                  {currentPage} / {totalPages}
+                </span>
+                <button
+                  type="button"
+                  disabled={currentPage >= totalPages}
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed text-slate-800 font-bold rounded-xl transition-colors cursor-pointer"
+                >
+                  التالي
+                </button>
+              </div>
+            )}
+          </div>
+
         </div>
 
         {/* Shift Details & Actions Popup Modal */}
