@@ -691,14 +691,14 @@ export default function DashboardPage() {
           </Link>
 
           <Link
-            href="/online-orders"
-            className="p-4 bg-gradient-to-r from-rose-500 to-rose-700 text-white rounded-3xl shadow-md hover:scale-[1.01] transition-all flex items-center justify-between group"
+            href="/fabric-sales"
+            className="p-4 bg-gradient-to-r from-emerald-600 to-teal-700 text-white rounded-3xl shadow-md hover:scale-[1.01] transition-all flex items-center justify-between group"
           >
             <div className="flex items-center gap-3">
-              <span className="text-3xl bg-white/20 p-2 rounded-2xl">📦</span>
+              <span className="text-3xl bg-white/20 p-2 rounded-2xl">🛍️</span>
               <div>
-                <h3 className="font-black text-sm text-white">الفرع التجاري والأونلاين</h3>
-                <p className="text-[11px] text-rose-100">فواتير شحن موحدة (110 ج) وبوالص الطرود</p>
+                <h3 className="font-black text-sm text-white">فواتير مبيعات الأقمشة والشحن</h3>
+                <p className="text-[11px] text-emerald-100">فواتير كاشير، دفع مجزأ، وشحن أونلاين وبوالص</p>
               </div>
             </div>
             <span className="material-symbols-outlined text-white group-hover:-translate-x-1 transition-transform">arrow_back</span>
