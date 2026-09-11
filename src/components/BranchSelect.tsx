@@ -2,6 +2,8 @@
 
 import React from 'react';
 
+import { BRANCHES_LIST } from '@/lib/branches';
+
 /**
  * قائمة اختيار الفرع الموحّدة. للأدمن: select تفاعلى عادى. لغير الأدمن: قيمة
  * ثابتة معروضة فقط (مفيش أى تحكم) — موظف الفرع لا يقدر يغيّر فرعه إطلاقاً،
@@ -11,8 +13,10 @@ export default function BranchSelect({
   value,
   onChange,
   isAdmin,
+  /** لو مُمرَّرة، يضاف خيار "كل الفروع" بهذه القيمة كسنتينل (يُستخدم فى فلاتر القوائم فقط). */
   allValue,
   allLabel = '🌐 جميع الفروع',
+  /** نص بديل يُعرض فى وضع القفل (مثلاً لو value = 'الفرع الرئيسي' والتسمية المعروضة أطول) */
   displayValue,
   className = '',
   lockedClassName = '',
@@ -20,10 +24,8 @@ export default function BranchSelect({
   value: string;
   onChange: (v: string) => void;
   isAdmin: boolean;
-  /** لو مُمرَّرة، يضاف خيار "كل الفروع" بهذه القيمة كسنتينل (يُستخدم فى فلاتر القوائم فقط). */
   allValue?: string;
   allLabel?: string;
-  /** نص بديل يُعرض فى وضع القفل (مثلاً لو value = 'الفرع الرئيسي' والتسمية المعروضة أطول) */
   displayValue?: string;
   className?: string;
   lockedClassName?: string;
@@ -40,10 +42,11 @@ export default function BranchSelect({
   return (
     <select value={value} onChange={e => onChange(e.target.value)} className={className}>
       {allValue !== undefined && <option value={allValue}>{allLabel}</option>}
-      <option value="الفرع الرئيسي">الفرع الرئيسي (سعد زغلول)</option>
-      <option value="فرع عرابي">فرع عرابي</option>
-      <option value="فرع عمر أفندي">فرع عمر أفندي</option>
-      <option value="فرع الثلاثيني">فرع الثلاثيني</option>
+      {BRANCHES_LIST.map(b => (
+        <option key={b.id} value={b.name}>
+          {b.name === 'الفرع الرئيسي' ? 'الفرع الرئيسي (سعد زغلول)' : b.name}
+        </option>
+      ))}
     </select>
   );
 }

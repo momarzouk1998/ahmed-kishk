@@ -116,6 +116,9 @@ export default function NewSalesInvoicePOSPage() {
   const [showReceiptModal, setShowReceiptModal] = useState<boolean>(false);
   const [lastSavedInvoice, setLastSavedInvoice] = useState<any>(null);
 
+  // Shipping Modal State
+  const [showShippingModal, setShowShippingModal] = useState<boolean>(false);
+
   // Load Inventory & Generate Invoice Number
   useEffect(() => {
     async function initData() {
@@ -131,9 +134,9 @@ export default function NewSalesInvoicePOSPage() {
         console.error('Error loading inventory products:', err);
       }
 
-      // Generate unique invoice number
+      // Generate unique invoice number with clean short prefix AK-
       const serial = `${Date.now().toString().slice(-6)}${Math.floor(10 + Math.random() * 90)}`;
-      setInvoiceNumber(`INV-2026-${serial}`);
+      setInvoiceNumber(`AK-${serial}`);
     }
     initData();
   }, []);
@@ -540,24 +543,18 @@ export default function NewSalesInvoicePOSPage() {
             
             {/* Customer & Branch Header Card */}
             <div className="bg-white p-2.5 rounded-2xl border border-slate-200 shadow-soft space-y-2">
-              {/* Top Row: Invoice Number & Back to List */}
+              {/* Top Row: Invoice Number */}
               <div className="flex justify-between items-center pb-1.5 border-b border-slate-100">
-                <div className="flex items-center gap-1 text-xs font-black text-slate-900">
+                <div className="flex items-center gap-1.5 text-xs font-black text-slate-900">
                   <span className="material-symbols-outlined text-amber-500 text-base">receipt_long</span>
                   <span>الفاتورة:</span>
-                  <span className="bg-amber-100 text-amber-950 text-xs px-1.5 py-0.5 rounded-lg font-mono font-black border border-amber-300">
+                  <span className="bg-amber-100 text-amber-950 text-xs px-2 py-0.5 rounded-lg font-mono font-black border border-amber-300">
                     {invoiceNumber}
                   </span>
                 </div>
-                
-                <button
-                  type="button"
-                  onClick={() => router.push('/fabric-sales')}
-                  className="text-[11px] font-bold text-slate-700 hover:text-slate-950 bg-slate-100 hover:bg-slate-200 px-2 py-0.5 rounded-lg transition-colors cursor-pointer border border-slate-200 flex items-center gap-1"
-                >
-                  <span>↩️</span>
-                  <span>السجل</span>
-                </button>
+                <div className="text-[11px] font-mono text-slate-400 font-bold">
+                  {new Date().toLocaleDateString('ar-EG')}
+                </div>
               </div>
 
               {/* Customer Type Toggle: 2 Large Touch Buttons */}
@@ -612,111 +609,36 @@ export default function NewSalesInvoicePOSPage() {
                   className="w-full border border-slate-200 rounded-xl px-2.5 py-1.5 font-bold text-slate-900 bg-slate-50 text-xs focus:outline-none"
                 />
 
-                {/* Online Shipping Mode Toggle */}
-                <div className="pt-1 border-t border-slate-100">
+                {/* Compact Shipping Button */}
+                <div className="pt-1 border-t border-slate-100 flex items-center gap-1.5">
                   <button
                     type="button"
-                    onClick={() => setIsOnlineOrder(!isOnlineOrder)}
-                    className={`w-full py-1.5 px-2.5 rounded-xl text-xs font-black flex items-center justify-between transition-all cursor-pointer border ${
+                    onClick={() => setShowShippingModal(true)}
+                    className={`flex-1 py-1.5 px-2.5 rounded-xl text-xs font-black flex items-center justify-between transition-all cursor-pointer border ${
                       isOnlineOrder
-                        ? 'bg-blue-600 text-white border-blue-700 shadow-xs'
+                        ? 'bg-blue-50 text-blue-900 border-blue-300 hover:bg-blue-100 shadow-2xs'
                         : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
                     }`}
                   >
                     <span className="flex items-center gap-1.5">
                       <span>📦</span>
-                      <span>شحن أونلاين / الفرع التجاري</span>
+                      <span className="truncate max-w-[130px]">{isOnlineOrder ? `شحن: ${shippingCompany}` : 'إضافة شحن / أونلاين'}</span>
                     </span>
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-mono font-bold ${
-                      isOnlineOrder ? 'bg-white text-blue-900' : 'bg-slate-200 text-slate-700'
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-mono font-bold shrink-0 ${
+                      isOnlineOrder ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-700'
                     }`}>
-                      {isOnlineOrder ? `+${shippingFee} ج (مفعل)` : 'مباشر بالفرع'}
+                      {isOnlineOrder ? `+${shippingFee} ج (مفعل ✏️)` : '+ شحن'}
                     </span>
                   </button>
-
-                  {/* Expanded Online Shipping Fields */}
                   {isOnlineOrder && (
-                    <div className="mt-1.5 p-2 bg-blue-50/70 rounded-xl border border-blue-200 space-y-1.5 text-xs">
-                      <div>
-                        <label className="text-[10px] font-bold text-blue-950 block mb-0.5">عنوان الشحن بالتفصيل (المحافظة/المدينة/الشارع):</label>
-                        <input
-                          type="text"
-                          placeholder="مثال: الإسماعيلية - الشيخ زايد..."
-                          value={shippingAddress}
-                          onChange={e => setShippingAddress(e.target.value)}
-                          className="w-full bg-white border border-blue-200 rounded-lg px-2 py-1 text-xs text-slate-900 font-bold focus:outline-none focus:border-blue-500"
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-1.5">
-                        <div>
-                          <label className="text-[10px] font-bold text-blue-950 block mb-0.5">شركة الشحن:</label>
-                          <select
-                            value={shippingCompany}
-                            onChange={e => setShippingCompany(e.target.value)}
-                            className="w-full bg-white border border-blue-200 rounded-lg px-1.5 py-1 text-[11px] text-slate-900 font-bold focus:outline-none"
-                          >
-                            <option value="بوسطة (Bosta)">بوسطة (Bosta)</option>
-                            <option value="أرامكس (Aramex)">أرامكس (Aramex)</option>
-                            <option value="مندوب الفرع التجاري">مندوب الفرع التجاري</option>
-                            <option value="ريد بوكس (RedBox)">ريد بوكس (RedBox)</option>
-                            <option value="شركة شحن أخرى">شركة شحن أخرى</option>
-                          </select>
-                        </div>
-
-                        <div>
-                          <label className="text-[10px] font-bold text-blue-950 block mb-0.5">مصاريف الشحن (ج.م):</label>
-                          <input
-                            type="number"
-                            min="0"
-                            value={shippingFee}
-                            onChange={e => setShippingFee(Number(e.target.value))}
-                            className="w-full bg-white border border-blue-200 rounded-lg px-2 py-1 text-xs text-slate-900 font-mono font-black focus:outline-none"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-1.5">
-                        <div>
-                          <label className="text-[10px] font-bold text-blue-950 block mb-0.5">هاتف المستلم (إن اختلف):</label>
-                          <input
-                            type="text"
-                            placeholder={custPhone || 'رقم إضافي...'}
-                            value={receiverPhone}
-                            onChange={e => setReceiverPhone(e.target.value)}
-                            className="w-full bg-white border border-blue-200 rounded-lg px-2 py-1 text-xs text-slate-900 font-mono font-bold focus:outline-none"
-                            dir="ltr"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="text-[10px] font-bold text-blue-950 block mb-0.5">مصدر الطلب:</label>
-                          <select
-                            value={orderSource}
-                            onChange={e => setOrderSource(e.target.value)}
-                            className="w-full bg-white border border-blue-200 rounded-lg px-1.5 py-1 text-[11px] text-slate-900 font-bold focus:outline-none"
-                          >
-                            <option value="صفحة الفيسبوك">صفحة الفيسبوك</option>
-                            <option value="واتساب (WhatsApp)">واتساب</option>
-                            <option value="إنستجرام (Instagram)">إنستجرام</option>
-                            <option value="تيك توك (TikTok)">تيك توك</option>
-                            <option value="الموقع الإلكتروني">الموقع الإلكتروني</option>
-                          </select>
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="text-[10px] font-bold text-blue-950 block mb-0.5">رقم البوليصة / التتبع (اختياري):</label>
-                        <input
-                          type="text"
-                          placeholder="مثال: BST-982341..."
-                          value={trackingNumber}
-                          onChange={e => setTrackingNumber(e.target.value)}
-                          className="w-full bg-white border border-blue-200 rounded-lg px-2 py-1 text-xs text-slate-900 font-mono font-bold focus:outline-none"
-                          dir="ltr"
-                        />
-                      </div>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsOnlineOrder(false)}
+                      className="w-7 h-7 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200 flex items-center justify-center text-xs font-bold transition-colors cursor-pointer shrink-0"
+                      title="إلغاء الشحن والتحويل لبيع مباشر بالفرع"
+                    >
+                      ✕
+                    </button>
                   )}
                 </div>
               </div>
@@ -884,16 +806,27 @@ export default function NewSalesInvoicePOSPage() {
                     {items.length}
                   </span>
                 </h3>
-                {items.length > 0 && (
+                <div className="flex items-center gap-1.5">
                   <button
                     type="button"
-                    onClick={handleClearCart}
-                    className="text-xs text-rose-600 hover:text-rose-700 font-black bg-rose-50 hover:bg-rose-100 border border-rose-200 px-2 py-0.5 rounded-xl transition-colors cursor-pointer flex items-center gap-1"
+                    onClick={() => router.push('/fabric-sales')}
+                    className="text-xs font-bold text-slate-700 hover:text-slate-950 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-xl transition-colors cursor-pointer border border-slate-200 flex items-center gap-1"
+                    title="الرجوع لسجل فواتير المبيعات"
                   >
-                    <span>مسح الكل</span>
-                    <span className="material-symbols-outlined text-sm">delete</span>
+                    <span>↩️</span>
+                    <span>السجل</span>
                   </button>
-                )}
+                  {items.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleClearCart}
+                      className="text-xs text-rose-600 hover:text-rose-700 font-black bg-rose-50 hover:bg-rose-100 border border-rose-200 px-2 py-1 rounded-xl transition-colors cursor-pointer flex items-center gap-1"
+                    >
+                      <span>مسح الكل</span>
+                      <span className="material-symbols-outlined text-sm">delete</span>
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Items Table — scrollable, takes all remaining vertical space */}
@@ -1193,6 +1126,144 @@ export default function NewSalesInvoicePOSPage() {
     
         </div>
       </div>
+
+      {/* SHIPPING DETAILS POPUP MODAL */}
+      {showShippingModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 border border-slate-200">
+            <div className="flex justify-between items-center border-b pb-3">
+              <h3 className="font-black text-slate-900 text-sm flex items-center gap-2">
+                <span className="material-symbols-outlined text-blue-600 text-lg">local_shipping</span>
+                <span>بيانات الشحن والتوصيل (أونلاين / الفرع التجاري)</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowShippingModal(false)}
+                className="text-slate-400 hover:text-slate-700 font-bold cursor-pointer text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">
+                  عنوان الشحن بالتفصيل (المحافظة / المدينة / الشارع) *
+                </label>
+                <input
+                  type="text"
+                  placeholder="مثال: الإسماعيلية - الشيخ زايد - شارع الثلاثيني..."
+                  value={shippingAddress}
+                  onChange={e => setShippingAddress(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 font-bold focus:bg-white focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">شركة الشحن *</label>
+                  <select
+                    value={shippingCompany}
+                    onChange={e => setShippingCompany(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-2 text-xs text-slate-900 font-bold focus:bg-white focus:outline-none focus:border-blue-500"
+                  >
+                    <option value="بوسطة (Bosta)">بوسطة (Bosta)</option>
+                    <option value="أرامكس (Aramex)">أرامكس (Aramex)</option>
+                    <option value="مندوب الفرع التجاري">مندوب الفرع التجاري</option>
+                    <option value="ريد بوكس (RedBox)">ريد بوكس (RedBox)</option>
+                    <option value="شركة شحن أخرى">شركة شحن أخرى</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">مصاريف الشحن (ج.م) *</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={shippingFee}
+                    onChange={e => setShippingFee(Number(e.target.value))}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono font-black focus:bg-white focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">هاتف المستلم (إن اختلف):</label>
+                  <input
+                    type="text"
+                    placeholder={custPhone || 'رقم إضافي...'}
+                    value={receiverPhone}
+                    onChange={e => setReceiverPhone(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono font-bold focus:bg-white focus:outline-none focus:border-blue-500"
+                    dir="ltr"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">مصدر الطلب:</label>
+                  <select
+                    value={orderSource}
+                    onChange={e => setOrderSource(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-2 text-xs text-slate-900 font-bold focus:bg-white focus:outline-none focus:border-blue-500"
+                  >
+                    <option value="صفحة الفيسبوك">صفحة الفيسبوك</option>
+                    <option value="واتساب (WhatsApp)">واتساب</option>
+                    <option value="إنستجرام (Instagram)">إنستجرام</option>
+                    <option value="تيك توك (TikTok)">تيك توك</option>
+                    <option value="الموقع الإلكتروني">الموقع الإلكتروني</option>
+                    <option value="أخرى">أخرى</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">رقم البوليصة / التتبع (اختياري):</label>
+                <input
+                  type="text"
+                  placeholder="مثال: BST-982341..."
+                  value={trackingNumber}
+                  onChange={e => setTrackingNumber(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono font-bold focus:bg-white focus:outline-none focus:border-blue-500"
+                  dir="ltr"
+                />
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsOnlineOrder(false);
+                  setShowShippingModal(false);
+                }}
+                className="px-3 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl transition-colors cursor-pointer"
+              >
+                إلغاء الشحن (مباشر)
+              </button>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowShippingModal(false)}
+                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-colors cursor-pointer"
+                >
+                  إغلاق
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsOnlineOrder(true);
+                    setShowShippingModal(false);
+                  }}
+                  className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-black text-xs rounded-xl shadow-md transition-colors cursor-pointer"
+                >
+                  حفظ وتفعيل الشحن ✓
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* THERMAL RECEIPT / POS PRINT MODAL */}
       {showReceiptModal && lastSavedInvoice && (

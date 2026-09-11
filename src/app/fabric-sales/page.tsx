@@ -863,28 +863,6 @@ export default function FabricSalesPage() {
         {/* TAB 2: ONLINE ORDERS & COMMERCIAL BRANCH */}
         {activeTab === 'ONLINE' && (
           <div className="space-y-4">
-            {/* Header with CTA */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-gradient-to-r from-blue-900 to-slate-900 text-white p-4 rounded-3xl shadow-soft">
-              <div className="space-y-1">
-                <h3 className="font-black text-sm sm:text-base flex items-center gap-2">
-                  <span className="material-symbols-outlined text-blue-400 text-xl">local_shipping</span>
-                  <span>الفرع التجاري وشحنات الأونلاين (بوليصات وطبيعة كاشير)</span>
-                </h3>
-                <p className="text-xs text-blue-200">
-                  فواتير البيع الأونلاين والشحن عبر بوسطة وأرامكس مع إصدار بوليصات الشحن المباشرة وطباعة 80mm / A4
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => router.push('/fabric-sales/new')}
-                className="bg-blue-500 hover:bg-blue-400 text-white px-4 py-2.5 rounded-2xl text-xs font-black shadow-md flex items-center gap-2 cursor-pointer transition-all shrink-0"
-              >
-                <span className="material-symbols-outlined text-[18px]">add_circle</span>
-                <span>+ طلب أونلاين / شحن جديد</span>
-              </button>
-            </div>
-
             {/* Online Metrics */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
               <div className="bg-white p-3.5 rounded-2xl border border-slate-200 text-center shadow-3xs">

@@ -425,23 +425,23 @@ export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricS
             <button
               type="button"
               onClick={handlePrintCashier}
-              className="bg-amber-500 hover:bg-amber-600 text-slate-950 px-4 py-2 rounded-xl text-xs font-black shadow flex items-center gap-1.5 cursor-pointer transition-colors"
+              className="bg-amber-500 hover:bg-amber-600 text-slate-950 px-3.5 py-2 rounded-xl text-xs font-black shadow flex items-center gap-1.5 cursor-pointer transition-colors"
               title="طباعة على طابعة الكاشير الحرارية 80 مم"
             >
-              <span>🧾 فاتورة (80mm)</span>
+              <span>🧾 فاتورة</span>
             </button>
             <button
               type="button"
               onClick={handlePrintWaybill}
-              className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-xs font-black shadow flex items-center gap-1.5 cursor-pointer transition-colors"
+              className="bg-indigo-600 hover:bg-indigo-500 text-white px-3.5 py-2 rounded-xl text-xs font-black shadow flex items-center gap-1.5 cursor-pointer transition-colors"
               title="طباعة بوليصة شحن للطرد وشركة الشحن"
             >
-              <span>📦 بوليصة شحن (Waybill)</span>
+              <span>📦 شحن</span>
             </button>
             <button
               type="button"
               onClick={handlePrint}
-              className="bg-slate-950 hover:bg-slate-800 text-white px-3.5 py-2 rounded-xl text-xs font-bold shadow-xs flex items-center gap-1.5 cursor-pointer transition-colors"
+              className="bg-slate-950 hover:bg-slate-800 text-white px-3 py-2 rounded-xl text-xs font-bold shadow-xs flex items-center gap-1.5 cursor-pointer transition-colors"
               title="طباعة على ورق A4 عادى"
             >
               <span>🖨️ A4</span>
@@ -449,7 +449,7 @@ export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricS
             <button
               type="button"
               onClick={onClose}
-              className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3.5 py-2 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+              className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-xl text-xs font-bold transition-colors cursor-pointer"
             >
               إغلاق ✕
             </button>
