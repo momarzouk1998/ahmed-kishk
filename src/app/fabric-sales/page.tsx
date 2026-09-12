@@ -429,7 +429,7 @@ export default function FabricSalesPage() {
 
   // Filtered Online Invoices (الفرع التجاري أو شحن أونلاين)
   const filteredOnlineInvoices = invoices.filter(inv => {
-    const isOnline = !!inv.isOnlineOrder || normalizeBranchName(inv.branch) === 'الفرع التجاري';
+    const isOnline = !!inv.isOnlineOrder;
     if (!isOnline) return false;
 
     const custPhone = inv.phone || inv.customerPhone || inv.receiverPhone || '';
@@ -502,7 +502,7 @@ export default function FabricSalesPage() {
               >
                 <span>📦 شحنات وفواتير الأونلاين</span>
                 <span className="bg-blue-100 text-blue-950 px-2 py-0.5 rounded-full text-[11px] font-mono font-bold">
-                  {invoices.filter(i => i.isOnlineOrder || normalizeBranchName(i.branch) === 'الفرع التجاري').length}
+                  {invoices.filter(i => i.isOnlineOrder).length}
                 </span>
               </button>
             )}
@@ -726,7 +726,7 @@ export default function FabricSalesPage() {
                             <td className="p-3.5 text-slate-700">
                               <div className="flex items-center gap-1.5">
                                 <span className="font-bold text-slate-900 text-sm">{inv.customerName}</span>
-                                {(inv.isOnlineOrder || normalizeBranchName(inv.branch) === 'الفرع التجاري') && (
+                                {inv.isOnlineOrder && (
                                   <span className="bg-blue-100 text-blue-900 border border-blue-300 text-[10px] px-1.5 py-0.2 rounded-md font-bold inline-flex items-center gap-0.5">
                                     <span>📦</span>
                                     <span>{inv.shippingCompany || 'أونلاين'}</span>
@@ -816,7 +816,7 @@ export default function FabricSalesPage() {
                             {/* Actions */}
                             <td className="p-3.5 text-center" onClick={e => e.stopPropagation()}>
                               <div className="flex items-center justify-center gap-1">
-                                {(inv.isOnlineOrder || normalizeBranchName(inv.branch) === 'الفرع التجاري') && (
+                                {inv.isOnlineOrder && (
                                   <button
                                     type="button"
                                     onClick={() => setSelectedInvoice(inv)}
