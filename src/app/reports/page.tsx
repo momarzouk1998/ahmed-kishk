@@ -200,22 +200,37 @@ export default function ReportsPage() {
     return normalizeBranchName(b) === normalizeBranchName(selectedBranch);
   };
 
+  // #FIX (اختفاء الفرق فى خزينة عرابي — 12 سبتمبر 2026): مصدر واحد للتاريخ
+  // الحقيقي لكل نوع سجل، يُستخدم فى كل مكان فى الصفحة (الملخص العلوي + خزينة
+  // كل فرع على حدة) عشان يستحيل نسخة تنحرف عن التانية تاني زي ما حصل. القاعدة
+  // الثابتة: updatedAt (وقت آخر لمسة للسجل) ممنوع يُستخدم أبدًا فى تصنيف
+  // الفترة المالية — بيعكس امتى اتعدّل السجل لأي سبب، مش امتى الفلوس اتحصّلت
+  // فعليًا. أي سجل يتلمس النهاردة لسبب مالوش علاقة بالتحصيل (تعديل بيانات
+  // العميل، مزامنة، إلخ) كان بيظهر كإنه إيراد اليوم فى خزينة الفرع بس مش فى
+  // الملخص العلوي، وده اللي عمل فرق 32,000 ج.م فى خزينة فرع عرابي.
+  const invoiceDate = (i: any): string | undefined => i?.date;
+  const collectionDate = (c: any): string | undefined => c?.date;
+  const quotationDate = (q: any): string | undefined => q?.date || q?.depositDate || q?.createdAt;
+  const inspectionDate = (i: any): string | undefined => i?.createdAt || i?.scheduledAt;
+  const purchaseDate = (p: any): string | undefined => p?.date;
+  const shiftDate = (s: any): string | undefined => s?.startTime || s?.createdAt || s?.endTime;
+
   const fInvoices = useMemo(
-    () => invoices.filter(i => inBranch(i.branch) && inPeriod(i.date)),
+    () => invoices.filter(i => inBranch(i.branch) && inPeriod(invoiceDate(i))),
     [invoices, selectedBranch, period]
   );
   const fQuotations = useMemo(
-    () => quotations.filter(q => inBranch(q.branch) && inPeriod(q.date || q.depositDate || q.createdAt)),
+    () => quotations.filter(q => inBranch(q.branch) && inPeriod(quotationDate(q))),
     [quotations, selectedBranch, period]
   );
   const fPurchases = useMemo(
-    () => purchases.filter(p => inBranch(p.branch) && inPeriod(p.date)),
+    () => purchases.filter(p => inBranch(p.branch) && inPeriod(purchaseDate(p))),
     [purchases, selectedBranch, period]
   );
 
   const fCollections = useMemo(
     () => collections.filter(c => {
-      const matchPeriod = inPeriod(c.date);
+      const matchPeriod = inPeriod(collectionDate(c));
       if (!matchPeriod) return false;
       if (selectedBranch === 'ALL' || selectedBranch === 'الكل') return true;
       const treasury = c.treasury || '';
@@ -367,7 +382,7 @@ export default function ReportsPage() {
         const omarShifts = shifts.filter(s => {
           const isOmar = s.branch && (s.branch.includes('عمر أفندي') || s.branch.includes('عمر افندي') || s.branch.includes('عمر'));
           if (!isOmar) return false;
-          return inPeriod(s.startTime || s.createdAt || s.endTime) && s.shiftType === b.shiftType;
+          return inPeriod(shiftDate(s)) && s.shiftType === b.shiftType;
         });
 
         // Determine timeframe boundaries for this specific shift
@@ -378,7 +393,7 @@ export default function ReportsPage() {
         let bCash = 0, bInstapay = 0, bVodafone = 0, bVisa = 0, bCount = 0;
 
         // 1. Invoices for Omar Effendi strictly inside this shift's timeframe
-        invoices.filter(i => matchB(i.branch) && inPeriod(i.date)).forEach(inv => {
+        invoices.filter(i => matchB(i.branch) && inPeriod(invoiceDate(i))).forEach(inv => {
           const invTime = inv.createdAt ? new Date(inv.createdAt).getTime() : (inv.date ? new Date(inv.date).getTime() : 0);
           
           let belongs = false;
@@ -419,7 +434,7 @@ export default function ReportsPage() {
         });
 
         // 2. Direct collections in this shift
-        collections.filter(c => matchB(c.treasury || '') && inPeriod(c.date)).forEach(col => {
+        collections.filter(c => matchB(c.treasury || '') && inPeriod(collectionDate(c))).forEach(col => {
           const colTime = col.createdAt ? new Date(col.createdAt).getTime() : (col.date ? new Date(col.date).getTime() : 0);
           let belongs = false;
           if (targetShift) {
@@ -440,7 +455,7 @@ export default function ReportsPage() {
         });
 
         // 3. Quotation deposits in this shift
-        quotations.filter(q => matchB(q.branch) && inPeriod(q.date || q.depositDate || q.createdAt)).forEach(q => {
+        quotations.filter(q => matchB(q.branch) && inPeriod(quotationDate(q))).forEach(q => {
           const qTime = q.createdAt ? new Date(q.createdAt).getTime() : (q.date ? new Date(q.date).getTime() : 0);
           let belongs = false;
           if (targetShift) {
@@ -493,7 +508,7 @@ export default function ReportsPage() {
       }
 
       // 1. From Invoices in this period (for standard branches)
-      invoices.filter(i => matchB(i.branch) && inPeriod(i.date)).forEach(inv => {
+      invoices.filter(i => matchB(i.branch) && inPeriod(invoiceDate(i))).forEach(inv => {
         bCount++;
         let split = inv.splitPayments;
         if (!split && inv.notes && inv.notes.includes('[SPLIT:')) {
@@ -519,7 +534,7 @@ export default function ReportsPage() {
 
       // 2. From direct collections in this period
       const bCollectionsPool = new Map<string, number>();
-      collections.filter(c => matchB(c.treasury || '') && inPeriod(c.date)).forEach(col => {
+      collections.filter(c => matchB(c.treasury || '') && inPeriod(collectionDate(c))).forEach(col => {
         bCount++;
         const amt = Number(col.amount || 0);
         const m = (col.method || '').trim();
@@ -535,7 +550,7 @@ export default function ReportsPage() {
       });
 
       // 3. From Quotation Deposits in this period (deduplicated)
-      quotations.filter(q => matchB(q.branch) && inPeriod(q.date || q.depositDate || q.createdAt)).forEach(q => {
+      quotations.filter(q => matchB(q.branch) && inPeriod(quotationDate(q))).forEach(q => {
         const deposit = Number(q.depositPaid || 0);
         const key = normPhone(q.phone) || normName(q.customerName);
         const pool = key ? (bCollectionsPool.get(key) || 0) : 0;
@@ -666,8 +681,8 @@ export default function ReportsPage() {
 
   // ─── Curtains pipeline stats (real) ──────────────────────────
   const curtainStats = useMemo(() => {
-    const fIns = inspections.filter((i: any) => inBranch(i.branch) && inPeriod(i.createdAt || i.scheduledAt));
-    const fQot = quotations.filter((q: any) => inBranch(q.branch) && inPeriod(q.date || q.createdAt));
+    const fIns = inspections.filter((i: any) => inBranch(i.branch) && inPeriod(inspectionDate(i)));
+    const fQot = quotations.filter((q: any) => inBranch(q.branch) && inPeriod(quotationDate(q)));
 
     const insByStatus: Record<string, number> = {};
     fIns.forEach((i: any) => { const k = i.status || 'غير محدد'; insByStatus[k] = (insByStatus[k] || 0) + 1; });
