@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getBranchScope, branchWhere, effectiveCreateBranch } from '@/lib/branchScope';
 import { generateUniquePurchaseReturnNumber } from '@/lib/uniqueCode';
+import { getTodayDateStr } from '@/lib/dateUtils';
 
 export const dynamic = 'force-dynamic';
 
@@ -61,7 +62,7 @@ export async function POST(request: Request) {
         data: {
           id: `PRET-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`,
           returnNumber: retNum,
-          date: date || new Date().toISOString().split('T')[0],
+          date: date || getTodayDateStr(),
           invoiceNumber: invoiceNumber || '—',
           supplierName,
           supplierPhone: supplierPhone || '',

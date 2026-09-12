@@ -5,6 +5,7 @@ import Logo from '@/components/Logo';
 import { getBrandSettings } from '@/lib/brandSettings';
 
 import WhatsAppShareButton from '@/components/WhatsAppShareButton';
+import { getTodayDateStr } from '@/lib/dateUtils';
 
 export interface AccessoryItem {
   name: string;
@@ -238,7 +239,7 @@ export default function AccessoriesPrintModal({ isOpen, onClose, data }: Accesso
             </div>
             <div class="header-meta">
               <div class="meta-badge">طلب: ${data.orderId || data.id}</div>
-              <div class="meta-date">تاريخ الطباعة: ${new Date().toISOString().split('T')[0]}</div>
+              <div class="meta-date">تاريخ الطباعة: ${getTodayDateStr()}</div>
             </div>
           </div>
 
@@ -348,7 +349,7 @@ export default function AccessoriesPrintModal({ isOpen, onClose, data }: Accesso
                 طلب: {data.orderId || data.id}
               </div>
               <div className="text-[11px] text-slate-500 mt-1">
-                تاريخ: {new Date().toISOString().split('T')[0]}
+                تاريخ: {getTodayDateStr()}
               </div>
             </div>
           </div>

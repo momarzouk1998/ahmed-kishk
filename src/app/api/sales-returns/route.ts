@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getBranchScope, branchWhere, effectiveCreateBranch } from '@/lib/branchScope';
 import { generateUniqueSalesReturnNumber } from '@/lib/uniqueCode';
+import { getTodayDateStr } from '@/lib/dateUtils';
 
 export const dynamic = 'force-dynamic';
 
@@ -58,7 +59,7 @@ export async function POST(request: Request) {
         data: {
           id: `RET-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`,
           returnNumber: retNum,
-          date: date || new Date().toISOString().split('T')[0],
+          date: date || getTodayDateStr(),
           invoiceNumber: invoiceNumber || '—',
           customerName,
           customerPhone: customerPhone || '',

@@ -1,3 +1,4 @@
+import { getTodayDateStr } from '@/lib/dateUtils';
 export interface Room {
   id: string;
   name: string;
@@ -490,7 +491,7 @@ export function syncInspectionToPricing(inspectionOrId: InspectionData | string)
       depositPaid: 0,
       remainingAmount: totalSum,
       paymentMethod: 'نقدي (كاش)',
-      date: new Date().toISOString().split('T')[0],
+      date: getTodayDateStr(),
       deliveryDate: '',
       estimatorName: 'أحمد كشك',
       rooms: convertedRooms,

@@ -31,7 +31,7 @@ import {
   QuotationOrder,
   InspectionData,
 } from '@/lib/inspectionsStore';
-import { formatDate, formatDateOnly } from '@/lib/dateUtils';
+import { formatDate, formatDateOnly, getTodayDateStr } from '@/lib/dateUtils';
 
 const GLOBAL_STAGES: { key: GlobalMasterStage | 'الكل'; label: string; badgeColor: string }[] = [
   { key: 'الكل', label: 'كل الطلبات', badgeColor: 'bg-slate-100 text-slate-800 border-slate-300' },
@@ -124,7 +124,7 @@ export default function CentralOrdersLedgerPage() {
         branch: q.branch || 'الفرع الرئيسي',
         deliveryDate: q.deliveryDate || '',
         status: normalizeMasterStage(q.status),
-        createdAt: q.date || new Date().toISOString().split('T')[0],
+        createdAt: q.date || getTodayDateStr(),
         totalAmount: q.totalAmount || 0,
         depositPaid: q.depositPaid || 0,
         remainingAmount: q.remainingAmount || 0,
@@ -148,7 +148,7 @@ export default function CentralOrdersLedgerPage() {
         branch: insp.branch || 'الفرع الرئيسي',
         deliveryDate: insp.scheduledAt || '',
         status: 'المعاينات',
-        createdAt: insp.createdAt || new Date().toISOString().split('T')[0],
+        createdAt: insp.createdAt || getTodayDateStr(),
         totalAmount: 0,
         depositPaid: 0,
         remainingAmount: 0,

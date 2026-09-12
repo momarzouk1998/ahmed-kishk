@@ -5,7 +5,7 @@ import PageShell from '@/components/PageShell';
 import { useRouter } from 'next/navigation';
 import { getStoredInspections, saveOrUpdateInspection, fetchInspections, generateInspectionId, syncInspectionToPricing, InspectionData } from '@/lib/inspectionsStore';
 import { isTodayOrOverdue } from '@/lib/pipelineStore';
-import { formatDate } from '@/lib/dateUtils';
+import { formatDate, getTodayDateStr } from '@/lib/dateUtils';
 import InspectionPrintModal from '@/components/InspectionPrintModal';
 import { CURTAIN_TECHNICIANS, DEFAULT_TECHNICIAN } from '@/lib/technicians';
 import OrderRowActions from '@/components/OrderRowActions';
@@ -194,7 +194,7 @@ export default function PipelineInspectionsPage() {
       isLocked: false,
       notes: '',
       rooms: [],
-      createdAt: new Date().toISOString().split('T')[0],
+      createdAt: getTodayDateStr(),
     };
     saveOrUpdateInspection(newItem);
     setInspections([newItem, ...currentList]);

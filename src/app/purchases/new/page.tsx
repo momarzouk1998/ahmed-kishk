@@ -7,6 +7,7 @@ import BranchSelect from '@/components/BranchSelect';
 import { useRouter } from 'next/navigation';
 import SearchableSelect, { SearchOption } from '@/components/SearchableSelect';
 import { normalizeBranchName } from '@/lib/branches';
+import { getTodayDateStr } from '@/lib/dateUtils';
 
 interface PurchaseLineItem {
   id: string;
@@ -382,7 +383,7 @@ export default function NewPurchaseInvoicePage() {
       const newPur = {
         id: `PUR-${Date.now()}`,
         invoiceNumber,
-        date: new Date().toISOString().split('T')[0],
+        date: getTodayDateStr(),
         supplierName: supplierName.trim(),
         supplierPhone: supplierPhone.trim() || 'غير محدد',
         branch,
@@ -413,7 +414,7 @@ export default function NewPurchaseInvoicePage() {
             bankName: c.bankName,
             supplierName: supplierName.trim(),
             amount: Number(c.amount) || 0,
-            issueDate: new Date().toISOString().split('T')[0],
+            issueDate: getTodayDateStr(),
             dueDate: c.dueDate,
             notes: c.notes || `شيك فاتورة شراء ${invoiceNumber}`,
             status: 'قيد الانتظار',

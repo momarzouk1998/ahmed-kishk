@@ -1,6 +1,7 @@
 'use client';
 
 import { saveAllQuotations, fetchQuotations } from '@/lib/inspectionsStore';
+import { getTodayDateStr } from '@/lib/dateUtils';
 
 // Master Pipeline Stage Enum/Union
 export type GlobalMasterStage =
@@ -57,7 +58,7 @@ export const DEFAULT_PIPELINE_ORDERS: PipelineMasterOrder[] = [];
 
 export function isTodayOrOverdue(dateStr?: string): boolean {
   if (!dateStr || dateStr.trim() === '') return true;
-  const today = new Date().toISOString().split('T')[0];
+  const today = getTodayDateStr();
   const target = dateStr.split(' ')[0].split('T')[0];
   return target <= today;
 }
@@ -195,7 +196,7 @@ export async function updatePipelineOrderStatus(
       technicianName: quotMatch?.estimatorName || '',
       status: normalized,
       localStatus: localStatus || newStatus,
-      createdAt: quotMatch?.date || new Date().toISOString().split('T')[0],
+      createdAt: quotMatch?.date || getTodayDateStr(),
       totalAmount: quotMatch?.totalAmount || 0,
       depositPaid: quotMatch?.depositPaid || 0,
       remainingAmount: quotMatch?.remainingAmount || 0,
@@ -233,10 +234,10 @@ export function addPipelineOrder(order: Partial<PipelineMasterOrder>): PipelineM
     phone: order.phone || '',
     address: order.address || 'غير مسجل',
     branch: order.branch || 'الفرع الرئيسي',
-    deliveryDate: order.deliveryDate || new Date().toISOString().split('T')[0],
+    deliveryDate: order.deliveryDate || getTodayDateStr(),
     status: normalizeMasterStage(order.status || 'المعاينات'),
     localStatus: order.localStatus || 'جاري المتابعة',
-    createdAt: new Date().toISOString().split('T')[0],
+    createdAt: getTodayDateStr(),
     remainingAmount: order.remainingAmount || 0,
     totalAmount: order.totalAmount || 0,
     depositPaid: order.depositPaid || 0,

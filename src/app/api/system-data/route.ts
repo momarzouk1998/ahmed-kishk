@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getBranchScope, branchWhere } from '@/lib/branchScope';
+import { getTodayDateStr } from '@/lib/dateUtils';
 
 export const dynamic = 'force-dynamic';
 
@@ -143,7 +144,7 @@ export async function POST(request: Request) {
               totalAmount: Number(item.totalAmount) || 0,
               depositPaid: Number(item.depositPaid) || 0,
               remainingAmount: Number(item.remainingAmount) || 0,
-              date: item.date || new Date().toISOString().split('T')[0],
+              date: item.date || getTodayDateStr(),
               deliveryDate: item.deliveryDate || null,
               estimatorName: item.estimatorName || 'أحمد كشك',
               rooms: item.rooms || [],

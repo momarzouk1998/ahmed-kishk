@@ -23,6 +23,7 @@ import { getCurtainDefaults } from '@/lib/curtainDefaults';
 import { getTapeTypePrices, saveTapeTypePrices } from '@/lib/tapeTypePrices';
 import SearchableFabricSelect from '@/components/SearchableFabricSelect';
 import { useCurrentUser } from '@/lib/useCurrentUser';
+import { getTodayDateStr } from '@/lib/dateUtils';
 
 interface InventoryFabric {
   id: string;
@@ -1877,7 +1878,7 @@ export default function PricingDetailPage() {
                     technicianName: existingOrder?.technicianName || insp?.technician || quotation.estimatorName || '',
                     status: 'في المقص',
                     localStatus: 'بانتظار القص',
-                    createdAt: quotation.date || new Date().toISOString().split('T')[0],
+                    createdAt: quotation.date || getTodayDateStr(),
                     totalAmount: Number(quotation.totalAmount) || 0,
                     discountAmount: Number(quotation.discountAmount) || 0,
                     depositPaid: Number(quotation.depositPaid) || 0,

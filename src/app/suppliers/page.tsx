@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
-import { formatDateOnly } from '@/lib/dateUtils';
+import { formatDateOnly, getTodayDateStr } from '@/lib/dateUtils';
 import PdfPrintButton from '@/components/PdfPrintButton';
 import { useCurrentUser } from '@/lib/useCurrentUser';
 import BranchSelect from '@/components/BranchSelect';
@@ -38,7 +38,7 @@ function mapApiSupplier(raw: any): Supplier {
     openingBalance: Number(raw.openingBalance) || 0,
     balanceOwed: Number(raw.balance) || 0,
     notes: raw.notes || '',
-    createdAt: raw.createdAt ? String(raw.createdAt).split('T')[0] : new Date().toISOString().split('T')[0],
+    createdAt: raw.createdAt ? String(raw.createdAt).split('T')[0] : getTodayDateStr(),
   };
 }
 
@@ -217,7 +217,7 @@ export default function SuppliersPage() {
       openingBalance: supOpeningBalance || 0,
       balanceOwed: supOpeningBalance || 0,
       notes: supNotes.trim(),
-      createdAt: new Date().toISOString().split('T')[0],
+      createdAt: getTodayDateStr(),
     };
 
     saveSuppliersState([newSup, ...suppliers]);
@@ -308,7 +308,7 @@ export default function SuppliersPage() {
 
     const newPay: SupplierPayment = {
       id: `SPAY-${Date.now()}`,
-      date: new Date().toISOString().split('T')[0],
+      date: getTodayDateStr(),
       supplierId: targetSup.id,
       supplierName: targetSup.name,
       amount: payAmount,
@@ -369,7 +369,7 @@ export default function SuppliersPage() {
       supplierId: targetSup.id,
       supplierName: targetSup.name,
       amount: r.amount,
-      issueDate: new Date().toISOString().split('T')[0],
+      issueDate: getTodayDateStr(),
       dueDate: r.dueDate,
       status: 'قيد الانتظار',
       notes: r.notes.trim() || 'شيك متعدد مجمع',

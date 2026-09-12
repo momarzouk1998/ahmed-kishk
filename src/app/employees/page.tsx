@@ -296,7 +296,7 @@ export default function EmployeesManagementPage() {
 
     const newAdv: EmployeeAdvance = {
       id: `adv_${Date.now()}`,
-      date: new Date().toISOString().split('T')[0],
+      date: getTodayDateStr(),
       employeeId: emp.id,
       employeeName: emp.name,
       branch: emp.branch,

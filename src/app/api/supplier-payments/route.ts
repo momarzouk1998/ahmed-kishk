@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getBranchScope, branchWhere } from '@/lib/branchScope';
+import { getTodayDateStr } from '@/lib/dateUtils';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,7 +45,7 @@ export async function POST(request: Request) {
       where: { id: paymentId },
       create: {
         id: paymentId,
-        date: date || new Date().toISOString().split('T')[0],
+        date: date || getTodayDateStr(),
         supplierId,
         supplierName: supplierName || '',
         amount: Number(amount) || 0,

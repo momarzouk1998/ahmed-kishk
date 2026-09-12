@@ -245,10 +245,15 @@ export default function FabricSalesPage() {
     const currentItems = Array.isArray(editingInvoice.items) ? [...editingInvoice.items] : [];
     if (!currentItems[index]) return;
 
-    const updatedItem = { ...currentItems[index], [field]: value };
+    // #FIX (باغ "5 متر و53 سم" فى بوليصة الشحن): value جاي من e.target.value
+    // نص خام دايمًا — كان بيتخزن كده زي ما هو (string) فى meters/pricePerMeter،
+    // فأي جمع بعد كده (زي إجمالي الأمتار فى الطباعة) كان بيعمل concatenation
+    // نصوص بدل جمع أرقام (3 + 2.5 + "3" = "5.53" مش 8.5) لأي بند اتعدّل من هنا.
+    const numericValue = (field === 'meters' || field === 'pricePerMeter') ? (Number(value) || 0) : value;
+    const updatedItem = { ...currentItems[index], [field]: numericValue };
     if (field === 'meters' || field === 'pricePerMeter') {
-      const m = Number(field === 'meters' ? value : updatedItem.meters) || 0;
-      const p = Number(field === 'pricePerMeter' ? value : updatedItem.pricePerMeter) || 0;
+      const m = Number(field === 'meters' ? numericValue : updatedItem.meters) || 0;
+      const p = Number(field === 'pricePerMeter' ? numericValue : updatedItem.pricePerMeter) || 0;
       updatedItem.totalPrice = Math.round(m * p * 100) / 100;
     }
     currentItems[index] = updatedItem;

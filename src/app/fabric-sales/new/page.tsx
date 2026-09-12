@@ -9,6 +9,7 @@ import { useCurrentUser } from '@/lib/useCurrentUser';
 import BranchSelect from '@/components/BranchSelect';
 import { normalizeBranchName, getBranchConfig } from '@/lib/branches';
 import { getPersistentCategories } from '@/lib/categories';
+import { getTodayDateStr } from '@/lib/dateUtils';
 
 interface InvoiceLineItem {
   id: string;
@@ -387,6 +388,20 @@ export default function NewSalesInvoicePOSPage() {
       return;
     }
 
+    // #FIX: كان ممكن تتحفظ فاتورة "شحن أونلاين" فاضية تمامًا من بيانات الشحن
+    // (محافظة/عنوان/هاتف مستلم) من غير أي تنبيه — طلب الشحن يوصل للعميل بعنوان
+    // غلط أو من غير رقم اتصال أصلاً. دلوقتى الحقول دي إجبارية لما يكون الطلب أونلاين.
+    if (isCommercialBranch && isOnlineOrder) {
+      const missing: string[] = [];
+      if (!shippingProvince.trim()) missing.push('المحافظة');
+      if (!shippingAddress.trim()) missing.push('عنوان الشحن بالتفصيل');
+      if (!receiverPhone.trim()) missing.push('هاتف المستلم');
+      if (missing.length > 0) {
+        alert(`يرجى إكمال بيانات الشحن قبل الحفظ:\n${missing.map(m => `• ${m}`).join('\n')}`);
+        return;
+      }
+    }
+
     await executeSaveInvoice(andPrint);
   };
 
@@ -399,7 +414,7 @@ export default function NewSalesInvoicePOSPage() {
     const invoicePayload = {
       id: `INV-${Date.now()}`,
       invoiceNumber: invoiceNumber,
-      date: new Date().toISOString().split('T')[0],
+      date: getTodayDateStr(),
       customerName: finalCustName,
       phone: custPhone.trim() || '01000000000',
       branch,

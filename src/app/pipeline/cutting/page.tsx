@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
 import { getStoredPipelineOrders, fetchPipelineOrders, updatePipelineOrderStatus, normalizeMasterStage } from '@/lib/pipelineStore';
 import { fetchQuotations } from '@/lib/inspectionsStore';
-import { formatDateOnly } from '@/lib/dateUtils';
+import { formatDateOnly, getTodayDateStr } from '@/lib/dateUtils';
 import CuttingPrintModal from '@/components/CuttingPrintModal';
 import OrderRowActions from '@/components/OrderRowActions';
 import { useCurrentUser } from '@/lib/useCurrentUser';
@@ -82,7 +82,7 @@ export default function PipelineCuttingPage() {
             }))
             .filter((r: any) => r.heavyFabric || r.sheerFabric || r.blackoutFabric),
           status: 'بانتظار القص',
-          createdAt: q.date || new Date().toISOString().split('T')[0],
+          createdAt: q.date || getTodayDateStr(),
         }));
 
       const combined = [...pipelineList, ...mappedQuotations];
@@ -177,7 +177,7 @@ export default function PipelineCuttingPage() {
           } : undefined,
         })),
         status: 'بانتظار القص',
-        createdAt: q.date || new Date().toISOString().split('T')[0],
+        createdAt: q.date || getTodayDateStr(),
       }));
 
     const combined = [...pipelineList, ...mappedQuotations];

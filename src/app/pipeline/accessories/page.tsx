@@ -9,6 +9,7 @@ import OrderRowActions from '@/components/OrderRowActions';
 import { useCurrentUser } from '@/lib/useCurrentUser';
 import BranchSelect from '@/components/BranchSelect';
 import Pagination from '@/components/Pagination';
+import { getTodayDateStr } from '@/lib/dateUtils';
 
 interface AccessoryItemSpec {
   name: string;
@@ -68,7 +69,7 @@ export default function PipelineAccessoriesPage() {
           status: 'تجهيز الاكسسوارات',
           localStatus: 'جاري تجهيز الإكسسوارات',
           rooms: q.rooms || [],
-          createdAt: q.date || new Date().toISOString().split('T')[0],
+          createdAt: q.date || getTodayDateStr(),
         }));
 
       const combined = [...pipelineList, ...mappedQuotations];

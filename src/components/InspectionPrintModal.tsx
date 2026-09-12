@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { formatDate } from '@/lib/dateUtils';
+import { formatDate, getTodayDateStr } from '@/lib/dateUtils';
 import { InspectionData, Room } from '@/lib/inspectionsStore';
 import Logo from '@/components/Logo';
 import WhatsAppShareButton from '@/components/WhatsAppShareButton';
@@ -122,7 +122,7 @@ export default function InspectionPrintModal({ isOpen, onClose, data }: Inspecti
             </div>
             <div>
               <strong>كشف: ${data.id}</strong><br>
-              <small>التاريخ: ${new Date().toISOString().split('T')[0]}</small>
+              <small>التاريخ: ${getTodayDateStr()}</small>
             </div>
           </div>
           <p><strong>اسم العميل:</strong> ${data.customerName} | <strong>الهاتف:</strong> ${data.phone}</p>
@@ -210,7 +210,7 @@ export default function InspectionPrintModal({ isOpen, onClose, data }: Inspecti
               <div className="bg-slate-100 border border-slate-300 px-2.5 py-1 rounded font-black text-slate-900">
                 كشف: {data.id}
               </div>
-              <div className="text-[11px] text-slate-500 mt-1">تاريخ: {new Date().toISOString().split('T')[0]}</div>
+              <div className="text-[11px] text-slate-500 mt-1">تاريخ: {getTodayDateStr()}</div>
             </div>
           </div>
 

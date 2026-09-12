@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
 import { useRouter, useParams } from 'next/navigation';
-import { formatDateOnly } from '@/lib/dateUtils';
+import { formatDateOnly, getTodayDateStr } from '@/lib/dateUtils';
 import { BRANCHES_LIST, getBranchTreasury, BRANCH_TREASURIES } from '@/lib/branches';
 import { useCurrentUser } from '@/lib/useCurrentUser';
 
@@ -73,7 +73,7 @@ export default function CustomerDetailsPage() {
   const [colAmount, setColAmount] = useState<number>(1000);
   const [colMethod, setColMethod] = useState<'نقدي' | 'إنستاباي' | 'فيزا' | 'فودافون كاش' | 'تحويل بنكي' | 'شيك'>('نقدي');
   const [colTreasury, setColTreasury] = useState('خزينة الفرع الرئيسي (سعد زغلول)');
-  const [colDate, setColDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [colDate, setColDate] = useState(() => getTodayDateStr());
   const [colNotes, setColNotes] = useState('');
   const [isSavingCol, setIsSavingCol] = useState(false);
 
@@ -189,7 +189,7 @@ export default function CustomerDetailsPage() {
       setIsSavingCol(true);
       const newCol: CustomerCollection = {
         id: `COL-${Date.now()}`,
-        date: colDate || new Date().toISOString().split('T')[0],
+        date: colDate || getTodayDateStr(),
         customerId: customer.id,
         customerName: customer.name,
         phone: customer.phone,

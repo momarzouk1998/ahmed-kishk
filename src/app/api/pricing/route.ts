@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getBranchScope, branchWhere, effectiveCreateBranch } from '@/lib/branchScope';
+import { getTodayDateStr } from '@/lib/dateUtils';
 
 export const dynamic = 'force-dynamic';
 
@@ -86,7 +87,7 @@ export async function GET(request: Request) {
             paymentMethod: o.paymentMethod || 'نقدي (كاش)',
             splitPayments: o.splitPayments,
             treasury: o.treasury,
-            date: o.createdAt ? String(o.createdAt).split('T')[0] : new Date().toISOString().split('T')[0],
+            date: o.createdAt ? String(o.createdAt).split('T')[0] : getTodayDateStr(),
             deliveryDate: o.deliveryDate,
             inspectionDate: o.inspectionDate,
             installationDate: o.installationDate,
@@ -169,7 +170,7 @@ export async function POST(request: Request) {
           paymentMethod: paymentMethod || 'نقدي (كاش)',
           splitPayments: splitPayments || undefined,
           treasury: treasury || undefined,
-          date: date || new Date().toISOString().split('T')[0],
+          date: date || getTodayDateStr(),
           deliveryDate: deliveryDate ? String(deliveryDate) : null,
           inspectionDate: inspectionDate ? String(inspectionDate) : null,
           installationDate: installationDate ? String(installationDate) : null,

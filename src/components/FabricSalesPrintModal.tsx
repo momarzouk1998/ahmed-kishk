@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { formatDateOnly } from '@/lib/dateUtils';
+import { formatDateOnly, getTodayDateStr } from '@/lib/dateUtils';
 import Logo from '@/components/Logo';
 import { getBrandSettings } from '@/lib/brandSettings';
 import { getBranchConfig } from '@/lib/branches';
@@ -264,7 +264,7 @@ export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricS
             </div>
             <div class="header-meta">
               <div class="meta-badge">فاتورة: ${data.invoiceNumber}</div>
-              <div class="meta-date">التاريخ: ${data.date ? formatDateOnly(data.date) : new Date().toISOString().split('T')[0]}</div>
+              <div class="meta-date">التاريخ: ${data.date ? formatDateOnly(data.date) : getTodayDateStr()}</div>
             </div>
           </div>
 
@@ -397,7 +397,7 @@ export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricS
         <div class="box" style="font-size:8pt;">
           <div class="box-title">📦 تفاصيل المحتويات</div>
           <div><span class="lbl">عدد الأصناف: </span><span class="val">${data.items?.length || 0} أصناف أقمشة</span></div>
-          <div><span class="lbl">إجمالي الأمتار: </span><span class="val">${(data.items || []).reduce((s, it) => s + it.meters, 0)} متر</span></div>
+          <div><span class="lbl">إجمالي الأمتار: </span><span class="val">${(data.items || []).reduce((s, it) => s + (Number(it.meters) || 0), 0)} متر</span></div>
           <div><span class="lbl">مصاريف الشحن: </span><span class="val">${(data.shippingFee || 110).toLocaleString()}</span></div>
         </div>
 
@@ -479,7 +479,7 @@ export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricS
                 فاتورة: {data.invoiceNumber}
               </div>
               <div className="text-[11px] text-slate-500 mt-1">
-                تاريخ: {data.date ? formatDateOnly(data.date) : new Date().toISOString().split('T')[0]}
+                تاريخ: {data.date ? formatDateOnly(data.date) : getTodayDateStr()}
               </div>
             </div>
           </div>

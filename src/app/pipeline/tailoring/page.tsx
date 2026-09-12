@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
 import { getStoredPipelineOrders, fetchPipelineOrders, updatePipelineOrderStatus, saveStoredPipelineOrders, normalizeMasterStage } from '@/lib/pipelineStore';
 import { fetchQuotations } from '@/lib/inspectionsStore';
-import { formatDateOnly } from '@/lib/dateUtils';
+import { formatDateOnly, getTodayDateStr } from '@/lib/dateUtils';
 import TailoringPrintModal from '@/components/TailoringPrintModal';
 import WhatsAppShareButton from '@/components/WhatsAppShareButton';
 import OrderRowActions from '@/components/OrderRowActions';
@@ -125,7 +125,7 @@ export default function PipelineTailoringPage() {
           status: 'في الورشة',
           localStatus: 'جاري الخياطة',
           notes: '',
-          createdAt: q.date || new Date().toISOString().split('T')[0],
+          createdAt: q.date || getTodayDateStr(),
         }));
 
       const combined = [...pipelineList, ...mappedQuotations];

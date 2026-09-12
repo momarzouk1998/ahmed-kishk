@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
 import { useRouter } from 'next/navigation';
-import { formatDateOnly } from '@/lib/dateUtils';
+import { formatDateOnly, getTodayDateStr } from '@/lib/dateUtils';
 import Pagination from '@/components/Pagination';
 import { BRANCHES_LIST } from '@/lib/branches';
 
@@ -183,7 +183,7 @@ export default function PurchasesPage() {
       supplierPhone: pur.supplierPhone || '',
       branch: pur.branch || 'الفرع الرئيسي',
       paymentMethod: pur.paymentMethod || 'نقدي (كاش)',
-      date: pur.date ? (pur.date.includes('T') ? pur.date.split('T')[0] : pur.date) : new Date().toISOString().split('T')[0],
+      date: pur.date ? (pur.date.includes('T') ? pur.date.split('T')[0] : pur.date) : getTodayDateStr(),
       notes: pur.notes || '',
     });
   };
@@ -355,7 +355,7 @@ export default function PurchasesPage() {
     const newRet: SupplierPurchaseReturn = {
       id: `PRET-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`,
       returnNumber: retNum,
-      date: new Date().toISOString().split('T')[0],
+      date: getTodayDateStr(),
       invoiceNumber: retInvNumber.trim() || '—',
       supplierName: retSupplierName.trim(),
       supplierPhone: retSupplierPhone.trim(),

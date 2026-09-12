@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { formatDateOnly } from '@/lib/dateUtils';
+import { formatDateOnly, getTodayDateStr } from '@/lib/dateUtils';
 import Logo from '@/components/Logo';
 import { getBrandSettings } from '@/lib/brandSettings';
 
@@ -464,7 +464,7 @@ export default function ContractPrintModal({ isOpen, onClose, data }: ContractPr
             </div>
             <div class="header-meta">
               <div class="meta-badge">عقد: ${data.id}</div>
-              <div class="meta-date">تاريخ التعاقد: ${data.date ? formatDateOnly(data.date) : new Date().toISOString().split('T')[0]}</div>
+              <div class="meta-date">تاريخ التعاقد: ${data.date ? formatDateOnly(data.date) : getTodayDateStr()}</div>
             </div>
           </div>
 
@@ -625,7 +625,7 @@ export default function ContractPrintModal({ isOpen, onClose, data }: ContractPr
                 عقد: {data.id}
               </div>
               <div className="text-[11px] text-slate-500 mt-1">
-                تاريخ: {data.date ? formatDateOnly(data.date) : new Date().toISOString().split('T')[0]}
+                تاريخ: {data.date ? formatDateOnly(data.date) : getTodayDateStr()}
               </div>
             </div>
           </div>

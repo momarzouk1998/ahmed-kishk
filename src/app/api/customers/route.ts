@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getBranchScope, effectiveCreateBranch } from '@/lib/branchScope';
+import { getTodayDateStr } from '@/lib/dateUtils';
 
 export const dynamic = 'force-dynamic';
 
@@ -80,7 +81,7 @@ export async function GET(request: Request) {
         city: c.city || 'غير مسجل',
         openingBalance: Number(c.balance) || 0,
         notes: c.notes || '',
-        createdAt: c.createdAt ? c.createdAt.toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        createdAt: c.createdAt ? c.createdAt.toISOString().split('T')[0] : getTodayDateStr(),
         inspections: [],
         quotations: [],
         sales: [],
@@ -101,7 +102,7 @@ export async function GET(request: Request) {
           city: ins.branch || 'غير مسجل',
           openingBalance: 0,
           notes: ins.notes || '',
-          createdAt: ins.createdAt ? (typeof ins.createdAt === 'string' ? ins.createdAt : ins.createdAt.toISOString().split('T')[0]) : (ins.scheduledAt || new Date().toISOString().split('T')[0]),
+          createdAt: ins.createdAt ? (typeof ins.createdAt === 'string' ? ins.createdAt : ins.createdAt.toISOString().split('T')[0]) : (ins.scheduledAt || getTodayDateStr()),
           inspections: [],
           quotations: [],
           sales: [],
@@ -124,7 +125,7 @@ export async function GET(request: Request) {
           city: qot.branch || 'غير مسجل',
           openingBalance: 0,
           notes: '',
-          createdAt: qot.date || (qot.createdAt ? (typeof qot.createdAt === 'string' ? qot.createdAt : qot.createdAt.toISOString().split('T')[0]) : new Date().toISOString().split('T')[0]),
+          createdAt: qot.date || (qot.createdAt ? (typeof qot.createdAt === 'string' ? qot.createdAt : qot.createdAt.toISOString().split('T')[0]) : getTodayDateStr()),
           inspections: [],
           quotations: [],
           sales: [],
@@ -147,7 +148,7 @@ export async function GET(request: Request) {
           city: p.branch || 'غير مسجل',
           openingBalance: 0,
           notes: '',
-          createdAt: p.createdAt ? (typeof p.createdAt === 'string' ? p.createdAt : p.createdAt.toISOString().split('T')[0]) : new Date().toISOString().split('T')[0],
+          createdAt: p.createdAt ? (typeof p.createdAt === 'string' ? p.createdAt : p.createdAt.toISOString().split('T')[0]) : getTodayDateStr(),
           inspections: [],
           quotations: [],
           sales: [],
@@ -178,7 +179,7 @@ export async function GET(request: Request) {
           city: s.branch || 'غير مسجل',
           openingBalance: 0,
           notes: s.notes || '',
-          createdAt: s.date || (s.createdAt ? s.createdAt.toISOString().split('T')[0] : new Date().toISOString().split('T')[0]),
+          createdAt: s.date || (s.createdAt ? s.createdAt.toISOString().split('T')[0] : getTodayDateStr()),
           inspections: [],
           quotations: [],
           sales: [],

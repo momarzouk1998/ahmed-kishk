@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getBranchScope, branchWhere, effectiveCreateBranch } from '@/lib/branchScope';
 import { generateUniquePurchaseInvoiceNumber } from '@/lib/uniqueCode';
+import { getTodayDateStr } from '@/lib/dateUtils';
 
 export const dynamic = 'force-dynamic';
 
@@ -133,7 +134,7 @@ export async function POST(request: Request) {
           remainingAmount: Number(remainingAmount) || 0,
           paymentMethod: paymentMethod || 'نقدي (كاش)',
           status: status || 'آجل / غير مسدد',
-          date: date || new Date().toISOString().split('T')[0],
+          date: date || getTodayDateStr(),
           items: items || [],
           notes: notes || '',
         },

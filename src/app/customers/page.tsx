@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import PageShell from '@/components/PageShell';
 import { useRouter } from 'next/navigation';
-import { formatDateOnly } from '@/lib/dateUtils';
+import { formatDateOnly, getTodayDateStr } from '@/lib/dateUtils';
 import PdfPrintButton from '@/components/PdfPrintButton';
 import { useCurrentUser } from '@/lib/useCurrentUser';
 import Pagination from '@/components/Pagination';
@@ -110,7 +110,7 @@ export default function CustomersPage() {
   const [colAmount, setColAmount] = useState<number>(1000);
   const [colMethod, setColMethod] = useState<'نقدي' | 'إنستاباي' | 'فيزا' | 'فودافون كاش' | 'تحويل بنكي' | 'شيك'>('نقدي');
   const [colTreasury, setColTreasury] = useState('خزينة الفرع الرئيسي (سعد زغلول)');
-  const [colDate, setColDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [colDate, setColDate] = useState(() => getTodayDateStr());
   const [colNotes, setColNotes] = useState('');
 
   // #FIX: كان بيرجع لنسخة قديمة محفوظة على قرص الجهاز (localStorage) لو فشل الطلب —
@@ -185,7 +185,7 @@ export default function CustomersPage() {
       openingBalance: 0,
       balance: 0,
       notes: custNotes.trim(),
-      createdAt: new Date().toISOString().split('T')[0],
+      createdAt: getTodayDateStr(),
       ledger: [],
     };
 
@@ -213,7 +213,7 @@ export default function CustomersPage() {
 
     const newCol: CustomerCollection = {
       id: `COL-${Date.now()}`,
-      date: colDate || new Date().toISOString().split('T')[0],
+      date: colDate || getTodayDateStr(),
       customerId: targetCustomer.id,
       customerName: targetCustomer.name,
       phone: targetCustomer.phone,
@@ -237,7 +237,7 @@ export default function CustomersPage() {
   const handleStartInlineEdit = (col: CustomerCollection) => {
     setEditingColId(col.id);
     setInlineColForm({
-      date: col.date ? (col.date.includes('T') ? col.date.split('T')[0] : col.date) : new Date().toISOString().split('T')[0],
+      date: col.date ? (col.date.includes('T') ? col.date.split('T')[0] : col.date) : getTodayDateStr(),
       amount: Number(col.amount) || 0,
       method: col.method || 'نقدي',
       treasury: col.treasury || getBranchTreasury(currentUser?.branch),

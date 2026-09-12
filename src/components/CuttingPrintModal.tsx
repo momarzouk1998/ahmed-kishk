@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { formatDateOnly } from '@/lib/dateUtils';
+import { formatDateOnly, getTodayDateStr } from '@/lib/dateUtils';
 import Logo from '@/components/Logo';
 import { getBrandSettings } from '@/lib/brandSettings';
 
@@ -283,7 +283,7 @@ export default function CuttingPrintModal({ isOpen, onClose, data }: CuttingPrin
             </div>
             <div class="header-meta">
               <div class="meta-badge">طلب: ${data.orderId || data.id}</div>
-              <div class="meta-date">التاريخ: ${data.createdAt ? formatDateOnly(data.createdAt) : new Date().toISOString().split('T')[0]}</div>
+              <div class="meta-date">التاريخ: ${data.createdAt ? formatDateOnly(data.createdAt) : getTodayDateStr()}</div>
             </div>
           </div>
 
@@ -409,7 +409,7 @@ export default function CuttingPrintModal({ isOpen, onClose, data }: CuttingPrin
                 طلب: {data.orderId || data.id}
               </div>
               <div className="text-[11px] text-slate-500 mt-1">
-                تاريخ: {data.createdAt ? formatDateOnly(data.createdAt) : new Date().toISOString().split('T')[0]}
+                تاريخ: {data.createdAt ? formatDateOnly(data.createdAt) : getTodayDateStr()}
               </div>
             </div>
           </div>
