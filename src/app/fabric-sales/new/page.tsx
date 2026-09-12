@@ -1569,7 +1569,7 @@ export default function NewSalesInvoicePOSPage() {
                     <div className="text-center text-[10px] text-slate-900 pt-1 space-y-1">
                       <p className="font-bold">شكراً لتعاملكم مع مؤسسة كشك للأقمشة والستائر ✨</p>
                       <p className="font-black border border-slate-400 bg-white p-1 rounded-md text-slate-950">
-                        ⚠️ البضاعة المباعة لا ترد ولا تستبدل بعد أسبوع
+                        ⚠️ البضاعة المباعة لا ترد ولا تستبدل بعد القص
                       </p>
                     </div>
                   </>

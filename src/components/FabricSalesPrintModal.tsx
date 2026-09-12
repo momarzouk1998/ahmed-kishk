@@ -184,7 +184,7 @@ export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricS
         <div class="divider"></div>
         <div class="foot">
           <div style="font-weight:900; font-size:8.5pt; color:#000;">شكراً لتعاملكم مع مؤسسة كشك للأقمشة والستائر ✨</div>
-          <div class="policy-box">⚠️ البضاعة المباعة لا ترد ولا تستبدل بعد أسبوع</div>
+          <div class="policy-box">⚠️ البضاعة المباعة لا ترد ولا تستبدل بعد القص</div>
         </div>
       </body></html>`);
     w.document.close();
@@ -328,7 +328,7 @@ export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricS
           <div class="footer-bar">
             <span>${brand.storeName} • ${branchCfg.name}</span>
             <span>${branchPhones}</span>
-            <span style="font-weight:900; color:#000;">⚠️ البضاعة المباعة لا ترد ولا تستبدل بعد أسبوع</span>
+            <span style="font-weight:900; color:#000;">⚠️ البضاعة المباعة لا ترد ولا تستبدل بعد القص</span>
           </div>
         </div>
       </body>
@@ -574,7 +574,7 @@ export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricS
             <span className="text-slate-600">{brand.storeName} • {branchCfg.name}</span>
             <span className="font-mono text-slate-700">{branchPhones}</span>
             <span className="text-slate-900 font-black bg-slate-100 px-2 py-0.5 rounded border border-slate-300">
-              ⚠️ البضاعة المباعة لا ترد ولا تستبدل بعد أسبوع
+              ⚠️ البضاعة المباعة لا ترد ولا تستبدل بعد القص
             </span>
           </div>
         </div>
