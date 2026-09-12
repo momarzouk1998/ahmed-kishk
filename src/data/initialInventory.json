@@ -4100,19 +4100,5 @@
     "branch": "فرع عمر أفندي",
     "minAlert": 10,
     "supplier": "ورشة كشك"
-  },
-  {
-    "id": "INV-COMM-KHY-001",
-    "code": "COMM-KHY-001",
-    "name": "خياطة وتفصيل ستارة عادية",
-    "category": "خياطة",
-    "unit": "متر",
-    "totalQuantity": 999,
-    "reservedQuantity": 0,
-    "costPrice": 20,
-    "sellPrice": 50,
-    "branch": "الفرع التجاري",
-    "minAlert": 10,
-    "supplier": "ورشة كشك"
   }
 ]

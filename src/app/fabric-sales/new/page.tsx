@@ -35,10 +35,10 @@ interface InventoryProduct {
 const SALES_INVOICES_KEY = 'ahmed_kishk_sales_invoices_v1';
 
 const EGYPT_GOVERNORATES = [
-  'الإسماعيلية',
   'القاهرة',
   'الجيزة',
   'الإسكندرية',
+  'الإسماعيلية',
   'القليوبية',
   'الشرقية',
   'الدقهلية',
@@ -203,7 +203,7 @@ export default function NewSalesInvoicePOSPage() {
 
   // Online Order & Shipping States
   const [isOnlineOrder, setIsOnlineOrder] = useState<boolean>(false);
-  const [shippingProvince, setShippingProvince] = useState<string>('الإسماعيلية');
+  const [shippingProvince, setShippingProvince] = useState<string>('القاهرة');
   const [shippingFee, setShippingFee] = useState<number>(110);
   const [shippingCompany, setShippingCompany] = useState<string>('بوسطة (Bosta)');
   const [trackingNumber, setTrackingNumber] = useState<string>('');

@@ -97,6 +97,7 @@ export default function InventoryPage() {
   const [newCategoryName, setNewCategoryName] = useState<string>('');
   const [categoryTabBranch, setCategoryTabBranch] = useState<string>('الكل');
   const [categorySearch, setCategorySearch] = useState<string>('');
+  const [showEmptyCategories, setShowEmptyCategories] = useState<boolean>(false);
 
   const handleAddNewCategory = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -1197,14 +1198,26 @@ export default function InventoryPage() {
                   })}
                 </div>
 
-                <div className="w-full md:w-56">
-                  <input
-                    type="text"
-                    value={categorySearch}
-                    onChange={e => setCategorySearch(e.target.value)}
-                    placeholder="🔍 تصفية اسم التصنيف..."
-                    className="w-full border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-emerald-500"
-                  />
+                <div className="flex items-center gap-3 w-full md:w-auto flex-wrap">
+                  <label className="flex items-center gap-1.5 cursor-pointer text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-xl border border-slate-200 transition-colors shrink-0">
+                    <input
+                      type="checkbox"
+                      checked={showEmptyCategories}
+                      onChange={e => setShowEmptyCategories(e.target.checked)}
+                      className="accent-emerald-600 w-4 h-4 rounded cursor-pointer"
+                    />
+                    <span>إظهار التصنيفات الفارغة بالفرع</span>
+                  </label>
+
+                  <div className="w-full sm:w-56">
+                    <input
+                      type="text"
+                      value={categorySearch}
+                      onChange={e => setCategorySearch(e.target.value)}
+                      placeholder="🔍 تصفية اسم التصنيف..."
+                      className="w-full border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -1214,18 +1227,24 @@ export default function InventoryPage() {
               const branchItems = items.filter(i => normalizeBranchName(i.branch) === normalizeBranchName(branchConfig.name));
               const branchTotalStock = branchItems.reduce((acc, i) => acc + (Number(i.totalQuantity) || 0), 0);
               
-              // Categories that exist in this branch or persistent
+              // Categories that exist in this branch
               const branchSpecificCats = Array.from(new Set(branchItems.map(i => (i.category || '').trim()).filter(Boolean)));
               const allKnownCats = dynamicCategories.filter(c => c !== 'الكل');
               
-              // Sort categories: ones with items in this branch come first
-              const combinedCats = Array.from(new Set([...branchSpecificCats, ...allKnownCats])).sort((a, b) => {
-                const countA = branchItems.filter(i => i.category === a).length;
-                const countB = branchItems.filter(i => i.category === b).length;
-                return countB - countA;
-              });
+              // If showEmptyCategories is true, show all system categories. Otherwise only show categories with items in this branch.
+              const targetCats = showEmptyCategories
+                ? Array.from(new Set([...branchSpecificCats, ...allKnownCats])).sort((a, b) => {
+                    const countA = branchItems.filter(i => i.category === a).length;
+                    const countB = branchItems.filter(i => i.category === b).length;
+                    return countB - countA;
+                  })
+                : branchSpecificCats.sort((a, b) => {
+                    const countA = branchItems.filter(i => i.category === a).length;
+                    const countB = branchItems.filter(i => i.category === b).length;
+                    return countB - countA;
+                  });
 
-              const displayedCats = combinedCats.filter(cat => {
+              const displayedCats = targetCats.filter(cat => {
                 if (categorySearch.trim()) {
                   return cat.toLowerCase().includes(categorySearch.trim().toLowerCase());
                 }
@@ -1289,7 +1308,9 @@ export default function InventoryPage() {
                         {displayedCats.length === 0 ? (
                           <tr>
                             <td colSpan={7} className="py-8 text-center text-slate-400 text-xs font-bold">
-                              لا توجد تصنيفات مطابقة للبحث في هذا الفرع
+                              {branchItems.length === 0 
+                                ? 'لا توجد أصناف أو تصنيفات مسجلة في هذا الفرع حتى الآن (الفرع فارغ)' 
+                                : 'لا توجد تصنيفات نشطة مطابقة للبحث في هذا الفرع'}
                             </td>
                           </tr>
                         ) : (
