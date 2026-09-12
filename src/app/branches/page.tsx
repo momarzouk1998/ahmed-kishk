@@ -466,9 +466,57 @@ export default function BranchesAndPermissionsPage() {
                         )}
                       </td>
                       <td className="p-3.5 text-center">
-                        <span className="font-mono font-black text-brand-gold-dark bg-amber-50 border border-amber-200 px-3 py-1 rounded-full">
-                          {ALL_SYSTEM_PAGES.filter(p => emp.allowedPageIds.includes(p.id)).length} من {ALL_SYSTEM_PAGES.length} صفحة
-                        </span>
+                        {(() => {
+                          const activePages = ALL_SYSTEM_PAGES.filter(p => emp.allowedPageIds.includes(p.id));
+                          return (
+                            <div className="relative inline-block group">
+                              <span className="font-mono font-black text-amber-950 bg-amber-50 hover:bg-amber-100 border border-amber-300 px-3 py-1.5 rounded-xl cursor-pointer inline-flex items-center gap-1.5 transition-colors shadow-xs">
+                                <span>{activePages.length} من {ALL_SYSTEM_PAGES.length} صفحة</span>
+                                <span className="material-symbols-outlined text-[14px] text-amber-700">visibility</span>
+                              </span>
+
+                              {/* Hover Popover Box */}
+                              <div className="invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-all duration-200 delay-75 absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-80 sm:w-96 p-3.5 bg-slate-950 text-white rounded-2xl shadow-2xl border border-slate-700/80 text-right z-50 pointer-events-none">
+                                <div className="flex items-center justify-between border-b border-slate-800 pb-2 mb-2.5">
+                                  <div>
+                                    <span className="font-black text-xs text-amber-400 block">الصفحات والأذونات المفتوحة ({activePages.length})</span>
+                                    <span className="text-[10px] text-slate-400 font-bold">{emp.name} — {emp.branch}</span>
+                                  </div>
+                                  <span className="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-md font-mono">
+                                    {Math.round((activePages.length / ALL_SYSTEM_PAGES.length) * 100)}%
+                                  </span>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-1.5 max-h-56 overflow-y-auto pr-0.5 text-right">
+                                  {activePages.map(page => {
+                                    const hasPrice = emp.allowedPageIds.includes(`${page.id}_edit_price`);
+                                    const hasEdit = emp.allowedPageIds.includes(`${page.id}_edit`);
+                                    const hasDelete = emp.allowedPageIds.includes(`${page.id}_delete`);
+
+                                    return (
+                                      <div key={page.id} className="flex items-center justify-between gap-1 p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-[11px]">
+                                        <div className="flex items-center gap-1.5 truncate">
+                                          <span className="material-symbols-outlined text-amber-400 text-xs shrink-0">{page.icon}</span>
+                                          <span className="font-bold text-slate-100 truncate">{page.name}</span>
+                                        </div>
+                                        {(hasPrice || hasEdit || hasDelete) && (
+                                          <span className="flex items-center gap-0.5 text-[9px] shrink-0 font-mono">
+                                            {hasPrice && <span title="تعديل السعر">💰</span>}
+                                            {hasEdit && <span title="تعديل السجلات">✏️</span>}
+                                            {hasDelete && <span title="حذف">🗑️</span>}
+                                          </span>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+
+                                {/* Bottom Arrow Pointer */}
+                                <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-950"></div>
+                              </div>
+                            </div>
+                          );
+                        })()}
                       </td>
                       <td className="p-3.5 text-center">
                         <button
