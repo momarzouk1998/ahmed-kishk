@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import PageShell from '@/components/PageShell';
 import { 
-  ShiftSession, getShifts, saveShifts, getActiveShiftForBranch, 
+  ShiftSession,
   startNewShift, closeActiveShift, fetchShiftsFromServer 
 } from '@/lib/shiftStore';
 import { getEmployees } from '@/lib/employeeStore';
@@ -68,8 +68,7 @@ export default function ShiftsAndDrawerPage() {
       setShifts(serverShifts);
       setEmployees(getEmployees());
     } catch (e) {
-      setShifts(getShifts());
-      setEmployees(getEmployees());
+      console.error('Error loading shifts from DB:', e);
     }
   };
 
@@ -253,7 +252,7 @@ export default function ShiftsAndDrawerPage() {
       return;
     }
 
-    const created = startNewShift({
+    const created = await startNewShift({
       branch: selectedBranch,
       shiftType: newShiftType,
       employeeId: emp.id,
@@ -261,16 +260,8 @@ export default function ShiftsAndDrawerPage() {
       openingDrawerBalance: parseFloat(openingBalance) || 0,
     });
 
-    try {
-      await fetch('/api/shifts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(created),
-      });
-    } catch (err) {}
-
     await loadData();
-    alert(`تم فتح الوردية الـ (${newShiftType}) بنجاح للموظف ${emp.name} بعهدة ${created.openingDrawerBalance} ج`);
+    alert(`تم فتح الوردية الـ (${newShiftType}) بنجاح للموظف ${emp.name} بعهدة ${created.openingDrawerBalance} ج وحفظها بقاعدة البيانات`);
   };
 
   const handleClose = async (e: React.FormEvent) => {
@@ -292,21 +283,12 @@ export default function ShiftsAndDrawerPage() {
       closingNotes,
     };
 
-    const closed = closeActiveShift(closePayload);
-
-    try {
-      await fetch('/api/shifts', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(closePayload),
-      });
-    } catch (err) {}
-
+    const closed = await closeActiveShift(closePayload);
     await loadData();
     setActualClosingCash('');
     setDiscrepancyReason('');
     setClosingNotes('');
-    setSelectedShiftForDetails(closed);
+    if (closed) setSelectedShiftForDetails(closed);
   };
 
   const handleOpenEdit = (s: ShiftSession) => {
@@ -340,10 +322,6 @@ export default function ShiftsAndDrawerPage() {
       closingNotes: editForm.closingNotes,
     };
 
-    const updatedList = shifts.map(s => s.id === updated.id ? updated : s);
-    setShifts(updatedList);
-    saveShifts(updatedList);
-
     try {
       await fetch('/api/shifts', {
         method: 'POST',
@@ -355,14 +333,11 @@ export default function ShiftsAndDrawerPage() {
     await loadData();
     setSelectedShiftForDetails(updated);
     setIsEditingShift(false);
-    alert('تم تحديث وتثبيت بيانات الوردية بنجاح 💾');
+    alert('تم تحديث وتثبيت بيانات الوردية في قاعدة البيانات بنجاح 💾');
   };
 
   const handleDeleteShift = async (shiftId: string) => {
     if (!confirm('هل أنت متأكد من حذف هذا السجل من سجل الورديات نهائياً؟')) return;
-    const updatedList = shifts.filter(s => s.id !== shiftId);
-    setShifts(updatedList);
-    saveShifts(updatedList);
 
     try {
       await fetch(`/api/shifts?id=${encodeURIComponent(shiftId)}`, {
@@ -372,7 +347,7 @@ export default function ShiftsAndDrawerPage() {
 
     await loadData();
     setSelectedShiftForDetails(null);
-    alert('تم حذف الوردية بنجاح');
+    alert('تم حذف الوردية من قاعدة البيانات بنجاح');
   };
 
   // Discrepancy calculation for active closing

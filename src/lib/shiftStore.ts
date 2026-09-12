@@ -40,11 +40,8 @@ export interface ShiftSession {
   closingNotes?: string;
 }
 
-const SHIFTS_STORAGE_KEY = 'ahmed_kishk_shifts_v1';
-
 export async function fetchShiftsFromServer(branchName?: string): Promise<ShiftSession[]> {
   try {
-    const localShifts = getShifts();
     const url = branchName && branchName !== 'all' && branchName !== 'الكل'
       ? `/api/shifts?branch=${encodeURIComponent(branchName)}`
       : '/api/shifts';
@@ -52,85 +49,29 @@ export async function fetchShiftsFromServer(branchName?: string): Promise<ShiftS
     if (res.ok) {
       const json = await res.json();
       if (json.success && Array.isArray(json.shifts)) {
-        const serverShifts: ShiftSession[] = json.shifts;
-        const serverIds = new Set(serverShifts.map(s => s.id));
-        const missingOnServer = localShifts.filter(ls => ls.id && !serverIds.has(ls.id));
-
-        // Auto-upload local shifts to server DB if they were saved locally before
-        if (missingOnServer.length > 0) {
-          missingOnServer.forEach(missing => {
-            fetch('/api/shifts', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(missing),
-            }).catch(() => {});
-          });
-        }
-
-        const merged = [...serverShifts, ...missingOnServer];
-        if (typeof window !== 'undefined') {
-          localStorage.setItem(SHIFTS_STORAGE_KEY, JSON.stringify(merged));
-        }
-        return merged;
+        return json.shifts;
       }
     }
   } catch (e) {
-    console.error('Error fetching shifts from server:', e);
+    console.error('Error fetching shifts from database:', e);
   }
-  return getShifts();
+  return [];
 }
 
-export function getShifts(): ShiftSession[] {
-  if (typeof window === 'undefined') return [];
-  try {
-    const raw = localStorage.getItem(SHIFTS_STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-}
-
-export function saveShifts(shifts: ShiftSession[]): void {
-  if (typeof window !== 'undefined') {
-    localStorage.setItem(SHIFTS_STORAGE_KEY, JSON.stringify(shifts));
-  }
-  fetch('/api/system-data', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ key: SHIFTS_STORAGE_KEY, data: shifts }),
-  }).catch(() => {});
-}
-
-export function getActiveShiftForBranch(branchName: string): ShiftSession | undefined {
-  const shifts = getShifts();
-  return shifts.find(s => s.branch === branchName && s.status === 'OPEN');
-}
-
-export function startNewShift(params: {
+export async function startNewShift(params: {
   branch: string;
   shiftType: 'صباحي' | 'مسائي';
   employeeId: string;
   employeeName: string;
   openingDrawerBalance: number;
-}): ShiftSession {
-  const shifts = getShifts();
-  const nowIso = new Date().toISOString();
-  
-  // Close any previously stuck open shift for this branch
-  const updatedShifts = shifts.map(s => {
-    if (s.branch === params.branch && s.status === 'OPEN') {
-      return { ...s, status: 'CLOSED' as const, endTime: nowIso };
-    }
-    return s;
-  });
-
+}): Promise<ShiftSession> {
   const newShift: ShiftSession = {
     id: `SHF-${Date.now().toString().slice(-6)}`,
     branch: params.branch,
     shiftType: params.shiftType,
     employeeId: params.employeeId,
     employeeName: params.employeeName,
-    startTime: nowIso,
+    startTime: new Date().toISOString(),
     status: 'OPEN',
     openingDrawerBalance: params.openingDrawerBalance || 0,
     cashSales: 0,
@@ -143,57 +84,42 @@ export function startNewShift(params: {
     expectedCashInDrawer: params.openingDrawerBalance || 0,
   };
 
-  updatedShifts.unshift(newShift);
-  saveShifts(updatedShifts);
-
-  // Sync with DB API
-  fetch('/api/shifts', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(newShift),
-  }).catch(() => {});
+  try {
+    const res = await fetch('/api/shifts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newShift),
+    });
+    if (res.ok) {
+      const json = await res.json();
+      if (json.shift) return json.shift;
+    }
+  } catch (e) {
+    console.error('Error starting shift on server:', e);
+  }
 
   return newShift;
 }
 
-export function closeActiveShift(params: {
+export async function closeActiveShift(params: {
   shiftId: string;
   actualClosingCash: number;
   discrepancyReason?: string;
-  handoverDestination: 'تسليم لوردية المساء' | 'توريد لخزينة الإدارة (فرع عمر أفندي)' | 'إبقاء بالدرج لليوم التالي' | string;
+  handoverDestination: string;
   handoverReceiverName?: string;
   closingNotes?: string;
-}): ShiftSession {
-  const shifts = getShifts();
-  const shiftIdx = shifts.findIndex(s => s.id === params.shiftId);
-  if (shiftIdx === -1) throw new Error('الوردية غير موجودة');
-
-  const shift = shifts[shiftIdx];
-  const expected = (shift.openingDrawerBalance || 0) + (shift.cashSales || 0) - ((shift.expensesPaid || 0) + (shift.advancesPaid || 0));
-  const discrepancy = params.actualClosingCash - expected;
-
-  const closedShift: ShiftSession = {
-    ...shift,
-    status: 'CLOSED',
-    endTime: new Date().toISOString(),
-    actualClosingCash: params.actualClosingCash,
-    expectedCashInDrawer: expected,
-    cashDiscrepancy: discrepancy,
-    discrepancyReason: params.discrepancyReason,
-    handoverDestination: params.handoverDestination,
-    handoverReceiverName: params.handoverReceiverName,
-    closingNotes: params.closingNotes,
-  };
-
-  shifts[shiftIdx] = closedShift;
-  saveShifts(shifts);
-
-  // Sync with DB API
-  fetch('/api/shifts', {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(params),
-  }).catch(() => {});
-
-  return closedShift;
+}): Promise<any> {
+  try {
+    const res = await fetch('/api/shifts', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params),
+    });
+    if (res.ok) {
+      const json = await res.json();
+      return json.shift;
+    }
+  } catch (e) {
+    console.error('Error closing shift on server:', e);
+  }
 }
