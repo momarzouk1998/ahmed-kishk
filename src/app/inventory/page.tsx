@@ -1201,7 +1201,9 @@ export default function InventoryPage() {
                     🏢 جميع الفروع ({BRANCHES_LIST.length})
                   </button>
                   {BRANCHES_LIST.map(b => {
-                    const branchItemsCount = items.filter(i => normalizeBranchName(i.branch) === normalizeBranchName(b.name)).length;
+                    const branchItemCats = Array.from(new Set(items.filter(i => normalizeBranchName(i.branch) === normalizeBranchName(b.name)).map(i => (i.category || '').trim()).filter(Boolean)));
+                    const branchCustomCats = getBranchCustomCategories(b.name);
+                    const branchCatsCount = Array.from(new Set([...branchItemCats, ...branchCustomCats])).length;
                     return (
                       <button
                         key={b.id}
@@ -1217,7 +1219,7 @@ export default function InventoryPage() {
                         <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
                           categoryTabBranch === b.name ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
                         }`}>
-                          {branchItemsCount}
+                          {branchCatsCount} تصنيف
                         </span>
                       </button>
                     );
