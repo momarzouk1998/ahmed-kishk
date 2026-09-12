@@ -308,55 +308,91 @@ export default function ShiftsAndDrawerPage() {
 
   const handlePrintZReport = (shift: ShiftSession) => {
     const bCfg = getBranchConfig(shift.branch);
+    const branchPhones = [bCfg.landline ? `ت: ${bCfg.landline}` : '', bCfg.phone ? `م: ${bCfg.phone}` : ''].filter(Boolean).join(' | ');
     const w = window.open('', '_blank');
     if (!w) return;
 
     w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head>
       <meta charset="UTF-8"><title>تقرير إغلاق وردية - ${shift.id}</title>
       <style>
-        @page { size: 80mm auto; margin: 3mm 4mm; }
-        body { font-family: 'Cairo', system-ui, sans-serif; direction:rtl; color:#000; font-size:8.5pt; width:72mm; margin:0 auto; }
+        @page { size: 80mm auto; margin: 0; }
+        * { box-sizing:border-box; margin:0; padding:0; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
+        body { font-family: 'Cairo', system-ui, -apple-system, sans-serif; direction:rtl; color:#000; font-size:8.5pt; width:68mm; max-width:68mm; margin:0 auto; padding: 2mm 1.5mm; }
         .center { text-align:center; }
-        .brand { font-weight:900; font-size:11pt; }
-        .divider { border-top:1px dashed #000; margin:2mm 0; }
-        table { width:100%; border-collapse:collapse; }
-        td { padding:1mm 0; }
-        .lbl { color:#333; }
-        .v { text-align:left; font-family:monospace; font-weight:bold; }
-        .total-row td { font-size:10pt; font-weight:900; border-top:1px solid #000; border-bottom:1px solid #000; padding:1.5mm 0; }
-        .foot { text-align:center; font-size:7.5pt; color:#444; margin-top:3mm; }
+        .brand { font-weight:900; font-size:11pt; letter-spacing:-0.2px; }
+        .branch-title { font-weight:800; font-size:9.5pt; margin-top:0.5mm; }
+        .sub { font-size:7.5pt; color:#222; margin-top:0.5mm; line-height:1.2; }
+        .divider { border-top:1px dashed #000; margin:1.5mm 0; }
+        .badge { display:inline-block; font-weight:900; font-size:8.5pt; margin-top:1.5mm; background:#000; color:#fff; padding:0.8mm 2.5mm; border-radius:3px; }
+        .totals { width:100%; border-collapse:collapse; margin-top:1mm; }
+        .totals td { padding: 0.8mm 0.5mm; font-size:8.5pt; }
+        .totals .lbl { color:#111; font-weight:700; }
+        .totals .v { text-align:left; font-family:monospace; font-weight:900; white-space:nowrap; padding-left:1mm; }
+        .total-row td { font-size:10pt; font-weight:900; border-top:1.5px solid #000; border-bottom:1.5px solid #000; padding:1.5mm 0.5mm; }
+        .foot { text-align:center; font-size:7.5pt; color:#222; margin-top:2.5mm; line-height:1.3; }
       </style></head><body>
         <div class="center">
           <div class="brand">مؤسسة كشك للأقمشة والستائر</div>
-          <div style="font-weight:bold; font-size:9.5pt; margin-top:1mm;">تقرير إغلاق وردية (Z-Report)</div>
-          <div style="font-size:8pt; color:#333;">👑 ${shift.branch}</div>
+          <div class="branch-title">👑 ${bCfg.name}</div>
+          <div class="sub">${bCfg.address}</div>
+          ${branchPhones ? `<div class="sub" style="font-family:monospace; font-weight:bold;">${branchPhones}</div>` : ''}
+          <div class="badge">تقرير تقفيل الوردية (Z-Report)</div>
         </div>
         <div class="divider"></div>
-        <table>
-          <tr><td class="lbl">نوع الوردية:</td><td class="v">${shift.shiftType}</td></tr>
-          <tr><td class="lbl">المسؤول:</td><td class="v">${shift.employeeName}</td></tr>
-          <tr><td class="lbl">وقت البداية:</td><td class="v" style="font-size:7.5pt;">${new Date(shift.startTime).toLocaleString('ar-EG')}</td></tr>
-          ${shift.endTime ? `<tr><td class="lbl">وقت الإغلاق:</td><td class="v" style="font-size:7.5pt;">${new Date(shift.endTime).toLocaleString('ar-EG')}</td></tr>` : ''}
-        </table>
+        <div style="display:flex; justify-content:space-between; font-size:8pt; font-weight:bold;">
+          <span>الوردية: <b style="font-family:monospace;">#${shift.id.slice(-6)}</b></span>
+          <span style="font-weight:900; background:#f0f0f0; padding:0.5mm 1.5mm; border-radius:2px;">${shift.shiftType === 'صباحي' ? '☀️ صباحي' : '🌙 مسائي'}</span>
+        </div>
+        <div style="font-size:8.5pt; margin-top:1mm; display:flex; justify-content:space-between;">
+          <span>المسؤول: <b>${shift.employeeName}</b></span>
+          <span style="font-size:7.5pt; color:#555;">${shift.status === 'CLOSED' ? '🔒 مغلقة ومسلمة' : '🟢 قيد التشغيل'}</span>
+        </div>
+        <div style="font-size:7.5pt; margin-top:0.5mm; display:flex; justify-content:space-between; color:#333;">
+          <span>بداية الوردية:</span>
+          <span style="font-family:monospace;">${new Date(shift.startTime).toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' })}</span>
+        </div>
+        ${shift.endTime ? `
+        <div style="font-size:7.5pt; margin-top:0.5mm; display:flex; justify-content:space-between; color:#333;">
+          <span>إغلاق الوردية:</span>
+          <span style="font-family:monospace;">${new Date(shift.endTime).toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' })}</span>
+        </div>` : ''}
+        
         <div class="divider"></div>
-        <table>
-          <tr><td class="lbl">عهدة البداية (افتتاح):</td><td class="v">${shift.openingDrawerBalance.toLocaleString()}</td></tr>
-          <tr><td class="lbl">💵 مبيعات كاش بالدرج:</td><td class="v">${shift.cashSales.toLocaleString()}</td></tr>
-          <tr><td class="lbl">⚡ مبيعات إنستاباي:</td><td class="v">${shift.instapaySales.toLocaleString()}</td></tr>
-          <tr><td class="lbl">📱 مبيعات فودافون:</td><td class="v">${shift.vodafoneSales.toLocaleString()}</td></tr>
-          <tr><td class="lbl">💳 مبيعات فيزا:</td><td class="v">${shift.visaSales.toLocaleString()}</td></tr>
-          <tr class="total-row"><td>إجمالي مبيعات الوردية:</td><td class="v">${shift.totalSales.toLocaleString()}</td></tr>
-          <tr><td class="lbl">مصروفات وسلف خارجة:</td><td class="v">-${(shift.expensesPaid + shift.advancesPaid).toLocaleString()}</td></tr>
-          <tr style="border-top:1px solid #000;"><td class="lbl" style="font-weight:bold;">النقدية المحسوبة بالدرج:</td><td class="v">${shift.expectedCashInDrawer.toLocaleString()}</td></tr>
-          <tr><td class="lbl" style="font-weight:bold;">النقدية الفعلية المحصية:</td><td class="v">${(shift.actualClosingCash || 0).toLocaleString()}</td></tr>
-          <tr style="border-top:1px dashed #000;"><td class="lbl" style="font-weight:900;">الفارق (عجز / زيادة):</td><td class="v" style="font-weight:900;">${(shift.cashDiscrepancy || 0) >= 0 ? `+${shift.cashDiscrepancy}` : shift.cashDiscrepancy}</td></tr>
-          ${shift.handoverDestination ? `<tr><td class="lbl">جهة التسليم:</td><td class="v">${shift.handoverDestination}</td></tr>` : ''}
-          ${shift.handoverReceiverName ? `<tr><td class="lbl">المستلم:</td><td class="v">${shift.handoverReceiverName}</td></tr>` : ''}
+        <div style="font-weight:900; font-size:8pt; margin-bottom:0.5mm;">📊 تفاصيل مبيعات الوردية:</div>
+        <table class="totals">
+          <tr><td class="lbl">عهدة البداية (افتتاح):</td><td class="v">${(shift.openingDrawerBalance || 0).toLocaleString()} ج.م</td></tr>
+          <tr><td class="lbl">💵 مبيعات كاش بالدرج:</td><td class="v">${(shift.cashSales || 0).toLocaleString()} ج.م</td></tr>
+          ${(shift.instapaySales || 0) > 0 ? `<tr><td class="lbl">⚡ مبيعات إنستاباي:</td><td class="v">${shift.instapaySales.toLocaleString()} ج.م</td></tr>` : ''}
+          ${(shift.vodafoneSales || 0) > 0 ? `<tr><td class="lbl">📱 مبيعات فودافون كاش:</td><td class="v">${shift.vodafoneSales.toLocaleString()} ج.م</td></tr>` : ''}
+          ${(shift.visaSales || 0) > 0 ? `<tr><td class="lbl">💳 مبيعات فيزا / شبكة:</td><td class="v">${shift.visaSales.toLocaleString()} ج.م</td></tr>` : ''}
+          <tr class="total-row"><td>إجمالي مبيعات الوردية:</td><td class="v">${(shift.totalSales || 0).toLocaleString()} ج.م</td></tr>
         </table>
+
+        <div class="divider"></div>
+        <div style="font-weight:900; font-size:8pt; margin-bottom:0.5mm;">💰 جرد وتسوية نقدية الدرج:</div>
+        <table class="totals">
+          ${(shift.expensesPaid + shift.advancesPaid) > 0 ? `
+            <tr><td class="lbl">مصروفات وسلف خارجة:</td><td class="v">-${(shift.expensesPaid + shift.advancesPaid).toLocaleString()} ج.م</td></tr>
+          ` : ''}
+          <tr><td class="lbl" style="font-weight:800;">النقدية المحسوبة بالدرج:</td><td class="v">${(shift.expectedCashInDrawer || 0).toLocaleString()} ج.م</td></tr>
+          <tr style="background:#f5f5f5;"><td class="lbl" style="font-weight:900;">النقدية الفعلية المحصية:</td><td class="v" style="font-weight:900; font-size:9pt;">${((shift.actualClosingCash ?? shift.expectedCashInDrawer) || 0).toLocaleString()} ج.م</td></tr>
+          <tr class="total-row">
+            <td>حالة المطابقة (الفارق):</td>
+            <td class="v" style="font-size:9pt;">
+              ${(shift.cashDiscrepancy || 0) === 0 ? '✓ مطابق (0)' : (shift.cashDiscrepancy || 0) > 0 ? `+${shift.cashDiscrepancy} (زيادة)` : `${shift.cashDiscrepancy} (عجز)`}
+            </td>
+          </tr>
+          ${shift.discrepancyReason ? `<tr><td colspan="2" style="font-size:7.5pt; color:#555; padding-top:1mm;">سبب الفارق: <b>${shift.discrepancyReason}</b></td></tr>` : ''}
+          ${shift.handoverDestination ? `<tr><td class="lbl">جهة التسليم:</td><td class="v" style="font-family:sans-serif; font-size:7.5pt;">${shift.handoverDestination}</td></tr>` : ''}
+          ${shift.handoverReceiverName ? `<tr><td class="lbl">المستلم:</td><td class="v" style="font-family:sans-serif; font-size:7.5pt;">${shift.handoverReceiverName}</td></tr>` : ''}
+          ${shift.closingNotes ? `<tr><td colspan="2" style="font-size:7.5pt; color:#555; padding-top:1mm;">ملاحظات: ${shift.closingNotes}</td></tr>` : ''}
+        </table>
+
         <div class="divider"></div>
         <div class="foot">
-          <div>شكراً لتعاملكم مع مؤسسة كشك للأقمشة والستائر ✨</div>
+          <div style="font-weight:bold; font-size:8pt;">شكراً لتعاملكم مع مؤسسة كشك للأقمشة والستائر ✨</div>
           <div>تمت مراجعة وتسليم الخزينة والدرج بنجاح</div>
+          <div style="font-family:monospace; font-size:7pt; color:#666; margin-top:1mm;">تاريخ الطباعة: ${new Date().toLocaleString('ar-EG')}</div>
         </div>
       </body></html>`);
     w.document.close();
