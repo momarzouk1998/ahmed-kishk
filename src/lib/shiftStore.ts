@@ -44,6 +44,7 @@ const SHIFTS_STORAGE_KEY = 'ahmed_kishk_shifts_v1';
 
 export async function fetchShiftsFromServer(branchName?: string): Promise<ShiftSession[]> {
   try {
+    const localShifts = getShifts();
     const url = branchName && branchName !== 'all' && branchName !== 'الكل'
       ? `/api/shifts?branch=${encodeURIComponent(branchName)}`
       : '/api/shifts';
@@ -51,10 +52,26 @@ export async function fetchShiftsFromServer(branchName?: string): Promise<ShiftS
     if (res.ok) {
       const json = await res.json();
       if (json.success && Array.isArray(json.shifts)) {
-        if (typeof window !== 'undefined') {
-          localStorage.setItem(SHIFTS_STORAGE_KEY, JSON.stringify(json.shifts));
+        const serverShifts: ShiftSession[] = json.shifts;
+        const serverIds = new Set(serverShifts.map(s => s.id));
+        const missingOnServer = localShifts.filter(ls => ls.id && !serverIds.has(ls.id));
+
+        // Auto-upload local shifts to server DB if they were saved locally before
+        if (missingOnServer.length > 0) {
+          missingOnServer.forEach(missing => {
+            fetch('/api/shifts', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(missing),
+            }).catch(() => {});
+          });
         }
-        return json.shifts;
+
+        const merged = [...serverShifts, ...missingOnServer];
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(SHIFTS_STORAGE_KEY, JSON.stringify(merged));
+        }
+        return merged;
       }
     }
   } catch (e) {

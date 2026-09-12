@@ -96,6 +96,7 @@ export default function ReportsPage() {
   const [inspections, setInspections] = useState<any[]>([]);
   const [quotations, setQuotations] = useState<any[]>([]);
   const [collections, setCollections] = useState<any[]>([]);
+  const [shifts, setShifts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // ─── Load all data ───────────────────────────────────────────
@@ -103,7 +104,7 @@ export default function ReportsPage() {
     (async () => {
       setLoading(true);
       try {
-        const [salesRes, purRes, invRes, custRes, supRes, insRes, priRes, ordRes] = await Promise.all([
+        const [salesRes, purRes, invRes, custRes, supRes, insRes, priRes, ordRes, shiftRes] = await Promise.all([
           fetch('/api/fabric-sales', { cache: 'no-store' }).catch(() => null),
           fetch('/api/purchases', { cache: 'no-store' }).catch(() => null),
           fetch('/api/inventory', { cache: 'no-store' }).catch(() => null),
@@ -112,11 +113,16 @@ export default function ReportsPage() {
           fetch('/api/inspections', { cache: 'no-store' }).catch(() => null),
           fetch('/api/pricing', { cache: 'no-store' }).catch(() => null),
           fetch('/api/pipeline-orders', { cache: 'no-store' }).catch(() => null),
+          fetch('/api/shifts', { cache: 'no-store' }).catch(() => null),
         ]);
 
         if (salesRes?.ok) {
           const j = await salesRes.json();
           if (Array.isArray(j?.sales)) setInvoices(j.sales);
+        }
+        if (shiftRes?.ok) {
+          const j = await shiftRes.json();
+          if (Array.isArray(j?.shifts)) setShifts(j.shifts);
         }
         if (purRes?.ok) {
           const j = await purRes.json();
@@ -331,11 +337,13 @@ export default function ReportsPage() {
     const totalCollected = cash + instapay + vodafone + visa + other;
 
     // ─── 4 Branch Treasury Balances ───
+    // ─── Branch Treasury Balances (Omar Effendi separated into 2 distinct cards: Morning ☀️ & Evening 🌙) ───
     const branchesData = [
-      { name: 'الفرع الرئيسي (73 سعد زغلول)', treasury: 'خزينة الفرع الرئيسي (سعد زغلول)', key: 'الرئيسي', color: 'border-amber-300 bg-amber-50/60', text: 'text-amber-900' },
-      { name: 'فرع عرابي (18 ش عدلي)', treasury: 'خزينة فرع عرابي', key: 'عرابي', color: 'border-sky-300 bg-sky-50/60', text: 'text-sky-900' },
-      { name: 'فرع عمر أفندي', treasury: 'خزينة فرع عمر أفندي', key: 'عمر أفندي', color: 'border-emerald-300 bg-emerald-50/60', text: 'text-emerald-900' },
-      { name: 'فرع الثلاثيني', treasury: 'خزينة فرع الثلاثيني', key: 'الثلاثيني', color: 'border-purple-300 bg-purple-50/60', text: 'text-purple-900' },
+      { name: 'الفرع الرئيسي (73 سعد زغلول)', treasury: 'خزينة الفرع الرئيسي (سعد زغلول)', key: 'الرئيسي', color: 'border-amber-300 bg-amber-50/60', text: 'text-amber-900', isShift: false, shiftType: null },
+      { name: 'فرع عرابي (18 ش عدلي)', treasury: 'خزينة فرع عرابي', key: 'عرابي', color: 'border-sky-300 bg-sky-50/60', text: 'text-sky-900', isShift: false, shiftType: null },
+      { name: 'فرع عمر أفندي (وردية الصباح ☀️)', treasury: 'خزينة عمر أفندي — صباحي (رصيد الصبح)', key: 'عمر أفندي', color: 'border-amber-400 bg-amber-50/80', text: 'text-amber-950', isShift: true, shiftType: 'صباحي' },
+      { name: 'فرع عمر أفندي (وردية المساء 🌙)', treasury: 'خزينة عمر أفندي — مسائي (رصيد بالليل)', key: 'عمر أفندي', color: 'border-indigo-400 bg-indigo-50/80', text: 'text-indigo-950', isShift: true, shiftType: 'مسائي' },
+      { name: 'فرع الثلاثيني', treasury: 'خزينة فرع الثلاثيني', key: 'الثلاثيني', color: 'border-purple-300 bg-purple-50/60', text: 'text-purple-900', isShift: false, shiftType: null },
     ];
 
     const branchTreasuries = branchesData.map(b => {
@@ -351,7 +359,50 @@ export default function ReportsPage() {
         return false;
       };
 
-      // 1. From Invoices in this period
+      if (b.isShift && b.key === 'عمر أفندي') {
+        const omarShifts = shifts.filter(s => {
+          const isOmar = s.branch && (s.branch.includes('عمر أفندي') || s.branch.includes('عمر افندي') || s.branch.includes('عمر'));
+          if (!isOmar) return false;
+          return inPeriod(s.startTime || s.createdAt || s.endTime) && s.shiftType === b.shiftType;
+        });
+
+        const shiftCash = omarShifts.reduce((acc, s) => acc + Number(s.actualClosingCash ?? s.expectedCashInDrawer ?? s.cashSales ?? 0), 0);
+        const shiftSales = omarShifts.reduce((acc, s) => acc + Number(s.totalSales ?? s.cashSales ?? 0), 0);
+        const shiftInstapay = omarShifts.reduce((acc, s) => acc + Number(s.instapaySales || 0), 0);
+        const shiftVodafone = omarShifts.reduce((acc, s) => acc + Number(s.vodafoneSales || 0), 0);
+        const shiftVisa = omarShifts.reduce((acc, s) => acc + Number(s.visaSales || 0), 0);
+        const employeeName = Array.from(new Set(omarShifts.map(s => s.employeeName).filter(Boolean))).join(', ') || (b.shiftType === 'صباحي' ? 'محمد كشك' : 'بليا');
+        const activeShift = omarShifts.find(s => s.status === 'OPEN');
+        const shiftStatus = activeShift ? 'قيد التشغيل 🟢' : (omarShifts.length > 0 ? 'مغلقة 🔒' : 'جاهزة لبدء العمل');
+
+        // Check if there are invoice/collection transactions matching this shift time
+        invoices.filter(i => matchB(i.branch) && inPeriod(i.date)).forEach(inv => {
+          const hours = inv.date?.includes('T') ? new Date(inv.date).getHours() : 12;
+          const isMorningTx = hours < 16;
+          if ((b.shiftType === 'صباحي' && isMorningTx) || (b.shiftType === 'مسائي' && !isMorningTx)) {
+            bCount++;
+          }
+        });
+
+        const finalCash = shiftCash;
+        const total = finalCash + shiftInstapay + shiftVodafone + shiftVisa;
+
+        return {
+          ...b,
+          cash: finalCash,
+          instapay: shiftInstapay,
+          vodafone: shiftVodafone,
+          visa: shiftVisa,
+          total,
+          count: bCount || omarShifts.length,
+          employeeName,
+          shiftSales,
+          shiftStatus,
+          hasShifts: omarShifts.length > 0,
+        };
+      }
+
+      // 1. From Invoices in this period (for standard branches)
       invoices.filter(i => matchB(i.branch) && inPeriod(i.date)).forEach(inv => {
         bCount++;
         let split = inv.splitPayments;
@@ -459,7 +510,7 @@ export default function ReportsPage() {
       curtainSalesRemaining,
       branchTreasuries,
     };
-  }, [fInvoices, fQuotations, fCollections, invoices, collections, quotations, period]);
+  }, [fInvoices, fQuotations, fCollections, invoices, collections, quotations, shifts, period]);
 
   // ─── Profits (real cost from inventory) ──────────────────────
   const profitStats = useMemo(() => {
@@ -815,28 +866,37 @@ function SalesReport({ kpis, invoices, quotations, collections, branchLabel, per
               <span className="material-symbols-outlined text-amber-500 text-lg">savings</span>
               <h3 className="font-black text-xs text-slate-900">
                 {showAllFour
-                  ? `أرصدة خزن الفروع النقدية والمحصلة (4 فروع) — (${periodLabel})`
-                  : `رصيد ${visibleTreasuries[0]?.treasury || 'الخزينة'} — (${periodLabel})`}
+                  ? `أرصدة خزن وورديات الفروع النقدية والمحصلة — (${periodLabel})`
+                  : (visibleTreasuries.length > 1 && visibleTreasuries[0]?.key === 'عمر أفندي')
+                    ? `ورديات فرع عمر أفندي (رصيد الصبح ورصيد بالليل) — (${periodLabel})`
+                    : `رصيد ${visibleTreasuries[0]?.treasury || 'الخزينة'} — (${periodLabel})`}
               </h3>
             </div>
             <div className="text-xs font-mono font-black text-slate-700 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
-              إجمالي {showAllFour ? 'كل الخزن' : 'الخزينة'}: <span className="text-emerald-700">{visibleTreasuries.reduce((s: number, b: any) => s + b.total, 0).toLocaleString()} ج.م</span>
+              إجمالي {showAllFour ? 'كل الخزن والورديات' : 'الخزينة'}: <span className="text-emerald-700">{visibleTreasuries.reduce((s: number, b: any) => s + b.total, 0).toLocaleString()} ج.م</span>
             </div>
           </div>
 
-          <div className={`grid grid-cols-1 ${visibleTreasuries.length === 1 ? 'max-w-md' : visibleTreasuries.length === 2 ? 'sm:grid-cols-2 max-w-2xl' : 'sm:grid-cols-2 lg:grid-cols-4'} gap-3`}>
+          <div className={`grid grid-cols-1 ${visibleTreasuries.length === 1 ? 'max-w-md' : visibleTreasuries.length === 2 ? 'sm:grid-cols-2 max-w-3xl' : 'sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5'} gap-3`}>
             {visibleTreasuries.map((b: any, idx: number) => (
-              <div key={idx} className={`p-3 rounded-xl border ${b.color} flex flex-col justify-between`}>
+              <div key={idx} className={`p-3 rounded-xl border ${b.color} flex flex-col justify-between shadow-xs transition-all`}>
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <span className="font-black text-xs text-slate-900 truncate">{b.name}</span>
-                    <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-white/80 border border-slate-200 text-slate-700">
+                    <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-white/90 border border-slate-200 text-slate-700">
                       {b.count} عملية
                     </span>
                   </div>
-                  <div className="text-[10.5px] text-slate-500 font-bold mb-2 truncate">{b.treasury}</div>
+                  <div className="text-[10.5px] text-slate-600 font-bold mb-1 truncate">{b.treasury}</div>
 
-                  <div className="bg-white/90 p-2.5 rounded-lg border border-slate-200/80 mb-2 shadow-xs">
+                  {b.isShift && (
+                    <div className="flex items-center justify-between text-[10px] mb-2 px-1.5 py-0.5 rounded bg-white/70 border border-slate-200/80 font-bold">
+                      <span className="text-slate-600">المسؤول: <strong className="text-slate-900">{b.employeeName}</strong></span>
+                      <span className="text-[9.5px]">{b.shiftStatus}</span>
+                    </div>
+                  )}
+
+                  <div className="bg-white/95 p-2.5 rounded-lg border border-slate-200 mb-2 shadow-xs">
                     <div className="text-[10px] text-slate-500 font-bold">المحصل بالخزينة فى الفترة</div>
                     <div className="font-mono font-black text-lg text-emerald-700 mt-0.5">
                       {b.total.toLocaleString()} <span className="text-xs font-normal">ج</span>
@@ -845,9 +905,12 @@ function SalesReport({ kpis, invoices, quotations, collections, branchLabel, per
                 </div>
 
                 <div className="space-y-1 pt-1.5 border-t border-slate-200/60 text-[10.5px]">
-                  <div className="flex justify-between items-center text-slate-700 bg-white/60 px-2 py-0.5 rounded border border-slate-200/50">
-                    <span className="font-bold">💵 كاش (الدرج):</span>
-                    <strong className="font-mono">{b.cash.toLocaleString()} ج</strong>
+                  <div className="flex justify-between items-center text-slate-800 bg-white/75 px-2 py-1 rounded border border-slate-200 font-bold">
+                    <span className="flex items-center gap-1">
+                      <span>💵</span>
+                      <span>كاش (الدرج):</span>
+                    </span>
+                    <strong className="font-mono text-slate-900">{b.cash.toLocaleString()} ج</strong>
                   </div>
                   <div className="grid grid-cols-3 gap-1 pt-1 text-[9.5px]">
                     <div className="bg-purple-50 border border-purple-200 rounded p-1 text-center">
