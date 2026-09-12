@@ -346,6 +346,7 @@ export default function ReportsPage() {
       { name: 'فرع عمر أفندي (وردية الصباح ☀️)', treasury: 'خزينة عمر أفندي — صباحي (رصيد الصبح)', key: 'عمر أفندي', color: 'border-amber-400 bg-amber-50/80', text: 'text-amber-950', isShift: true, shiftType: 'صباحي' },
       { name: 'فرع عمر أفندي (وردية المساء 🌙)', treasury: 'خزينة عمر أفندي — مسائي (رصيد بالليل)', key: 'عمر أفندي', color: 'border-indigo-400 bg-indigo-50/80', text: 'text-indigo-950', isShift: true, shiftType: 'مسائي' },
       { name: 'فرع الثلاثيني', treasury: 'خزينة فرع الثلاثيني', key: 'الثلاثيني', color: 'border-purple-300 bg-purple-50/60', text: 'text-purple-900', isShift: false, shiftType: null },
+      { name: 'الفرع التجاري (ش التجاري)', treasury: 'خزينة الفرع التجاري', key: 'التجاري', color: 'border-emerald-300 bg-emerald-50/60', text: 'text-emerald-900', isShift: false, shiftType: null },
     ];
 
     const branchTreasuries = branchesData.map(b => {
@@ -358,6 +359,7 @@ export default function ReportsPage() {
         if (b.key === 'عرابي') return s.includes('عرابي') || s.includes('عدلي');
         if (b.key === 'عمر أفندي') return s.includes('عمر أفندي') || s.includes('عمر افندي') || s.includes('عمر');
         if (b.key === 'الثلاثيني') return s.includes('الثلاثيني');
+        if (b.key === 'التجاري') return s.includes('تجاري') || s.includes('تجارى') || s.includes('أونلاين') || s.includes('اونلاين');
         return false;
       };
 
@@ -885,7 +887,7 @@ function SalesReport({ kpis, invoices, quotations, collections, branchLabel, per
     return (collections || []).slice((colPage - 1) * colPageSize, colPage * colPageSize);
   }, [collections, colPage, colPageSize]);
 
-  // تصفية الخزن: لو المستخدم أدمن ومحدد الكل تظهر الـ 4، لو مش أدمن تظهر خزنته فقط
+  // تصفية الخزن: لو المستخدم أدمن ومحدد الكل تظهر الخزن كلها، لو مش أدمن تظهر خزنته فقط
   const visibleTreasuries = useMemo(() => {
     if (!kpis.branchTreasuries || !Array.isArray(kpis.branchTreasuries)) return [];
 
@@ -897,6 +899,7 @@ function SalesReport({ kpis, invoices, quotations, collections, branchLabel, per
           if (b.key === 'عرابي') return s.includes('عرابي') || s.includes('عدلي');
           if (b.key === 'عمر أفندي') return s.includes('عمر أفندي') || s.includes('عمر');
           if (b.key === 'الثلاثيني') return s.includes('الثلاثيني');
+          if (b.key === 'التجاري') return s.includes('تجاري') || s.includes('تجارى') || s.includes('أونلاين') || s.includes('اونلاين');
           return false;
         });
       }
@@ -910,6 +913,7 @@ function SalesReport({ kpis, invoices, quotations, collections, branchLabel, per
       if (b.key === 'عرابي') return target.includes('عرابي') || target.includes('عدلي');
       if (b.key === 'عمر أفندي') return target.includes('عمر أفندي') || target.includes('عمر');
       if (b.key === 'الثلاثيني') return target.includes('الثلاثيني');
+      if (b.key === 'التجاري') return target.includes('تجاري') || target.includes('تجارى') || target.includes('أونلاين') || target.includes('اونلاين');
       return false;
     });
 
@@ -965,7 +969,7 @@ function SalesReport({ kpis, invoices, quotations, collections, branchLabel, per
             </div>
           </div>
 
-          <div className={`grid grid-cols-1 ${visibleTreasuries.length === 1 ? 'max-w-md' : visibleTreasuries.length === 2 ? 'sm:grid-cols-2 max-w-3xl' : 'sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5'} gap-3`}>
+          <div className={`grid grid-cols-1 ${visibleTreasuries.length === 1 ? 'max-w-md' : visibleTreasuries.length === 2 ? 'sm:grid-cols-2 max-w-3xl' : 'sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6'} gap-3`}>
             {visibleTreasuries.map((b: any, idx: number) => (
               <div key={idx} className={`p-3 rounded-xl border ${b.color} flex flex-col justify-between shadow-xs transition-all`}>
                 <div>
