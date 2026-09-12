@@ -141,27 +141,28 @@ export default function NewSalesInvoicePOSPage() {
     initData();
   }, []);
 
-  // Dynamic categories strictly belonging to the active branch's available inventory (بدون "الكل") + التصنيفات الدائمة المعتمدة
+  // Dynamic categories strictly belonging 100% to the active branch's available inventory
   const dynamicCategories = useMemo(() => {
     const branchScoped = products.filter(p =>
       !branch || branch === 'الكل' || normalizeBranchName(p.branch) === normalizeBranchName(branch)
     );
-    const itemCats = branchScoped
-      .map(p => (p.category || '').trim())
-      .filter(Boolean);
-    
-    const persistent = getPersistentCategories();
-    // دمج تصنيفات الأصناف مع التصنيفات الأساسية لضمان بقاء "خياطة" وتصنيفات الأقمشة متاحة دائماً
-    const uniqueCats = Array.from(
-      new Set([
-        ...itemCats,
-        ...persistent.filter(c => ['جوانب الستاير', 'شيفونات وتل', 'بلاك أوت وعوازل', 'خياطة', 'خياطة وتفصيل', 'تراكات ومواسير', 'إكسسوارات ولوازم'].includes(c)),
-      ])
+    const itemCats = Array.from(
+      new Set(
+        branchScoped
+          .map(p => (p.category || '').trim())
+          .filter(Boolean)
+      )
     );
-    return uniqueCats;
+    
+    // إرجاع تصنيفات أصناف هذا الفرع فقط دون أي تصنيفات خارجية أو من فروع أخرى
+    if (itemCats.length > 0) {
+      return itemCats;
+    }
+    
+    return ['عام'];
   }, [products, branch]);
 
-  // تعيين أول تصنيف كافتراضي للفرع، وإعادة التعيين لو الفرع اتغير
+  // تعيين أول تصنيف كافتراضي للفرع، وإعادة التعيين فوراً لو الفرع اتغير لتصنيفات الفرع الجديد
   useEffect(() => {
     if (dynamicCategories.length > 0) {
       if (!selectedCategory || !dynamicCategories.includes(selectedCategory)) {
