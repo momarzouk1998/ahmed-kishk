@@ -5,7 +5,8 @@ import PageShell from '@/components/PageShell';
 import { 
   Employee, AttendanceRecord, EmployeeAdvance, WeeklyPayrollSettlement,
   getEmployees, saveEmployees, getAttendance, saveAttendance,
-  getAdvances, saveAdvances, getPayrolls, savePayrolls, INITIAL_EMPLOYEES
+  getAdvances, saveAdvances, getPayrolls, savePayrolls, INITIAL_EMPLOYEES,
+  isMonthlyEmployee
 } from '@/lib/employeeStore';
 import { BRANCHES_LIST, normalizeBranchName } from '@/lib/branches';
 import { formatDateOnly, getTodayDateStr } from '@/lib/dateUtils';
@@ -24,6 +25,13 @@ export default function EmployeesManagementPage() {
   const [selectedBranch, setSelectedBranch] = useState<string>('الكل');
   const [attendanceDate, setAttendanceDate] = useState<string>(() => getTodayDateStr());
 
+  // Payroll classification mode: 'weekly' (Thursday) | 'monthly' (End of month) | 'all'
+  const [payrollMode, setPayrollMode] = useState<'weekly' | 'monthly' | 'all'>('weekly');
+  const [settlementMonth, setSettlementMonth] = useState<string>(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  });
+
   // Advance Form State
   const [advanceEmployeeId, setAdvanceEmployeeId] = useState<string>('');
   const [advanceType, setAdvanceType] = useState<'سلفة' | 'خصم' | 'مكافأة'>('سلفة');
@@ -41,6 +49,7 @@ export default function EmployeesManagementPage() {
     name: string;
     branch: string;
     dailyWage: number;
+    payType: 'شهري' | 'أسبوعي';
     workStartTime: string;
     workEndTime: string;
     phone: string;
@@ -50,6 +59,7 @@ export default function EmployeesManagementPage() {
     name: '',
     branch: 'الفرع الرئيسي',
     dailyWage: 300,
+    payType: 'أسبوعي',
     workStartTime: '11:00 AM',
     workEndTime: '11:30 PM',
     phone: '',
@@ -167,6 +177,7 @@ export default function EmployeesManagementPage() {
       name: '',
       branch: selectedBranch !== 'الكل' ? selectedBranch : 'الفرع الرئيسي',
       dailyWage: 300,
+      payType: 'أسبوعي',
       workStartTime: '11:00 AM',
       workEndTime: '11:30 PM',
       phone: '',
@@ -183,6 +194,7 @@ export default function EmployeesManagementPage() {
       name: emp.name,
       branch: emp.branch,
       dailyWage: emp.dailyWage,
+      payType: emp.payType || (isMonthlyEmployee(emp) ? 'شهري' : 'أسبوعي'),
       workStartTime: emp.workStartTime,
       workEndTime: emp.workEndTime,
       phone: emp.phone || '',
@@ -203,6 +215,7 @@ export default function EmployeesManagementPage() {
         ...empForm, 
         name: empForm.name.trim(), 
         dailyWage: Number(empForm.dailyWage) || 0,
+        payType: empForm.payType,
         phone: empForm.phone.trim(),
         role: empForm.role.trim() 
       } : e);
@@ -212,6 +225,7 @@ export default function EmployeesManagementPage() {
         name: empForm.name.trim(),
         branch: empForm.branch,
         dailyWage: Number(empForm.dailyWage) || 0,
+        payType: empForm.payType,
         workStartTime: empForm.workStartTime,
         workEndTime: empForm.workEndTime,
         phone: empForm.phone.trim(),
@@ -300,7 +314,7 @@ export default function EmployeesManagementPage() {
     saveAdvances(updated);
   };
 
-  // Weekly Payroll calculation (Saturday to Thursday)
+  // Payroll calculation (Weekly: Saturday to Thursday / Monthly: Month start to end)
   const currentThursday = useMemo(() => {
     const d = new Date();
     const day = d.getDay(); // 0 is Sunday, 4 is Thursday, 6 is Saturday
@@ -312,68 +326,90 @@ export default function EmployeesManagementPage() {
 
   const [settlementThursday, setSettlementThursday] = useState<string>(currentThursday);
 
-  const weeklySummary = useMemo(() => {
-    // Determine Saturday (start of week) based on selected Thursday
+  const payrollSummary = useMemo(() => {
+    // Determine weekly boundaries (Sat to Thurs)
     const thurs = new Date(settlementThursday);
     const sat = new Date(thurs);
     sat.setDate(thurs.getDate() - 5);
     const satStr = sat.toISOString().split('T')[0];
     const thursStr = settlementThursday;
 
-    return branchFilteredEmployees.map(emp => {
-      // Count attended days between satStr and thursStr
-      const empAtt = attendance.filter(a => 
-        a.employeeId === emp.id && 
-        a.date >= satStr && 
-        a.date <= thursStr
-      );
+    // Determine monthly boundaries
+    const [mYear, mMonth] = settlementMonth.split('-').map(Number);
+    const monthStartStr = `${settlementMonth}-01`;
+    const lastDayOfMonth = (mYear && mMonth) ? new Date(mYear, mMonth, 0).getDate() : 30;
+    const monthEndStr = `${settlementMonth}-${String(lastDayOfMonth).padStart(2, '0')}`;
 
-      let attendedDays = 0;
-      empAtt.forEach(a => {
-        if (a.status === 'حاضر') attendedDays += 1;
-        else if (a.status === 'نصف يوم') attendedDays += 0.5;
+    return branchFilteredEmployees
+      .filter(emp => {
+        const isMonthly = isMonthlyEmployee(emp);
+        if (payrollMode === 'weekly') return !isMonthly;
+        if (payrollMode === 'monthly') return isMonthly;
+        return true;
+      })
+      .map(emp => {
+        const isMonthly = isMonthlyEmployee(emp);
+        const startStr = isMonthly ? monthStartStr : satStr;
+        const endStr = isMonthly ? monthEndStr : thursStr;
+
+        const empAtt = attendance.filter(a => 
+          a.employeeId === emp.id && 
+          a.date >= startStr && 
+          a.date <= endStr
+        );
+
+        let attendedDays = 0;
+        empAtt.forEach(a => {
+          if (a.status === 'حاضر') attendedDays += 1;
+          else if (a.status === 'نصف يوم') attendedDays += 0.5;
+        });
+
+        const baseEarned = attendedDays * emp.dailyWage;
+
+        const empAdvances = advances.filter(a => 
+          a.employeeId === emp.id && 
+          a.date >= startStr && 
+          a.date <= endStr
+        );
+
+        let totalAdv = 0;
+        let totalDed = 0;
+        let totalBon = 0;
+
+        empAdvances.forEach(a => {
+          if (a.type === 'سلفة') totalAdv += a.amount;
+          else if (a.type === 'خصم') totalDed += a.amount;
+          else if (a.type === 'مكافأة') totalBon += a.amount;
+        });
+
+        const netPayout = (baseEarned + totalBon) - (totalAdv + totalDed);
+
+        return {
+          employee: emp,
+          isMonthly,
+          startStr,
+          endStr,
+          satStr,
+          thursStr,
+          monthStr: settlementMonth,
+          attendedDays,
+          baseEarned,
+          totalAdv,
+          totalDed,
+          totalBon,
+          netPayout,
+        };
       });
-
-      // Calculate earned base wage
-      const baseEarned = attendedDays * emp.dailyWage;
-
-      // Advances and Deductions in this period
-      const empAdvances = advances.filter(a => 
-        a.employeeId === emp.id && 
-        a.date >= satStr && 
-        a.date <= thursStr
-      );
-
-      let totalAdv = 0;
-      let totalDed = 0;
-      let totalBon = 0;
-
-      empAdvances.forEach(a => {
-        if (a.type === 'سلفة') totalAdv += a.amount;
-        else if (a.type === 'خصم') totalDed += a.amount;
-        else if (a.type === 'مكافأة') totalBon += a.amount;
-      });
-
-      const netPayout = (baseEarned + totalBon) - (totalAdv + totalDed);
-
-      return {
-        employee: emp,
-        satStr,
-        thursStr,
-        attendedDays,
-        baseEarned,
-        totalAdv,
-        totalDed,
-        totalBon,
-        netPayout,
-      };
-    });
-  }, [branchFilteredEmployees, attendance, advances, settlementThursday]);
+  }, [branchFilteredEmployees, attendance, advances, settlementThursday, settlementMonth, payrollMode]);
 
   const getWhatsAppShareUrl = (row: any) => {
-    const text = `📋 *مستحقات أسبوعية - مؤسسة كشك للأقمشة والستائر*
-👤 *الموظف:* ${row.employee.name} (${row.employee.branch})
-🗓️ *الفترة:* من السبت ${row.satStr} إلى الخميس ${row.thursStr}
+    const periodText = row.isMonthly
+      ? `شهر ${row.monthStr} (من ${row.startStr} إلى ${row.endStr})`
+      : `من السبت ${row.satStr} إلى الخميس ${row.thursStr}`;
+
+    const text = `📋 *${row.isMonthly ? 'كشف حساب الراتب الشهري' : 'مستحقات أسبوعية'} - مؤسسة كشك للأقمشة والستائر*
+👤 *الموظف:* ${row.employee.name} (${row.employee.branch}) [${row.isMonthly ? 'راتب شهري' : 'راتب أسبوعي'}]
+🗓️ *الفترة:* ${periodText}
 ----------------------------------------
 💵 *اليومية المقررة:* ${row.employee.dailyWage} ج
 📅 *أيام الحضور الفعلية:* ${row.attendedDays} يوم
@@ -390,7 +426,7 @@ export default function EmployeesManagementPage() {
   };
 
   return (
-    <PageShell title="شؤون الموظفين والرواتب الأسبوعية" badge="18 موظفاً">
+    <PageShell title="شؤون الموظفين والرواتب" badge="18 موظفاً">
       <div className="space-y-6">
         
         {/* Top Control Bar & Tabs */}
@@ -423,7 +459,7 @@ export default function EmployeesManagementPage() {
                   }`}
                 >
                   <span>💰</span>
-                  <span>تقفيل رواتب الخميس</span>
+                  <span>تقفيل الرواتب (أسبوعي وشهري)</span>
                 </button>
                 <button
                   onClick={() => setActiveTab('directory')}
@@ -747,25 +783,72 @@ export default function EmployeesManagementPage() {
             </div>
           ) : (
             <div className="bg-white p-5 md:p-6 rounded-3xl border border-slate-200 shadow-sm space-y-5">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-200">
                 <div>
                   <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
                     <span>💰</span>
-                    <span>كشف حساب وتقفيل رواتب الخميس الأسبوعي</span>
+                    <span>كشف حساب وتقفيل الرواتب</span>
                   </h3>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    احتساب آلي: (أيام الحضور × الأجر اليومي + المكافآت) - (السلف + الخصومات)
+                    حساب دقيق ومنفصل للرواتب الأسبوعية (كل خميس) والرواتب الشهرية (الـ 5 موظفين: تقى، إسراء، محمد كشك، محمد علي، بليه)
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-slate-700">تاريخ خميس التقفيل:</span>
-                  <input
-                    type="date"
-                    value={settlementThursday}
-                    onChange={(e) => setSettlementThursday(e.target.value)}
-                    className="py-1.5 px-3 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold"
-                  />
+                {/* Sub-Filters / Segmented Controls */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
+                    <button
+                      type="button"
+                      onClick={() => setPayrollMode('weekly')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        payrollMode === 'weekly' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-700 hover:bg-slate-200'
+                      }`}
+                    >
+                      📅 تقفيل الخميس (أسبوعي)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPayrollMode('monthly')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        payrollMode === 'monthly' ? 'bg-purple-600 text-white shadow-xs' : 'text-slate-700 hover:bg-slate-200'
+                      }`}
+                    >
+                      🗓️ رواتب شهري (5 موظفين)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPayrollMode('all')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        payrollMode === 'all' ? 'bg-slate-900 text-white shadow-xs' : 'text-slate-700 hover:bg-slate-200'
+                      }`}
+                    >
+                      👥 كشف شامل (الكل)
+                    </button>
+                  </div>
+
+                  {payrollMode !== 'monthly' && (
+                    <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-1">
+                      <span className="text-[11px] font-bold text-slate-600">خميس التقفيل:</span>
+                      <input
+                        type="date"
+                        value={settlementThursday}
+                        onChange={(e) => setSettlementThursday(e.target.value)}
+                        className="bg-transparent text-xs font-mono font-bold text-slate-900 focus:outline-none"
+                      />
+                    </div>
+                  )}
+
+                  {payrollMode !== 'weekly' && (
+                    <div className="flex items-center gap-1.5 bg-purple-50 border border-purple-200 rounded-xl px-2.5 py-1">
+                      <span className="text-[11px] font-bold text-purple-900">شهر التقفيل:</span>
+                      <input
+                        type="month"
+                        value={settlementMonth}
+                        onChange={(e) => setSettlementMonth(e.target.value)}
+                        className="bg-transparent text-xs font-mono font-bold text-purple-950 focus:outline-none"
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -774,6 +857,7 @@ export default function EmployeesManagementPage() {
                   <thead className="bg-slate-100 text-slate-700 font-bold uppercase border-b border-slate-200">
                     <tr>
                       <th className="p-3">الموظف والفرع</th>
+                      <th className="p-3 text-center">نظام الراتب</th>
                       <th className="p-3 font-mono">اليومية</th>
                       <th className="p-3 font-mono">أيام الحضور</th>
                       <th className="p-3 font-mono">إجمالي الأجر</th>
@@ -785,44 +869,64 @@ export default function EmployeesManagementPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200">
-                    {weeklySummary.map((row) => (
-                      <tr key={row.employee.id} className="hover:bg-slate-50">
-                        <td className="p-3">
-                          <div className="font-black text-slate-900 text-sm">{row.employee.name}</div>
-                          <div className="text-[10px] text-slate-500">{row.employee.branch}</div>
-                        </td>
-                        <td className="p-3 font-mono font-bold text-slate-700">{row.employee.dailyWage} ج</td>
-                        <td className="p-3 font-mono font-bold text-slate-900">{row.attendedDays} يوم</td>
-                        <td className="p-3 font-mono font-black text-slate-900">{row.baseEarned.toLocaleString()} ج</td>
-                        <td className="p-3 font-mono text-emerald-700 font-bold">+{row.totalBon.toLocaleString()} ج</td>
-                        <td className="p-3 font-mono text-amber-800 font-bold">-{row.totalAdv.toLocaleString()} ج</td>
-                        <td className="p-3 font-mono text-rose-700 font-bold">-{row.totalDed.toLocaleString()} ج</td>
-                        <td className="p-3 font-mono font-black text-sm bg-emerald-50/80 text-emerald-950 border-r border-l border-emerald-200">
-                          {row.netPayout >= 0 ? `+${row.netPayout.toLocaleString()}` : row.netPayout.toLocaleString()} ج
-                        </td>
-                        <td className="p-3 text-center">
-                          <div className="flex items-center justify-center gap-1.5">
-                            <button
-                              onClick={() => setSelectedEmpForSlip(row)}
-                              className="px-2.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold text-[11px] cursor-pointer"
-                              title="معاينة إيصال القبض"
-                            >
-                              👁️ إيصال
-                            </button>
-                            <a
-                              href={getWhatsAppShareUrl(row)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold text-[11px] flex items-center gap-1"
-                              title="إرسال الحساب للموظف واتساب"
-                            >
-                              <span>📱</span>
-                              <span>واتساب</span>
-                            </a>
-                          </div>
+                    {payrollSummary.length === 0 ? (
+                      <tr>
+                        <td colSpan={10} className="p-8 text-center text-slate-400 font-bold">
+                          لا يوجد موظفون مطابقون لخيارات التصفية المختارة
                         </td>
                       </tr>
-                    ))}
+                    ) : (
+                      payrollSummary.map((row) => (
+                        <tr key={row.employee.id} className="hover:bg-slate-50">
+                          <td className="p-3">
+                            <div className="font-black text-slate-900 text-sm">{row.employee.name}</div>
+                            <div className="text-[10px] text-slate-500">{row.employee.branch}</div>
+                          </td>
+                          <td className="p-3 text-center">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              row.isMonthly
+                                ? 'bg-purple-100 text-purple-800 border border-purple-200'
+                                : 'bg-sky-100 text-sky-800 border border-sky-200'
+                            }`}>
+                              {row.isMonthly ? '🗓️ شهري' : '📅 أسبوعي'}
+                            </span>
+                          </td>
+                          <td className="p-3 font-mono font-bold text-slate-700">{row.employee.dailyWage} ج</td>
+                          <td className="p-3 font-mono font-bold text-slate-900">
+                            {row.attendedDays} يوم
+                            {row.isMonthly && <span className="text-[10px] text-purple-700 block">بالشهر</span>}
+                          </td>
+                          <td className="p-3 font-mono font-black text-slate-900">{row.baseEarned.toLocaleString()} ج</td>
+                          <td className="p-3 font-mono text-emerald-700 font-bold">+{row.totalBon.toLocaleString()} ج</td>
+                          <td className="p-3 font-mono text-amber-800 font-bold">-{row.totalAdv.toLocaleString()} ج</td>
+                          <td className="p-3 font-mono text-rose-700 font-bold">-{row.totalDed.toLocaleString()} ج</td>
+                          <td className="p-3 font-mono font-black text-sm bg-emerald-50/80 text-emerald-950 border-r border-l border-emerald-200">
+                            {row.netPayout >= 0 ? `+${row.netPayout.toLocaleString()}` : row.netPayout.toLocaleString()} ج
+                          </td>
+                          <td className="p-3 text-center">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                onClick={() => setSelectedEmpForSlip(row)}
+                                className="px-2.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold text-[11px] cursor-pointer"
+                                title="معاينة إيصال القبض"
+                              >
+                                👁️ إيصال
+                              </button>
+                              <a
+                                href={getWhatsAppShareUrl(row)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold text-[11px] flex items-center gap-1"
+                                title="إرسال الحساب للموظف واتساب"
+                              >
+                                <span>📱</span>
+                                <span>واتساب</span>
+                              </a>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -1009,6 +1113,20 @@ export default function EmployeesManagementPage() {
                   </div>
 
                   <div>
+                    <label className="block font-bold text-slate-700 mb-1">نظام صرف الراتب *</label>
+                    <select
+                      value={empForm.payType}
+                      onChange={(e) => setEmpForm({ ...empForm, payType: e.target.value as 'شهري' | 'أسبوعي' })}
+                      className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-900"
+                    >
+                      <option value="أسبوعي">📅 أسبوعي (تقفيل كل خميس)</option>
+                      <option value="شهري">🗓️ شهري (تقفيل نهاية الشهر)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
                     <label className="block font-bold text-slate-700 mb-1">الراتب اليومي (اليومية بالجنيه) *</label>
                     <input
                       type="number"
@@ -1021,9 +1139,7 @@ export default function EmployeesManagementPage() {
                       className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-mono font-bold text-emerald-800"
                     />
                   </div>
-                </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block font-bold text-slate-700 mb-1">رقم الهاتف (واتساب)</label>
                     <input
@@ -1035,18 +1151,18 @@ export default function EmployeesManagementPage() {
                       dir="ltr"
                     />
                   </div>
+                </div>
 
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">حالة العمل</label>
-                    <select
-                      value={empForm.isActive ? 'true' : 'false'}
-                      onChange={(e) => setEmpForm({ ...empForm, isActive: e.target.value === 'true' })}
-                      className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-800"
-                    >
-                      <option value="true">نشط بالعمل</option>
-                      <option value="false">متوقف / إجازة طويلة</option>
-                    </select>
-                  </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">حالة العمل</label>
+                  <select
+                    value={empForm.isActive ? 'true' : 'false'}
+                    onChange={(e) => setEmpForm({ ...empForm, isActive: e.target.value === 'true' })}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-800"
+                  >
+                    <option value="true">نشط بالعمل</option>
+                    <option value="false">متوقف / إجازة طويلة</option>
+                  </select>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1107,7 +1223,16 @@ export default function EmployeesManagementPage() {
               <div className="p-4 bg-slate-50 rounded-2xl border border-dashed border-slate-300 space-y-3 text-xs">
                 <div className="text-center border-b pb-2">
                   <p className="font-black text-base text-slate-900">مؤسسة كشك للأقمشة والستائر</p>
-                  <p className="text-xs text-amber-800 font-bold">كشف حساب الأسبوع المنتهي: {selectedEmpForSlip.thursStr}</p>
+                  <p className="text-xs text-amber-800 font-bold">
+                    {selectedEmpForSlip.isMonthly 
+                      ? `كشف حساب الراتب الشهري: ${selectedEmpForSlip.monthStr}`
+                      : `كشف حساب الأسبوع المنتهي: ${selectedEmpForSlip.thursStr}`}
+                  </p>
+                  <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                    selectedEmpForSlip.isMonthly ? 'bg-purple-100 text-purple-900 border border-purple-200' : 'bg-sky-100 text-sky-900 border border-sky-200'
+                  }`}>
+                    {selectedEmpForSlip.isMonthly ? '🗓️ نظام تقفيل شهري' : '📅 نظام تقفيل أسبوعي (الخميس)'}
+                  </span>
                 </div>
 
                 <div className="flex justify-between font-bold text-slate-900">
@@ -1132,7 +1257,7 @@ export default function EmployeesManagementPage() {
                   )}
                   {selectedEmpForSlip.totalAdv > 0 && (
                     <div className="flex justify-between text-amber-800 font-bold">
-                      <span>سلف مسحوبة:</span>
+                      <span>سلف مسحوبة (مخصومة):</span>
                       <span className="font-mono">-{selectedEmpForSlip.totalAdv.toLocaleString()} ج</span>
                     </div>
                   )}

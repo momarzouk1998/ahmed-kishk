@@ -971,9 +971,9 @@ export default function ShiftsAndDrawerPage() {
                       <td className="p-3 font-mono font-black text-emerald-800">{s.totalSales.toLocaleString()}</td>
                       <td className="p-3 font-mono font-black text-slate-900">{(s.actualClosingCash ?? s.expectedCashInDrawer).toLocaleString()}</td>
                       <td className="p-3 font-mono font-bold">
-                        {s.cashDiscrepancy !== undefined ? (
+                        {s.cashDiscrepancy !== undefined && s.cashDiscrepancy !== null ? (
                           <span className={s.cashDiscrepancy === 0 ? 'text-emerald-700' : s.cashDiscrepancy < 0 ? 'text-rose-700' : 'text-blue-700'}>
-                            {s.cashDiscrepancy >= 0 ? `+${s.cashDiscrepancy}` : s.cashDiscrepancy}
+                            {s.cashDiscrepancy > 0 ? `+${s.cashDiscrepancy}` : s.cashDiscrepancy}
                           </span>
                         ) : '—'}
                       </td>
@@ -1219,7 +1219,7 @@ export default function ShiftsAndDrawerPage() {
                       <span>النقدية الفعلية المحصية:</span>
                       <span className="font-mono text-emerald-900">{(selectedShiftForDetails.actualClosingCash ?? selectedShiftForDetails.expectedCashInDrawer).toLocaleString()}</span>
                     </div>
-                    {selectedShiftForDetails.cashDiscrepancy !== undefined && (
+                    {selectedShiftForDetails.cashDiscrepancy !== undefined && selectedShiftForDetails.cashDiscrepancy !== null && (
                       <div className={`flex justify-between font-black font-sans p-2 rounded-xl border ${
                         selectedShiftForDetails.cashDiscrepancy === 0 
                           ? 'bg-emerald-100 text-emerald-900 border-emerald-300' 

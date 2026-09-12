@@ -10,11 +10,31 @@ export interface Employee {
   name: string;
   branch: string;
   dailyWage: number;
+  monthlySalary?: number;
+  payType?: 'شهري' | 'أسبوعي'; // 'شهري' للموظفين الـ 5 أو 'أسبوعي' للباقين
   workStartTime: string; // e.g. "11:00 AM"
   workEndTime: string;   // e.g. "11:30 PM"
   phone?: string;
   role?: string;
   isActive: boolean;
+}
+
+export function isMonthlyEmployee(emp: { name?: string; payType?: string }): boolean {
+  if (emp.payType === 'شهري') return true;
+  if (emp.payType === 'أسبوعي') return false;
+  const n = (emp.name || '').trim();
+  return (
+    n.includes('تقى') ||
+    n.includes('تقي') ||
+    n.includes('اسراء') ||
+    n.includes('إسراء') ||
+    n.includes('محمد كشك') ||
+    n.includes('محمد على') ||
+    n.includes('محمد علي') ||
+    n.includes('بليه') ||
+    n.includes('بليا') ||
+    n.includes('شبلية')
+  );
 }
 
 export interface AttendanceRecord {
@@ -47,9 +67,9 @@ export interface EmployeeAdvance {
 
 export interface WeeklyPayrollSettlement {
   id: string;
-  settlementDate: string; // Thursday date YYYY-MM-DD
-  weekStartDate: string;  // Saturday date YYYY-MM-DD
-  weekEndDate: string;    // Thursday date YYYY-MM-DD
+  settlementDate: string; // Thursday date YYYY-MM-DD or Month YYYY-MM
+  weekStartDate: string;  // Saturday date YYYY-MM-DD or Month start
+  weekEndDate: string;    // Thursday date YYYY-MM-DD or Month end
   branch: string;
   employeeId: string;
   employeeName: string;
@@ -64,6 +84,7 @@ export interface WeeklyPayrollSettlement {
   paidAt?: string;
   paidFromTreasury?: string;
   notes?: string;
+  payType?: 'شهري' | 'أسبوعي';
 }
 
 const EMPLOYEES_STORAGE_KEY = 'ahmed_kishk_employees_v1';
@@ -73,30 +94,31 @@ const PAYROLL_STORAGE_KEY = 'ahmed_kishk_payroll_v1';
 
 export const INITIAL_EMPLOYEES: Employee[] = [
   // الفرع الرئيسي (3)
-  { id: 'emp_1', name: 'محمود', branch: 'الفرع الرئيسي', dailyWage: 350, workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'مسؤول الفرع الرئيسي', isActive: true },
-  { id: 'emp_2', name: 'يوسف', branch: 'الفرع الرئيسي', dailyWage: 250, workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'مبيعات أقمشة', isActive: true },
-  { id: 'emp_3', name: 'سليمان', branch: 'الفرع الرئيسي', dailyWage: 150, workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'مساعد مبيعات', isActive: true },
+  { id: 'emp_1', name: 'محمود', branch: 'الفرع الرئيسي', dailyWage: 350, payType: 'أسبوعي', workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'مسؤول الفرع الرئيسي', isActive: true },
+  { id: 'emp_2', name: 'يوسف', branch: 'الفرع الرئيسي', dailyWage: 250, payType: 'أسبوعي', workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'مبيعات أقمشة', isActive: true },
+  { id: 'emp_3', name: 'سليمان', branch: 'الفرع الرئيسي', dailyWage: 150, payType: 'أسبوعي', workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'مساعد مبيعات', isActive: true },
 
-  // فرع عرابي (5)
-  { id: 'emp_4', name: 'ابراهيم', branch: 'فرع عرابي', dailyWage: 300, workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'مسؤول فرع عرابي', isActive: true },
-  { id: 'emp_5', name: 'نصار', branch: 'فرع عرابي', dailyWage: 270, workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'مبيعات', isActive: true },
-  { id: 'emp_6', name: 'امين', branch: 'فرع عرابي', dailyWage: 200, workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'فني تركيبات', isActive: true },
-  { id: 'emp_7', name: 'محمد', branch: 'فرع عرابي', dailyWage: 250, workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'سائق ومندوب توصيل', isActive: true },
-  { id: 'emp_8', name: 'اسراء', branch: 'فرع عرابي', dailyWage: 130, workStartTime: '12:00 PM', workEndTime: '08:00 PM', role: 'مبيعات وسيدات', isActive: true },
+  // فرع عرابي (6)
+  { id: 'emp_4', name: 'ابراهيم', branch: 'فرع عرابي', dailyWage: 300, payType: 'أسبوعي', workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'مسؤول فرع عرابي', isActive: true },
+  { id: 'emp_5', name: 'نصار', branch: 'فرع عرابي', dailyWage: 270, payType: 'أسبوعي', workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'مبيعات', isActive: true },
+  { id: 'emp_6', name: 'امين', branch: 'فرع عرابي', dailyWage: 200, payType: 'أسبوعي', workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'فني تركيبات', isActive: true },
+  { id: 'emp_7', name: 'محمد', branch: 'فرع عرابي', dailyWage: 250, payType: 'أسبوعي', workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'سائق ومندوب توصيل', isActive: true },
+  { id: 'emp_8', name: 'اسراء', branch: 'فرع عرابي', dailyWage: 130, payType: 'شهري', workStartTime: '12:00 PM', workEndTime: '08:00 PM', role: 'مبيعات وسيدات (شهري)', isActive: true },
+  { id: 'emp_17', name: 'تقى', branch: 'فرع عرابي', dailyWage: 130, payType: 'شهري', workStartTime: '12:00 PM', workEndTime: '08:00 PM', role: 'مبيعات وسيدات (شهري)', isActive: true },
 
   // فرع عمر أفندي (5)
-  { id: 'emp_10', name: 'محمد كشك', branch: 'فرع عمر أفندي', dailyWage: 350, workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'مدير فرع عمر أفندي', isActive: true },
-  { id: 'emp_9', name: 'بليه (شبلية)', branch: 'فرع عمر أفندي', dailyWage: 400, workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'إدارة ومبيعات', isActive: true },
-  { id: 'emp_11', name: 'صبحى', branch: 'فرع عمر أفندي', dailyWage: 350, workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'مسؤول وردية وكاشير', isActive: true },
-  { id: 'emp_12', name: 'سيد', branch: 'فرع عمر أفندي', dailyWage: 350, workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'مبيعات', isActive: true },
-  { id: 'emp_13', name: 'احمد', branch: 'فرع عمر أفندي', dailyWage: 150, workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'مساعد', isActive: true },
+  { id: 'emp_10', name: 'محمد كشك', branch: 'فرع عمر أفندي', dailyWage: 350, payType: 'شهري', workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'مدير فرع عمر أفندي (شهري)', isActive: true },
+  { id: 'emp_9', name: 'بليه (شبلية)', branch: 'فرع عمر أفندي', dailyWage: 400, payType: 'شهري', workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'إدارة ومبيعات (شهري)', isActive: true },
+  { id: 'emp_11', name: 'صبحى', branch: 'فرع عمر أفندي', dailyWage: 350, payType: 'أسبوعي', workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'مسؤول وردية وكاشير', isActive: true },
+  { id: 'emp_12', name: 'سيد', branch: 'فرع عمر أفندي', dailyWage: 350, payType: 'أسبوعي', workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'مبيعات', isActive: true },
+  { id: 'emp_13', name: 'احمد', branch: 'فرع عمر أفندي', dailyWage: 150, payType: 'أسبوعي', workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'مساعد', isActive: true },
 
   // فرع الثلاثيني (1)
-  { id: 'emp_14', name: 'كوكو', branch: 'فرع الثلاثيني', dailyWage: 200, workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'مسؤول فرع الثلاثيني', isActive: true },
+  { id: 'emp_14', name: 'كوكو', branch: 'فرع الثلاثيني', dailyWage: 200, payType: 'أسبوعي', workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'مسؤول فرع الثلاثيني', isActive: true },
 
   // الفرع التجاري (2)
-  { id: 'emp_15', name: 'عبدالرحمن كشك', phone: '01280042900', branch: 'الفرع التجاري', dailyWage: 400, workStartTime: '12:00 PM', workEndTime: '11:30 PM', role: 'مدير الفرع التجاري', isActive: true },
-  { id: 'emp_16', name: 'محمد على', phone: '01220999355', branch: 'الفرع التجاري', dailyWage: 250, workStartTime: '12:00 PM', workEndTime: '11:30 PM', role: 'كاشير الفرع التجاري', isActive: true },
+  { id: 'emp_15', name: 'عبدالرحمن كشك', phone: '01280042900', branch: 'الفرع التجاري', dailyWage: 400, payType: 'أسبوعي', workStartTime: '12:00 PM', workEndTime: '11:30 PM', role: 'مدير الفرع التجاري', isActive: true },
+  { id: 'emp_16', name: 'محمد على', phone: '01220999355', branch: 'الفرع التجاري', dailyWage: 250, payType: 'شهري', workStartTime: '12:00 PM', workEndTime: '11:30 PM', role: 'كاشير الفرع التجاري (شهري)', isActive: true },
 ];
 
 export function getEmployees(): Employee[] {
