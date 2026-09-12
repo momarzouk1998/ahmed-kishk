@@ -29,6 +29,8 @@ interface SalesInvoice {
   status: string;
   items?: any[];
   notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 interface InventoryItem {
@@ -366,37 +368,123 @@ export default function ReportsPage() {
           return inPeriod(s.startTime || s.createdAt || s.endTime) && s.shiftType === b.shiftType;
         });
 
-        const shiftCash = omarShifts.reduce((acc, s) => acc + Number(s.actualClosingCash ?? s.expectedCashInDrawer ?? s.cashSales ?? 0), 0);
-        const shiftSales = omarShifts.reduce((acc, s) => acc + Number(s.totalSales ?? s.cashSales ?? 0), 0);
-        const shiftInstapay = omarShifts.reduce((acc, s) => acc + Number(s.instapaySales || 0), 0);
-        const shiftVodafone = omarShifts.reduce((acc, s) => acc + Number(s.vodafoneSales || 0), 0);
-        const shiftVisa = omarShifts.reduce((acc, s) => acc + Number(s.visaSales || 0), 0);
+        // Determine timeframe boundaries for this specific shift
+        const targetShift = omarShifts[0];
+        const shiftStartMs = targetShift?.startTime ? new Date(targetShift.startTime).getTime() : 0;
+        const shiftEndMs = targetShift?.endTime ? new Date(targetShift.endTime).getTime() : Date.now();
+
+        let bCash = 0, bInstapay = 0, bVodafone = 0, bVisa = 0, bCount = 0;
+
+        // 1. Invoices for Omar Effendi strictly inside this shift's timeframe
+        invoices.filter(i => matchB(i.branch) && inPeriod(i.date)).forEach(inv => {
+          const invTime = inv.createdAt ? new Date(inv.createdAt).getTime() : (inv.date ? new Date(inv.date).getTime() : 0);
+          
+          let belongs = false;
+          if (targetShift) {
+            if (b.shiftType === 'مسائي') {
+              belongs = invTime >= shiftStartMs - 60000;
+            } else {
+              belongs = targetShift.endTime ? (invTime <= shiftEndMs + 60000) : (invTime < shiftStartMs);
+            }
+          } else {
+            const h = invTime ? new Date(invTime).getHours() : 12;
+            belongs = b.shiftType === 'صباحي' ? h < 17 : h >= 17;
+          }
+
+          if (belongs) {
+            bCount++;
+            let split = inv.splitPayments;
+            if (!split && inv.notes && inv.notes.includes('[SPLIT:')) {
+              try {
+                const match = inv.notes.match(/\[SPLIT:([^\]]+)\]/);
+                if (match && match[1]) split = JSON.parse(match[1]);
+              } catch {}
+            }
+            if (split) {
+              bCash += Number(split.cash || 0);
+              bInstapay += Number(split.instapay || 0);
+              bVodafone += Number(split.vodafone || 0);
+              bVisa += Number(split.visa || 0);
+            } else {
+              const m = ((inv.paymentMethod || (inv as any).paymentType || '') as string).trim();
+              const paid = Number(inv.paidAmount || 0);
+              if (m.includes('فودافون')) bVodafone += paid;
+              else if (m.includes('إنستا') || m.includes('انستا')) bInstapay += paid;
+              else if (m.includes('فيزا') || m.includes('كارت')) bVisa += paid;
+              else bCash += paid;
+            }
+          }
+        });
+
+        // 2. Direct collections in this shift
+        collections.filter(c => matchB(c.treasury || '') && inPeriod(c.date)).forEach(col => {
+          const colTime = col.createdAt ? new Date(col.createdAt).getTime() : (col.date ? new Date(col.date).getTime() : 0);
+          let belongs = false;
+          if (targetShift) {
+            belongs = b.shiftType === 'مسائي' ? (colTime >= shiftStartMs - 60000) : (targetShift.endTime ? colTime <= shiftEndMs + 60000 : true);
+          } else {
+            const h = colTime ? new Date(colTime).getHours() : 12;
+            belongs = b.shiftType === 'صباحي' ? h < 17 : h >= 17;
+          }
+          if (belongs) {
+            bCount++;
+            const amt = Number(col.amount || 0);
+            const m = (col.method || '').trim();
+            if (m.includes('فودافون')) bVodafone += amt;
+            else if (m.includes('إنستا') || m.includes('انستا')) bInstapay += amt;
+            else if (m.includes('فيزا') || m.includes('كارت')) bVisa += amt;
+            else bCash += amt;
+          }
+        });
+
+        // 3. Quotation deposits in this shift
+        quotations.filter(q => matchB(q.branch) && inPeriod(q.depositDate || q.updatedAt || q.date || q.createdAt)).forEach(q => {
+          const qTime = q.createdAt ? new Date(q.createdAt).getTime() : (q.date ? new Date(q.date).getTime() : 0);
+          let belongs = false;
+          if (targetShift) {
+            belongs = b.shiftType === 'مسائي' ? (qTime >= shiftStartMs - 60000) : (targetShift.endTime ? qTime <= shiftEndMs + 60000 : true);
+          } else {
+            const h = qTime ? new Date(qTime).getHours() : 12;
+            belongs = b.shiftType === 'صباحي' ? h < 17 : h >= 17;
+          }
+          if (belongs) {
+            const deposit = Number(q.depositPaid || 0);
+            if (deposit > 0) {
+              bCount++;
+              let split = q.splitPayments;
+              if (split) {
+                bCash += Number(split.cash || 0);
+                bInstapay += Number(split.instapay || 0);
+                bVodafone += Number(split.vodafone || 0);
+                bVisa += Number(split.visa || 0);
+              } else {
+                const m = (q.paymentMethod || '').trim();
+                if (m.includes('فودافون')) bVodafone += deposit;
+                else if (m.includes('إنستا') || m.includes('انستا')) bInstapay += deposit;
+                else if (m.includes('فيزا') || m.includes('كارت')) bVisa += deposit;
+                else bCash += deposit;
+              }
+            }
+          }
+        });
+
+        const shiftRecordCash = omarShifts.reduce((acc, s) => acc + Number(s.actualClosingCash ?? s.expectedCashInDrawer ?? s.cashSales ?? 0), 0);
+        const finalCash = bCash > 0 ? bCash : shiftRecordCash;
+        const total = finalCash + bInstapay + bVodafone + bVisa;
         const employeeName = Array.from(new Set(omarShifts.map(s => s.employeeName).filter(Boolean))).join(', ') || (b.shiftType === 'صباحي' ? 'محمد كشك' : 'بليا');
         const activeShift = omarShifts.find(s => s.status === 'OPEN');
         const shiftStatus = activeShift ? 'قيد التشغيل 🟢' : (omarShifts.length > 0 ? 'مغلقة 🔒' : 'جاهزة لبدء العمل');
 
-        // Check if there are invoice/collection transactions matching this shift time
-        invoices.filter(i => matchB(i.branch) && inPeriod(i.date)).forEach(inv => {
-          const hours = inv.date?.includes('T') ? new Date(inv.date).getHours() : 12;
-          const isMorningTx = hours < 16;
-          if ((b.shiftType === 'صباحي' && isMorningTx) || (b.shiftType === 'مسائي' && !isMorningTx)) {
-            bCount++;
-          }
-        });
-
-        const finalCash = shiftCash;
-        const total = finalCash + shiftInstapay + shiftVodafone + shiftVisa;
-
         return {
           ...b,
           cash: finalCash,
-          instapay: shiftInstapay,
-          vodafone: shiftVodafone,
-          visa: shiftVisa,
+          instapay: bInstapay,
+          vodafone: bVodafone,
+          visa: bVisa,
           total,
           count: bCount || omarShifts.length,
           employeeName,
-          shiftSales,
+          shiftSales: total,
           shiftStatus,
           hasShifts: omarShifts.length > 0,
         };
