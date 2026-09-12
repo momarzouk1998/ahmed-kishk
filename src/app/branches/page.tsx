@@ -415,10 +415,11 @@ export default function BranchesAndPermissionsPage() {
                 </tr>
               </thead>
               <tbody>
-                {employees.map(emp => {
+                {employees.map((emp, idx) => {
                   const isAdminUser = emp.phone === '01558282760' || emp.phone === '01063821000' || emp.role.includes('Admin') || emp.role.includes('المدير العام');
                   const isManager = !isAdminUser && emp.role.includes('مدير');
                   const isCashier = !isAdminUser && emp.role.includes('كاشير');
+                  const isTopRow = idx < 3;
 
                   return (
                     <tr key={emp.id} className="border-t border-slate-100 hover:bg-slate-50/60 transition-colors">
@@ -474,7 +475,9 @@ export default function BranchesAndPermissionsPage() {
                               </span>
 
                               {/* Hover Popover Box */}
-                              <div className="invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-all duration-200 delay-75 absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-80 sm:w-96 p-3.5 bg-slate-950 text-white rounded-2xl shadow-2xl border border-slate-700/80 text-right z-50 pointer-events-none">
+                              <div className={`invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-all duration-200 delay-75 absolute ${
+                                isTopRow ? 'top-full mt-2' : 'bottom-full mb-2'
+                              } left-1/2 -translate-x-1/2 w-84 sm:w-[460px] p-3.5 bg-slate-950 text-white rounded-2xl shadow-2xl border border-slate-700/80 text-right z-50 pointer-events-none`}>
                                 <div className="flex items-center justify-between border-b border-slate-800 pb-2 mb-2.5">
                                   <div>
                                     <span className="font-black text-xs text-amber-400 block">الصفحات والأذونات المفتوحة ({activePages.length})</span>
@@ -485,7 +488,7 @@ export default function BranchesAndPermissionsPage() {
                                   </span>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-1.5 max-h-56 overflow-y-auto pr-0.5 text-right">
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-80 overflow-y-auto pr-0.5 text-right">
                                   {activePages.map(page => {
                                     const hasPrice = emp.allowedPageIds.includes(`${page.id}_edit_price`);
                                     const hasEdit = emp.allowedPageIds.includes(`${page.id}_edit`);
@@ -495,7 +498,7 @@ export default function BranchesAndPermissionsPage() {
                                       <div key={page.id} className="flex items-center justify-between gap-1 p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-[11px]">
                                         <div className="flex items-center gap-1.5 truncate">
                                           <span className="material-symbols-outlined text-amber-400 text-xs shrink-0">{page.icon}</span>
-                                          <span className="font-bold text-slate-100 truncate">{page.name}</span>
+                                          <span className="font-bold text-slate-100 truncate text-[10px]">{page.name}</span>
                                         </div>
                                         {(hasPrice || hasEdit || hasDelete) && (
                                           <span className="flex items-center gap-0.5 text-[9px] shrink-0 font-mono">
@@ -509,8 +512,12 @@ export default function BranchesAndPermissionsPage() {
                                   })}
                                 </div>
 
-                                {/* Bottom Arrow Pointer */}
-                                <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-950"></div>
+                                {/* Arrow Pointer */}
+                                {isTopRow ? (
+                                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 -mb-1 border-4 border-transparent border-b-slate-950"></div>
+                                ) : (
+                                  <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-950"></div>
+                                )}
                               </div>
                             </div>
                           );
