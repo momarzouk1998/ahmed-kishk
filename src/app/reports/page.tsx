@@ -440,7 +440,7 @@ export default function ReportsPage() {
         });
 
         // 3. Quotation deposits in this shift
-        quotations.filter(q => matchB(q.branch) && inPeriod(q.depositDate || q.updatedAt || q.date || q.createdAt)).forEach(q => {
+        quotations.filter(q => matchB(q.branch) && inPeriod(q.date || q.depositDate || q.createdAt)).forEach(q => {
           const qTime = q.createdAt ? new Date(q.createdAt).getTime() : (q.date ? new Date(q.date).getTime() : 0);
           let belongs = false;
           if (targetShift) {
@@ -535,7 +535,7 @@ export default function ReportsPage() {
       });
 
       // 3. From Quotation Deposits in this period (deduplicated)
-      quotations.filter(q => matchB(q.branch) && inPeriod(q.depositDate || q.updatedAt || q.date || q.createdAt)).forEach(q => {
+      quotations.filter(q => matchB(q.branch) && inPeriod(q.date || q.depositDate || q.createdAt)).forEach(q => {
         const deposit = Number(q.depositPaid || 0);
         const key = normPhone(q.phone) || normName(q.customerName);
         const pool = key ? (bCollectionsPool.get(key) || 0) : 0;
