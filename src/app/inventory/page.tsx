@@ -9,7 +9,7 @@ import BranchSelect from '@/components/BranchSelect';
 import { BRANCHES_LIST, normalizeBranchName, branchLabel } from '@/lib/branches';
 import initialInventory from '@/data/initialInventory.json';
 import Pagination from '@/components/Pagination';
-import { getPersistentCategories, saveCustomCategory, deleteCategory, renameCategory } from '@/lib/categories';
+import { getBranchCustomCategories, saveBranchCustomCategory, deleteBranchCategory, getPersistentCategories, saveCustomCategory, deleteCategory, renameCategory } from '@/lib/categories';
 
 interface InventoryItem {
   id: string;
@@ -95,6 +95,7 @@ export default function InventoryPage() {
   const [editingCategoryOldName, setEditingCategoryOldName] = useState<string | null>(null);
   const [editingCategoryNewName, setEditingCategoryNewName] = useState<string>('');
   const [newCategoryName, setNewCategoryName] = useState<string>('');
+  const [newCategoryBranch, setNewCategoryBranch] = useState<string>('الكل');
   const [categoryTabBranch, setCategoryTabBranch] = useState<string>('الكل');
   const [categorySearch, setCategorySearch] = useState<string>('');
   const [showEmptyCategories, setShowEmptyCategories] = useState<boolean>(false);
@@ -103,9 +104,11 @@ export default function InventoryPage() {
     if (e) e.preventDefault();
     const clean = newCategoryName.trim();
     if (!clean) return;
-    const updated = saveCustomCategory(clean);
-    setCategories(['الكل', ...updated]);
+    const targetBranch = newCategoryBranch || (categoryTabBranch !== 'الكل' ? categoryTabBranch : 'الكل');
+    saveBranchCustomCategory(targetBranch, clean);
+    setCategories(['الكل', ...getBranchCustomCategories('الكل')]);
     setNewCategoryName('');
+    alert(`تمت إضافة تصنيف "${clean}" بنجاح ${targetBranch === 'الكل' ? 'لكل الفروع' : `إلى ${targetBranch}`}`);
   };
 
   const handleStartRenameCategory = (catName: string) => {
@@ -1135,7 +1138,19 @@ export default function InventoryPage() {
                 </div>
 
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <select
+                      value={newCategoryBranch}
+                      onChange={e => setNewCategoryBranch(e.target.value)}
+                      className="border border-slate-300 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-800 bg-slate-50 focus:outline-none focus:border-amber-500 shadow-3xs"
+                      title="اختر الفرع الذي تريد إضافة هذا التصنيف له"
+                    >
+                      <option value="الكل">🏢 كل الفروع</option>
+                      {BRANCHES_LIST.map(b => (
+                        <option key={b.id} value={b.name}>🏪 {b.name}</option>
+                      ))}
+                    </select>
+
                     <input
                       type="text"
                       value={newCategoryName}
@@ -1147,11 +1162,11 @@ export default function InventoryPage() {
                         }
                       }}
                       placeholder="اسم التصنيف الجديد..."
-                      className="w-full sm:w-56 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+                      className="w-full sm:w-52 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
                     />
                     <button
                       onClick={handleAddNewCategory}
-                      className="bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm px-4 py-2 rounded-xl transition shadow-sm whitespace-nowrap flex items-center gap-1.5"
+                      className="bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm px-4 py-2 rounded-xl transition shadow-sm whitespace-nowrap flex items-center gap-1.5 cursor-pointer"
                     >
                       <span>➕</span>
                       <span>إضافة تصنيف</span>
@@ -1165,7 +1180,7 @@ export default function InventoryPage() {
                 <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full">
                   <span className="text-xs font-bold text-slate-500 ml-1 whitespace-nowrap">تصفية الفرع:</span>
                   <button
-                    onClick={() => setCategoryTabBranch('الكل')}
+                    onClick={() => { setCategoryTabBranch('الكل'); setNewCategoryBranch('الكل'); }}
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap ${
                       categoryTabBranch === 'الكل'
                         ? 'bg-slate-900 text-white shadow-sm'
@@ -1179,7 +1194,7 @@ export default function InventoryPage() {
                     return (
                       <button
                         key={b.id}
-                        onClick={() => setCategoryTabBranch(b.name)}
+                        onClick={() => { setCategoryTabBranch(b.name); setNewCategoryBranch(b.name); }}
                         className={`px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap flex items-center gap-1.5 ${
                           categoryTabBranch === b.name
                             ? 'bg-emerald-700 text-white shadow-sm'
@@ -1227,11 +1242,13 @@ export default function InventoryPage() {
               const branchItems = items.filter(i => normalizeBranchName(i.branch) === normalizeBranchName(branchConfig.name));
               const branchTotalStock = branchItems.reduce((acc, i) => acc + (Number(i.totalQuantity) || 0), 0);
               
-              // Categories that exist in this branch
-              const branchSpecificCats = Array.from(new Set(branchItems.map(i => (i.category || '').trim()).filter(Boolean)));
+              // Categories that exist in this branch (from actual items + custom categories added specifically for this branch)
+              const branchItemCats = Array.from(new Set(branchItems.map(i => (i.category || '').trim()).filter(Boolean)));
+              const branchCustomCats = getBranchCustomCategories(branchConfig.name);
+              const branchSpecificCats = Array.from(new Set([...branchItemCats, ...branchCustomCats]));
               const allKnownCats = dynamicCategories.filter(c => c !== 'الكل');
               
-              // If showEmptyCategories is true, show all system categories. Otherwise only show categories with items in this branch.
+              // If showEmptyCategories is true, show all system categories. Otherwise only show categories with items or added to this branch.
               const targetCats = showEmptyCategories
                 ? Array.from(new Set([...branchSpecificCats, ...allKnownCats])).sort((a, b) => {
                     const countA = branchItems.filter(i => i.category === a).length;

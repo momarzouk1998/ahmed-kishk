@@ -1,70 +1,110 @@
 /**
- * إدارة التصنيفات المعتمدة والدائمة للمخزون وفواتير المبيعات.
- * يضمن بقاء التصنيفات الأساسية (مثل: خياطة، جوانب الستاير، شيفونات وتل، إلخ)
- * ثابتة لكل الفروع دون أن تختفي أبداً حتى لو لم تكن هناك أصناف مسجلة تحتها مؤقتاً.
+ * إدارة التصنيفات المعتمدة حسب الفروع للمخزون وفواتير المبيعات.
+ * كل فرع يعتمد تصنيفاته بناءً على الأصناف المسجلة به والتصنيفات المضافة له خصيصاً.
  */
 
 export const DEFAULT_INVENTORY_CATEGORIES = [
-  'جوانب الستاير',
-  'شيفونات وتل',
-  'بلاك أوت وعوازل',
-  'خياطة',
-  'خياطة وتفصيل',
+  'ستائر',
+  'سواريه',
   'تراكات ومواسير',
-  'إكسسوارات ولوازم',
-  'خدمات ومصنعيات',
+  'أشرطة وإكسسوارات',
 ];
 
+const BRANCH_CUSTOM_CATEGORIES_KEY = 'ahmed_kishk_branch_categories_v2';
 const CUSTOM_CATEGORIES_KEY = 'ahmed_kishk_custom_categories_v1';
 
-export function getPersistentCategories(): string[] {
-  if (typeof window === 'undefined') return DEFAULT_INVENTORY_CATEGORIES;
+export function getBranchCustomCategories(branchName?: string): string[] {
+  if (typeof window === 'undefined') return [];
   try {
-    const raw = localStorage.getItem(CUSTOM_CATEGORIES_KEY);
-    if (!raw) {
-      localStorage.setItem(CUSTOM_CATEGORIES_KEY, JSON.stringify(DEFAULT_INVENTORY_CATEGORIES));
-      return DEFAULT_INVENTORY_CATEGORIES;
+    const raw = localStorage.getItem(BRANCH_CUSTOM_CATEGORIES_KEY);
+    if (!raw) return [];
+    const map: Record<string, string[]> = JSON.parse(raw);
+    if (!branchName || branchName === 'الكل') {
+      const all: string[] = [];
+      Object.values(map).forEach(list => {
+        if (Array.isArray(list)) all.push(...list);
+      });
+      return Array.from(new Set(all));
     }
-    const custom: string[] = JSON.parse(raw);
-    return Array.from(new Set([...custom]));
+    return Array.from(new Set([...(map[branchName] || []), ...(map['الكل'] || [])]));
   } catch {
-    return DEFAULT_INVENTORY_CATEGORIES;
+    return [];
   }
 }
 
-export function saveAllCategories(categories: string[]): string[] {
-  const unique = Array.from(new Set(categories.map(c => c.trim()).filter(Boolean)));
-  if (typeof window !== 'undefined') {
-    localStorage.setItem(CUSTOM_CATEGORIES_KEY, JSON.stringify(unique));
+export function saveBranchCustomCategory(branchName: string, newCategory: string): string[] {
+  const cat = newCategory.trim();
+  if (!cat || typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(BRANCH_CUSTOM_CATEGORIES_KEY);
+    const map: Record<string, string[]> = raw ? JSON.parse(raw) : {};
+    
+    const targetBranch = branchName || 'الكل';
+    map[targetBranch] = Array.from(new Set([...(map[targetBranch] || []), cat]));
+    
+    localStorage.setItem(BRANCH_CUSTOM_CATEGORIES_KEY, JSON.stringify(map));
+    fetch('/api/system-data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: BRANCH_CUSTOM_CATEGORIES_KEY, data: map }),
+    }).catch(() => {});
+    
+    return map[targetBranch] || [];
+  } catch {
+    return [];
   }
-  fetch('/api/system-data', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ key: CUSTOM_CATEGORIES_KEY, data: unique }),
-  }).catch(() => {});
-  return unique;
+}
+
+export function deleteBranchCategory(branchName: string, categoryToDelete: string) {
+  if (typeof window === 'undefined') return;
+  try {
+    const raw = localStorage.getItem(BRANCH_CUSTOM_CATEGORIES_KEY);
+    const map: Record<string, string[]> = raw ? JSON.parse(raw) : {};
+    if (!branchName || branchName === 'الكل') {
+      Object.keys(map).forEach(k => {
+        map[k] = (map[k] || []).filter(c => c !== categoryToDelete);
+      });
+    } else if (map[branchName]) {
+      map[branchName] = map[branchName].filter(c => c !== categoryToDelete);
+    }
+    localStorage.setItem(BRANCH_CUSTOM_CATEGORIES_KEY, JSON.stringify(map));
+    fetch('/api/system-data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: BRANCH_CUSTOM_CATEGORIES_KEY, data: map }),
+    }).catch(() => {});
+  } catch {}
+}
+
+export function getPersistentCategories(): string[] {
+  return getBranchCustomCategories('الكل');
 }
 
 export function saveCustomCategory(newCategory: string): string[] {
-  const cat = newCategory.trim();
-  if (!cat) return getPersistentCategories();
-  const existing = getPersistentCategories();
-  if (!existing.includes(cat)) {
-    return saveAllCategories([...existing, cat]);
-  }
-  return existing;
+  return saveBranchCustomCategory('الكل', newCategory);
 }
 
 export function deleteCategory(categoryToDelete: string): string[] {
-  const existing = getPersistentCategories();
-  const updated = existing.filter(c => c !== categoryToDelete);
-  return saveAllCategories(updated);
+  deleteBranchCategory('الكل', categoryToDelete);
+  return getBranchCustomCategories('الكل');
 }
 
 export function renameCategory(oldName: string, newName: string): string[] {
   const cleanNew = newName.trim();
-  if (!cleanNew) return getPersistentCategories();
-  const existing = getPersistentCategories();
-  const updated = existing.map(c => (c === oldName ? cleanNew : c));
-  return saveAllCategories(updated);
+  if (!cleanNew || typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(BRANCH_CUSTOM_CATEGORIES_KEY);
+    const map: Record<string, string[]> = raw ? JSON.parse(raw) : {};
+    Object.keys(map).forEach(k => {
+      map[k] = (map[k] || []).map(c => (c === oldName ? cleanNew : c));
+    });
+    localStorage.setItem(BRANCH_CUSTOM_CATEGORIES_KEY, JSON.stringify(map));
+    fetch('/api/system-data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: BRANCH_CUSTOM_CATEGORIES_KEY, data: map }),
+    }).catch(() => {});
+  } catch {}
+  return getBranchCustomCategories('الكل');
 }
+
