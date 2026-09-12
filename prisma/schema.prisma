@@ -213,6 +213,15 @@ model SalesInvoice {
   date            String
   items           Json     @default("[]")
   notes           String?
+  // #FIX: كانت الحقول دي بتتبعت من شاشة البيع أونلاين (fabric-sales/new) لكن
+  // الـ API كان بيتجاهلها تمامًا — تتحفظ فعليًا فى الفاتورة نفسها دلوقتى.
+  isOnlineOrder   Boolean  @default(false)
+  shippingFee     Float    @default(0)
+  shippingCompany String?
+  trackingNumber  String?
+  shippingAddress String?
+  receiverPhone   String?
+  orderSource     String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 }

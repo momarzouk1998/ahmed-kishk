@@ -1339,17 +1339,16 @@ export default function FabricSalesPage() {
               <div className="grid grid-cols-2 gap-2.5">
                 <div>
                   <label className="text-slate-700 font-bold block mb-1">الفرع:</label>
-                  <select
+                  {/* #FIX: كانت قائمة يدوية قديمة فيها 'فرع التجمع' الوهمي (مش
+                      فرع حقيقي أبدًا) وناقصة 'الفرع التجاري' الفعلي — بدّلتها
+                      بالقائمة الموحّدة الحقيقية (BRANCHES_LIST) زي باقي الصفحة. */}
+                  <BranchSelect
                     value={editingInvoice.branch || 'الفرع الرئيسي'}
-                    onChange={e => setEditingInvoice({ ...editingInvoice, branch: e.target.value })}
+                    onChange={v => setEditingInvoice({ ...editingInvoice, branch: v })}
+                    isAdmin={isAdmin || isSuperAdmin}
                     className="w-full border border-slate-200 rounded-xl px-2.5 py-1.5 font-bold text-slate-900 focus:outline-none"
-                  >
-                    <option value="الفرع الرئيسي">الفرع الرئيسي</option>
-                    <option value="فرع عرابي">فرع عرابي</option>
-                    <option value="فرع التجمع">فرع التجمع</option>
-                    <option value="فرع الثلاثيني">فرع الثلاثيني</option>
-                    <option value="فرع عمر أفندي">فرع عمر أفندي</option>
-                  </select>
+                    lockedClassName="w-full border border-slate-200 rounded-xl px-2.5 py-1.5"
+                  />
                 </div>
 
                 <div>
@@ -1367,6 +1366,76 @@ export default function FabricSalesPage() {
                     <option value="دفع متعدد / مزيج">🔀 دفع متعدد (مزيج)</option>
                   </select>
                 </div>
+              </div>
+
+              {/* 📦 Online Order Toggle — كانت isOnlineOrder وباقي بيانات الشحن
+                  بتتبعت من شاشة البيع لكن الـ API كان بيتجاهلها تمامًا فمكانش
+                  فيه أي طريقة تتعدّل بعد الحفظ. دلوقتى بتتحفظ فعليًا. */}
+              <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 space-y-2.5">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={!!editingInvoice.isOnlineOrder}
+                    onChange={e => setEditingInvoice({ ...editingInvoice, isOnlineOrder: e.target.checked })}
+                    className="w-4 h-4 rounded accent-blue-600 cursor-pointer"
+                  />
+                  <span className="font-black text-slate-900">📦 طلب شحن أونلاين</span>
+                  <span className="text-[11px] text-slate-500">(بدّل الحالة لو الفاتورة دي بيع مباشر مش شحن، أو العكس)</span>
+                </label>
+
+                {editingInvoice.isOnlineOrder && (
+                  <div className="grid grid-cols-2 gap-2.5 pt-1 border-t border-slate-200">
+                    <div>
+                      <label className="text-slate-700 font-bold block mb-1">شركة الشحن:</label>
+                      <input
+                        type="text"
+                        value={editingInvoice.shippingCompany || ''}
+                        onChange={e => setEditingInvoice({ ...editingInvoice, shippingCompany: e.target.value })}
+                        placeholder="مثال: بوسطة (Bosta)"
+                        className="w-full border border-slate-200 rounded-xl px-2.5 py-1.5 font-bold text-slate-900 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-slate-700 font-bold block mb-1">مصاريف الشحن (ج):</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={editingInvoice.shippingFee ?? 0}
+                        onChange={e => setEditingInvoice({ ...editingInvoice, shippingFee: Number(e.target.value) || 0 })}
+                        className="w-full border border-slate-200 rounded-xl px-2.5 py-1.5 font-mono font-bold text-slate-900 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-slate-700 font-bold block mb-1">رقم التتبع (Tracking):</label>
+                      <input
+                        type="text"
+                        value={editingInvoice.trackingNumber || ''}
+                        onChange={e => setEditingInvoice({ ...editingInvoice, trackingNumber: e.target.value })}
+                        className="w-full border border-slate-200 rounded-xl px-2.5 py-1.5 font-mono font-bold text-slate-900 focus:outline-none"
+                        dir="ltr"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-slate-700 font-bold block mb-1">هاتف المستلم:</label>
+                      <input
+                        type="text"
+                        value={editingInvoice.receiverPhone || ''}
+                        onChange={e => setEditingInvoice({ ...editingInvoice, receiverPhone: e.target.value })}
+                        className="w-full border border-slate-200 rounded-xl px-2.5 py-1.5 font-mono font-bold text-slate-900 focus:outline-none"
+                        dir="ltr"
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="text-slate-700 font-bold block mb-1">عنوان الشحن:</label>
+                      <input
+                        type="text"
+                        value={editingInvoice.shippingAddress || ''}
+                        onChange={e => setEditingInvoice({ ...editingInvoice, shippingAddress: e.target.value })}
+                        className="w-full border border-slate-200 rounded-xl px-2.5 py-1.5 font-bold text-slate-900 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* 🧵 Items and Fabrics Breakdown in Invoice - Clean Inline Table */}

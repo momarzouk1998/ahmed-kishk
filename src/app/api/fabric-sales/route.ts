@@ -41,7 +41,10 @@ export async function POST(request: Request) {
   try {
     const scope = await getBranchScope(request);
     const body = await request.json();
-    const { id, invoiceNumber, customerName, phone, branch, totalAmount, paidAmount, remainingAmount, date, items, notes, splitPayments } = body;
+    const {
+      id, invoiceNumber, customerName, phone, branch, totalAmount, paidAmount, remainingAmount, date, items, notes, splitPayments,
+      isOnlineOrder, shippingFee, shippingCompany, trackingNumber, shippingAddress, receiverPhone, orderSource,
+    } = body;
     const pMethod = body.paymentMethod || body.paymentType || 'نقدي';
 
     let finalNotes = (notes || '').trim();
@@ -70,6 +73,13 @@ export async function POST(request: Request) {
           paymentType: pMethod,
           items: items !== undefined ? items : undefined,
           notes: finalNotes !== undefined ? finalNotes : undefined,
+          isOnlineOrder: isOnlineOrder !== undefined ? !!isOnlineOrder : undefined,
+          shippingFee: shippingFee !== undefined ? Number(shippingFee) || 0 : undefined,
+          shippingCompany: shippingCompany !== undefined ? shippingCompany : undefined,
+          trackingNumber: trackingNumber !== undefined ? trackingNumber : undefined,
+          shippingAddress: shippingAddress !== undefined ? shippingAddress : undefined,
+          receiverPhone: receiverPhone !== undefined ? receiverPhone : undefined,
+          orderSource: orderSource !== undefined ? orderSource : undefined,
         },
       });
     } else {
@@ -94,6 +104,13 @@ export async function POST(request: Request) {
           date: date || new Date().toISOString().split('T')[0],
           items: items || [],
           notes: finalNotes,
+          isOnlineOrder: !!isOnlineOrder,
+          shippingFee: Number(shippingFee) || 0,
+          shippingCompany: shippingCompany || undefined,
+          trackingNumber: trackingNumber || undefined,
+          shippingAddress: shippingAddress || undefined,
+          receiverPhone: receiverPhone || undefined,
+          orderSource: orderSource || undefined,
         },
       });
     }
