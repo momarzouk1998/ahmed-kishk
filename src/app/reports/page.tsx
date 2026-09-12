@@ -99,6 +99,7 @@ export default function ReportsPage() {
   const [quotations, setQuotations] = useState<any[]>([]);
   const [collections, setCollections] = useState<any[]>([]);
   const [shifts, setShifts] = useState<any[]>([]);
+  const [expenses, setExpenses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // ─── Load all data ───────────────────────────────────────────
@@ -106,7 +107,7 @@ export default function ReportsPage() {
     (async () => {
       setLoading(true);
       try {
-        const [salesRes, purRes, invRes, custRes, supRes, insRes, priRes, ordRes, shiftRes] = await Promise.all([
+        const [salesRes, purRes, invRes, custRes, supRes, insRes, priRes, ordRes, shiftRes, expRes] = await Promise.all([
           fetch('/api/fabric-sales', { cache: 'no-store' }).catch(() => null),
           fetch('/api/purchases', { cache: 'no-store' }).catch(() => null),
           fetch('/api/inventory', { cache: 'no-store' }).catch(() => null),
@@ -116,6 +117,7 @@ export default function ReportsPage() {
           fetch('/api/pricing', { cache: 'no-store' }).catch(() => null),
           fetch('/api/pipeline-orders', { cache: 'no-store' }).catch(() => null),
           fetch('/api/shifts', { cache: 'no-store' }).catch(() => null),
+          fetch('/api/expenses', { cache: 'no-store' }).catch(() => null),
         ]);
 
         if (salesRes?.ok) {
@@ -125,6 +127,10 @@ export default function ReportsPage() {
         if (shiftRes?.ok) {
           const j = await shiftRes.json();
           if (Array.isArray(j?.shifts)) setShifts(j.shifts);
+        }
+        if (expRes?.ok) {
+          const j = await expRes.json();
+          if (Array.isArray(j?.expenses)) setExpenses(j.expenses);
         }
         if (purRes?.ok) {
           const j = await purRes.json();
@@ -214,6 +220,7 @@ export default function ReportsPage() {
   const inspectionDate = (i: any): string | undefined => i?.createdAt || i?.scheduledAt;
   const purchaseDate = (p: any): string | undefined => p?.date;
   const shiftDate = (s: any): string | undefined => s?.startTime || s?.createdAt || s?.endTime;
+  const expenseDate = (e: any): string | undefined => e?.date || e?.createdAt;
 
   const fInvoices = useMemo(
     () => invoices.filter(i => inBranch(i.branch) && inPeriod(invoiceDate(i))),
@@ -584,12 +591,26 @@ export default function ReportsPage() {
         }
       });
 
+      // 4. مصروفات الفرع فى نفس الفترة — بتتخصم من رصيد الخزينة حسب طريقة دفعها
+      // (نقدي بيقلل الكاش بالدرج، إنستاباي بيقلل رصيد إنستاباي...الخ).
+      let bExpensesTotal = 0;
+      expenses.filter((e: any) => matchB(e.branch) && inPeriod(expenseDate(e))).forEach((exp: any) => {
+        const amt = Number(exp.amount) || 0;
+        bExpensesTotal += amt;
+        const m = (exp.paymentMethod || '').trim();
+        if (m.includes('فودافون')) bVodafone -= amt;
+        else if (m.includes('إنستا') || m.includes('انستا')) bInstapay -= amt;
+        else if (m.includes('فيزا') || m.includes('كارت')) bVisa -= amt;
+        else bCash -= amt;
+      });
+
       const total = bCash + bInstapay + bVodafone + bVisa;
       return {
         ...b,
         cash: bCash,
         instapay: bInstapay,
         vodafone: bVodafone,
+        expensesTotal: bExpensesTotal,
         visa: bVisa,
         total,
         count: bCount,
@@ -1033,6 +1054,15 @@ function SalesReport({ kpis, invoices, quotations, collections, branchLabel, per
                       <div className="font-mono font-black text-blue-700">{b.visa.toLocaleString()}</div>
                     </div>
                   </div>
+                  {(b.expensesTotal || 0) > 0 && (
+                    <div className="flex justify-between items-center text-rose-800 bg-rose-50 px-2 py-1 rounded border border-rose-200 font-bold mt-1">
+                      <span className="flex items-center gap-1">
+                        <span>🧾</span>
+                        <span>مصروفات مخصومة:</span>
+                      </span>
+                      <strong className="font-mono">-{b.expensesTotal.toLocaleString()} ج</strong>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

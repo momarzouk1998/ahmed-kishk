@@ -28,6 +28,7 @@ export const ALL_SYSTEM_PAGES: PagePermission[] = [
   { id: 'p_purchases', name: 'فواتير المشتريات', shortName: 'المشتريات', category: 'المبيعات والحسابات', href: '/purchases', icon: 'shopping_bag', hasPriceControl: true, hasEditControl: true, hasDeleteControl: true },
   { id: 'p_customers', name: 'العملاء والديون', shortName: 'العملاء', category: 'المبيعات والحسابات', href: '/customers', icon: 'group', hasEditControl: true, hasDeleteControl: true },
   { id: 'p_suppliers', name: 'الموردون والمستحقات', shortName: 'الموردون', category: 'المبيعات والحسابات', href: '/suppliers', icon: 'local_shipping', hasEditControl: true, hasDeleteControl: true },
+  { id: 'p_expenses', name: 'مصروفات الفروع', shortName: 'المصروفات', category: 'المبيعات والحسابات', href: '/expenses', icon: 'payments', hasEditControl: true, hasDeleteControl: true },
 
   // الإدارة والمخزون
   { id: 'p_employees', name: 'الموظفين والحضور والرواتب', shortName: 'الموظفين', category: 'الإدارة والمخزون', href: '/employees', icon: 'badge', hasEditControl: true, hasDeleteControl: true },

@@ -324,6 +324,19 @@ model Shift {
   updatedAt            DateTime  @updatedAt
 }
 
-
+/// مصروفات كل فرع (إيجار، كهرباء، صيانة، مواصلات...) — بتتخصم من خزينة الفرع
+/// فى حساب الأرصدة (reports/page.tsx)، ومعزولة بالفرع زي باقي الجداول.
+model Expense {
+  id            String   @id @default(cuid())
+  date          String
+  branch        String   @default("الفرع الرئيسي")
+  category      String   @default("أخرى")
+  description   String   @default("")
+  amount        Float    @default(0)
+  paymentMethod String   @default("نقدي")
+  createdByName String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
 
 
