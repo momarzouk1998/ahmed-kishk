@@ -26,30 +26,29 @@ export async function GET(request: Request) {
       console.error('Error querying branchCategory, will check fallback:', e);
     }
 
-    // Auto-seed if empty
-    if (dbCats.length === 0) {
-      const distinctMap = new Map<string, { name: string; branch: string }>();
-      (initialInventory as any[]).forEach(item => {
-        if (item.category && item.branch) {
-          const key = item.category.trim() + '__' + item.branch.trim();
-          distinctMap.set(key, { name: item.category.trim(), branch: item.branch.trim() });
-        }
-      });
+    // Auto-seed missing categories from initialInventory.json
+    const distinctMap = new Map<string, { name: string; branch: string }>();
+    (initialInventory as any[]).forEach(item => {
+      if (item.category && item.branch) {
+        const key = item.category.trim() + '__' + item.branch.trim();
+        distinctMap.set(key, { name: item.category.trim(), branch: item.branch.trim() });
+      }
+    });
 
-      const seedData = Array.from(distinctMap.values());
-      if (seedData.length > 0) {
-        try {
-          await (prisma as any).branchCategory.createMany({
-            data: seedData,
-            skipDuplicates: true,
-          });
-          dbCats = await (prisma as any).branchCategory.findMany({
-            orderBy: [{ branch: 'asc' }, { name: 'asc' }],
-          });
-        } catch (e) {
-          console.error('Error auto-seeding branchCategory:', e);
-          dbCats = seedData.map((d, i) => ({ id: 'bc-' + i, ...d }));
-        }
+    const existingKeys = new Set(dbCats.map((c: any) => c.name?.trim() + '__' + c.branch?.trim()));
+    const missing = Array.from(distinctMap.values()).filter(d => !existingKeys.has(d.name + '__' + d.branch));
+
+    if (missing.length > 0) {
+      try {
+        await (prisma as any).branchCategory.createMany({
+          data: missing,
+          skipDuplicates: true,
+        });
+        dbCats = await (prisma as any).branchCategory.findMany({
+          orderBy: [{ branch: 'asc' }, { name: 'asc' }],
+        });
+      } catch (e) {
+        console.error('Error auto-seeding missing categories:', e);
       }
     }
 

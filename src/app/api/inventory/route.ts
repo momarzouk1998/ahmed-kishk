@@ -12,10 +12,18 @@ export async function GET(request: Request) {
   try {
     const scope = await getBranchScope(request);
 
-    // إذا كانت قاعدة البيانات تحتوي على أقل من 250 صنف، نقوم بإدراج الأصناف فوراً
+    // التأكد من وجود أصناف الفرع التجاري وكافة الأصناف في قاعدة البيانات
     try {
-      const count = await prisma.inventoryItem.count();
-      if (count < 250) {
+      const commCount = await prisma.inventoryItem.count({
+        where: {
+          OR: [
+            { branch: 'الفرع التجاري' },
+            { branch: { contains: 'تجاري' } },
+            { branch: { contains: 'تجارى' } },
+          ],
+        },
+      });
+      if (commCount === 0) {
         await prisma.inventoryItem.createMany({
           data: initialInventory as any,
           skipDuplicates: true,
