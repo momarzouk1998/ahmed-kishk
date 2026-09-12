@@ -34,6 +34,36 @@ interface InventoryProduct {
 
 const SALES_INVOICES_KEY = 'ahmed_kishk_sales_invoices_v1';
 
+const EGYPT_GOVERNORATES = [
+  'الإسماعيلية',
+  'القاهرة',
+  'الجيزة',
+  'الإسكندرية',
+  'القليوبية',
+  'الشرقية',
+  'الدقهلية',
+  'الغربية',
+  'المنوفية',
+  'البحيرة',
+  'كفر الشيخ',
+  'دمياط',
+  'بورسعيد',
+  'السويس',
+  'شمال سيناء',
+  'جنوب سيناء',
+  'الفيوم',
+  'بني سويف',
+  'المنيا',
+  'أسيوط',
+  'سوهاج',
+  'قنا',
+  'الأقصر',
+  'أسوان',
+  'البحر الأحمر',
+  'الوادي الجديد',
+  'مطروح',
+];
+
 // Default fabric catalog for quick fallback & rich product catalog
 const DEFAULT_CATALOG: InventoryProduct[] = [
   { id: '1', code: 'SAT-01', name: 'ستان سواريه تركي لامع', category: 'سواريه', unit: 'متر', totalQuantity: 120, sellPrice: 450, branch: 'الفرع الرئيسي' },
@@ -173,6 +203,7 @@ export default function NewSalesInvoicePOSPage() {
 
   // Online Order & Shipping States
   const [isOnlineOrder, setIsOnlineOrder] = useState<boolean>(false);
+  const [shippingProvince, setShippingProvince] = useState<string>('الإسماعيلية');
   const [shippingFee, setShippingFee] = useState<number>(110);
   const [shippingCompany, setShippingCompany] = useState<string>('بوسطة (Bosta)');
   const [trackingNumber, setTrackingNumber] = useState<string>('');
@@ -363,6 +394,8 @@ export default function NewSalesInvoicePOSPage() {
     const finalCustName = custName.trim() || (customerType === 'WALK_IN' ? 'عميل نقدي' : 'عميل غير مسجل');
     const statusLabel = remainingAmount === 0 ? 'تم السداد بالكامل' : (paidAmount || 0) > 0 ? 'مسدد جزئياً' : 'آجل / غير مسدد';
 
+    const fullShippingAddress = [shippingProvince, shippingAddress.trim()].filter(Boolean).join(' - ');
+
     const invoicePayload = {
       id: `INV-${Date.now()}`,
       invoiceNumber: invoiceNumber,
@@ -384,7 +417,7 @@ export default function NewSalesInvoicePOSPage() {
       shippingFee: (isCommercialBranch && isOnlineOrder) ? Number(shippingFee) || 0 : 0,
       shippingCompany: (isCommercialBranch && isOnlineOrder) ? shippingCompany : undefined,
       trackingNumber: (isCommercialBranch && isOnlineOrder) ? trackingNumber.trim() : undefined,
-      shippingAddress: (isCommercialBranch && isOnlineOrder) ? shippingAddress.trim() : undefined,
+      shippingAddress: (isCommercialBranch && isOnlineOrder) ? fullShippingAddress : undefined,
       receiverPhone: (isCommercialBranch && isOnlineOrder) ? receiverPhone.trim() : undefined,
       orderSource: (isCommercialBranch && isOnlineOrder) ? orderSource : undefined,
       splitPayments: paymentMethod === 'دفع متعدد / مزيج' ? {
@@ -627,188 +660,300 @@ export default function NewSalesInvoicePOSPage() {
                   isAdmin={isAdmin}
                   className="w-full border border-slate-200 rounded-xl px-2.5 py-1.5 font-bold text-slate-900 bg-slate-50 text-xs focus:outline-none"
                 />
+              </div>
+            </div>
 
-                {/* Compact Shipping Button - ONLY FOR COMMERCIAL BRANCH */}
-                {isCommercialBranch && (
-                  <div className="pt-1 border-t border-slate-100 flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setShowShippingModal(true)}
-                      className={`flex-1 py-1.5 px-2.5 rounded-xl text-xs font-black flex items-center justify-between transition-all cursor-pointer border ${
-                        isOnlineOrder
-                          ? 'bg-blue-50 text-blue-900 border-blue-300 hover:bg-blue-100 shadow-2xs'
-                          : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
-                      }`}
-                    >
-                      <span className="flex items-center gap-1.5">
-                        <span>📦</span>
-                        <span className="truncate max-w-[130px]">{isOnlineOrder ? `شحن: ${shippingCompany}` : 'إضافة شحن / أونلاين'}</span>
-                      </span>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-mono font-bold shrink-0 ${
-                        isOnlineOrder ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-700'
-                      }`}>
-                        {isOnlineOrder ? `+${shippingFee} (مفعل ✏️)` : '+ شحن'}
-                      </span>
-                    </button>
-                    {isOnlineOrder && (
+            {isCommercialBranch ? (
+              /* Embedded Shipping & Delivery Panel for Commercial Branch (replaces touch keypad) */
+              <div className="bg-white text-slate-900 p-2.5 rounded-2xl border border-blue-200 shadow-soft space-y-2 flex-1 flex flex-col min-h-0 overflow-y-auto">
+                <div className="flex items-center justify-between pb-1.5 border-b border-slate-100">
+                  <div className="flex items-center gap-1.5 font-black text-xs text-blue-950">
+                    <span className="material-symbols-outlined text-blue-600 text-base">local_shipping</span>
+                    <span>بيانات الشحن والتوصيل (أونلاين)</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsOnlineOrder(!isOnlineOrder)}
+                    className={`text-[10px] font-black px-2 py-0.5 rounded-full border cursor-pointer transition-all ${
+                      isOnlineOrder 
+                        ? 'bg-blue-100 text-blue-950 border-blue-300' 
+                        : 'bg-slate-100 text-slate-600 border-slate-300'
+                    }`}
+                  >
+                    {isOnlineOrder ? '● شحن مفعل' : '○ بيع مباشر'}
+                  </button>
+                </div>
+
+                {isOnlineOrder ? (
+                  <div className="space-y-1.5 text-xs flex-1 flex flex-col justify-between">
+                    <div className="space-y-1.5">
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-700 block mb-0.5">المحافظة *</label>
+                        <select
+                          value={shippingProvince}
+                          onChange={e => setShippingProvince(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs text-slate-900 font-bold focus:bg-white focus:outline-none focus:border-blue-500"
+                        >
+                          {EGYPT_GOVERNORATES.map(gov => (
+                            <option key={gov} value={gov}>{gov}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-700 block mb-0.5">
+                          عنوان الشحن بالتفصيل (المدينة / الحي / الشارع) *
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="مثال: الشيخ زايد - شارع الثلاثيني..."
+                          value={shippingAddress}
+                          onChange={e => setShippingAddress(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs text-slate-900 font-bold focus:bg-white focus:outline-none focus:border-blue-500"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <div>
+                          <label className="text-[11px] font-bold text-slate-700 block mb-0.5">شركة الشحن *</label>
+                          <select
+                            value={shippingCompany}
+                            onChange={e => setShippingCompany(e.target.value)}
+                            className="w-full bg-slate-50 border border-slate-300 rounded-xl px-2 py-1.5 text-xs text-slate-900 font-bold focus:bg-white focus:outline-none focus:border-blue-500"
+                          >
+                            <option value="بوسطة (Bosta)">بوسطة (Bosta)</option>
+                            <option value="أرامكس (Aramex)">أرامكس (Aramex)</option>
+                            <option value="مندوب الفرع التجاري">مندوب الفرع التجاري</option>
+                            <option value="ريد بوكس (RedBox)">ريد بوكس (RedBox)</option>
+                            <option value="شركة شحن أخرى">شركة شحن أخرى</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="text-[11px] font-bold text-slate-700 block mb-0.5">مصاريف الشحن (ج.م) *</label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={shippingFee}
+                            onChange={e => setShippingFee(Number(e.target.value))}
+                            className="w-full bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs text-slate-900 font-mono font-black focus:bg-white focus:outline-none focus:border-blue-500"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <div>
+                          <label className="text-[11px] font-bold text-slate-700 block mb-0.5">هاتف المستلم (إن اختلف):</label>
+                          <input
+                            type="text"
+                            placeholder={custPhone || 'رقم إضافي...'}
+                            value={receiverPhone}
+                            onChange={e => setReceiverPhone(e.target.value)}
+                            className="w-full bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs text-slate-900 font-mono font-bold focus:bg-white focus:outline-none focus:border-blue-500"
+                            dir="ltr"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-[11px] font-bold text-slate-700 block mb-0.5">مصدر الطلب:</label>
+                          <select
+                            value={orderSource}
+                            onChange={e => setOrderSource(e.target.value)}
+                            className="w-full bg-slate-50 border border-slate-300 rounded-xl px-2 py-1.5 text-xs text-slate-900 font-bold focus:bg-white focus:outline-none focus:border-blue-500"
+                          >
+                            <option value="صفحة الفيسبوك">صفحة الفيسبوك</option>
+                            <option value="واتساب (WhatsApp)">واتساب (WhatsApp)</option>
+                            <option value="إنستجرام (Instagram)">إنستجرام (Instagram)</option>
+                            <option value="تيك توك (TikTok)">تيك توك (TikTok)</option>
+                            <option value="الموقع الإلكتروني">الموقع الإلكتروني</option>
+                            <option value="أخرى">أخرى</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-700 block mb-0.5">رقم البوليصة / التتبع (اختياري):</label>
+                        <input
+                          type="text"
+                          placeholder="مثال: BST-982341..."
+                          value={trackingNumber}
+                          onChange={e => setTrackingNumber(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs text-slate-900 font-mono font-bold focus:bg-white focus:outline-none focus:border-blue-500"
+                          dir="ltr"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="pt-1.5">
                       <button
                         type="button"
                         onClick={() => setIsOnlineOrder(false)}
-                        className="w-7 h-7 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200 flex items-center justify-center text-xs font-bold transition-colors cursor-pointer shrink-0"
-                        title="إلغاء الشحن والتحويل لبيع مباشر بالفرع"
+                        className="w-full py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-[11px] rounded-xl border border-rose-200 transition-colors cursor-pointer text-center"
                       >
-                        ✕
+                        إلغاء الشحن (تحويل لبيع مباشر بالفرع)
                       </button>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Light Touch Keypad Panel — flex-1 to fill remaining height */}
-            <div className="bg-slate-50 text-slate-900 p-2 rounded-2xl border border-slate-200 shadow-soft space-y-1.5 flex-1 flex flex-col min-h-0">
-              {/* Active Selected Item Banner - Full Width */}
-              <div className="border-b border-slate-200 pb-1.5">
-                {activeSelectedItem ? (
-                  <div className="bg-white border border-amber-200 bg-amber-50/40 px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-between shadow-3xs w-full">
-                    <div className="flex items-center gap-1.5 min-w-0 pr-1">
-                      <span className="material-symbols-outlined text-amber-600 text-base flex-shrink-0">straighten</span>
-                      <span className="font-black text-slate-900 truncate text-xs" title={activeSelectedItem.name}>
-                        {activeSelectedItem.name}
-                      </span>
                     </div>
-                    <span className="bg-emerald-600 text-white font-mono font-black px-2 py-0.5 rounded-lg text-xs flex-shrink-0 shadow-3xs">
-                      {activeSelectedItem.meters} م
-                    </span>
                   </div>
                 ) : (
-                  <div className="bg-white/80 border border-dashed border-slate-300 px-2 py-1.5 rounded-xl text-xs text-center text-slate-500 font-bold w-full">
-                    اضغط على أي صنف لتعديل أمتاره مباشرة
+                  <div className="flex-1 flex flex-col items-center justify-center p-3 text-center text-slate-400 space-y-2">
+                    <span className="material-symbols-outlined text-3xl text-slate-300">storefront</span>
+                    <p className="text-xs font-bold text-slate-600">تم إلغاء الشحن — الفاتورة بيع مباشر بالفرع</p>
+                    <button
+                      type="button"
+                      onClick={() => setIsOnlineOrder(true)}
+                      className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl transition-colors cursor-pointer"
+                    >
+                      تفعيل الشحن والأونلاين 📦
+                    </button>
                   </div>
                 )}
               </div>
-
-              {/* Quick Fraction Meter Buttons (Direct set & Increments) */}
-              <div className="space-y-1">
-                <div className="grid grid-cols-4 gap-1">
-                  {[
-                    { label: '½ م (0.5)', val: 0.50 },
-                    { label: '¾ م (0.75)', val: 0.75 },
-                    { label: '¼ م (0.25)', val: 0.25 },
-                    { label: '1 متر', val: 1.00 },
-                  ].map((frac, fIdx) => (
-                    <button
-                      key={fIdx}
-                      type="button"
-                      onClick={() => handleSetExactMeters(frac.val)}
-                      className="bg-amber-100 hover:bg-amber-500 hover:text-white text-amber-950 font-black py-2 rounded-xl text-xs transition-colors cursor-pointer text-center border border-amber-300 shadow-3xs active:scale-95"
-                      title={`ضبط الكمية مباشرة على ${frac.val} متر`}
-                    >
-                      {frac.label}
-                    </button>
-                  ))}
+            ) : (
+              /* Light Touch Keypad Panel (for non-commercial branches) — flex-1 to fill remaining height */
+              <div className="bg-slate-50 text-slate-900 p-2 rounded-2xl border border-slate-200 shadow-soft space-y-1.5 flex-1 flex flex-col min-h-0">
+                {/* Active Selected Item Banner - Full Width */}
+                <div className="border-b border-slate-200 pb-1.5">
+                  {activeSelectedItem ? (
+                    <div className="bg-white border border-amber-200 bg-amber-50/40 px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-between shadow-3xs w-full">
+                      <div className="flex items-center gap-1.5 min-w-0 pr-1">
+                        <span className="material-symbols-outlined text-amber-600 text-base flex-shrink-0">straighten</span>
+                        <span className="font-black text-slate-900 truncate text-xs" title={activeSelectedItem.name}>
+                          {activeSelectedItem.name}
+                        </span>
+                      </div>
+                      <span className="bg-emerald-600 text-white font-mono font-black px-2 py-0.5 rounded-lg text-xs flex-shrink-0 shadow-3xs">
+                        {activeSelectedItem.meters} م
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="bg-white/80 border border-dashed border-slate-300 px-2 py-1.5 rounded-xl text-xs text-center text-slate-500 font-bold w-full">
+                      اضغط على أي صنف لتعديل أمتاره مباشرة
+                    </div>
+                  )}
                 </div>
 
-                <div className="grid grid-cols-3 gap-1">
-                  {[
-                    { label: '+ ½م', val: 0.50 },
-                    { label: '+ 1م', val: 1.00 },
-                    { label: '+ 5م', val: 5.00 },
-                  ].map((frac, fIdx) => (
+                {/* Quick Fraction Meter Buttons (Direct set & Increments) */}
+                <div className="space-y-1">
+                  <div className="grid grid-cols-4 gap-1">
+                    {[
+                      { label: '½ م (0.5)', val: 0.50 },
+                      { label: '¾ م (0.75)', val: 0.75 },
+                      { label: '¼ م (0.25)', val: 0.25 },
+                      { label: '1 متر', val: 1.00 },
+                    ].map((frac, fIdx) => (
+                      <button
+                        key={fIdx}
+                        type="button"
+                        onClick={() => handleSetExactMeters(frac.val)}
+                        className="bg-amber-100 hover:bg-amber-500 hover:text-white text-amber-950 font-black py-2 rounded-xl text-xs transition-colors cursor-pointer text-center border border-amber-300 shadow-3xs active:scale-95"
+                        title={`ضبط الكمية مباشرة على ${frac.val} متر`}
+                      >
+                        {frac.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-1">
+                    {[
+                      { label: '+ ½م', val: 0.50 },
+                      { label: '+ 1م', val: 1.00 },
+                      { label: '+ 5م', val: 5.00 },
+                    ].map((frac, fIdx) => (
+                      <button
+                        key={fIdx}
+                        type="button"
+                        onClick={() => handleAddFraction(frac.val)}
+                        className="bg-slate-100 hover:bg-slate-300 text-slate-800 font-black py-1.5 rounded-xl text-xs transition-colors cursor-pointer text-center border border-slate-200 shadow-3xs active:scale-95"
+                        title={`إضافة ${frac.val} متر للكمية الحالية`}
+                      >
+                        {frac.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Main Numeric Numpad — Standard Calculator/POS LTR Layout */}
+                <div className="grid grid-cols-4 gap-1.5 pt-1" dir="ltr">
+                  {['7', '8', '9'].map(n => (
                     <button
-                      key={fIdx}
+                      key={n}
                       type="button"
-                      onClick={() => handleAddFraction(frac.val)}
-                      className="bg-slate-100 hover:bg-slate-300 text-slate-800 font-black py-1.5 rounded-xl text-xs transition-colors cursor-pointer text-center border border-slate-200 shadow-3xs active:scale-95"
-                      title={`إضافة ${frac.val} متر للكمية الحالية`}
+                      onClick={() => handleKeypadPress(n)}
+                      className="bg-white hover:bg-amber-50 text-slate-950 font-mono font-black text-2xl py-3 rounded-xl border border-slate-200 shadow-3xs active:scale-95 transition-all cursor-pointer"
                     >
-                      {frac.label}
+                      {n}
                     </button>
                   ))}
+                  <button
+                    type="button"
+                    onClick={() => handleKeypadPress('BACKSPACE')}
+                    className="bg-rose-50 hover:bg-rose-500 text-rose-700 hover:text-white font-black py-3 rounded-xl border border-rose-200 flex items-center justify-center cursor-pointer transition-colors shadow-3xs"
+                  >
+                    <span className="material-symbols-outlined text-[22px]">backspace</span>
+                  </button>
+
+                  {['4', '5', '6'].map(n => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => handleKeypadPress(n)}
+                      className="bg-white hover:bg-amber-50 text-slate-950 font-mono font-black text-2xl py-3 rounded-xl border border-slate-200 shadow-3xs active:scale-95 transition-all cursor-pointer"
+                    >
+                      {n}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => handleKeypadPress('CLEAR')}
+                    className="bg-amber-50 hover:bg-amber-100 text-amber-900 font-black py-3 rounded-xl border border-amber-200 text-sm cursor-pointer transition-colors shadow-3xs"
+                  >
+                    C
+                  </button>
+
+                  {['1', '2', '3'].map(n => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => handleKeypadPress(n)}
+                      className="bg-white hover:bg-amber-50 text-slate-950 font-mono font-black text-2xl py-3 rounded-xl border border-slate-200 shadow-3xs active:scale-95 transition-all cursor-pointer"
+                    >
+                      {n}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => handleKeypadPress('.')}
+                    className="bg-white hover:bg-amber-50 text-slate-950 font-mono font-black text-2xl py-3 rounded-xl border border-slate-200 shadow-3xs active:scale-95 transition-all cursor-pointer"
+                  >
+                    .
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleKeypadPress('0')}
+                    className="col-span-2 bg-white hover:bg-amber-50 text-slate-950 font-mono font-black text-2xl py-3 rounded-xl border border-slate-200 shadow-3xs active:scale-95 transition-all cursor-pointer"
+                  >
+                    0
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (items.length > 0) {
+                        const curIdx = items.findIndex(it => it.id === selectedRowId);
+                        const nextIdx = (curIdx + 1) % items.length;
+                        setSelectedRowId(items[nextIdx].id);
+                        setKeypadBuffer('');
+                      }
+                    }}
+                    className="col-span-2 bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3 rounded-xl flex items-center justify-center gap-1 text-sm cursor-pointer shadow-xs transition-colors"
+                  >
+                    <span>الصنف التالي</span>
+                    <span className="material-symbols-outlined text-[16px]">arrow_downward</span>
+                  </button>
                 </div>
               </div>
-
-              {/* Main Numeric Numpad — Standard Calculator/POS LTR Layout */}
-              <div className="grid grid-cols-4 gap-1.5 pt-1" dir="ltr">
-                {['7', '8', '9'].map(n => (
-                  <button
-                    key={n}
-                    type="button"
-                    onClick={() => handleKeypadPress(n)}
-                    className="bg-white hover:bg-amber-50 text-slate-950 font-mono font-black text-2xl py-3 rounded-xl border border-slate-200 shadow-3xs active:scale-95 transition-all cursor-pointer"
-                  >
-                    {n}
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => handleKeypadPress('BACKSPACE')}
-                  className="bg-rose-50 hover:bg-rose-500 text-rose-700 hover:text-white font-black py-3 rounded-xl border border-rose-200 flex items-center justify-center cursor-pointer transition-colors shadow-3xs"
-                >
-                  <span className="material-symbols-outlined text-[22px]">backspace</span>
-                </button>
-
-                {['4', '5', '6'].map(n => (
-                  <button
-                    key={n}
-                    type="button"
-                    onClick={() => handleKeypadPress(n)}
-                    className="bg-white hover:bg-amber-50 text-slate-950 font-mono font-black text-2xl py-3 rounded-xl border border-slate-200 shadow-3xs active:scale-95 transition-all cursor-pointer"
-                  >
-                    {n}
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => handleKeypadPress('CLEAR')}
-                  className="bg-amber-50 hover:bg-amber-100 text-amber-900 font-black py-3 rounded-xl border border-amber-200 text-sm cursor-pointer transition-colors shadow-3xs"
-                >
-                  C
-                </button>
-
-                {['1', '2', '3'].map(n => (
-                  <button
-                    key={n}
-                    type="button"
-                    onClick={() => handleKeypadPress(n)}
-                    className="bg-white hover:bg-amber-50 text-slate-950 font-mono font-black text-2xl py-3 rounded-xl border border-slate-200 shadow-3xs active:scale-95 transition-all cursor-pointer"
-                  >
-                    {n}
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => handleKeypadPress('.')}
-                  className="bg-white hover:bg-amber-50 text-slate-950 font-mono font-black text-2xl py-3 rounded-xl border border-slate-200 shadow-3xs active:scale-95 transition-all cursor-pointer"
-                >
-                  .
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleKeypadPress('0')}
-                  className="col-span-2 bg-white hover:bg-amber-50 text-slate-950 font-mono font-black text-2xl py-3 rounded-xl border border-slate-200 shadow-3xs active:scale-95 transition-all cursor-pointer"
-                >
-                  0
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (items.length > 0) {
-                      const curIdx = items.findIndex(it => it.id === selectedRowId);
-                      const nextIdx = (curIdx + 1) % items.length;
-                      setSelectedRowId(items[nextIdx].id);
-                      setKeypadBuffer('');
-                    }
-                  }}
-                  className="col-span-2 bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3 rounded-xl flex items-center justify-center gap-1 text-sm cursor-pointer shadow-xs transition-colors"
-                >
-                  <span>الصنف التالي</span>
-                  <span className="material-symbols-outlined text-[16px]">arrow_downward</span>
-                </button>
-              </div>
-            </div>
+            )}
 
           </div>
           {/* ------------------------------------------------------------- */}
