@@ -492,6 +492,28 @@ export default function ReportsPage() {
           }
         });
 
+        // 4. مصروفات فرع عمر أفندي فى نفس الوردية — بتتخصم حسب طريقة دفعها زي باقي الفروع
+        let bExpensesTotal = 0;
+        expenses.filter((e: any) => matchB(e.branch) && inPeriod(expenseDate(e))).forEach((exp: any) => {
+          const expTime = exp.createdAt ? new Date(exp.createdAt).getTime() : (exp.date ? new Date(exp.date).getTime() : 0);
+          let belongs = false;
+          if (targetShift) {
+            belongs = b.shiftType === 'مسائي' ? (expTime >= shiftStartMs - 60000) : (targetShift.endTime ? expTime <= shiftEndMs + 60000 : true);
+          } else {
+            const h = expTime ? new Date(expTime).getHours() : 12;
+            belongs = b.shiftType === 'صباحي' ? h < 17 : h >= 17;
+          }
+          if (belongs) {
+            const amt = Number(exp.amount) || 0;
+            bExpensesTotal += amt;
+            const m = (exp.paymentMethod || '').trim();
+            if (m.includes('فودافون')) bVodafone -= amt;
+            else if (m.includes('إنستا') || m.includes('انستا')) bInstapay -= amt;
+            else if (m.includes('فيزا') || m.includes('كارت')) bVisa -= amt;
+            else bCash -= amt;
+          }
+        });
+
         const shiftRecordCash = omarShifts.reduce((acc, s) => acc + Number(s.actualClosingCash ?? s.expectedCashInDrawer ?? s.cashSales ?? 0), 0);
         const finalCash = bCash > 0 ? bCash : shiftRecordCash;
         const total = finalCash + bInstapay + bVodafone + bVisa;
@@ -506,6 +528,7 @@ export default function ReportsPage() {
           vodafone: bVodafone,
           visa: bVisa,
           total,
+          expensesTotal: bExpensesTotal,
           count: bCount || omarShifts.length,
           employeeName,
           shiftSales: total,
