@@ -16,6 +16,14 @@ export default function EmployeesManagementPage() {
   const { user, isAdmin, isSuperAdmin } = useCurrentUser();
   const canViewWages = isAdmin || isSuperAdmin;
 
+  const formatTimeAr = (timeStr?: string): string => {
+    if (!timeStr) return '—';
+    return timeStr
+      .replace(/AM/i, 'ص')
+      .replace(/PM/i, 'م')
+      .trim();
+  };
+
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [advances, setAdvances] = useState<EmployeeAdvance[]>([]);
@@ -554,8 +562,11 @@ export default function EmployeesManagementPage() {
                             {emp.dailyWage}
                           </td>
                         )}
-                        <td className="p-3 font-mono text-[11px] text-slate-600" dir="ltr">
-                          {emp.workStartTime} - {emp.workEndTime}
+                        <td className="p-3 font-bold text-[11px] text-slate-700" dir="rtl">
+                          <span>من </span>
+                          <span className="font-mono text-slate-900">{formatTimeAr(emp.workStartTime)}</span>
+                          <span> إلى </span>
+                          <span className="font-mono text-slate-900">{formatTimeAr(emp.workEndTime)}</span>
                         </td>
                         <td className="p-3">
                           {status ? (
@@ -1026,7 +1037,12 @@ export default function EmployeesManagementPage() {
                             </div>
                             <div>
                               <span className="text-slate-500 block text-[11px]">مواعيد العمل:</span>
-                              <span className="font-mono font-bold text-slate-700 text-[11px]" dir="ltr">{emp.workStartTime} - {emp.workEndTime}</span>
+                              <span className="font-bold text-slate-800 text-[11px] inline-flex items-center gap-1" dir="rtl">
+                                <span>من</span>
+                                <span className="font-mono text-slate-950 font-black">{formatTimeAr(emp.workStartTime)}</span>
+                                <span>إلى</span>
+                                <span className="font-mono text-slate-950 font-black">{formatTimeAr(emp.workEndTime)}</span>
+                              </span>
                             </div>
                           </div>
 
