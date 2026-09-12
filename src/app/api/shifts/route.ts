@@ -38,6 +38,107 @@ export async function GET(request: Request) {
       } catch (e) {}
     }
 
+    // Auto-enrich shifts with real-time sales made during the shift timeframe
+    try {
+      const [allInvoices, allQuotations] = await Promise.all([
+        (prisma as any).salesInvoice.findMany().catch(() => []),
+        (prisma as any).quotationOrder.findMany().catch(() => []),
+      ]);
+
+      shifts = shifts.map((s: any) => {
+        const shiftStart = new Date(s.startTime).getTime();
+        const shiftEnd = s.endTime ? new Date(s.endTime).getTime() : Date.now();
+
+        const matchBranch = (bStr?: string) => {
+          if (!bStr) return false;
+          const sB = String(s.branch || '').trim().toLowerCase();
+          const iB = String(bStr || '').trim().toLowerCase();
+          return iB.includes(sB) || sB.includes(iB) || (sB.includes('عمر') && iB.includes('عمر'));
+        };
+
+        let calculatedCash = 0;
+        let calculatedInstapay = 0;
+        let calculatedVodafone = 0;
+        let calculatedVisa = 0;
+        let calculatedTotal = 0;
+
+        allInvoices.forEach((inv: any) => {
+          if (!matchBranch(inv.branch)) return;
+          const invTime = inv.createdAt ? new Date(inv.createdAt).getTime() : (inv.date ? new Date(inv.date).getTime() : 0);
+          if (invTime >= shiftStart - 60000 && invTime <= shiftEnd + 60000) {
+            let split = inv.splitPayments;
+            if (!split && inv.notes && inv.notes.includes('[SPLIT:')) {
+              try {
+                const match = inv.notes.match(/\[SPLIT:([^\]]+)\]/);
+                if (match && match[1]) split = JSON.parse(match[1]);
+              } catch {}
+            }
+            if (split) {
+              calculatedCash += Number(split.cash || 0);
+              calculatedInstapay += Number(split.instapay || 0);
+              calculatedVodafone += Number(split.vodafone || 0);
+              calculatedVisa += Number(split.visa || 0);
+              calculatedTotal += Number(inv.totalAmount || inv.paidAmount || 0);
+            } else {
+              const m = (inv.paymentType || inv.paymentMethod || '').trim();
+              const paid = Number(inv.paidAmount || 0);
+              if (m.includes('فودافون')) calculatedVodafone += paid;
+              else if (m.includes('إنستا') || m.includes('انستا')) calculatedInstapay += paid;
+              else if (m.includes('فيزا') || m.includes('كارت')) calculatedVisa += paid;
+              else calculatedCash += paid;
+              calculatedTotal += Number(inv.totalAmount || paid);
+            }
+          }
+        });
+
+        allQuotations.forEach((q: any) => {
+          if (!matchBranch(q.branch)) return;
+          const qTime = q.createdAt ? new Date(q.createdAt).getTime() : (q.date ? new Date(q.date).getTime() : 0);
+          if (qTime >= shiftStart - 60000 && qTime <= shiftEnd + 60000) {
+            const deposit = Number(q.depositPaid || 0);
+            let split = q.splitPayments;
+            if (split) {
+              calculatedCash += Number(split.cash || 0);
+              calculatedInstapay += Number(split.instapay || 0);
+              calculatedVodafone += Number(split.vodafone || 0);
+              calculatedVisa += Number(split.visa || 0);
+            } else {
+              const m = (q.paymentMethod || '').trim();
+              if (m.includes('فودافون')) calculatedVodafone += deposit;
+              else if (m.includes('إنستا') || m.includes('انستا')) calculatedInstapay += deposit;
+              else if (m.includes('فيزا') || m.includes('كارت')) calculatedVisa += deposit;
+              else calculatedCash += deposit;
+            }
+            calculatedTotal += Number(q.totalAmount || deposit);
+          }
+        });
+
+        const effectiveCash = (s.cashSales && s.cashSales > 0) ? s.cashSales : calculatedCash;
+        const effectiveTotal = (s.totalSales && s.totalSales > 0) ? s.totalSales : (calculatedTotal > 0 ? calculatedTotal : effectiveCash);
+        const effectiveInstapay = (s.instapaySales && s.instapaySales > 0) ? s.instapaySales : calculatedInstapay;
+        const effectiveVodafone = (s.vodafoneSales && s.vodafoneSales > 0) ? s.vodafoneSales : calculatedVodafone;
+        const effectiveVisa = (s.visaSales && s.visaSales > 0) ? s.visaSales : calculatedVisa;
+
+        const expected = Number(s.openingDrawerBalance || 0) + effectiveCash - (Number(s.expensesPaid || 0) + Number(s.advancesPaid || 0));
+        const actualCash = s.actualClosingCash !== null && s.actualClosingCash !== undefined ? s.actualClosingCash : (s.status === 'CLOSED' ? expected : null);
+        const discrepancy = actualCash !== null ? (actualCash - expected) : null;
+
+        return {
+          ...s,
+          cashSales: effectiveCash,
+          totalSales: effectiveTotal,
+          instapaySales: effectiveInstapay,
+          vodafoneSales: effectiveVodafone,
+          visaSales: effectiveVisa,
+          expectedCashInDrawer: expected,
+          actualClosingCash: actualCash,
+          cashDiscrepancy: discrepancy,
+        };
+      });
+    } catch (e) {
+      console.error('Error enriching shifts:', e);
+    }
+
     return NextResponse.json({ success: true, shifts });
   } catch (error: any) {
     console.error('Failed to get shifts:', error);

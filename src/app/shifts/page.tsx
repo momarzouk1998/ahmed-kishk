@@ -92,6 +92,21 @@ export default function ShiftsAndDrawerPage() {
     return shifts.find(s => normalizeBranchName(s.branch) === normalizeBranchName(selectedBranch) && s.status === 'OPEN');
   }, [shifts, selectedBranch]);
 
+  const previousShiftBalance = useMemo(() => {
+    const prev = shifts.find(s => 
+      normalizeBranchName(s.branch) === normalizeBranchName(selectedBranch) && 
+      s.status === 'CLOSED'
+    );
+    if (!prev) return 0;
+    return Number(prev.actualClosingCash !== null && prev.actualClosingCash !== undefined ? prev.actualClosingCash : prev.expectedCashInDrawer) || 0;
+  }, [shifts, selectedBranch]);
+
+  useEffect(() => {
+    if (!activeShift && previousShiftBalance > 0 && (openingBalance === '0' || openingBalance === '')) {
+      setOpeningBalance(String(previousShiftBalance));
+    }
+  }, [selectedBranch, previousShiftBalance, activeShift]);
+
   const branchEmployees = useMemo(() => {
     return employees.filter(e => normalizeBranchName(e.branch) === normalizeBranchName(selectedBranch));
   }, [employees, selectedBranch]);
@@ -608,7 +623,18 @@ export default function ShiftsAndDrawerPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">عهدة بداية الوردية (الدرج نقداً) *</label>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="block text-xs font-bold text-slate-700">عهدة بداية الوردية (الدرج نقداً) *</label>
+                    {previousShiftBalance > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setOpeningBalance(String(previousShiftBalance))}
+                        className="text-[10px] font-bold text-emerald-800 hover:text-emerald-950 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded-md cursor-pointer transition-colors"
+                      >
+                        💡 استلام عهدة الوردية السابقة ({previousShiftBalance.toLocaleString()} ج) ⤵️
+                      </button>
+                    )}
+                  </div>
                   <input
                     type="number"
                     required
