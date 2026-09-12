@@ -10,6 +10,14 @@ export const DEFAULT_INVENTORY_CATEGORIES = [
   'أشرطة وإكسسوارات',
 ];
 
+export const ALL_BRANCH_NAMES = [
+  'الفرع الرئيسي',
+  'فرع عرابي',
+  'فرع عمر أفندي',
+  'فرع الثلاثيني',
+  'الفرع التجاري',
+];
+
 const BRANCH_CUSTOM_CATEGORIES_KEY = 'ahmed_kishk_branch_categories_v2';
 const CUSTOM_CATEGORIES_KEY = 'ahmed_kishk_custom_categories_v1';
 
@@ -26,7 +34,7 @@ export function getBranchCustomCategories(branchName?: string): string[] {
       });
       return Array.from(new Set(all));
     }
-    return Array.from(new Set([...(map[branchName] || []), ...(map['الكل'] || [])]));
+    return Array.from(new Set(map[branchName] || []));
   } catch {
     return [];
   }
@@ -40,7 +48,13 @@ export function saveBranchCustomCategory(branchName: string, newCategory: string
     const map: Record<string, string[]> = raw ? JSON.parse(raw) : {};
     
     const targetBranch = branchName || 'الكل';
-    map[targetBranch] = Array.from(new Set([...(map[targetBranch] || []), cat]));
+    if (targetBranch === 'الكل') {
+      ALL_BRANCH_NAMES.forEach(b => {
+        map[b] = Array.from(new Set([...(map[b] || []), cat]));
+      });
+    } else {
+      map[targetBranch] = Array.from(new Set([...(map[targetBranch] || []), cat]));
+    }
     
     localStorage.setItem(BRANCH_CUSTOM_CATEGORIES_KEY, JSON.stringify(map));
     fetch('/api/system-data', {
