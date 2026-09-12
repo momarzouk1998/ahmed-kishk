@@ -80,8 +80,13 @@ export default function ShiftsAndDrawerPage() {
   useEffect(() => {
     if (user?.branch) {
       setSelectedBranch(user.branch);
+      if (!isAdmin && !isSuperAdmin) {
+        setBranchFilter(user.branch);
+      } else {
+        setBranchFilter('all');
+      }
     }
-  }, [user]);
+  }, [user, isAdmin, isSuperAdmin]);
 
   const activeShift = useMemo(() => {
     return shifts.find(s => normalizeBranchName(s.branch) === normalizeBranchName(selectedBranch) && s.status === 'OPEN');
@@ -751,6 +756,39 @@ export default function ShiftsAndDrawerPage() {
               </span>
             </div>
           </div>
+
+          {/* Quick Branch Filter Bar for Admin */}
+          {canManage && (
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-slate-100">
+              <span className="text-xs font-bold text-slate-500 whitespace-nowrap ml-1">تصفية الفرع:</span>
+              <button
+                type="button"
+                onClick={() => setBranchFilter('all')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                  branchFilter === 'all'
+                    ? 'bg-slate-900 text-white shadow-xs font-black'
+                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                }`}
+              >
+                🏢 جميع الفروع
+              </button>
+              {BRANCHES_LIST.map(b => (
+                <button
+                  key={b.id}
+                  type="button"
+                  onClick={() => setBranchFilter(b.name)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 ${
+                    branchFilter === b.name
+                      ? 'bg-emerald-700 text-white shadow-xs font-black'
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                  }`}
+                >
+                  <span>🏪</span>
+                  <span>{b.name}</span>
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* Quick Date Filters, Search Toolbar & Filter Modal Trigger */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pt-1">
