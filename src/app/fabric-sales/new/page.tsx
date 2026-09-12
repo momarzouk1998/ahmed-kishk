@@ -102,6 +102,12 @@ export default function NewSalesInvoicePOSPage() {
   // حسب الفرع فى الـ API)، فكانت فواتير الفرع الرئيسى تُسجَّل بقيمة فرع مختلفة فعلياً.
   const [branch, setBranch] = useState('الفرع الرئيسي');
 
+  // #FEATURE: بحث فورى عن عميل مسجّل سابقًا (بالاسم أو الهاتف) — عشان العملاء
+  // الدائمين (خصوصًا أونلاين) ما يتكتبش اسمهم وهاتفهم وعنوانهم من الصفر كل مرة.
+  // نفس نمط البحث المستخدم فى صفحة المعاينات (pipeline/inspections).
+  const [registeredCustomers, setRegisteredCustomers] = useState<any[]>([]);
+  const [custDropdownOpen, setCustDropdownOpen] = useState(false);
+
   // Invoice Line Items (Table rows)
   const [items, setItems] = useState<InvoiceLineItem[]>([]);
   const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
@@ -118,6 +124,18 @@ export default function NewSalesInvoicePOSPage() {
   useEffect(() => {
     if (!isAdmin && currentUser?.branch) setBranch(currentUser.branch);
   }, [isAdmin, currentUser]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/customers', { cache: 'no-store' });
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && Array.isArray(json.customers)) setRegisteredCustomers(json.customers);
+        }
+      } catch {}
+    })();
+  }, []);
 
   // Manager unlock gate — للتحكم فى تعديل الأسعار والخصومات
   const { requestUnlock, Modal: MgrModal } = useManagerGate();
@@ -652,13 +670,55 @@ export default function NewSalesInvoicePOSPage() {
 
               {/* Customer Name, Phone & Branch */}
               <div className="space-y-1.5">
-                <input
-                  type="text"
-                  placeholder="اسم العميل..."
-                  value={custName}
-                  onChange={e => setCustName(e.target.value)}
-                  className="w-full border border-slate-200 rounded-xl px-2.5 py-1.5 font-bold text-slate-900 bg-slate-50 focus:bg-white focus:outline-none focus:border-amber-500 text-xs"
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="اسم العميل... (اكتب للبحث عن عميل سابق)"
+                    value={custName}
+                    onFocus={() => setCustDropdownOpen(true)}
+                    onChange={e => { setCustName(e.target.value); setCustDropdownOpen(true); }}
+                    onBlur={() => setTimeout(() => setCustDropdownOpen(false), 150)}
+                    className="w-full border border-slate-200 rounded-xl px-2.5 py-1.5 font-bold text-slate-900 bg-slate-50 focus:bg-white focus:outline-none focus:border-amber-500 text-xs"
+                  />
+                  {/* #FEATURE: عميل مسجّل قبل كده (بالاسم أو الهاتف) — اختياره
+                      بيملى الهاتف والعنوان وهاتف المستلم تلقائيًا، عشان العميل
+                      الدائم (خصوصًا أونلاين) ما يتكتبش بياناته من الصفر كل مرة. */}
+                  {custDropdownOpen && custName.trim() !== '' && (() => {
+                    const q = custName.trim().toLowerCase();
+                    const matches = registeredCustomers.filter(c =>
+                      (c.name || '').toLowerCase().includes(q) || (c.phone || '').includes(custName.trim())
+                    ).slice(0, 8);
+                    if (matches.length === 0) return null;
+                    return (
+                      <div className="absolute right-0 left-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl z-30 max-h-48 overflow-y-auto divide-y divide-slate-100">
+                        {matches.map((c: any) => (
+                          <div
+                            key={c.id}
+                            onMouseDown={() => {
+                              setCustName(c.name);
+                              setCustPhone(c.phone || '');
+                              setCustomerType('REGISTERED');
+                              if (isCommercialBranch) {
+                                if (c.address) setShippingAddress(c.address);
+                                if (c.phone) setReceiverPhone(c.phone);
+                              }
+                              setCustDropdownOpen(false);
+                            }}
+                            className="p-2 hover:bg-amber-50 cursor-pointer flex justify-between items-center gap-2 text-xs"
+                          >
+                            <div className="min-w-0">
+                              <div className="font-bold text-slate-900 truncate">{c.name}</div>
+                              {c.address && <div className="text-[10px] text-slate-500 truncate">{c.address}</div>}
+                            </div>
+                            <div className="font-mono font-bold text-amber-900 bg-amber-100/70 px-1.5 py-0.5 rounded shrink-0" dir="ltr">
+                              {c.phone}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                </div>
 
                 <input
                   type="text"
