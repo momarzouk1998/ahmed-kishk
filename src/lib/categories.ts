@@ -57,6 +57,15 @@ export function saveBranchCustomCategory(branchName: string, newCategory: string
     }
     
     localStorage.setItem(BRANCH_CUSTOM_CATEGORIES_KEY, JSON.stringify(map));
+    
+    // Save to dedicated DB API
+    fetch('/api/categories', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: cat, branch: targetBranch }),
+    }).catch(() => {});
+
+    // Sync to SystemStore
     fetch('/api/system-data', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -82,6 +91,13 @@ export function deleteBranchCategory(branchName: string, categoryToDelete: strin
       map[branchName] = map[branchName].filter(c => c !== categoryToDelete);
     }
     localStorage.setItem(BRANCH_CUSTOM_CATEGORIES_KEY, JSON.stringify(map));
+    
+    // Delete from DB API
+    fetch(`/api/categories?name=${encodeURIComponent(categoryToDelete)}&branch=${encodeURIComponent(branchName || 'الكل')}`, {
+      method: 'DELETE',
+    }).catch(() => {});
+
+    // Sync to SystemStore
     fetch('/api/system-data', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -103,7 +119,7 @@ export function deleteCategory(categoryToDelete: string): string[] {
   return getBranchCustomCategories('الكل');
 }
 
-export function renameCategory(oldName: string, newName: string): string[] {
+export function renameCategory(oldName: string, newName: string, branchName?: string): string[] {
   const cleanNew = newName.trim();
   if (!cleanNew || typeof window === 'undefined') return [];
   try {
@@ -113,6 +129,14 @@ export function renameCategory(oldName: string, newName: string): string[] {
       map[k] = (map[k] || []).map(c => (c === oldName ? cleanNew : c));
     });
     localStorage.setItem(BRANCH_CUSTOM_CATEGORIES_KEY, JSON.stringify(map));
+    
+    // Rename in DB API
+    fetch('/api/categories', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ oldName, newName: cleanNew, branch: branchName || 'الكل' }),
+    }).catch(() => {});
+
     fetch('/api/system-data', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

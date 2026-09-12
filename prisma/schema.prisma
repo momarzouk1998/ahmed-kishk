@@ -277,4 +277,15 @@ model SystemStore {
   updatedAt DateTime @updatedAt
 }
 
+model BranchCategory {
+  id        String   @id @default(cuid())
+  name      String
+  branch    String   @default("الفرع الرئيسي")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([name, branch])
+}
+
+
 

@@ -92,13 +92,12 @@ export default function InventoryPage() {
     setMgrUnlocked(isManagerUnlocked());
   }, []);
 
-  const [editingCategoryOldName, setEditingCategoryOldName] = useState<string | null>(null);
+  const [editingCategoryKey, setEditingCategoryKey] = useState<string | null>(null); // e.g. "ستائر__فرع عرابي"
   const [editingCategoryNewName, setEditingCategoryNewName] = useState<string>('');
   const [newCategoryName, setNewCategoryName] = useState<string>('');
   const [newCategoryBranch, setNewCategoryBranch] = useState<string>('الكل');
   const [categoryTabBranch, setCategoryTabBranch] = useState<string>('الكل');
   const [categorySearch, setCategorySearch] = useState<string>('');
-  const [showEmptyCategories, setShowEmptyCategories] = useState<boolean>(false);
 
   const handleAddNewCategory = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -108,27 +107,30 @@ export default function InventoryPage() {
     saveBranchCustomCategory(targetBranch, clean);
     setCategories(['الكل', ...getBranchCustomCategories('الكل')]);
     setNewCategoryName('');
-    alert(`تمت إضافة تصنيف "${clean}" بنجاح ${targetBranch === 'الكل' ? 'لكل الفروع' : `إلى ${targetBranch}`}`);
+    alert(`تمت إضافة تصنيف "${clean}" بنجاح ${targetBranch === 'الكل' ? 'لكل الفروع (5 أسطر)' : `إلى ${targetBranch}`}`);
   };
 
-  const handleStartRenameCategory = (catName: string) => {
-    setEditingCategoryOldName(catName);
+  const handleStartRenameCategory = (catName: string, branchName: string) => {
+    setEditingCategoryKey(`${catName}__${branchName}`);
     setEditingCategoryNewName(catName);
   };
 
-  const handleSaveRenameCategory = async (oldName: string) => {
+  const handleSaveRenameCategory = async (oldName: string, branchName: string) => {
     const cleanNew = editingCategoryNewName.trim();
     if (!cleanNew || cleanNew === oldName) {
-      setEditingCategoryOldName(null);
+      setEditingCategoryKey(null);
       return;
     }
 
-    const updatedCats = renameCategory(oldName, cleanNew);
+    const updatedCats = renameCategory(oldName, cleanNew, branchName);
     setCategories(['الكل', ...updatedCats]);
 
-    const updatedItems = items.map(it => it.category === oldName ? { ...it, category: cleanNew } : it);
+    const updatedItems = items.map(it => {
+      const matchBranch = branchName === 'الكل' || normalizeBranchName(it.branch) === normalizeBranchName(branchName);
+      return (matchBranch && it.category === oldName) ? { ...it, category: cleanNew } : it;
+    });
     setItems(updatedItems);
-    setEditingCategoryOldName(null);
+    setEditingCategoryKey(null);
 
     try {
       await fetch('/api/system-data', {
@@ -142,23 +144,32 @@ export default function InventoryPage() {
     }
   };
 
-  const handleDeleteCategory = async (catToDelete: string) => {
-    const itemsInCat = items.filter(it => it.category === catToDelete);
-    if (itemsInCat.length > 0) {
-      if (!confirm(`تحذير: هذا التصنيف يحتوي على ${itemsInCat.length} صنف مسجل في المخازن. هل أنت متأكد من حذفه ونقل أصنافه إلى "غير مصنف"؟`)) {
+  const handleDeleteCategory = async (catToDelete: string, branchName?: string) => {
+    const targetBranch = branchName || 'الكل';
+    const branchItems = items.filter(it => 
+      (targetBranch === 'الكل' || normalizeBranchName(it.branch) === normalizeBranchName(targetBranch)) &&
+      it.category === catToDelete
+    );
+
+    if (branchItems.length > 0) {
+      if (!confirm(`تحذير: هذا التصنيف يحتوي على ${branchItems.length} صنف مسجل في ${targetBranch === 'الكل' ? 'المخازن' : targetBranch}. هل أنت متأكد من حذفه ونقل أصنافه إلى "غير مصنف"؟`)) {
         return;
       }
     } else {
-      if (!confirm(`هل أنت متأكد من حذف تصنيف "${catToDelete}"؟`)) {
+      if (!confirm(`هل أنت متأكد من حذف تصنيف "${catToDelete}" من ${targetBranch === 'الكل' ? 'جميع الفروع' : targetBranch}؟`)) {
         return;
       }
     }
 
-    const updatedCats = deleteCategory(catToDelete);
+    deleteBranchCategory(targetBranch, catToDelete);
+    const updatedCats = getBranchCustomCategories('الكل');
     setCategories(['الكل', ...updatedCats]);
 
-    if (itemsInCat.length > 0) {
-      const updatedItems = items.map(it => it.category === catToDelete ? { ...it, category: 'غير مصنف' } : it);
+    if (branchItems.length > 0) {
+      const updatedItems = items.map(it => {
+        const matchBranch = targetBranch === 'الكل' || normalizeBranchName(it.branch) === normalizeBranchName(targetBranch);
+        return (matchBranch && it.category === catToDelete) ? { ...it, category: 'غير مصنف' } : it;
+      });
       setItems(updatedItems);
       try {
         await fetch('/api/system-data', {
@@ -1213,138 +1224,143 @@ export default function InventoryPage() {
                   })}
                 </div>
 
-                <div className="flex items-center gap-3 w-full md:w-auto flex-wrap">
-                  <label className="flex items-center gap-1.5 cursor-pointer text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-xl border border-slate-200 transition-colors shrink-0">
-                    <input
-                      type="checkbox"
-                      checked={showEmptyCategories}
-                      onChange={e => setShowEmptyCategories(e.target.checked)}
-                      className="accent-emerald-600 w-4 h-4 rounded cursor-pointer"
-                    />
-                    <span>إظهار التصنيفات الفارغة بالفرع</span>
-                  </label>
-
-                  <div className="w-full sm:w-56">
+                <div className="flex items-center gap-3 w-full md:w-auto">
+                  <div className="w-full sm:w-72">
                     <input
                       type="text"
                       value={categorySearch}
                       onChange={e => setCategorySearch(e.target.value)}
-                      placeholder="🔍 تصفية اسم التصنيف..."
-                      className="w-full border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-emerald-500"
+                      placeholder="🔍 بحث في اسم التصنيف أو اسم الفرع..."
+                      className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 bg-white shadow-2xs"
                     />
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Branch Table Sections */}
-            {BRANCHES_LIST.filter(b => categoryTabBranch === 'الكل' || normalizeBranchName(b.name) === normalizeBranchName(categoryTabBranch)).map(branchConfig => {
-              const branchItems = items.filter(i => normalizeBranchName(i.branch) === normalizeBranchName(branchConfig.name));
-              const branchTotalStock = branchItems.reduce((acc, i) => acc + (Number(i.totalQuantity) || 0), 0);
-              
-              // Categories that exist in this branch (from actual items + custom categories added specifically for this branch)
-              const branchItemCats = Array.from(new Set(branchItems.map(i => (i.category || '').trim()).filter(Boolean)));
-              const branchCustomCats = getBranchCustomCategories(branchConfig.name);
-              const branchSpecificCats = Array.from(new Set([...branchItemCats, ...branchCustomCats]));
-              const allKnownCats = dynamicCategories.filter(c => c !== 'الكل');
-              
-              // If showEmptyCategories is true, show all system categories. Otherwise only show categories with items or added to this branch.
-              const targetCats = showEmptyCategories
-                ? Array.from(new Set([...branchSpecificCats, ...allKnownCats])).sort((a, b) => {
-                    const countA = branchItems.filter(i => i.category === a).length;
-                    const countB = branchItems.filter(i => i.category === b).length;
-                    return countB - countA;
-                  })
-                : branchSpecificCats.sort((a, b) => {
-                    const countA = branchItems.filter(i => i.category === a).length;
-                    const countB = branchItems.filter(i => i.category === b).length;
-                    return countB - countA;
-                  });
+            {/* Unified Single Categories Table */}
+            {(() => {
+              const targetBranches = BRANCHES_LIST.filter(b => 
+                categoryTabBranch === 'الكل' || normalizeBranchName(b.name) === normalizeBranchName(categoryTabBranch)
+              );
 
-              const displayedCats = targetCats.filter(cat => {
-                if (categorySearch.trim()) {
-                  return cat.toLowerCase().includes(categorySearch.trim().toLowerCase());
-                }
-                return true;
+              const rows: Array<{
+                branch: string;
+                branchType: string;
+                category: string;
+                itemsCount: number;
+                totalStock: number;
+                branchTotalStock: number;
+                stockRatio: number;
+                hasItems: boolean;
+              }> = [];
+
+              targetBranches.forEach(branchConfig => {
+                const branchItems = items.filter(i => normalizeBranchName(i.branch) === normalizeBranchName(branchConfig.name));
+                const branchTotalStock = branchItems.reduce((acc, i) => acc + (Number(i.totalQuantity) || 0), 0);
+                const branchItemCats = Array.from(new Set(branchItems.map(i => (i.category || '').trim()).filter(Boolean)));
+                const branchCustomCats = getBranchCustomCategories(branchConfig.name);
+                
+                const branchCats = Array.from(new Set([...branchItemCats, ...branchCustomCats])).sort((a, b) => {
+                  const countA = branchItems.filter(i => i.category === a).length;
+                  const countB = branchItems.filter(i => i.category === b).length;
+                  return countB - countA;
+                });
+
+                branchCats.forEach(cat => {
+                  const catBranchItems = branchItems.filter(i => i.category === cat);
+                  const catBranchStock = catBranchItems.reduce((acc, i) => acc + (Number(i.totalQuantity) || 0), 0);
+                  const stockRatio = branchTotalStock > 0 ? (catBranchStock / branchTotalStock) * 100 : 0;
+                  rows.push({
+                    branch: branchConfig.name,
+                    branchType: branchConfig.type,
+                    category: cat,
+                    itemsCount: catBranchItems.length,
+                    totalStock: catBranchStock,
+                    branchTotalStock,
+                    stockRatio,
+                    hasItems: catBranchItems.length > 0,
+                  });
+                });
               });
 
-              const activeCatsCount = branchSpecificCats.length;
+              const filteredRows = categorySearch.trim()
+                ? rows.filter(r => r.category.toLowerCase().includes(categorySearch.trim().toLowerCase()) || r.branch.toLowerCase().includes(categorySearch.trim().toLowerCase()))
+                : rows;
+
+              const getBadgeColor = (branchName: string) => {
+                if (branchName.includes('الرئيسي')) return 'bg-emerald-50 text-emerald-800 border-emerald-200';
+                if (branchName.includes('عرابي')) return 'bg-blue-50 text-blue-800 border-blue-200';
+                if (branchName.includes('عمر أفندي')) return 'bg-purple-50 text-purple-800 border-purple-200';
+                if (branchName.includes('الثلاثيني')) return 'bg-amber-50 text-amber-800 border-amber-200';
+                if (branchName.includes('التجاري')) return 'bg-rose-50 text-rose-800 border-rose-200';
+                return 'bg-slate-100 text-slate-800 border-slate-200';
+              };
 
               return (
-                <div key={branchConfig.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
-                  {/* Branch Header Bar */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-slate-50 border-b border-slate-200">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-lg shrink-0">
-                        🏪
-                      </div>
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+                  {/* Table Stats Top Bar */}
+                  <div className="p-4 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <span className="w-8 h-8 rounded-lg bg-amber-500 text-white flex items-center justify-center font-bold text-sm">
+                        🏷️
+                      </span>
                       <div>
-                        <div className="flex items-center gap-2">
-                          <h4 className="font-bold text-slate-900 text-base">{branchConfig.name}</h4>
-                          <span className="text-[11px] bg-white border border-slate-200 text-slate-600 px-2 py-0.5 rounded-md font-medium">
-                            {branchConfig.type}
-                          </span>
-                        </div>
-                        <p className="text-xs text-slate-400 mt-0.5">{branchConfig.address}</p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-3 text-xs bg-white px-3 py-2 rounded-xl border border-slate-200 shadow-2xs">
-                      <div className="flex flex-col">
-                        <span className="text-slate-400 font-medium text-[11px]">التصنيفات النشطة:</span>
-                        <span className="font-bold text-amber-700 font-mono">{activeCatsCount} تصنيف</span>
-                      </div>
-                      <div className="w-px h-6 bg-slate-100" />
-                      <div className="flex flex-col">
-                        <span className="text-slate-400 font-medium text-[11px]">إجمالي الأصناف:</span>
-                        <span className="font-bold text-slate-800 font-mono">{branchItems.length} صنف</span>
-                      </div>
-                      <div className="w-px h-6 bg-slate-100" />
-                      <div className="flex flex-col">
-                        <span className="text-slate-400 font-medium text-[11px]">إجمالي رصيد الفرع:</span>
-                        <span className="font-bold text-emerald-700 font-mono">{branchTotalStock.toLocaleString()} متر/قطعة</span>
+                        <h4 className="font-bold text-slate-900 text-sm">
+                          جدول التصنيفات المعتمدة للفروع
+                          {categoryTabBranch !== 'الكل' && <span className="text-emerald-700 mr-1.5">({categoryTabBranch})</span>}
+                        </h4>
+                        <p className="text-[11px] text-slate-500">
+                          إجمالي التصنيفات المعروضة: <span className="font-bold font-mono text-slate-800">{filteredRows.length}</span> تصنيف
+                        </p>
                       </div>
                     </div>
                   </div>
 
-                  {/* Branch Categories Table */}
+                  {/* Single Table */}
                   <div className="overflow-x-auto">
                     <table className="w-full text-right border-collapse text-sm">
                       <thead>
-                        <tr className="bg-slate-100/80 text-slate-600 text-xs font-bold border-b border-slate-200">
-                          <th className="py-2.5 px-3 w-12 text-center">#</th>
-                          <th className="py-2.5 px-3 min-w-[180px]">اسم التصنيف</th>
-                          <th className="py-2.5 px-3 text-center min-w-[110px]">عدد الأصناف</th>
-                          <th className="py-2.5 px-3 text-center min-w-[140px]">الرصيد بالفرع</th>
-                          <th className="py-2.5 px-3 min-w-[140px]">نسبة المخزون</th>
-                          <th className="py-2.5 px-3 text-center min-w-[110px]">الحالة</th>
-                          <th className="py-2.5 px-3 text-center min-w-[200px]">الإجراءات</th>
+                        <tr className="bg-slate-100/90 text-slate-700 text-xs font-bold border-b border-slate-200">
+                          <th className="py-3 px-3.5 w-12 text-center">#</th>
+                          <th className="py-3 px-3.5 min-w-[140px]">الفرع</th>
+                          <th className="py-3 px-3.5 min-w-[180px]">اسم التصنيف</th>
+                          <th className="py-3 px-3.5 text-center min-w-[110px]">عدد الأصناف</th>
+                          <th className="py-3 px-3.5 text-center min-w-[140px]">الرصيد بالمخزن</th>
+                          <th className="py-3 px-3.5 min-w-[140px]">نسبة المخزون بالفرع</th>
+                          <th className="py-3 px-3.5 text-center min-w-[110px]">الحالة</th>
+                          <th className="py-3 px-3.5 text-center min-w-[190px]">الإجراءات</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
-                        {displayedCats.length === 0 ? (
+                        {filteredRows.length === 0 ? (
                           <tr>
-                            <td colSpan={7} className="py-8 text-center text-slate-400 text-xs font-bold">
-                              {branchItems.length === 0 
-                                ? 'لا توجد أصناف أو تصنيفات مسجلة في هذا الفرع حتى الآن (الفرع فارغ)' 
-                                : 'لا توجد تصنيفات نشطة مطابقة للبحث في هذا الفرع'}
+                            <td colSpan={8} className="py-12 text-center text-slate-400 text-xs font-bold">
+                              {categoryTabBranch === 'الفرع التجاري' 
+                                ? 'لا توجد تصنيفات أو أصناف مسجلة في الفرع التجاري حالياً (يمكنك إضافة تصنيف جديد له من الأعلى)'
+                                : 'لا توجد تصنيفات مطابقة للبحث'}
                             </td>
                           </tr>
                         ) : (
-                          displayedCats.map((cat, idx) => {
-                            const catBranchItems = branchItems.filter(i => i.category === cat);
-                            const catBranchStock = catBranchItems.reduce((acc, i) => acc + (Number(i.totalQuantity) || 0), 0);
-                            const isEditing = editingCategoryOldName === cat;
-                            const stockRatio = branchTotalStock > 0 ? (catBranchStock / branchTotalStock) * 100 : 0;
-                            const hasItems = catBranchItems.length > 0;
+                          filteredRows.map((row, idx) => {
+                            const isEditing = editingCategoryKey === `${row.category}__${row.branch}`;
 
                             return (
-                              <tr key={cat} className={`hover:bg-slate-50/80 transition-colors ${hasItems ? 'bg-white' : 'bg-slate-50/40 text-slate-400'}`}>
-                                <td className="py-3 px-3 text-center text-xs font-mono text-slate-400">
+                              <tr key={`${row.branch}-${row.category}-${idx}`} className={`hover:bg-slate-50/90 transition-colors ${row.hasItems ? 'bg-white' : 'bg-slate-50/40'}`}>
+                                <td className="py-3 px-3.5 text-center text-xs font-mono text-slate-400">
                                   {idx + 1}
                                 </td>
 
-                                <td className="py-3 px-3">
+                                {/* Branch Column */}
+                                <td className="py-3 px-3.5">
+                                  <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg border ${getBadgeColor(row.branch)}`}>
+                                    <span>🏪</span>
+                                    <span>{row.branch}</span>
+                                  </span>
+                                </td>
+
+                                {/* Category Name Column */}
+                                <td className="py-3 px-3.5">
                                   {isEditing ? (
                                     <div className="flex items-center gap-2">
                                       <input
@@ -1352,20 +1368,20 @@ export default function InventoryPage() {
                                         value={editingCategoryNewName}
                                         onChange={e => setEditingCategoryNewName(e.target.value)}
                                         onKeyDown={e => {
-                                          if (e.key === 'Enter') handleSaveRenameCategory(cat);
-                                          if (e.key === 'Escape') setEditingCategoryOldName(null);
+                                          if (e.key === 'Enter') handleSaveRenameCategory(row.category, row.branch);
+                                          if (e.key === 'Escape') setEditingCategoryKey(null);
                                         }}
                                         autoFocus
-                                        className="border border-amber-400 rounded-lg px-2.5 py-1 text-xs text-slate-900 font-bold focus:outline-none focus:ring-1 focus:ring-amber-500 w-44"
+                                        className="border border-amber-400 rounded-lg px-2.5 py-1 text-xs text-slate-900 font-bold focus:outline-none focus:ring-1 focus:ring-amber-500 w-40"
                                       />
                                       <button
-                                        onClick={() => handleSaveRenameCategory(cat)}
+                                        onClick={() => handleSaveRenameCategory(row.category, row.branch)}
                                         className="bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold px-2.5 py-1 rounded transition"
                                       >
                                         حفظ
                                       </button>
                                       <button
-                                        onClick={() => setEditingCategoryOldName(null)}
+                                        onClick={() => setEditingCategoryKey(null)}
                                         className="bg-slate-200 hover:bg-slate-300 text-slate-700 text-[11px] font-bold px-2 py-1 rounded transition"
                                       >
                                         إلغاء
@@ -1373,66 +1389,71 @@ export default function InventoryPage() {
                                     </div>
                                   ) : (
                                     <div className="flex items-center gap-2">
-                                      <span className="w-7 h-7 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center font-bold text-xs shrink-0">
+                                      <span className="w-6 h-6 rounded-md bg-amber-50 text-amber-700 flex items-center justify-center font-bold text-xs shrink-0">
                                         🏷️
                                       </span>
-                                      <span className={`font-bold text-sm ${hasItems ? 'text-slate-900' : 'text-slate-500'}`}>
-                                        {cat}
+                                      <span className={`font-bold text-sm ${row.hasItems ? 'text-slate-900' : 'text-slate-500'}`}>
+                                        {row.category}
                                       </span>
                                     </div>
                                   )}
                                 </td>
 
-                                <td className="py-3 px-3 text-center">
+                                {/* Items Count */}
+                                <td className="py-3 px-3.5 text-center">
                                   <span className={`inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-mono font-bold ${
-                                    hasItems ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-slate-100 text-slate-400'
+                                    row.hasItems ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-slate-100 text-slate-400'
                                   }`}>
-                                    {catBranchItems.length} صنف
+                                    {row.itemsCount} صنف
                                   </span>
                                 </td>
 
-                                <td className="py-3 px-3 text-center font-mono font-bold">
-                                  <span className={hasItems ? 'text-emerald-700' : 'text-slate-400'}>
-                                    {catBranchStock.toLocaleString()} متر/قطعة
+                                {/* Total Stock */}
+                                <td className="py-3 px-3.5 text-center font-mono font-bold">
+                                  <span className={row.hasItems ? 'text-emerald-700' : 'text-slate-400'}>
+                                    {row.totalStock.toLocaleString()} متر/قطعة
                                   </span>
                                 </td>
 
-                                <td className="py-3 px-3">
+                                {/* Stock Ratio Bar */}
+                                <td className="py-3 px-3.5">
                                   <div className="flex items-center gap-2">
                                     <div className="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden">
                                       <div
                                         className={`h-full rounded-full transition-all duration-300 ${
-                                          stockRatio > 30 ? 'bg-emerald-500' : stockRatio > 10 ? 'bg-amber-500' : 'bg-blue-400'
+                                          row.stockRatio > 30 ? 'bg-emerald-500' : row.stockRatio > 10 ? 'bg-amber-500' : 'bg-blue-400'
                                         }`}
-                                        style={{ width: `${Math.min(100, Math.max(0, stockRatio))}%` }}
+                                        style={{ width: `${Math.min(100, Math.max(0, row.stockRatio))}%` }}
                                       />
                                     </div>
                                     <span className="text-[11px] font-mono text-slate-400 w-9 text-left">
-                                      {stockRatio.toFixed(0)}%
+                                      {row.stockRatio.toFixed(0)}%
                                     </span>
                                   </div>
                                 </td>
 
-                                <td className="py-3 px-3 text-center">
-                                  {hasItems ? (
-                                    <span className="inline-flex items-center gap-1 text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full font-bold">
+                                {/* Status */}
+                                <td className="py-3 px-3.5 text-center">
+                                  {row.hasItems ? (
+                                    <span className="inline-flex items-center gap-1 text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full font-bold">
                                       <span>●</span>
                                       <span>نشط بالفرع</span>
                                     </span>
                                   ) : (
-                                    <span className="inline-flex items-center gap-1 text-[11px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full font-medium">
+                                    <span className="inline-flex items-center gap-1 text-[11px] text-slate-400 bg-slate-100 px-2.5 py-0.5 rounded-full font-medium">
                                       <span>○</span>
                                       <span>بدون رصيد</span>
                                     </span>
                                   )}
                                 </td>
 
-                                <td className="py-3 px-3 text-center">
+                                {/* Actions */}
+                                <td className="py-3 px-3.5 text-center">
                                   <div className="flex items-center justify-center gap-1.5">
                                     <button
                                       onClick={() => {
-                                        setSelectedBranch(branchConfig.name);
-                                        setActiveCategory(cat);
+                                        setSelectedBranch(row.branch);
+                                        setActiveCategory(row.category);
                                         setTab('stock');
                                       }}
                                       className="text-xs bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 hover:border-amber-300 px-2.5 py-1 rounded-lg font-bold transition flex items-center gap-1"
@@ -1443,16 +1464,16 @@ export default function InventoryPage() {
                                     </button>
 
                                     <button
-                                      onClick={() => handleStartRenameCategory(cat)}
-                                      title="تعديل اسم التصنيف عبر جميع الفروع"
+                                      onClick={() => handleStartRenameCategory(row.category, row.branch)}
+                                      title="تعديل اسم التصنيف"
                                       className="p-1 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition text-xs font-bold"
                                     >
                                       ✏️
                                     </button>
 
                                     <button
-                                      onClick={() => handleDeleteCategory(cat)}
-                                      title="حذف التصنيف"
+                                      onClick={() => handleDeleteCategory(row.category, row.branch)}
+                                      title="حذف التصنيف من الفرع"
                                       className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition text-xs font-bold"
                                     >
                                       🗑️
@@ -1468,7 +1489,7 @@ export default function InventoryPage() {
                   </div>
                 </div>
               );
-            })}
+            })()}
           </div>
         )}
       </div>
