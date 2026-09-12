@@ -44,7 +44,15 @@ export function branchWhere(scope: BranchScope | null): { branch?: any } {
   if (norm === 'فرع عرابي') {
     return { branch: { in: ['فرع عرابي', 'عرابي', 'عدلي', scope.branch] } };
   }
-  return { branch: { in: [scope.branch, norm, MAIN_BRANCH_VALUE, MAIN_BRANCH_LABEL] } };
+  if (norm === MAIN_BRANCH_VALUE) {
+    return { branch: { in: [scope.branch, norm, MAIN_BRANCH_VALUE, MAIN_BRANCH_LABEL] } };
+  }
+  // #FIX (تسريب بيانات الفرع الرئيسي لموظفي الفرع التجاري): كانت الحالة
+  // الافتراضية (أي فرع مش من الـ 3 فوق) بتدمج تلقائيًا مع الفرع الرئيسي دايمًا
+  // حتى لو الموظف مش تابع له أصلاً — ده كان بيخلي مدير الفرع التجاري (وأي فرع
+  // جديد يتضاف مستقبلاً) يشوف فواتير الفرع الرئيسي كمان. أي فرع تاني غير
+  // الأربعة المعروفة دلوقتي بيتقفل على قيمته هو بس، من غير أي دمج تلقائي.
+  return { branch: { in: [scope.branch, norm] } };
 }
 
 /**
