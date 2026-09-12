@@ -364,7 +364,7 @@ export default function ShiftsAndDrawerPage() {
     w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head>
       <meta charset="UTF-8"><title>تقرير إغلاق وردية - ${shift.id}</title>
       <style>
-        @page { size: 80mm auto; margin: 0; }
+        @page { size: 80mm 297mm; margin: 0; }
         * { box-sizing:border-box; margin:0; padding:0; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
         body { font-family: 'Cairo', system-ui, -apple-system, sans-serif; direction:rtl; color:#000; font-size:8.5pt; width:68mm; max-width:68mm; margin:0 auto; padding: 2mm 1.5mm; }
         .center { text-align:center; }
