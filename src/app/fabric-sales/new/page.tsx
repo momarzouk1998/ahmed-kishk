@@ -1150,16 +1150,16 @@ export default function NewSalesInvoicePOSPage() {
       {/* SHIPPING DETAILS POPUP MODAL */}
       {showShippingModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 border border-slate-200">
-            <div className="flex justify-between items-center border-b pb-3">
-              <h3 className="font-black text-slate-900 text-sm flex items-center gap-2">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 border border-slate-200 text-center">
+            <div className="relative border-b pb-3 text-center">
+              <h3 className="font-black text-slate-900 text-sm flex items-center justify-center gap-2">
                 <span className="material-symbols-outlined text-blue-600 text-lg">local_shipping</span>
                 <span>بيانات الشحن والتوصيل (أونلاين / الفرع التجاري)</span>
               </h3>
               <button
                 type="button"
                 onClick={() => setShowShippingModal(false)}
-                className="text-slate-400 hover:text-slate-700 font-bold cursor-pointer text-sm"
+                className="absolute left-0 top-0 text-slate-400 hover:text-slate-700 font-bold cursor-pointer text-sm p-1"
               >
                 ✕
               </button>
@@ -1167,7 +1167,7 @@ export default function NewSalesInvoicePOSPage() {
 
             <div className="space-y-3 text-xs">
               <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">
+                <label className="text-xs font-bold text-slate-700 block mb-1 text-center">
                   عنوان الشحن بالتفصيل (المحافظة / المدينة / الشارع) *
                 </label>
                 <input
@@ -1175,17 +1175,17 @@ export default function NewSalesInvoicePOSPage() {
                   placeholder="مثال: الإسماعيلية - الشيخ زايد - شارع الثلاثيني..."
                   value={shippingAddress}
                   onChange={e => setShippingAddress(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 font-bold focus:bg-white focus:outline-none focus:border-blue-500"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 font-bold focus:bg-white focus:outline-none focus:border-blue-500 text-center placeholder:text-center"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">شركة الشحن *</label>
+                  <label className="text-xs font-bold text-slate-700 block mb-1 text-center">شركة الشحن *</label>
                   <select
                     value={shippingCompany}
                     onChange={e => setShippingCompany(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-2 text-xs text-slate-900 font-bold focus:bg-white focus:outline-none focus:border-blue-500"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-2 text-xs text-slate-900 font-bold focus:bg-white focus:outline-none focus:border-blue-500 text-center text-center-last"
                   >
                     <option value="بوسطة (Bosta)">بوسطة (Bosta)</option>
                     <option value="أرامكس (Aramex)">أرامكس (Aramex)</option>
@@ -1196,36 +1196,36 @@ export default function NewSalesInvoicePOSPage() {
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">مصاريف الشحن (ج.م) *</label>
+                  <label className="text-xs font-bold text-slate-700 block mb-1 text-center">مصاريف الشحن (ج.م) *</label>
                   <input
                     type="number"
                     min="0"
                     value={shippingFee}
                     onChange={e => setShippingFee(Number(e.target.value))}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono font-black focus:bg-white focus:outline-none focus:border-blue-500"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono font-black focus:bg-white focus:outline-none focus:border-blue-500 text-center placeholder:text-center"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">هاتف المستلم (إن اختلف):</label>
+                  <label className="text-xs font-bold text-slate-700 block mb-1 text-center">هاتف المستلم (إن اختلف):</label>
                   <input
                     type="text"
                     placeholder={custPhone || 'رقم إضافي...'}
                     value={receiverPhone}
                     onChange={e => setReceiverPhone(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono font-bold focus:bg-white focus:outline-none focus:border-blue-500"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono font-bold focus:bg-white focus:outline-none focus:border-blue-500 text-center placeholder:text-center"
                     dir="ltr"
                   />
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">مصدر الطلب:</label>
+                  <label className="text-xs font-bold text-slate-700 block mb-1 text-center">مصدر الطلب:</label>
                   <select
                     value={orderSource}
                     onChange={e => setOrderSource(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-2 text-xs text-slate-900 font-bold focus:bg-white focus:outline-none focus:border-blue-500"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-2 text-xs text-slate-900 font-bold focus:bg-white focus:outline-none focus:border-blue-500 text-center text-center-last"
                   >
                     <option value="صفحة الفيسبوك">صفحة الفيسبوك</option>
                     <option value="واتساب (WhatsApp)">واتساب</option>
@@ -1238,19 +1238,19 @@ export default function NewSalesInvoicePOSPage() {
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">رقم البوليصة / التتبع (اختياري):</label>
+                <label className="text-xs font-bold text-slate-700 block mb-1 text-center">رقم البوليصة / التتبع (اختياري):</label>
                 <input
                   type="text"
                   placeholder="مثال: BST-982341..."
                   value={trackingNumber}
                   onChange={e => setTrackingNumber(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono font-bold focus:bg-white focus:outline-none focus:border-blue-500"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono font-bold focus:bg-white focus:outline-none focus:border-blue-500 text-center placeholder:text-center"
                   dir="ltr"
                 />
               </div>
             </div>
 
-            <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+            <div className="pt-3 border-t border-slate-100 flex items-center justify-center gap-2 flex-wrap">
               <button
                 type="button"
                 onClick={() => {
@@ -1261,25 +1261,23 @@ export default function NewSalesInvoicePOSPage() {
               >
                 إلغاء الشحن (مباشر)
               </button>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowShippingModal(false)}
-                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-colors cursor-pointer"
-                >
-                  إغلاق
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsOnlineOrder(true);
-                    setShowShippingModal(false);
-                  }}
-                  className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-black text-xs rounded-xl shadow-md transition-colors cursor-pointer"
-                >
-                  حفظ وتفعيل الشحن ✓
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => setShowShippingModal(false)}
+                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-colors cursor-pointer"
+              >
+                إغلاق
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsOnlineOrder(true);
+                  setShowShippingModal(false);
+                }}
+                className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-black text-xs rounded-xl shadow-md transition-colors cursor-pointer"
+              >
+                حفظ وتفعيل الشحن ✓
+              </button>
             </div>
           </div>
         </div>
