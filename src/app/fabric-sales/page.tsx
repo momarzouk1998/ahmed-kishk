@@ -80,6 +80,23 @@ export default function FabricSalesPage() {
   const [returns, setReturns] = useState<CustomerSalesReturn[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // #FEATURE: بحث عن عميل مسجّل فى مودال تعديل الفاتورة (نفس نمط شاشة البيع
+  // الجديدة) — عشان تعديل اسم العميل يقدر يسحب بياناته المحفوظة بدل ما يتكتب
+  // من الصفر.
+  const [registeredCustomers, setRegisteredCustomers] = useState<any[]>([]);
+  const [custDropdownOpen, setCustDropdownOpen] = useState(false);
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/customers', { cache: 'no-store' });
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && Array.isArray(json.customers)) setRegisteredCustomers(json.customers);
+        }
+      } catch {}
+    })();
+  }, []);
+
   // Parse URL tab parameter on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -1319,15 +1336,56 @@ export default function FabricSalesPage() {
 
             <form onSubmit={handleUpdateInvoice} className="space-y-3.5 text-xs">
               <div className="grid grid-cols-2 gap-2.5">
-                <div>
+                <div className="relative">
                   <label className="text-slate-700 font-bold block mb-1">اسم العميل:</label>
                   <input
                     type="text"
                     required
                     value={editingInvoice.customerName}
-                    onChange={e => setEditingInvoice({ ...editingInvoice, customerName: e.target.value })}
+                    onFocus={() => setCustDropdownOpen(true)}
+                    onChange={e => { setEditingInvoice({ ...editingInvoice, customerName: e.target.value }); setCustDropdownOpen(true); }}
+                    onBlur={() => setTimeout(() => setCustDropdownOpen(false), 150)}
                     className="w-full border border-slate-200 rounded-xl px-3 py-1.5 font-bold text-slate-900 focus:outline-none focus:border-amber-500"
                   />
+                  {/* بحث فورى عن عميل مسجّل — اختياره بيملى الهاتف تلقائيًا،
+                      ولو الفاتورة أونلاين بيملى هاتف المستلم والعنوان كمان. */}
+                  {custDropdownOpen && editingInvoice.customerName.trim() !== '' && (() => {
+                    const q = editingInvoice.customerName.trim().toLowerCase();
+                    const matches = registeredCustomers.filter((c: any) =>
+                      (c.name || '').toLowerCase().includes(q) || (c.phone || '').includes(editingInvoice.customerName.trim())
+                    ).slice(0, 8);
+                    if (matches.length === 0) return null;
+                    return (
+                      <div className="absolute right-0 left-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl z-30 max-h-48 overflow-y-auto divide-y divide-slate-100">
+                        {matches.map((c: any) => (
+                          <div
+                            key={c.id}
+                            onMouseDown={() => {
+                              setEditingInvoice({
+                                ...editingInvoice,
+                                customerName: c.name,
+                                phone: c.phone || '',
+                                ...(editingInvoice.isOnlineOrder ? {
+                                  receiverPhone: c.phone || editingInvoice.receiverPhone,
+                                  shippingAddress: c.address || editingInvoice.shippingAddress,
+                                } : {}),
+                              });
+                              setCustDropdownOpen(false);
+                            }}
+                            className="p-2 hover:bg-amber-50 cursor-pointer flex justify-between items-center gap-2 text-xs"
+                          >
+                            <div className="min-w-0">
+                              <div className="font-bold text-slate-900 truncate">{c.name}</div>
+                              {c.address && <div className="text-[10px] text-slate-500 truncate">{c.address}</div>}
+                            </div>
+                            <div className="font-mono font-bold text-amber-900 bg-amber-100/70 px-1.5 py-0.5 rounded shrink-0" dir="ltr">
+                              {c.phone}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 <div>
@@ -1393,13 +1451,18 @@ export default function FabricSalesPage() {
                   <div className="grid grid-cols-2 gap-2.5 pt-1 border-t border-slate-200">
                     <div>
                       <label className="text-slate-700 font-bold block mb-1">شركة الشحن:</label>
-                      <input
-                        type="text"
-                        value={editingInvoice.shippingCompany || ''}
+                      {/* #FIX: كانت مربع نص حر، دلوقتى قائمة موحّدة بنفس شركات
+                          الشحن المستخدمة فى شاشة البيع الجديدة بالظبط. */}
+                      <select
+                        value={editingInvoice.shippingCompany || 'بوسطة'}
                         onChange={e => setEditingInvoice({ ...editingInvoice, shippingCompany: e.target.value })}
-                        placeholder="مثال: بوسطة (Bosta)"
                         className="w-full border border-slate-200 rounded-xl px-2.5 py-1.5 font-bold text-slate-900 focus:outline-none"
-                      />
+                      >
+                        <option value="بوسطة">بوسطة</option>
+                        <option value="البريد">البريد</option>
+                        <option value="جيتس">جيتس</option>
+                        <option value="أخرى">أخرى</option>
+                      </select>
                     </div>
                     <div>
                       <label className="text-slate-700 font-bold block mb-1">مصاريف الشحن (ج):</label>
