@@ -95,6 +95,8 @@ export default function InventoryPage() {
   const [editingCategoryOldName, setEditingCategoryOldName] = useState<string | null>(null);
   const [editingCategoryNewName, setEditingCategoryNewName] = useState<string>('');
   const [newCategoryName, setNewCategoryName] = useState<string>('');
+  const [categoryTabBranch, setCategoryTabBranch] = useState<string>('الكل');
+  const [categorySearch, setCategorySearch] = useState<string>('');
 
   const handleAddNewCategory = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -1115,139 +1117,241 @@ export default function InventoryPage() {
           </div>
         )}
 
-        {/* Categories Management Tab */}
+        {/* Categories Management Tab - Grouped by Branch */}
         {tab === 'categories' && (
           <div className="flex flex-col gap-6">
-            {/* Header / Add Category Card */}
+            {/* Header & Add Category Card */}
             <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                 <div>
                   <h3 className="font-bold text-slate-900 text-lg flex items-center gap-2">
                     <span>🏷️</span>
-                    <span>إدارة وتعديل تصنيفات المخزون</span>
+                    <span>إدارة وتعديل تصنيفات المخزون حسب الفروع</span>
                   </h3>
                   <p className="text-xs text-slate-500 mt-1">
-                    يمكنك إضافة تصنيفات جديدة، تعديل أسمائها عبر الفروع، أو حذفها مع نقل الأصناف تلقائياً.
+                    متابعة وتعديل التصنيفات وتوزيع الأصناف والكميات على مستوى كل فرع من فروع المؤسسة.
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2 w-full sm:w-auto">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={newCategoryName}
+                      onChange={e => setNewCategoryName(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddNewCategory();
+                        }
+                      }}
+                      placeholder="اسم التصنيف الجديد..."
+                      className="w-full sm:w-56 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+                    />
+                    <button
+                      onClick={handleAddNewCategory}
+                      className="bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm px-4 py-2 rounded-xl transition shadow-sm whitespace-nowrap flex items-center gap-1.5"
+                    >
+                      <span>➕</span>
+                      <span>إضافة تصنيف</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Branch Filter Tabs & Search */}
+              <div className="mt-5 pt-4 border-t border-slate-100 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full">
+                  <span className="text-xs font-bold text-slate-500 ml-1 whitespace-nowrap">تصفية الفرع:</span>
+                  <button
+                    onClick={() => setCategoryTabBranch('الكل')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap ${
+                      categoryTabBranch === 'الكل'
+                        ? 'bg-slate-900 text-white shadow-sm'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    🏢 جميع الفروع ({BRANCHES_LIST.length})
+                  </button>
+                  {BRANCHES_LIST.map(b => {
+                    const branchItemsCount = items.filter(i => normalizeBranchName(i.branch) === normalizeBranchName(b.name)).length;
+                    return (
+                      <button
+                        key={b.id}
+                        onClick={() => setCategoryTabBranch(b.name)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap flex items-center gap-1.5 ${
+                          categoryTabBranch === b.name
+                            ? 'bg-emerald-700 text-white shadow-sm'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                      >
+                        <span>🏪</span>
+                        <span>{b.name}</span>
+                        <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                          categoryTabBranch === b.name ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+                        }`}>
+                          {branchItemsCount}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="w-full md:w-56">
                   <input
                     type="text"
-                    value={newCategoryName}
-                    onChange={e => setNewCategoryName(e.target.value)}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        handleAddNewCategory();
-                      }
-                    }}
-                    placeholder="اسم التصنيف الجديد..."
-                    className="flex-1 sm:w-64 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+                    value={categorySearch}
+                    onChange={e => setCategorySearch(e.target.value)}
+                    placeholder="🔍 تصفية اسم التصنيف..."
+                    className="w-full border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-emerald-500"
                   />
-                  <button
-                    onClick={handleAddNewCategory}
-                    className="bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm px-4 py-2 rounded-xl transition shadow-sm whitespace-nowrap flex items-center gap-1.5"
-                  >
-                    <span>➕</span>
-                    <span>إضافة تصنيف</span>
-                  </button>
                 </div>
               </div>
             </div>
 
-            {/* Category Cards Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {dynamicCategories.filter(c => c !== 'الكل').map(cat => {
-                const catItems = items.filter(item => item.category === cat);
-                const totalMeters = catItems.reduce((acc, item) => acc + (Number(item.totalQuantity) || 0), 0);
-                const isEditing = editingCategoryOldName === cat;
+            {/* Branch Sections */}
+            {BRANCHES_LIST.filter(b => categoryTabBranch === 'الكل' || normalizeBranchName(b.name) === normalizeBranchName(categoryTabBranch)).map(branchConfig => {
+              const branchItems = items.filter(i => normalizeBranchName(i.branch) === normalizeBranchName(branchConfig.name));
+              const branchTotalStock = branchItems.reduce((acc, i) => acc + (Number(i.totalQuantity) || 0), 0);
+              
+              const rawCats = dynamicCategories.filter(c => c !== 'الكل');
+              const displayedCats = rawCats.filter(cat => {
+                if (categorySearch.trim()) {
+                  return cat.toLowerCase().includes(categorySearch.trim().toLowerCase());
+                }
+                return true;
+              });
 
-                return (
-                  <div key={cat} className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition flex flex-col justify-between gap-4">
-                    <div>
-                      {isEditing ? (
-                        <div className="flex items-center gap-2 mb-3">
-                          <input
-                            type="text"
-                            value={editingCategoryNewName}
-                            onChange={e => setEditingCategoryNewName(e.target.value)}
-                            onKeyDown={e => {
-                              if (e.key === 'Enter') handleSaveRenameCategory(cat);
-                              if (e.key === 'Escape') setEditingCategoryOldName(null);
-                            }}
-                            autoFocus
-                            className="flex-1 border border-amber-400 rounded-xl px-2.5 py-1.5 text-sm text-slate-900 font-bold focus:outline-none focus:ring-2 focus:ring-amber-500"
-                          />
-                          <button
-                            onClick={() => handleSaveRenameCategory(cat)}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition"
-                          >
-                            حفظ
-                          </button>
-                          <button
-                            onClick={() => setEditingCategoryOldName(null)}
-                            className="bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold px-2.5 py-1.5 rounded-lg transition"
-                          >
-                            إلغاء
-                          </button>
+              return (
+                <div key={branchConfig.id} className="bg-slate-50/80 rounded-2xl border border-slate-200/90 p-5 shadow-sm flex flex-col gap-4">
+                  {/* Branch Header Bar */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-lg">
+                        🏪
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-bold text-slate-900 text-base">{branchConfig.name}</h4>
+                          <span className="text-[11px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md font-medium">
+                            {branchConfig.type}
+                          </span>
                         </div>
-                      ) : (
-                        <div className="flex items-center justify-between gap-2 mb-3">
-                          <div className="flex items-center gap-2">
-                            <span className="w-8 h-8 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center font-bold text-sm">
-                              🏷️
-                            </span>
-                            <span className="font-bold text-base text-slate-900">{cat}</span>
-                          </div>
-                          
-                          <div className="flex items-center gap-1">
-                            <button
-                              onClick={() => handleStartRenameCategory(cat)}
-                              title="تعديل اسم التصنيف"
-                              className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition text-xs font-bold"
-                            >
-                              ✏️ تعديل
-                            </button>
-                            <button
-                              onClick={() => handleDeleteCategory(cat)}
-                              title="حذف التصنيف"
-                              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition text-xs font-bold"
-                            >
-                              🗑️ حذف
-                            </button>
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="grid grid-cols-2 gap-2 text-xs bg-slate-50 p-3 rounded-xl border border-slate-100 mt-2">
-                        <div className="flex flex-col">
-                          <span className="text-slate-500 font-medium">عدد الأصناف:</span>
-                          <span className="font-bold text-slate-800 text-sm">{catItems.length} صنف</span>
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-slate-500 font-medium">إجمالي الكمية:</span>
-                          <span className="font-bold text-emerald-700 text-sm">{totalMeters.toLocaleString()} متر/قطعة</span>
-                        </div>
+                        <p className="text-xs text-slate-400 mt-0.5">{branchConfig.address}</p>
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-slate-100">
-                      <span>الفروع النشطة: {new Set(catItems.map(i => i.branch)).size || 0} فرع</span>
-                      <button
-                        onClick={() => {
-                          setActiveCategory(cat);
-                          setTab('stock');
-                        }}
-                        className="text-amber-600 hover:underline font-bold"
-                      >
-                        عرض الأصناف ↤
-                      </button>
+                    <div className="flex items-center gap-3 text-xs bg-slate-50 px-3 py-2 rounded-xl border border-slate-100">
+                      <div className="flex flex-col">
+                        <span className="text-slate-400 font-medium">إجمالي الأصناف:</span>
+                        <span className="font-bold text-slate-800 font-mono">{branchItems.length} صنف</span>
+                      </div>
+                      <div className="w-px h-6 bg-slate-200" />
+                      <div className="flex flex-col">
+                        <span className="text-slate-400 font-medium">إجمالي رصيد الفرع:</span>
+                        <span className="font-bold text-emerald-700 font-mono">{branchTotalStock.toLocaleString()} متر/قطعة</span>
+                      </div>
                     </div>
                   </div>
-                );
-              })}
-            </div>
+
+                  {/* Categories Cards Grid for this Branch */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                    {displayedCats.map(cat => {
+                      const catBranchItems = branchItems.filter(i => i.category === cat);
+                      const catBranchStock = catBranchItems.reduce((acc, i) => acc + (Number(i.totalQuantity) || 0), 0);
+                      const isEditing = editingCategoryOldName === cat;
+
+                      return (
+                        <div key={cat} className="bg-white rounded-xl border border-slate-200 p-4 shadow-2xs hover:shadow-sm transition flex flex-col justify-between gap-3">
+                          <div>
+                            {isEditing ? (
+                              <div className="flex items-center gap-2 mb-2">
+                                <input
+                                  type="text"
+                                  value={editingCategoryNewName}
+                                  onChange={e => setEditingCategoryNewName(e.target.value)}
+                                  onKeyDown={e => {
+                                    if (e.key === 'Enter') handleSaveRenameCategory(cat);
+                                    if (e.key === 'Escape') setEditingCategoryOldName(null);
+                                  }}
+                                  autoFocus
+                                  className="flex-1 border border-amber-400 rounded-lg px-2 py-1 text-xs text-slate-900 font-bold focus:outline-none focus:ring-1 focus:ring-amber-500"
+                                />
+                                <button
+                                  onClick={() => handleSaveRenameCategory(cat)}
+                                  className="bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold px-2 py-1 rounded transition"
+                                >
+                                  حفظ
+                                </button>
+                                <button
+                                  onClick={() => setEditingCategoryOldName(null)}
+                                  className="bg-slate-200 hover:bg-slate-300 text-slate-700 text-[11px] font-bold px-2 py-1 rounded transition"
+                                >
+                                  إلغاء
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center justify-between gap-2 mb-2">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <span className="w-7 h-7 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center font-bold text-xs shrink-0">
+                                    🏷️
+                                  </span>
+                                  <span className="font-bold text-sm text-slate-900 truncate">{cat}</span>
+                                </div>
+                                
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <button
+                                    onClick={() => handleStartRenameCategory(cat)}
+                                    title="تعديل اسم التصنيف عبر جميع الفروع"
+                                    className="p-1 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded transition text-xs"
+                                  >
+                                    ✏️
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteCategory(cat)}
+                                    title="حذف التصنيف"
+                                    className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition text-xs"
+                                  >
+                                    🗑️
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+
+                            <div className="grid grid-cols-2 gap-2 text-xs bg-slate-50/90 p-2.5 rounded-lg border border-slate-100">
+                              <div className="flex flex-col">
+                                <span className="text-slate-400 text-[11px]">أصناف بالفرع:</span>
+                                <span className="font-bold text-slate-800 font-mono text-xs">{catBranchItems.length} صنف</span>
+                              </div>
+                              <div className="flex flex-col">
+                                <span className="text-slate-400 text-[11px]">الكمية بالفرع:</span>
+                                <span className="font-bold text-emerald-700 font-mono text-xs">{catBranchStock.toLocaleString()} م/قطعة</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between text-[11px] pt-2 border-t border-slate-100">
+                            <span className="text-slate-400">
+                              {catBranchItems.length > 0 ? '🟢 نشط بالفرع' : '⚪ لا يوجد رصيد'}
+                            </span>
+                            <button
+                              onClick={() => {
+                                setSelectedBranch(branchConfig.name);
+                                setActiveCategory(cat);
+                                setTab('stock');
+                              }}
+                              className="text-amber-600 hover:text-amber-700 hover:underline font-bold text-xs"
+                            >
+                              عرض الأصناف ↤
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
