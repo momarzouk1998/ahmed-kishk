@@ -117,43 +117,47 @@ export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricS
       </tr>
     `).join('');
 
-    const branchPhones = [branchCfg.landline ? `ت: ${branchCfg.landline}` : '', branchCfg.phone ? `م: ${branchCfg.phone}` : ''].filter(Boolean).join(' | ');
+    const branchLandline = branchCfg.landline ? `ت: ${branchCfg.landline}` : '';
+    const branchMobile = branchCfg.phone ? `م: ${branchCfg.phone}` : '';
+    const branchPhones = [branchLandline, branchMobile].filter(Boolean).join(' | ');
 
     w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head>
       <meta charset="UTF-8"><title>فاتورة ${data.invoiceNumber}</title>
       <style>
         @page { size: 80mm auto; margin: 0; }
         * { box-sizing:border-box; margin:0; padding:0; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
-        body { font-family: 'Cairo', system-ui, -apple-system, sans-serif; direction:rtl; color:#000; font-size:8.5pt; width:68mm; max-width:68mm; margin:0 auto; padding: 2mm 1.5mm; }
+        body { font-family: 'Cairo', system-ui, -apple-system, sans-serif; direction:rtl; color:#000; font-size:8.5pt; width:68mm; max-width:68mm; margin:0 auto; padding: 2mm 1.5mm; font-weight:700; }
         .center { text-align:center; }
-        .brand { font-weight:900; font-size:11pt; letter-spacing:-0.2px; }
-        .branch-title { font-weight:800; font-size:9.5pt; margin-top:0.5mm; }
-        .sub { font-size:7.5pt; color:#222; margin-top:0.5mm; line-height:1.2; }
-        .divider { border-top:1px dashed #000; margin:1.5mm 0; }
+        .brand { font-weight:900; font-size:11pt; letter-spacing:-0.2px; color:#000; }
+        .branch-title { font-weight:900; font-size:9.5pt; margin-top:0.5mm; color:#000; }
+        .address-line { font-size:8.5pt; color:#000; font-weight:900; margin-top:0.8mm; line-height:1.25; }
+        .phones-line { font-size:8.5pt; color:#000; font-weight:900; margin-top:0.8mm; line-height:1.25; font-family:monospace, sans-serif; }
+        .divider { border-top:1.5px dashed #000; margin:1.5mm 0; }
         .items-table { width:100%; border-collapse:collapse; border:1.5px solid #000; margin:1.5mm 0; }
-        .items-table th, .items-table td { vertical-align:middle; }
-        .items-table thead th { background:#f0f0f0 !important; font-size:7.5pt; font-weight:900; padding:1.2mm 0.5mm; border-bottom:1.5px solid #000; }
+        .items-table th, .items-table td { vertical-align:middle; color:#000; }
+        .items-table thead th { background:#f0f0f0 !important; font-size:8pt; font-weight:900; padding:1.2mm 0.5mm; border-bottom:1.5px solid #000; }
         .totals { width:100%; border-collapse:collapse; margin-top:1mm; }
-        .totals td { padding: 0.8mm 0.5mm; font-size:8.5pt; }
-        .totals .lbl { color:#111; font-weight:700; }
-        .totals .v { text-align:left; font-family:monospace; font-weight:900; white-space:nowrap; padding-left:1mm; }
-        .total-row td { font-size:10pt; font-weight:900; border-top:1.5px solid #000; border-bottom:1.5px solid #000; padding:1.5mm 0.5mm; }
-        .foot { text-align:center; font-size:7.5pt; color:#222; margin-top:2.5mm; line-height:1.3; }
+        .totals td { padding: 0.8mm 0.5mm; font-size:8.5pt; color:#000; }
+        .totals .lbl { color:#000; font-weight:800; }
+        .totals .v { text-align:left; font-family:monospace; font-weight:900; white-space:nowrap; padding-left:1mm; color:#000; }
+        .total-row td { font-size:10pt; font-weight:900; border-top:1.5px solid #000; border-bottom:1.5px solid #000; padding:1.5mm 0.5mm; color:#000; }
+        .foot { text-align:center; color:#000; margin-top:2.5mm; line-height:1.3; }
+        .policy-box { border:1.5px solid #000; border-radius:1.5mm; padding:1.5mm 1mm; font-weight:900; font-size:8.5pt; color:#000; margin-top:1.5mm; line-height:1.25; background:#fff; }
       </style></head><body>
         <div class="center">
           <div class="brand">${brand.storeName || 'مؤسسة كشك للأقمشة والستائر'}</div>
           <div class="branch-title">👑 ${branchCfg.name}</div>
-          <div class="sub">${branchCfg.address}</div>
-          ${branchPhones ? `<div class="sub" style="font-family:monospace; font-weight:bold;">${branchPhones}</div>` : ''}
+          <div class="address-line">📍 ${branchCfg.address}</div>
+          ${branchPhones ? `<div class="phones-line">📞 ${branchPhones}</div>` : ''}
         </div>
         <div class="divider"></div>
-        <div style="display:flex; justify-content:space-between; font-size:8pt; font-weight:bold;">
+        <div style="display:flex; justify-content:space-between; font-size:8.5pt; font-weight:900; color:#000;">
           <span>رقم: <b style="font-family:monospace;">${data.invoiceNumber}</b></span>
-          <span style="font-size:7.5pt;">${formattedDateTime}</span>
+          <span style="font-size:8pt;">${formattedDateTime}</span>
         </div>
-        <div style="font-size:8.5pt; margin-top:1mm; display:flex; justify-content:space-between;">
+        <div style="font-size:8.5pt; margin-top:1mm; display:flex; justify-content:space-between; font-weight:900; color:#000;">
           <span>العميل: <b>${data.customerName || 'عميل نقدي'}</b></span>
-          ${(data.phone || data.customerPhone) ? `<span style="font-family:monospace; direction:ltr; font-weight:bold; font-size:8pt;">${data.phone || data.customerPhone}</span>` : ''}
+          ${(data.phone || data.customerPhone) ? `<span style="font-family:monospace; direction:ltr; font-weight:900; font-size:8.5pt;">${data.phone || data.customerPhone}</span>` : ''}
         </div>
         <div class="divider"></div>
         <table class="items-table">
@@ -179,8 +183,8 @@ export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricS
         </table>
         <div class="divider"></div>
         <div class="foot">
-          <div style="font-weight:bold; font-size:8pt;">شكراً لتعاملكم مع مؤسسة كشك للأقمشة والستائر ✨</div>
-          <div>البضاعة المباعة لا ترد ولا تستبدل بعد القص</div>
+          <div style="font-weight:900; font-size:8.5pt; color:#000;">شكراً لتعاملكم مع مؤسسة كشك للأقمشة والستائر ✨</div>
+          <div class="policy-box">⚠️ البضاعة المباعة لا ترد ولا تستبدل بعد أسبوع</div>
         </div>
       </body></html>`);
     w.document.close();
@@ -324,7 +328,7 @@ export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricS
           <div class="footer-bar">
             <span>${brand.storeName} • ${branchCfg.name}</span>
             <span>${branchPhones}</span>
-            <span>البضاعة المباعة لا ترد ولا تستبدل بعد القص</span>
+            <span style="font-weight:900; color:#000;">⚠️ البضاعة المباعة لا ترد ولا تستبدل بعد أسبوع</span>
           </div>
         </div>
       </body>
@@ -566,10 +570,12 @@ export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricS
           </div>
 
           {/* Footer */}
-          <div className="pt-2 border-t border-slate-200 flex justify-between text-[11px] text-slate-500 font-bold">
-            <span>{brand.storeName} • {branchCfg.name}</span>
-            <span>{branchPhones}</span>
-            <span>البضاعة المباعة لا ترد ولا تستبدل بعد القص</span>
+          <div className="pt-2 border-t border-slate-200 flex justify-between items-center text-[11px] font-bold">
+            <span className="text-slate-600">{brand.storeName} • {branchCfg.name}</span>
+            <span className="font-mono text-slate-700">{branchPhones}</span>
+            <span className="text-slate-900 font-black bg-slate-100 px-2 py-0.5 rounded border border-slate-300">
+              ⚠️ البضاعة المباعة لا ترد ولا تستبدل بعد أسبوع
+            </span>
           </div>
         </div>
       </div>

@@ -39,7 +39,7 @@ export const BRANCHES_LIST: BranchConfig[] = [
     address: 'الإسماعيلية: 162 ش عدلي مبنى عمر أفندي',
     type: 'أقمشة فقط',
     userCapacity: 2,
-    landline: '064/3926630',
+    landline: '064/3926603',
     phone: '01070186618',
   },
   {
