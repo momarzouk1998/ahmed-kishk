@@ -205,7 +205,7 @@ export default function NewSalesInvoicePOSPage() {
   const [isOnlineOrder, setIsOnlineOrder] = useState<boolean>(false);
   const [shippingProvince, setShippingProvince] = useState<string>('القاهرة');
   const [shippingFee, setShippingFee] = useState<number>(110);
-  const [shippingCompany, setShippingCompany] = useState<string>('بوسطة (Bosta)');
+  const [shippingCompany, setShippingCompany] = useState<string>('بوسطة');
   const [trackingNumber, setTrackingNumber] = useState<string>('');
   const [shippingAddress, setShippingAddress] = useState<string>('');
   const [receiverPhone, setReceiverPhone] = useState<string>('');
@@ -721,11 +721,10 @@ export default function NewSalesInvoicePOSPage() {
                             onChange={e => setShippingCompany(e.target.value)}
                             className="w-full bg-slate-50 border border-slate-300 rounded-xl px-2 py-1.5 text-xs text-slate-900 font-bold focus:bg-white focus:outline-none focus:border-blue-500"
                           >
-                            <option value="بوسطة (Bosta)">بوسطة (Bosta)</option>
-                            <option value="البريد المصري">البريد المصري</option>
-                            <option value="جيتس (J&T Express / JETS)">جيتس (J&T Express / JETS)</option>
-                            <option value="مندوب الفرع التجاري">مندوب الفرع التجاري</option>
-                            <option value="شركة أخرى / غيرها">شركة أخرى / غيرها</option>
+                            <option value="بوسطة">بوسطة</option>
+                            <option value="البريد">البريد</option>
+                            <option value="جيتس">جيتس</option>
+                            <option value="أخرى">أخرى</option>
                           </select>
                         </div>
 
@@ -1333,11 +1332,10 @@ export default function NewSalesInvoicePOSPage() {
                     onChange={e => setShippingCompany(e.target.value)}
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-2 text-xs text-slate-900 font-bold focus:bg-white focus:outline-none focus:border-blue-500 text-center text-center-last"
                   >
-                    <option value="بوسطة (Bosta)">بوسطة (Bosta)</option>
-                    <option value="البريد المصري">البريد المصري</option>
-                    <option value="جيتس (J&T Express / JETS)">جيتس (J&T Express / JETS)</option>
-                    <option value="مندوب الفرع التجاري">مندوب الفرع التجاري</option>
-                    <option value="شركة أخرى / غيرها">شركة أخرى / غيرها</option>
+                    <option value="بوسطة">بوسطة</option>
+                    <option value="البريد">البريد</option>
+                    <option value="جيتس">جيتس</option>
+                    <option value="أخرى">أخرى</option>
                   </select>
                 </div>
 

@@ -963,7 +963,7 @@ export default function FabricSalesPage() {
                             <td className="p-3.5 text-slate-700 max-w-[200px]">
                               <div className="font-bold text-xs text-slate-900 flex items-center gap-1">
                                 <span className="material-symbols-outlined text-[14px] text-blue-600 shrink-0">local_shipping</span>
-                                <span>{inv.shippingCompany || 'بوسطة (Bosta)'}</span>
+                                <span>{inv.shippingCompany || 'بوسطة'}</span>
                               </div>
                               <div className="text-[11px] text-slate-600 truncate mt-0.5" title={inv.shippingAddress || 'العنوان غير مدخل'}>
                                 {inv.shippingAddress || 'لم يحدد عنوان'}
