@@ -287,5 +287,34 @@ model BranchCategory {
   @@unique([name, branch])
 }
 
+model Shift {
+  id                   String    @id @default(cuid())
+  branch               String    @default("الفرع الرئيسي")
+  shiftType            String    @default("صباحي")
+  employeeId           String
+  employeeName         String
+  startTime            String
+  endTime              String?
+  status               String    @default("OPEN")
+  openingDrawerBalance Float     @default(0)
+  cashSales            Float     @default(0)
+  instapaySales        Float     @default(0)
+  vodafoneSales        Float     @default(0)
+  visaSales            Float     @default(0)
+  totalSales           Float     @default(0)
+  expensesPaid         Float     @default(0)
+  advancesPaid         Float     @default(0)
+  expectedCashInDrawer Float     @default(0)
+  actualClosingCash    Float?
+  cashDiscrepancy      Float?
+  discrepancyReason    String?
+  handoverDestination  String?
+  handoverReceiverName String?
+  closingNotes         String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+}
+
+
 
 

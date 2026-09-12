@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import PageShell from '@/components/PageShell';
 import { 
   ShiftSession, getShifts, saveShifts, getActiveShiftForBranch, 
-  startNewShift, closeActiveShift 
+  startNewShift, closeActiveShift, fetchShiftsFromServer 
 } from '@/lib/shiftStore';
 import { getEmployees } from '@/lib/employeeStore';
 import { BRANCHES_LIST, normalizeBranchName, getBranchConfig } from '@/lib/branches';
@@ -15,7 +15,7 @@ export default function ShiftsAndDrawerPage() {
   const canManage = isAdmin || isSuperAdmin;
 
   const [shifts, setShifts] = useState<ShiftSession[]>([]);
-  const [selectedBranch, setSelectedBranch] = useState<string>('فرع عمر أفندي');
+  const [selectedBranch, setSelectedBranch] = useState<string>('الفرع الرئيسي');
   const [employees, setEmployees] = useState<any[]>([]);
 
   // Start Shift Form State
@@ -51,7 +51,7 @@ export default function ShiftsAndDrawerPage() {
 
   // Table Filters & Pagination State
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'yesterday' | 'week' | 'month'>('today');
+  const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'yesterday' | 'week' | 'month'>('all');
   const [branchFilter, setBranchFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -62,10 +62,26 @@ export default function ShiftsAndDrawerPage() {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(10);
 
+  const loadData = async () => {
+    try {
+      const serverShifts = await fetchShiftsFromServer();
+      setShifts(serverShifts);
+      setEmployees(getEmployees());
+    } catch (e) {
+      setShifts(getShifts());
+      setEmployees(getEmployees());
+    }
+  };
+
   useEffect(() => {
-    setShifts(getShifts());
-    setEmployees(getEmployees());
+    loadData();
   }, []);
+
+  useEffect(() => {
+    if (user?.branch) {
+      setSelectedBranch(user.branch);
+    }
+  }, [user]);
 
   const activeShift = useMemo(() => {
     return shifts.find(s => normalizeBranchName(s.branch) === normalizeBranchName(selectedBranch) && s.status === 'OPEN');
@@ -98,7 +114,7 @@ export default function ShiftsAndDrawerPage() {
     if (employeeFilter !== 'all') count++;
     if (startDateFilter) count++;
     if (endDateFilter) count++;
-    if (dateFilter !== 'today') count++;
+    if (dateFilter !== 'all') count++;
     return count;
   }, [branchFilter, typeFilter, statusFilter, employeeFilter, startDateFilter, endDateFilter, dateFilter]);
 
@@ -109,7 +125,7 @@ export default function ShiftsAndDrawerPage() {
     setEmployeeFilter('all');
     setStartDateFilter('');
     setEndDateFilter('');
-    setDateFilter('today');
+    setDateFilter('all');
     setSearchQuery('');
   };
 
@@ -151,6 +167,7 @@ export default function ShiftsAndDrawerPage() {
       // Quick Date filter
       if (dateFilter !== 'all') {
         const shiftDate = new Date(s.startTime);
+        const shiftEndDate = s.endTime ? new Date(s.endTime) : shiftDate;
         const now = new Date();
         const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         const startOfYesterday = new Date(startOfToday.getTime() - 24 * 60 * 60 * 1000);
@@ -158,13 +175,14 @@ export default function ShiftsAndDrawerPage() {
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
         if (dateFilter === 'today') {
-          if (shiftDate < startOfToday) return false;
+          const isToday = shiftDate >= startOfToday || shiftEndDate >= startOfToday || s.status === 'OPEN';
+          if (!isToday) return false;
         } else if (dateFilter === 'yesterday') {
-          if (shiftDate < startOfYesterday || shiftDate >= startOfToday) return false;
+          if ((shiftDate < startOfYesterday || shiftDate >= startOfToday) && (shiftEndDate < startOfYesterday || shiftEndDate >= startOfToday)) return false;
         } else if (dateFilter === 'week') {
-          if (shiftDate < startOfWeek) return false;
+          if (shiftDate < startOfWeek && shiftEndDate < startOfWeek) return false;
         } else if (dateFilter === 'month') {
-          if (shiftDate < startOfMonth) return false;
+          if (shiftDate < startOfMonth && shiftEndDate < startOfMonth) return false;
         }
       }
 
@@ -207,7 +225,7 @@ export default function ShiftsAndDrawerPage() {
     }
   };
 
-  const handleStart = (e: React.FormEvent) => {
+  const handleStart = async (e: React.FormEvent) => {
     e.preventDefault();
     const emp = employees.find(e => e.id === newShiftEmployeeId);
     if (!emp) {
@@ -223,11 +241,19 @@ export default function ShiftsAndDrawerPage() {
       openingDrawerBalance: parseFloat(openingBalance) || 0,
     });
 
-    setShifts(getShifts());
+    try {
+      await fetch('/api/shifts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(created),
+      });
+    } catch (err) {}
+
+    await loadData();
     alert(`تم فتح الوردية الـ (${newShiftType}) بنجاح للموظف ${emp.name} بعهدة ${created.openingDrawerBalance} ج`);
   };
 
-  const handleClose = (e: React.FormEvent) => {
+  const handleClose = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeShift) return;
 
@@ -237,16 +263,26 @@ export default function ShiftsAndDrawerPage() {
       return;
     }
 
-    const closed = closeActiveShift({
+    const closePayload = {
       shiftId: activeShift.id,
       actualClosingCash: actual,
       discrepancyReason,
       handoverDestination,
       handoverReceiverName: handoverReceiver,
       closingNotes,
-    });
+    };
 
-    setShifts(getShifts());
+    const closed = closeActiveShift(closePayload);
+
+    try {
+      await fetch('/api/shifts', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(closePayload),
+      });
+    } catch (err) {}
+
+    await loadData();
     setActualClosingCash('');
     setDiscrepancyReason('');
     setClosingNotes('');
@@ -265,7 +301,7 @@ export default function ShiftsAndDrawerPage() {
     setIsEditingShift(true);
   };
 
-  const handleSaveEdit = (e: React.FormEvent) => {
+  const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedShiftForDetails) return;
 
@@ -287,16 +323,34 @@ export default function ShiftsAndDrawerPage() {
     const updatedList = shifts.map(s => s.id === updated.id ? updated : s);
     setShifts(updatedList);
     saveShifts(updatedList);
+
+    try {
+      await fetch('/api/shifts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated),
+      });
+    } catch (err) {}
+
+    await loadData();
     setSelectedShiftForDetails(updated);
     setIsEditingShift(false);
     alert('تم تحديث وتثبيت بيانات الوردية بنجاح 💾');
   };
 
-  const handleDeleteShift = (shiftId: string) => {
+  const handleDeleteShift = async (shiftId: string) => {
     if (!confirm('هل أنت متأكد من حذف هذا السجل من سجل الورديات نهائياً؟')) return;
     const updatedList = shifts.filter(s => s.id !== shiftId);
     setShifts(updatedList);
     saveShifts(updatedList);
+
+    try {
+      await fetch(`/api/shifts?id=${encodeURIComponent(shiftId)}`, {
+        method: 'DELETE',
+      });
+    } catch (err) {}
+
+    await loadData();
     setSelectedShiftForDetails(null);
     alert('تم حذف الوردية بنجاح');
   };

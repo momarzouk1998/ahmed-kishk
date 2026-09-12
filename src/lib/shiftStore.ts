@@ -42,6 +42,27 @@ export interface ShiftSession {
 
 const SHIFTS_STORAGE_KEY = 'ahmed_kishk_shifts_v1';
 
+export async function fetchShiftsFromServer(branchName?: string): Promise<ShiftSession[]> {
+  try {
+    const url = branchName && branchName !== 'all' && branchName !== 'الكل'
+      ? `/api/shifts?branch=${encodeURIComponent(branchName)}`
+      : '/api/shifts';
+    const res = await fetch(url, { cache: 'no-store' });
+    if (res.ok) {
+      const json = await res.json();
+      if (json.success && Array.isArray(json.shifts)) {
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(SHIFTS_STORAGE_KEY, JSON.stringify(json.shifts));
+        }
+        return json.shifts;
+      }
+    }
+  } catch (e) {
+    console.error('Error fetching shifts from server:', e);
+  }
+  return getShifts();
+}
+
 export function getShifts(): ShiftSession[] {
   if (typeof window === 'undefined') return [];
   try {
@@ -76,11 +97,12 @@ export function startNewShift(params: {
   openingDrawerBalance: number;
 }): ShiftSession {
   const shifts = getShifts();
+  const nowIso = new Date().toISOString();
   
   // Close any previously stuck open shift for this branch
   const updatedShifts = shifts.map(s => {
     if (s.branch === params.branch && s.status === 'OPEN') {
-      return { ...s, status: 'CLOSED' as const, endTime: new Date().toISOString() };
+      return { ...s, status: 'CLOSED' as const, endTime: nowIso };
     }
     return s;
   });
@@ -91,7 +113,7 @@ export function startNewShift(params: {
     shiftType: params.shiftType,
     employeeId: params.employeeId,
     employeeName: params.employeeName,
-    startTime: new Date().toISOString(),
+    startTime: nowIso,
     status: 'OPEN',
     openingDrawerBalance: params.openingDrawerBalance || 0,
     cashSales: 0,
@@ -106,6 +128,14 @@ export function startNewShift(params: {
 
   updatedShifts.unshift(newShift);
   saveShifts(updatedShifts);
+
+  // Sync with DB API
+  fetch('/api/shifts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(newShift),
+  }).catch(() => {});
+
   return newShift;
 }
 
@@ -140,5 +170,13 @@ export function closeActiveShift(params: {
 
   shifts[shiftIdx] = closedShift;
   saveShifts(shifts);
+
+  // Sync with DB API
+  fetch('/api/shifts', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  }).catch(() => {});
+
   return closedShift;
 }
