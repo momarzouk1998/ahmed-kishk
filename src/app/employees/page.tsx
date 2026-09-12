@@ -49,6 +49,13 @@ export default function EmployeesManagementPage() {
   // Selected Employee for Modal / Share
   const [selectedEmpForSlip, setSelectedEmpForSlip] = useState<any | null>(null);
 
+  // #FEATURE: تقفيل وقبض الرواتب — تعديل المبلغ قبل الصرف + زرار قبض فعلي يخصم
+  // من خزينة الفرع (عبر إنشاء مصروف حقيقي فى /api/expenses) ويسجّل التقفيل
+  // بشكل دائم عشان مايتقبضش مرتين لنفس الفترة.
+  const [payrollAmountOverride, setPayrollAmountOverride] = useState<Record<string, string>>({});
+  const [payrollPayMethod, setPayrollPayMethod] = useState<Record<string, string>>({});
+  const [payingKey, setPayingKey] = useState<string | null>(null);
+
   // Employee Add / Edit Modal State (Admin only)
   const [showEmpModal, setShowEmpModal] = useState<boolean>(false);
   const [editingEmp, setEditingEmp] = useState<Employee | null>(null);
@@ -431,6 +438,89 @@ export default function EmployeesManagementPage() {
 مؤسسة كشك للأقمشة والستائر ✨`;
 
     return `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+  };
+
+  // مفتاح تقفيل فريد لكل موظف/فترة (خميس بعينه للأسبوعي، شهر بعينه للشهري) —
+  // بيه بنمنع القبض مرتين لنفس الفترة ونربط بيه سجل التقفيل المحفوظ.
+  const getSettlementKey = (row: any) => `${row.employee.id}_${row.isMonthly ? row.monthStr : row.thursStr}`;
+
+  const getExistingSettlement = (row: any) => {
+    const key = getSettlementKey(row);
+    return payrolls.find(p => {
+      const pIsMonthly = p.payType === 'شهري';
+      const pKey = `${p.employeeId}_${pIsMonthly ? p.settlementDate : p.weekEndDate}`;
+      return pKey === key && p.isPaid;
+    });
+  };
+
+  const handlePaySalary = async (row: any) => {
+    const key = getSettlementKey(row);
+    const overrideRaw = payrollAmountOverride[key];
+    const finalAmount = overrideRaw !== undefined && overrideRaw !== '' ? Number(overrideRaw) : row.netPayout;
+    if (!finalAmount || finalAmount <= 0) {
+      alert('المبلغ يجب أن يكون أكبر من صفر');
+      return;
+    }
+    const method = payrollPayMethod[key] || 'نقدي';
+    const periodLabel = row.isMonthly ? `شهر ${row.monthStr}` : `أسبوع ${row.satStr} - ${row.thursStr}`;
+
+    if (!confirm(`تأكيد قبض راتب ${row.employee.name}\nالمبلغ: ${finalAmount.toLocaleString()} ج (${method})\nالفترة: ${periodLabel}\n\nسيتم خصم المبلغ من خزينة ${row.employee.branch} فورًا.`)) {
+      return;
+    }
+
+    setPayingKey(key);
+    try {
+      // 1. خصم فعلي من خزينة الفرع — عن طريق تسجيله كمصروف حقيقي (نفس النظام
+      // اللي بيتقرأ منه رصيد الخزينة فى صفحة التقارير).
+      const expRes = await fetch('/api/expenses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          date: getTodayDateStr(),
+          branch: row.employee.branch,
+          category: 'رواتب وسلف',
+          description: `راتب ${row.employee.name} — ${periodLabel}`,
+          amount: finalAmount,
+          paymentMethod: method,
+        }),
+      });
+      const expData = await expRes.json();
+      if (!expRes.ok || !expData.success) {
+        alert(expData?.error || 'فشل خصم الراتب من الخزينة');
+        return;
+      }
+
+      // 2. تثبيت التقفيل بشكل دائم عشان مايتقبضش مرتين لنفس الفترة
+      const settlement: WeeklyPayrollSettlement = {
+        id: `PAY-${key}-${Date.now()}`,
+        settlementDate: row.isMonthly ? row.monthStr : row.thursStr,
+        weekStartDate: row.satStr,
+        weekEndDate: row.thursStr,
+        branch: row.employee.branch,
+        employeeId: row.employee.id,
+        employeeName: row.employee.name,
+        dailyWage: row.employee.dailyWage,
+        daysAttended: row.attendedDays,
+        baseSalaryEarned: row.baseEarned,
+        totalBonuses: row.totalBon,
+        totalDeductions: row.totalDed,
+        totalAdvances: row.totalAdv,
+        netPayout: finalAmount,
+        isPaid: true,
+        paidAt: new Date().toISOString(),
+        paidFromTreasury: row.employee.branch,
+        payType: row.isMonthly ? 'شهري' : 'أسبوعي',
+      };
+      const updatedPayrolls = [...payrolls.filter(p => p.id !== settlement.id), settlement];
+      setPayrolls(updatedPayrolls);
+      savePayrolls(updatedPayrolls);
+
+      alert(`✅ تم قبض راتب ${row.employee.name} (${finalAmount.toLocaleString()} ج) وخصمه من خزينة ${row.employee.branch}`);
+    } catch (err: any) {
+      alert('خطأ فى الاتصال بالسيرفر: ' + (err?.message || ''));
+    } finally {
+      setPayingKey(null);
+    }
   };
 
   return (
@@ -887,7 +977,11 @@ export default function EmployeesManagementPage() {
                         </td>
                       </tr>
                     ) : (
-                      payrollSummary.map((row) => (
+                      payrollSummary.map((row) => {
+                        const key = getSettlementKey(row);
+                        const existingSettlement = getExistingSettlement(row);
+                        const isPaying = payingKey === key;
+                        return (
                         <tr key={row.employee.id} className="hover:bg-slate-50">
                           <td className="p-3">
                             <div className="font-black text-slate-900 text-sm">{row.employee.name}</div>
@@ -912,31 +1006,71 @@ export default function EmployeesManagementPage() {
                           <td className="p-3 font-mono text-amber-800 font-bold">-{row.totalAdv.toLocaleString()} ج</td>
                           <td className="p-3 font-mono text-rose-700 font-bold">-{row.totalDed.toLocaleString()} ج</td>
                           <td className="p-3 font-mono font-black text-sm bg-emerald-50/80 text-emerald-950 border-r border-l border-emerald-200">
-                            {row.netPayout >= 0 ? `+${row.netPayout.toLocaleString()}` : row.netPayout.toLocaleString()} ج
+                            {existingSettlement ? (
+                              <span>{existingSettlement.netPayout >= 0 ? `+${existingSettlement.netPayout.toLocaleString()}` : existingSettlement.netPayout.toLocaleString()} ج</span>
+                            ) : (
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={payrollAmountOverride[key] ?? String(row.netPayout)}
+                                onChange={e => setPayrollAmountOverride(prev => ({ ...prev, [key]: e.target.value }))}
+                                className="w-24 bg-white border border-emerald-300 rounded-lg px-1.5 py-1 font-mono font-black text-emerald-950 text-center focus:outline-none"
+                                title="تقدر تعدّل المبلغ يدويًا قبل القبض"
+                              />
+                            )}
                           </td>
                           <td className="p-3 text-center">
-                            <div className="flex items-center justify-center gap-1.5">
-                              <button
-                                onClick={() => setSelectedEmpForSlip(row)}
-                                className="px-2.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold text-[11px] cursor-pointer"
-                                title="معاينة إيصال القبض"
-                              >
-                                👁️ إيصال
-                              </button>
-                              <a
-                                href={getWhatsAppShareUrl(row)}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold text-[11px] flex items-center gap-1"
-                                title="إرسال الحساب للموظف واتساب"
-                              >
-                                <span>📱</span>
-                                <span>واتساب</span>
-                              </a>
-                            </div>
+                            {existingSettlement ? (
+                              <div className="flex flex-col items-center gap-0.5">
+                                <span className="px-2.5 py-1 bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-lg font-black text-[11px] whitespace-nowrap">
+                                  ✅ تم القبض
+                                </span>
+                                <span className="text-[9px] text-slate-400 font-mono">{formatDateOnly(existingSettlement.paidAt || '')}</span>
+                              </div>
+                            ) : (
+                              <div className="flex flex-col items-center gap-1.5">
+                                <select
+                                  value={payrollPayMethod[key] || 'نقدي'}
+                                  onChange={e => setPayrollPayMethod(prev => ({ ...prev, [key]: e.target.value }))}
+                                  className="text-[10px] font-bold border border-slate-200 rounded-lg px-1 py-0.5 bg-white focus:outline-none"
+                                >
+                                  <option value="نقدي">💵 نقدي</option>
+                                  <option value="إنستاباي">⚡ إنستاباي</option>
+                                  <option value="فودافون كاش">📱 فودافون</option>
+                                  <option value="فيزا / كارت">💳 فيزا</option>
+                                </select>
+                                <div className="flex items-center justify-center gap-1.5">
+                                  <button
+                                    onClick={() => handlePaySalary(row)}
+                                    disabled={isPaying}
+                                    className="px-2.5 py-1.5 bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white rounded-lg font-black text-[11px] cursor-pointer whitespace-nowrap"
+                                    title="قبض الراتب وخصمه من خزينة الفرع"
+                                  >
+                                    {isPaying ? '...' : '💰 قبض'}
+                                  </button>
+                                  <button
+                                    onClick={() => setSelectedEmpForSlip(row)}
+                                    className="px-2 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold text-[11px] cursor-pointer"
+                                    title="معاينة إيصال القبض"
+                                  >
+                                    👁️
+                                  </button>
+                                  <a
+                                    href={getWhatsAppShareUrl(row)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="px-2 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold text-[11px]"
+                                    title="إرسال الحساب للموظف واتساب"
+                                  >
+                                    📱
+                                  </a>
+                                </div>
+                              </div>
+                            )}
                           </td>
                         </tr>
-                      ))
+                        );
+                      })
                     )}
                   </tbody>
                 </table>
