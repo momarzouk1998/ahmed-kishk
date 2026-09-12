@@ -129,7 +129,7 @@ export default function LoginPage() {
                   type="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  placeholder="01558282760"
+                  placeholder="01xxxxxxxxx"
                   required
                   className="w-full bg-slate-950/80 border border-slate-800 rounded-2xl py-3 px-4 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/20 transition-all font-mono"
                   dir="ltr"
@@ -184,12 +184,6 @@ export default function LoginPage() {
               )}
             </button>
           </form>
-
-          <div className="mt-6 pt-4 border-t border-slate-800/80 text-center">
-            <span className="text-[11px] text-slate-500 font-mono">
-              المستخدم الافتراضي: 01558282760 / 123456
-            </span>
-          </div>
         </div>
       </div>
     </div>

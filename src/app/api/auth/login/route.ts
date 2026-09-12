@@ -19,6 +19,9 @@ const DEFAULT_USERS_ROSTER = [
   { name: 'أحمد عبدالعال', phone: '01275763008', role: 'BRANCH_STAFF', branch: 'فرع عمر أفندي' },
   // فرع الثلاثيني (فرع أقمشة فقط — بدون مراحل الستائر)
   { name: 'عبدالله كشك', phone: '01033447262', role: 'BRANCH_STAFF', branch: 'فرع الثلاثيني' },
+  // الفرع التجاري (أقمشة وشحن أونلاين)
+  { name: 'عبدالرحمن كشك', phone: '01280042900', role: 'ADMIN', branch: 'الفرع التجاري' },
+  { name: 'محمد على', phone: '01220999355', role: 'BRANCH_STAFF', branch: 'الفرع التجاري' },
 ];
 
 async function ensureDefaultUsers() {

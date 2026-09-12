@@ -408,7 +408,6 @@ export default function BranchesAndPermissionsPage() {
                 <tr>
                   <th className="p-3.5">الموظف</th>
                   <th className="p-3.5 text-center">الوظيفة</th>
-                  <th className="p-3.5">الدور الوظيفي</th>
                   <th className="p-3.5">الفرع المخصص</th>
                   <th className="p-3.5 text-center">عزل البيانات</th>
                   <th className="p-3.5 text-center">الصفحات المسموحة</th>
@@ -441,7 +440,6 @@ export default function BranchesAndPermissionsPage() {
                           <span>{isAdminUser ? 'ادمن' : isManager ? 'مدير' : isCashier ? 'كاشير' : 'موظف'}</span>
                         </span>
                       </td>
-                      <td className="p-3.5 font-bold text-slate-800">{emp.role}</td>
                       <td className="p-3.5">
                         <select
                           value={emp.branch}

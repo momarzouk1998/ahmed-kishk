@@ -112,10 +112,18 @@ export default function FabricSalesPage() {
     setCurrentPage(1);
   }, [dateFilter, dateFrom, dateTo, branchFilter, search, paymentFilter, statusFilter]);
 
-  const { user: currentUser, isAdmin } = useCurrentUser();
+  const { user: currentUser, isAdmin, isSuperAdmin } = useCurrentUser();
+  const canViewOnlineTab = isAdmin || isSuperAdmin || normalizeBranchName(currentUser?.branch) === 'الفرع التجاري';
+
   useEffect(() => {
     if (!isAdmin && currentUser?.branch) setBranchFilter(currentUser.branch);
   }, [isAdmin, currentUser]);
+
+  useEffect(() => {
+    if (!canViewOnlineTab && activeTab === 'ONLINE') {
+      setActiveTab('INVOICES');
+    }
+  }, [canViewOnlineTab, activeTab]);
 
   // Selected Invoice Modal for Full View & Print
   const [selectedInvoice, setSelectedInvoice] = useState<SalesInvoice | null>(null);
@@ -479,18 +487,20 @@ export default function FabricSalesPage() {
               <span className="bg-amber-100 text-amber-950 px-2 py-0.5 rounded-full text-[11px] font-mono font-bold">{invoices.length}</span>
             </button>
 
-            <button
-              type="button"
-              onClick={() => setActiveTab('ONLINE')}
-              className={`pb-2.5 px-3 sm:px-4 text-xs sm:text-sm font-black flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
-                activeTab === 'ONLINE' ? 'border-blue-600 text-blue-950 font-black' : 'border-transparent text-slate-400 hover:text-slate-700'
-              }`}
-            >
-              <span>📦 شحنات وفواتير الأونلاين</span>
-              <span className="bg-blue-100 text-blue-950 px-2 py-0.5 rounded-full text-[11px] font-mono font-bold">
-                {invoices.filter(i => i.isOnlineOrder || normalizeBranchName(i.branch) === 'الفرع التجاري').length}
-              </span>
-            </button>
+            {canViewOnlineTab && (
+              <button
+                type="button"
+                onClick={() => setActiveTab('ONLINE')}
+                className={`pb-2.5 px-3 sm:px-4 text-xs sm:text-sm font-black flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
+                  activeTab === 'ONLINE' ? 'border-blue-600 text-blue-950 font-black' : 'border-transparent text-slate-400 hover:text-slate-700'
+                }`}
+              >
+                <span>📦 شحنات وفواتير الأونلاين</span>
+                <span className="bg-blue-100 text-blue-950 px-2 py-0.5 rounded-full text-[11px] font-mono font-bold">
+                  {invoices.filter(i => i.isOnlineOrder || normalizeBranchName(i.branch) === 'الفرع التجاري').length}
+                </span>
+              </button>
+            )}
 
             <button
               type="button"
@@ -861,7 +871,7 @@ export default function FabricSalesPage() {
         )}
 
         {/* TAB 2: ONLINE ORDERS & COMMERCIAL BRANCH */}
-        {activeTab === 'ONLINE' && (
+        {activeTab === 'ONLINE' && canViewOnlineTab && (
           <div className="space-y-4">
             {/* Online Metrics */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
