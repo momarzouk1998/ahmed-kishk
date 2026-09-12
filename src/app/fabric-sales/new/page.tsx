@@ -722,10 +722,10 @@ export default function NewSalesInvoicePOSPage() {
                             className="w-full bg-slate-50 border border-slate-300 rounded-xl px-2 py-1.5 text-xs text-slate-900 font-bold focus:bg-white focus:outline-none focus:border-blue-500"
                           >
                             <option value="بوسطة (Bosta)">بوسطة (Bosta)</option>
-                            <option value="أرامكس (Aramex)">أرامكس (Aramex)</option>
+                            <option value="البريد المصري">البريد المصري</option>
+                            <option value="جيتس (J&T Express / JETS)">جيتس (J&T Express / JETS)</option>
                             <option value="مندوب الفرع التجاري">مندوب الفرع التجاري</option>
-                            <option value="ريد بوكس (RedBox)">ريد بوكس (RedBox)</option>
-                            <option value="شركة شحن أخرى">شركة شحن أخرى</option>
+                            <option value="شركة أخرى / غيرها">شركة أخرى / غيرها</option>
                           </select>
                         </div>
 
@@ -1334,10 +1334,10 @@ export default function NewSalesInvoicePOSPage() {
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-2 text-xs text-slate-900 font-bold focus:bg-white focus:outline-none focus:border-blue-500 text-center text-center-last"
                   >
                     <option value="بوسطة (Bosta)">بوسطة (Bosta)</option>
-                    <option value="أرامكس (Aramex)">أرامكس (Aramex)</option>
+                    <option value="البريد المصري">البريد المصري</option>
+                    <option value="جيتس (J&T Express / JETS)">جيتس (J&T Express / JETS)</option>
                     <option value="مندوب الفرع التجاري">مندوب الفرع التجاري</option>
-                    <option value="ريد بوكس (RedBox)">ريد بوكس (RedBox)</option>
-                    <option value="شركة شحن أخرى">شركة شحن أخرى</option>
+                    <option value="شركة أخرى / غيرها">شركة أخرى / غيرها</option>
                   </select>
                 </div>
 
