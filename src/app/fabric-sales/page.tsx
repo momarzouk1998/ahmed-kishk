@@ -1227,6 +1227,7 @@ export default function FabricSalesPage() {
                 <input
                   type="number"
                   required
+                  step="0.01"
                   min="1"
                   value={retAmount}
                   onChange={e => setRetAmount(Number(e.target.value))}
@@ -1404,6 +1405,7 @@ export default function FabricSalesPage() {
                       <label className="text-slate-700 font-bold block mb-1">مصاريف الشحن (ج):</label>
                       <input
                         type="number"
+                        step="0.01"
                         min="0"
                         value={editingInvoice.shippingFee ?? 0}
                         onChange={e => setEditingInvoice({ ...editingInvoice, shippingFee: Number(e.target.value) || 0 })}
@@ -1547,6 +1549,7 @@ export default function FabricSalesPage() {
                     <label className="text-slate-600 font-bold block mb-1 text-[11px]">إجمالي الفاتورة:</label>
                     <input
                       type="number"
+                      step="0.01"
                       min="0"
                       value={editingInvoice.totalAmount}
                       onChange={e => setEditingInvoice({ ...editingInvoice, totalAmount: Number(e.target.value) })}
@@ -1558,6 +1561,7 @@ export default function FabricSalesPage() {
                     <label className="text-slate-600 font-bold block mb-1 text-[11px]">المدفوع الآن:</label>
                     <input
                       type="number"
+                      step="0.01"
                       min="0"
                       value={editingInvoice.paidAmount}
                       onChange={e => setEditingInvoice({ ...editingInvoice, paidAmount: Number(e.target.value) })}
@@ -1583,6 +1587,7 @@ export default function FabricSalesPage() {
                         <label className="font-bold text-slate-700 block mb-0.5 text-[10px]">💵 كاش:</label>
                         <input
                           type="number"
+                          step="0.01"
                           min="0"
                           value={(editingInvoice as any).splitPayments?.cash || 0}
                           onChange={e => {
@@ -1604,6 +1609,7 @@ export default function FabricSalesPage() {
                         <label className="font-bold text-slate-700 block mb-0.5 text-[10px]">⚡ إنستاباي:</label>
                         <input
                           type="number"
+                          step="0.01"
                           min="0"
                           value={(editingInvoice as any).splitPayments?.instapay || 0}
                           onChange={e => {
@@ -1625,6 +1631,7 @@ export default function FabricSalesPage() {
                         <label className="font-bold text-slate-700 block mb-0.5 text-[10px]">📱 فودافون:</label>
                         <input
                           type="number"
+                          step="0.01"
                           min="0"
                           value={(editingInvoice as any).splitPayments?.vodafone || 0}
                           onChange={e => {
@@ -1646,6 +1653,7 @@ export default function FabricSalesPage() {
                         <label className="font-bold text-slate-700 block mb-0.5 text-[10px]">💳 فيزا:</label>
                         <input
                           type="number"
+                          step="0.01"
                           min="0"
                           value={(editingInvoice as any).splitPayments?.visa || 0}
                           onChange={e => {

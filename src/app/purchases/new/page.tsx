@@ -897,6 +897,7 @@ export default function NewPurchaseInvoicePage() {
                       <div className="grid grid-cols-2 gap-1">
                         <input
                           type="number"
+                          step="0.01"
                           min="0"
                           placeholder="المبلغ (ج) *"
                           value={chk.amount || ''}
@@ -936,6 +937,7 @@ export default function NewPurchaseInvoicePage() {
                   <div className="flex items-center gap-1">
                     <input
                       type="number"
+                      step="0.01"
                       min="0"
                       placeholder="0"
                       value={discountValue || ''}
@@ -959,6 +961,7 @@ export default function NewPurchaseInvoicePage() {
                   <div className="flex items-center gap-1">
                     <input
                       type="number"
+                      step="0.01"
                       min="0"
                       value={paidAmount || ''}
                       onChange={e => setPaidAmount(Number(e.target.value))}
@@ -1072,6 +1075,7 @@ export default function NewPurchaseInvoicePage() {
                   <label className="text-slate-700 font-bold block mb-1">سعر الشراء / التكلفة (ج):</label>
                   <input
                     type="number"
+                    step="0.01"
                     min="0"
                     value={newProdCostPrice || ''}
                     onChange={e => setNewProdCostPrice(Number(e.target.value))}
@@ -1084,6 +1088,7 @@ export default function NewPurchaseInvoicePage() {
                   <label className="text-slate-700 font-bold block mb-1">سعر البيع الافتراضي (ج):</label>
                   <input
                     type="number"
+                    step="0.01"
                     min="0"
                     value={newProdSellPrice || ''}
                     onChange={e => setNewProdSellPrice(Number(e.target.value))}
@@ -1177,6 +1182,7 @@ export default function NewPurchaseInvoicePage() {
                 <label className="text-slate-700 font-bold block mb-1">الرصيد الافتتاحي المستحق للمورد (ج):</label>
                 <input
                   type="number"
+                  step="0.01"
                   min="0"
                   value={newSupBalance || ''}
                   onChange={e => setNewSupBalance(Number(e.target.value))}

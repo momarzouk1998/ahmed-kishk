@@ -747,6 +747,7 @@ export default function NewSalesInvoicePOSPage() {
                           <label className="text-[11px] font-bold text-slate-700 block mb-0.5">مصاريف الشحن (ج.م) *</label>
                           <input
                             type="number"
+                            step="0.01"
                             min="0"
                             value={shippingFee}
                             onChange={e => setShippingFee(Number(e.target.value))}
@@ -1049,6 +1050,7 @@ export default function NewSalesInvoicePOSPage() {
                             <td className="px-1 py-2 text-center font-mono font-bold text-slate-800 w-[85px] sm:w-[95px]">
                               <input
                                 type="number"
+                                step="0.01"
                                 min="0"
                                 value={it.pricePerMeter}
                                 readOnly={priceLocked}
@@ -1152,6 +1154,7 @@ export default function NewSalesInvoicePOSPage() {
                             <label className="text-[10px] font-black text-slate-700 block">{label}:</label>
                             <input
                               type="number"
+                              step="0.01"
                               min="0"
                               value={val || ''}
                               onChange={e => {
@@ -1189,6 +1192,7 @@ export default function NewSalesInvoicePOSPage() {
                     <div className="flex items-center gap-1">
                       <input
                         type="number"
+                        step="0.01"
                         min="0"
                         placeholder="0"
                         value={discountValue || ''}
@@ -1236,6 +1240,7 @@ export default function NewSalesInvoicePOSPage() {
                     <div className="flex items-center gap-1.5 flex-1 max-w-[210px]">
                       <input
                         type="number"
+                        step="0.01"
                         min="0"
                         value={paidAmount}
                         onChange={e => { setPaidAmount(Number(e.target.value)); setIsFullPaid(false); }}
@@ -1358,6 +1363,7 @@ export default function NewSalesInvoicePOSPage() {
                   <label className="text-xs font-bold text-slate-700 block mb-1 text-center">مصاريف الشحن (ج.م) *</label>
                   <input
                     type="number"
+                    step="0.01"
                     min="0"
                     value={shippingFee}
                     onChange={e => setShippingFee(Number(e.target.value))}
