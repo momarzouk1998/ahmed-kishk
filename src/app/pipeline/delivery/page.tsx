@@ -306,7 +306,7 @@ export default function PipelineDeliveryPage() {
                     <div><strong>ملاحظات التسليم:</strong> {job.notes}</div>
                     <div className="flex justify-between pt-1.5 border-t border-slate-200">
                       <span className="text-slate-500">المتبقي للتحصيل عند التسليم:</span>
-                      <strong className="font-mono font-black text-rose-700">{job.remainingAmount.toLocaleString()} ج.م</strong>
+                      <strong className="font-mono font-black text-rose-700">{(Number(job.remainingAmount) || 0).toLocaleString()} ج.م</strong>
                     </div>
                   </div>
                 </div>
@@ -328,7 +328,7 @@ export default function PipelineDeliveryPage() {
                         className="w-full bg-blue-600 hover:bg-blue-500 text-white py-2.5 rounded-xl text-xs font-black shadow-xs flex items-center justify-center gap-1 cursor-pointer transition-colors"
                       >
                         <span className="material-symbols-outlined text-[16px]">check_circle</span>
-                        تأكيد تسليم الأوردر للعميل وتحصيل ({job.remainingAmount.toLocaleString()} ج)
+                        تأكيد تسليم الأوردر للعميل وتحصيل ({(Number(job.remainingAmount) || 0).toLocaleString()} ج)
                       </button>
                       <button
                         onClick={() => transferToInstallation(job.id)}

@@ -727,11 +727,11 @@ export default function PricingDetailPage() {
             <div className="bg-slate-50/80 p-4 rounded-2xl border border-slate-200 text-center flex flex-col justify-center">
               <span className="text-xs text-slate-500 font-bold block">إجمالي المقايسة بالكامل</span>
               <span className="font-mono font-black text-2xl text-slate-900 mt-1 block">
-                {quotation.totalAmount.toLocaleString()} جنيه
+                {(Number(quotation.totalAmount) || 0).toLocaleString()} جنيه
               </span>
-              {(quotation.discountAmount || 0) > 0 && (
+              {(Number(quotation.discountAmount) || 0) > 0 && (
                 <span className="text-[11px] text-rose-600 font-bold mt-0.5 block">
-                  (شامل خصم {(quotation.discountAmount || 0).toLocaleString()} ج)
+                  (شامل خصم {(Number(quotation.discountAmount) || 0).toLocaleString()} ج)
                 </span>
               )}
             </div>
@@ -754,7 +754,7 @@ export default function PricingDetailPage() {
             <div className="bg-rose-50/70 p-4 rounded-2xl border border-rose-200 text-center flex flex-col justify-center">
               <span className="text-xs text-rose-800 font-bold block">المتبقي للتحصيل عند التركيب</span>
               <span className="font-mono font-black text-2xl text-rose-900 mt-1 block">
-                {quotation.remainingAmount.toLocaleString()} جنيه
+                {(Number(quotation.remainingAmount) || 0).toLocaleString()} جنيه
               </span>
             </div>
           </div>
@@ -912,7 +912,7 @@ export default function PricingDetailPage() {
                         <div className="text-right">
                           <span className="text-[10px] text-slate-400 block font-bold">إجمالي سعر الغرفة</span>
                           <strong className="font-mono font-black text-xl text-slate-900 block leading-tight">
-                            {room.totalSellPrice.toLocaleString()} ج
+                            {(Number(room.totalSellPrice) || 0).toLocaleString()} ج
                           </strong>
                         </div>
                         <button
@@ -958,7 +958,7 @@ export default function PricingDetailPage() {
                               </label>
                               {heavyEnabled && (
                                 <span className="font-mono text-slate-800 font-bold text-xs">
-                                  الكمية: {heavyMeters} متر • الإجمالي: {(heavyMeters * heavyP).toLocaleString()} ج
+                                  الكمية: {heavyMeters} متر • الإجمالي: {((Number(heavyMeters) || 0) * (Number(heavyP) || 0)).toLocaleString()} ج
                                 </span>
                               )}
                             </div>
@@ -1060,7 +1060,7 @@ export default function PricingDetailPage() {
                               </label>
                               {sheerEnabled && (
                                 <span className="font-mono text-slate-800 font-bold text-xs">
-                                  الكمية: {sheerMeters} متر • الإجمالي: {(sheerMeters * sheerP).toLocaleString()} ج
+                                  الكمية: {sheerMeters} متر • الإجمالي: {((Number(sheerMeters) || 0) * (Number(sheerP) || 0)).toLocaleString()} ج
                                 </span>
                               )}
                             </div>
@@ -1157,7 +1157,7 @@ export default function PricingDetailPage() {
                                     <span>🧵 بطانة إضافية للشيفون</span>
                                     {sheerLiningEnabled && (
                                       <span className="font-mono text-blue-800 font-bold mr-auto">
-                                        إجمالي البطانة: {(sheerMeters * (sheerLiningPricePerMeter || 0)).toLocaleString()} ج
+                                        إجمالي البطانة: {((Number(sheerMeters) || 0) * (Number(sheerLiningPricePerMeter) || 0)).toLocaleString()} ج
                                       </span>
                                     )}
                                   </label>
@@ -1201,7 +1201,7 @@ export default function PricingDetailPage() {
                               </label>
                               {blackoutEnabled && (
                                 <span className="font-mono text-slate-800 font-bold text-xs">
-                                  الكمية: {blackoutMeters} متر • الإجمالي: {(blackoutMeters * blackoutP).toLocaleString()} ج
+                                  الكمية: {blackoutMeters} متر • الإجمالي: {((Number(blackoutMeters) || 0) * (Number(blackoutP) || 0)).toLocaleString()} ج
                                 </span>
                               )}
                             </div>
@@ -1339,7 +1339,7 @@ export default function PricingDetailPage() {
                                     <span className="text-slate-600 font-bold text-xs">ج/م</span>
                                   </div>
                                   <div className="font-mono font-bold text-xs bg-amber-100 text-amber-950 px-3 py-1.5 rounded-lg border border-amber-300">
-                                    {editingWidthM.toFixed(2)}م × {(heavyEnabled ? 1 : 0) + (sheerEnabled ? 1 : 0) + (blackoutEnabled ? 1 : 0)} تراك × {trackPricePerMeter}ج = {(editingWidthM * ((heavyEnabled ? 1 : 0) + (sheerEnabled ? 1 : 0) + (blackoutEnabled ? 1 : 0)) * trackPricePerMeter).toLocaleString()} ج
+                                    {editingWidthM.toFixed(2)}م × {(heavyEnabled ? 1 : 0) + (sheerEnabled ? 1 : 0) + (blackoutEnabled ? 1 : 0)} تراك × {trackPricePerMeter}ج = {((Number(editingWidthM) || 0) * ((heavyEnabled ? 1 : 0) + (sheerEnabled ? 1 : 0) + (blackoutEnabled ? 1 : 0)) * (Number(trackPricePerMeter) || 0)).toLocaleString()} ج
                                   </div>
                                 </div>
                               </div>
@@ -1530,7 +1530,7 @@ export default function PricingDetailPage() {
                                       />
                                       <span className="text-slate-600 font-bold text-xs">ج/م</span>
                                       <div className="font-mono font-bold text-xs bg-amber-100 text-amber-950 px-2.5 py-1 rounded-lg border border-amber-300">
-                                        {editingWidthM.toFixed(2)}م × {blackoutTrackPrice}ج = {(editingWidthM * blackoutTrackPrice).toLocaleString()} ج
+                                        {editingWidthM.toFixed(2)}م × {blackoutTrackPrice}ج = {((Number(editingWidthM) || 0) * (Number(blackoutTrackPrice) || 0)).toLocaleString()} ج
                                       </div>
                                     </div>
                                   )}
@@ -1625,7 +1625,7 @@ export default function PricingDetailPage() {
                             شريط {room.heavyTapeType || '٣ فتلة'} (معامل ×{room.heavyMultiplier ?? 2.0})
                           </div>
                           <div className="font-mono font-bold text-indigo-900 text-[11px] pt-1">
-                            {room.heavyMeters}م × {room.heavyPrice}ج = {(room.heavyMeters * room.heavyPrice).toLocaleString()} ج
+                            {((Number(room.heavyMeters) || 0) * (Number(room.heavyPrice) || 0)).toLocaleString()} ج
                           </div>
                         </div>
 
@@ -1634,24 +1634,24 @@ export default function PricingDetailPage() {
                           <span className="text-slate-400 font-bold block text-[10px] uppercase tracking-wider">٢. قماش الخلفية (الشيفون)</span>
                           <strong className="text-slate-950 text-xs block">{room.sheerFabricName || 'لم يحدد'}</strong>
                           <div className="text-[11px] text-slate-500 font-mono">
-                            شريط {room.sheerTapeType || 'ويفي'} (معامل ×{room.sheerMultiplier ?? 2.5})
+                            شريط {room.heavyTapeType || 'ويفي'} (معامل ×{room.sheerMultiplier ?? 2.5})
                           </div>
                           <div className="font-mono font-bold text-amber-900 text-[11px] pt-1">
-                            {room.sheerMeters}م × {room.sheerPrice}ج = {(room.sheerMeters * room.sheerPrice).toLocaleString()} ج
+                            {((Number(room.sheerMeters) || 0) * (Number(room.sheerPrice) || 0)).toLocaleString()} ج
                           </div>
                         </div>
 
                         {/* Layer 3: Blackout Layer */}
                         <div className="bg-slate-50/70 p-3.5 rounded-xl border border-slate-150 space-y-1">
                           <span className="text-slate-400 font-bold block text-[10px] uppercase tracking-wider">٣. طبقة البلاك آوت</span>
-                          {room.blackoutMeters > 0 && room.blackoutFabricName ? (
+                          {(Number(room.blackoutMeters) || 0) > 0 && room.blackoutFabricName ? (
                             <>
                               <strong className="text-slate-900 text-xs block">{room.blackoutFabricName}</strong>
                               <div className="text-[11px] text-slate-500 font-mono">
                                 شريط {room.blackoutTapeType || 'جراب'} (معامل ×{room.blackoutMultiplier ?? 1.20}) • {room.blackoutMeters}م
                               </div>
                               <div className="font-mono font-bold text-slate-950 text-[11px] pt-1">
-                                {(room.blackoutMeters * room.blackoutPrice).toLocaleString()} ج
+                                {((Number(room.blackoutMeters) || 0) * (Number(room.blackoutPrice) || 0)).toLocaleString()} ج
                               </div>
                             </>
                           ) : (
@@ -1674,12 +1674,12 @@ export default function PricingDetailPage() {
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-200 pb-3">
             <div>
               <span className="text-amber-800 font-bold text-xs uppercase tracking-wider block">ملخص المقايسة الإجمالي</span>
-              <h3 className="font-black text-lg text-slate-900">إجمالي العقد ({quotation.rooms.length} غرف مسجلة)</h3>
+              <h3 className="font-black text-lg text-slate-900">إجمالي العقد ({(quotation.rooms || []).length} غرف مسجلة)</h3>
             </div>
             <div className="text-right">
               <span className="text-xs text-slate-500 block font-bold">إجمالي سعر الأوردر</span>
               <strong className="text-2xl font-mono font-black text-amber-950">
-                {quotation.totalAmount.toLocaleString()} ج.م
+                {(Number(quotation.totalAmount) || 0).toLocaleString()} ج.م
               </strong>
             </div>
           </div>
@@ -1691,7 +1691,7 @@ export default function PricingDetailPage() {
               <div>
                 <span className="text-slate-600 font-bold block">الإجمالي قبل الخصم:</span>
                 <span className="font-mono font-bold text-slate-700">
-                  {quotation.rooms.reduce((s, r) => s + r.totalSellPrice, 0).toLocaleString()} ج.م
+                  {(quotation.rooms || []).reduce((s, r) => s + (Number(r.totalSellPrice) || 0), 0).toLocaleString()} ج.م
                 </span>
               </div>
             </div>
@@ -1723,7 +1723,7 @@ export default function PricingDetailPage() {
                     </span>
                   </div>
                   <strong className="font-mono text-amber-900 font-bold">
-                    {rm.totalSellPrice.toLocaleString()} ج
+                    {(Number(rm.totalSellPrice) || 0).toLocaleString()} ج
                   </strong>
                 </div>
               ))}
@@ -1734,11 +1734,11 @@ export default function PricingDetailPage() {
             <div className="flex gap-4">
               <div>
                 <span className="text-slate-500 block font-bold">العربون المسدد:</span>
-                <strong className="text-emerald-700 font-mono text-sm">{quotation.depositPaid.toLocaleString()} ج</strong>
+                <strong className="text-emerald-700 font-mono text-sm">{(Number(quotation.depositPaid) || 0).toLocaleString()} ج</strong>
               </div>
               <div>
                 <span className="text-slate-500 block font-bold">المتبقي للتحصيل:</span>
-                <strong className="text-rose-700 font-mono text-sm">{quotation.remainingAmount.toLocaleString()} ج</strong>
+                <strong className="text-rose-700 font-mono text-sm">{(Number(quotation.remainingAmount) || 0).toLocaleString()} ج</strong>
               </div>
             </div>
             <div className="text-slate-500 text-[11px] font-mono font-bold">
@@ -1790,11 +1790,11 @@ export default function PricingDetailPage() {
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">عدد الغرف:</span>
-                <strong className="font-bold">{quotation.rooms.length} غرف</strong>
+                <strong className="font-bold">{(quotation.rooms || []).length} غرف</strong>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">إجمالي المبلغ:</span>
-                <strong className="font-mono font-bold text-amber-900">{quotation.totalAmount.toLocaleString()} ج.م</strong>
+                <strong className="font-mono font-bold text-amber-900">{(Number(quotation.totalAmount) || 0).toLocaleString()} ج.م</strong>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">الفرع:</span>

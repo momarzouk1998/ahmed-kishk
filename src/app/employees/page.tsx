@@ -62,6 +62,60 @@ export default function EmployeesManagementPage() {
     setAttendance(getAttendance());
     setAdvances(getAdvances());
     setPayrolls(getPayrolls());
+
+    async function syncFromServer() {
+      try {
+        const [attRes, empRes, advRes, payRes] = await Promise.all([
+          fetch('/api/system-data?key=ahmed_kishk_attendance_v1', { cache: 'no-store' }),
+          fetch('/api/system-data?key=ahmed_kishk_employees_v1', { cache: 'no-store' }),
+          fetch('/api/system-data?key=ahmed_kishk_advances_v1', { cache: 'no-store' }),
+          fetch('/api/system-data?key=ahmed_kishk_payroll_v1', { cache: 'no-store' }),
+        ]);
+
+        if (attRes.ok) {
+          const json = await attRes.json();
+          if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+            setAttendance(json.data);
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('ahmed_kishk_attendance_v1', JSON.stringify(json.data));
+            }
+          }
+        }
+        if (empRes.ok) {
+          const json = await empRes.json();
+          if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+            setEmployees(json.data);
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('ahmed_kishk_employees_v1', JSON.stringify(json.data));
+            }
+          }
+        }
+        if (advRes.ok) {
+          const json = await advRes.json();
+          if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+            setAdvances(json.data);
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('ahmed_kishk_advances_v1', JSON.stringify(json.data));
+            }
+          }
+        }
+        if (payRes.ok) {
+          const json = await payRes.json();
+          if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+            setPayrolls(json.data);
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('ahmed_kishk_payroll_v1', JSON.stringify(json.data));
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching employee/attendance data:', err);
+      }
+    }
+
+    syncFromServer();
+    const interval = setInterval(syncFromServer, 15000);
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
@@ -78,6 +132,27 @@ export default function EmployeesManagementPage() {
     if (activeBranch === 'الكل') return employees;
     return employees.filter(e => normalizeBranchName(e.branch) === normalizeBranchName(activeBranch));
   }, [employees, selectedBranch, isAdmin, isSuperAdmin, user]);
+
+  const employeesByBranch = useMemo(() => {
+    const map: Record<string, Employee[]> = {};
+    BRANCHES_LIST.forEach(b => {
+      map[b.name] = [];
+    });
+    
+    branchFilteredEmployees.forEach(emp => {
+      const bName = emp.branch || 'الفرع الرئيسي';
+      if (!map[bName]) map[bName] = [];
+      map[bName].push(emp);
+    });
+
+    if (selectedBranch !== 'الكل') {
+      const singleMap: Record<string, Employee[]> = {};
+      singleMap[selectedBranch] = map[selectedBranch] || [];
+      return singleMap;
+    }
+
+    return map;
+  }, [branchFilteredEmployees, selectedBranch]);
 
   const filteredAdvances = useMemo(() => {
     const activeBranch = (!isAdmin && !isSuperAdmin && user?.branch) ? user.branch : selectedBranch;
@@ -757,21 +832,21 @@ export default function EmployeesManagementPage() {
 
         {/* ── TAB 4: DIRECTORY ── */}
         {activeTab === 'directory' && (
-          <div className="bg-white p-5 md:p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
+          <div className="space-y-6">
+            <div className="bg-white p-5 md:p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
                   <span>👥</span>
                   <span>دليل موظفي الفروع</span>
                 </h3>
-                <p className="text-xs text-slate-500 mt-0.5">إدارة ومتابعة بيانات موظفي الفروع، المسميات الوظيفية ومواعيد العمل</p>
+                <p className="text-xs text-slate-500 mt-0.5">إدارة ومتابعة بيانات موظفي الفروع، المسميات الوظيفية ومواعيد العمل (مقسمة حسب الفروع)</p>
               </div>
 
               {canViewWages && (
                 <button
                   type="button"
                   onClick={handleOpenAddEmp}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-sm cursor-pointer"
+                  className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-sm cursor-pointer"
                 >
                   <span>➕</span>
                   <span>إضافة موظف جديد</span>
@@ -779,65 +854,105 @@ export default function EmployeesManagementPage() {
               )}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {branchFilteredEmployees.map((emp) => (
-                <div key={emp.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3 hover:border-slate-400 transition-colors">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h4 className="font-black text-slate-950 text-base">{emp.name}</h4>
-                        {emp.isActive === false && (
-                          <span className="text-[10px] bg-rose-100 text-rose-700 px-1.5 py-0.2 rounded font-bold">متوقف</span>
-                        )}
+            {/* Render each branch section */}
+            {Object.entries(employeesByBranch).map(([branchName, branchEmps]) => {
+              if (selectedBranch !== 'الكل' && selectedBranch !== branchName) return null;
+              return (
+                <div key={branchName} className="bg-white p-5 md:p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+                  <div className="flex items-center justify-between border-b border-slate-150 pb-3">
+                    <div className="flex items-center gap-2.5">
+                      <span className="w-9 h-9 rounded-xl bg-amber-100 text-amber-900 flex items-center justify-center text-lg font-bold">
+                        🏪
+                      </span>
+                      <div>
+                        <h4 className="font-black text-slate-900 text-base flex items-center gap-2">
+                          <span>{branchName}</span>
+                          <span className="text-[11px] bg-amber-50 border border-amber-200 text-amber-900 px-2 py-0.5 rounded-full font-bold">
+                            {branchEmps.filter(e => e.isActive !== false).length} موظف
+                          </span>
+                        </h4>
+                        <p className="text-[11px] text-slate-400">فريق عمل {branchName}</p>
                       </div>
-                      <p className="text-xs text-amber-800 font-bold">{emp.role}</p>
-                      {emp.phone && (
-                        <p className="text-[11px] font-mono text-slate-500 font-bold mt-0.5">📞 {emp.phone}</p>
-                      )}
                     </div>
-                    <span className="bg-white border border-slate-300 text-slate-800 px-2.5 py-1 rounded-xl text-xs font-bold">
-                      👑 {emp.branch}
-                    </span>
+
+                    {canViewWages && branchEmps.length > 0 && (
+                      <div className="text-left font-mono text-xs">
+                        <span className="text-slate-400 block text-[10px]">إجمالي اليوميات:</span>
+                        <strong className="text-emerald-800 font-black text-sm">
+                          {branchEmps.filter(e => e.isActive !== false).reduce((s, e) => s + (Number(e.dailyWage) || 0), 0).toLocaleString()} ج / يوم
+                        </strong>
+                      </div>
+                    )}
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-200/60 text-xs">
-                    <div>
-                      <span className="text-slate-500 block text-[11px]">الراتب اليومي:</span>
-                      {canViewWages ? (
-                        <span className="font-mono font-black text-emerald-800 text-sm">{emp.dailyWage} ج / يوم</span>
-                      ) : (
-                        <span className="text-[11px] font-bold text-slate-400">🔒 محمي للسرية</span>
-                      )}
+                  {branchEmps.length === 0 ? (
+                    <div className="py-6 text-center text-xs text-slate-400 font-bold bg-slate-50/60 rounded-2xl border border-dashed border-slate-200">
+                      لا يوجد موظفون مسجلون بهذا الفرع حالياً
                     </div>
-                    <div>
-                      <span className="text-slate-500 block text-[11px]">مواعيد العمل:</span>
-                      <span className="font-mono font-bold text-slate-700 text-[11px]" dir="ltr">{emp.workStartTime} - {emp.workEndTime}</span>
-                    </div>
-                  </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {branchEmps.map((emp) => (
+                        <div key={emp.id} className="p-4 bg-slate-50/80 hover:bg-white rounded-2xl border border-slate-200 space-y-3 hover:border-amber-300 hover:shadow-xs transition-all">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <h4 className="font-black text-slate-950 text-base">{emp.name}</h4>
+                                {emp.isActive === false && (
+                                  <span className="text-[10px] bg-rose-100 text-rose-700 px-1.5 py-0.2 rounded font-bold">متوقف</span>
+                                )}
+                              </div>
+                              <p className="text-xs text-amber-800 font-bold mt-0.5">{emp.role || 'موظف'}</p>
+                              {emp.phone && (
+                                <p className="text-[11px] font-mono text-slate-500 font-bold mt-0.5" dir="ltr">📞 {emp.phone}</p>
+                              )}
+                            </div>
+                            <span className="bg-white border border-slate-200 text-slate-700 px-2 py-0.5 rounded-lg text-[10px] font-bold">
+                              {emp.branch}
+                            </span>
+                          </div>
 
-                  {canViewWages && (
-                    <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
-                      <button
-                        type="button"
-                        onClick={() => handleOpenEditEmp(emp)}
-                        className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer"
-                      >
-                        <span>✏️</span>
-                        <span>تعديل البيانات</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteEmp(emp.id, emp.name)}
-                        className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-bold border border-rose-200 cursor-pointer"
-                        title="حذف الموظف"
-                      >
-                        🗑️
-                      </button>
+                          <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-200/60 text-xs">
+                            <div>
+                              <span className="text-slate-500 block text-[11px]">الراتب اليومي:</span>
+                              {canViewWages ? (
+                                <span className="font-mono font-black text-emerald-800 text-sm">{emp.dailyWage} ج / يوم</span>
+                              ) : (
+                                <span className="text-[11px] font-bold text-slate-400">🔒 محمي للسرية</span>
+                              )}
+                            </div>
+                            <div>
+                              <span className="text-slate-500 block text-[11px]">مواعيد العمل:</span>
+                              <span className="font-mono font-bold text-slate-700 text-[11px]" dir="ltr">{emp.workStartTime} - {emp.workEndTime}</span>
+                            </div>
+                          </div>
+
+                          {canViewWages && (
+                            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditEmp(emp)}
+                                className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                              >
+                                <span>✏️</span>
+                                <span>تعديل</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteEmp(emp.id, emp.name)}
+                                className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-bold border border-rose-200 cursor-pointer transition-colors"
+                                title="حذف الموظف"
+                              >
+                                🗑️
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
-              ))}
-            </div>
+              );
+            })}
           </div>
         )}
 

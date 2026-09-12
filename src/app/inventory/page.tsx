@@ -9,7 +9,7 @@ import BranchSelect from '@/components/BranchSelect';
 import { BRANCHES_LIST, normalizeBranchName, branchLabel } from '@/lib/branches';
 import initialInventory from '@/data/initialInventory.json';
 import Pagination from '@/components/Pagination';
-import { getPersistentCategories, saveCustomCategory } from '@/lib/categories';
+import { getPersistentCategories, saveCustomCategory, deleteCategory, renameCategory } from '@/lib/categories';
 
 interface InventoryItem {
   id: string;
@@ -43,6 +43,7 @@ const TABS = [
   { key: 'stock', label: 'أصناف المخزون والجرد', icon: '📦' },
   { key: 'adjustments', label: 'سجل التعديلات والجرد', icon: '📊' },
   { key: 'stores', label: 'إحصائيات الفروع', icon: '🏪' },
+  { key: 'categories', label: 'إدارة وتعديل التصنيفات', icon: '🏷️' },
 ] as const;
 type TabKey = typeof TABS[number]['key'];
 
@@ -91,9 +92,81 @@ export default function InventoryPage() {
     setMgrUnlocked(isManagerUnlocked());
   }, []);
 
-  // #GUARD: تاب "إحصائيات الفروع" للأدمن فقط — لو الحالة محفوظة من قبل لغير أدمن نرجّعه لتاب المخزون.
+  const [editingCategoryOldName, setEditingCategoryOldName] = useState<string | null>(null);
+  const [editingCategoryNewName, setEditingCategoryNewName] = useState<string>('');
+  const [newCategoryName, setNewCategoryName] = useState<string>('');
+
+  const handleAddNewCategory = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const clean = newCategoryName.trim();
+    if (!clean) return;
+    const updated = saveCustomCategory(clean);
+    setCategories(['الكل', ...updated]);
+    setNewCategoryName('');
+  };
+
+  const handleStartRenameCategory = (catName: string) => {
+    setEditingCategoryOldName(catName);
+    setEditingCategoryNewName(catName);
+  };
+
+  const handleSaveRenameCategory = async (oldName: string) => {
+    const cleanNew = editingCategoryNewName.trim();
+    if (!cleanNew || cleanNew === oldName) {
+      setEditingCategoryOldName(null);
+      return;
+    }
+
+    const updatedCats = renameCategory(oldName, cleanNew);
+    setCategories(['الكل', ...updatedCats]);
+
+    const updatedItems = items.map(it => it.category === oldName ? { ...it, category: cleanNew } : it);
+    setItems(updatedItems);
+    setEditingCategoryOldName(null);
+
+    try {
+      await fetch('/api/system-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: 'ahmed_kishk_inventory_v3', data: updatedItems }),
+      });
+      alert(`تم تحديث اسم التصنيف إلى "${cleanNew}" وتعديل كافة الأصناف المرتبطة به بنجاح.`);
+    } catch (err) {
+      console.error('Failed to sync renamed category items:', err);
+    }
+  };
+
+  const handleDeleteCategory = async (catToDelete: string) => {
+    const itemsInCat = items.filter(it => it.category === catToDelete);
+    if (itemsInCat.length > 0) {
+      if (!confirm(`تحذير: هذا التصنيف يحتوي على ${itemsInCat.length} صنف مسجل في المخازن. هل أنت متأكد من حذفه ونقل أصنافه إلى "غير مصنف"؟`)) {
+        return;
+      }
+    } else {
+      if (!confirm(`هل أنت متأكد من حذف تصنيف "${catToDelete}"؟`)) {
+        return;
+      }
+    }
+
+    const updatedCats = deleteCategory(catToDelete);
+    setCategories(['الكل', ...updatedCats]);
+
+    if (itemsInCat.length > 0) {
+      const updatedItems = items.map(it => it.category === catToDelete ? { ...it, category: 'غير مصنف' } : it);
+      setItems(updatedItems);
+      try {
+        await fetch('/api/system-data', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key: 'ahmed_kishk_inventory_v3', data: updatedItems }),
+        });
+      } catch (e) {}
+    }
+  };
+
+  // #GUARD: تاب "إحصائيات الفروع" و "إدارة التصنيفات" للأدمن فقط — لو الحالة محفوظة من قبل لغير أدمن نرجّعه لتاب المخزون.
   useEffect(() => {
-    if (tab === 'stores' && !isAdmin) setTab('stock');
+    if ((tab === 'stores' || tab === 'categories') && !isAdmin) setTab('stock');
   }, [tab, isAdmin]);
 
   const priceLocked = !canUserEditPrices('p_inventory') && !mgrUnlocked;
@@ -1034,6 +1107,142 @@ export default function InventoryPage() {
                         <span>توقع ربح الفرع:</span>
                         <span className="font-mono text-purple-700">+{totalProfit.toLocaleString()} ج</span>
                       </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Categories Management Tab */}
+        {tab === 'categories' && (
+          <div className="flex flex-col gap-6">
+            {/* Header / Add Category Card */}
+            <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h3 className="font-bold text-slate-900 text-lg flex items-center gap-2">
+                    <span>🏷️</span>
+                    <span>إدارة وتعديل تصنيفات المخزون</span>
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-1">
+                    يمكنك إضافة تصنيفات جديدة، تعديل أسمائها عبر الفروع، أو حذفها مع نقل الأصناف تلقائياً.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <input
+                    type="text"
+                    value={newCategoryName}
+                    onChange={e => setNewCategoryName(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddNewCategory();
+                      }
+                    }}
+                    placeholder="اسم التصنيف الجديد..."
+                    className="flex-1 sm:w-64 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+                  />
+                  <button
+                    onClick={handleAddNewCategory}
+                    className="bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm px-4 py-2 rounded-xl transition shadow-sm whitespace-nowrap flex items-center gap-1.5"
+                  >
+                    <span>➕</span>
+                    <span>إضافة تصنيف</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Category Cards Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {dynamicCategories.filter(c => c !== 'الكل').map(cat => {
+                const catItems = items.filter(item => item.category === cat);
+                const totalMeters = catItems.reduce((acc, item) => acc + (Number(item.totalQuantity) || 0), 0);
+                const isEditing = editingCategoryOldName === cat;
+
+                return (
+                  <div key={cat} className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition flex flex-col justify-between gap-4">
+                    <div>
+                      {isEditing ? (
+                        <div className="flex items-center gap-2 mb-3">
+                          <input
+                            type="text"
+                            value={editingCategoryNewName}
+                            onChange={e => setEditingCategoryNewName(e.target.value)}
+                            onKeyDown={e => {
+                              if (e.key === 'Enter') handleSaveRenameCategory(cat);
+                              if (e.key === 'Escape') setEditingCategoryOldName(null);
+                            }}
+                            autoFocus
+                            className="flex-1 border border-amber-400 rounded-xl px-2.5 py-1.5 text-sm text-slate-900 font-bold focus:outline-none focus:ring-2 focus:ring-amber-500"
+                          />
+                          <button
+                            onClick={() => handleSaveRenameCategory(cat)}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition"
+                          >
+                            حفظ
+                          </button>
+                          <button
+                            onClick={() => setEditingCategoryOldName(null)}
+                            className="bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold px-2.5 py-1.5 rounded-lg transition"
+                          >
+                            إلغاء
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between gap-2 mb-3">
+                          <div className="flex items-center gap-2">
+                            <span className="w-8 h-8 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center font-bold text-sm">
+                              🏷️
+                            </span>
+                            <span className="font-bold text-base text-slate-900">{cat}</span>
+                          </div>
+                          
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => handleStartRenameCategory(cat)}
+                              title="تعديل اسم التصنيف"
+                              className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition text-xs font-bold"
+                            >
+                              ✏️ تعديل
+                            </button>
+                            <button
+                              onClick={() => handleDeleteCategory(cat)}
+                              title="حذف التصنيف"
+                              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition text-xs font-bold"
+                            >
+                              🗑️ حذف
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-2 gap-2 text-xs bg-slate-50 p-3 rounded-xl border border-slate-100 mt-2">
+                        <div className="flex flex-col">
+                          <span className="text-slate-500 font-medium">عدد الأصناف:</span>
+                          <span className="font-bold text-slate-800 text-sm">{catItems.length} صنف</span>
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-slate-500 font-medium">إجمالي الكمية:</span>
+                          <span className="font-bold text-emerald-700 text-sm">{totalMeters.toLocaleString()} متر/قطعة</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-slate-100">
+                      <span>الفروع النشطة: {new Set(catItems.map(i => i.branch)).size || 0} فرع</span>
+                      <button
+                        onClick={() => {
+                          setActiveCategory(cat);
+                          setTab('stock');
+                        }}
+                        className="text-amber-600 hover:underline font-bold"
+                      >
+                        عرض الأصناف ↤
+                      </button>
                     </div>
                   </div>
                 );
