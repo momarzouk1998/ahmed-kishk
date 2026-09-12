@@ -487,6 +487,122 @@ export default function NewSalesInvoicePOSPage() {
     }
   };
 
+  // #FIX (باغ الطباعة فى 3 صفحات): زرار "طباعة الآن" كان بينادي window.print()
+  // مباشرة على صفحة نقطة البيع كلها (شاشة تعمل بالكامل مع كل الأصناف والكيباد)
+  // من غير أي CSS خاص بالطباعة يعزل الإيصال بس — فكان بيطبع الصفحة الكاملة
+  // (بتوزّع على كذا صفحة A4 حسب طولها)، والمودال (position:fixed) بيتكرر على
+  // كل صفحة منها. الحل: نافذة طباعة منفصلة ومستقلة (زي بوليصة الشحن بالظبط)
+  // فيها الإيصال بس على صفحة حرارية واحدة، بدون أي تأثير من الصفحة الأصلية.
+  const handlePrintReceiptNow = () => {
+    if (!lastSavedInvoice) return;
+    const w = window.open('', '_blank');
+    if (!w) { window.print(); return; }
+
+    const bCfg = getBranchConfig(lastSavedInvoice.branch);
+    const bPhones = [bCfg.landline ? `ت: ${bCfg.landline}` : '', bCfg.phone ? `م: ${bCfg.phone}` : ''].filter(Boolean).join(' | ');
+
+    const activePayments: { label: string; amount: number; icon: string }[] = [];
+    if (lastSavedInvoice.splitPayments && (lastSavedInvoice.paymentMethod === 'دفع متعدد / مزيج' || lastSavedInvoice.paymentMethod?.includes('متعدد'))) {
+      if (Number(lastSavedInvoice.splitPayments.cash) > 0) activePayments.push({ label: 'كاش', amount: Number(lastSavedInvoice.splitPayments.cash), icon: '💵' });
+      if (Number(lastSavedInvoice.splitPayments.instapay) > 0) activePayments.push({ label: 'إنستاباي', amount: Number(lastSavedInvoice.splitPayments.instapay), icon: '⚡' });
+      if (Number(lastSavedInvoice.splitPayments.vodafone) > 0) activePayments.push({ label: 'فودافون كاش', amount: Number(lastSavedInvoice.splitPayments.vodafone), icon: '📱' });
+      if (Number(lastSavedInvoice.splitPayments.visa) > 0) activePayments.push({ label: 'فيزا', amount: Number(lastSavedInvoice.splitPayments.visa), icon: '💳' });
+    } else if (lastSavedInvoice.paidAmount > 0) {
+      const m = lastSavedInvoice.paymentMethod || 'نقدي';
+      let ic = '💵';
+      if (m.includes('إنستا')) ic = '⚡';
+      else if (m.includes('فودافون')) ic = '📱';
+      else if (m.includes('فيزا')) ic = '💳';
+      activePayments.push({ label: m, amount: lastSavedInvoice.paidAmount, icon: ic });
+    }
+
+    const rows = (lastSavedInvoice.items || []).map((it: any) => `
+      <tr>
+        <td style="padding:1.5mm 1mm; text-align:right; font-weight:900;">${it.name}</td>
+        <td style="padding:1.5mm 0.5mm; text-align:center; font-family:monospace; font-weight:900; border-right:1px solid #000; border-left:1px solid #000;">${it.meters}م</td>
+        <td style="padding:1.5mm 0.5mm; text-align:center; font-family:monospace; border-left:1px solid #000;">${it.pricePerMeter}</td>
+        <td style="padding:1.5mm 1mm; text-align:left; font-family:monospace; font-weight:900; white-space:nowrap;">${it.totalPrice} ج</td>
+      </tr>
+    `).join('');
+
+    const paymentRows = activePayments.map(p => `
+      <div style="display:flex; justify-content:space-between; color:#065f46; font-size:8pt;">
+        <span>${p.icon} مسدد ${p.label}:</span><span style="font-family:monospace; font-weight:bold;">${p.amount.toLocaleString()} ج.م</span>
+      </div>
+    `).join('');
+
+    const shippingHtml = lastSavedInvoice.isOnlineOrder ? `
+      <div style="background:#eff6ff; border:1px solid #93c5fd; border-radius:2mm; padding:1.5mm; margin:1.5mm 0; font-size:8pt; color:#1e3a8a;">
+        <div style="font-weight:900;">📦 شحن أونلاين: ${lastSavedInvoice.shippingCompany || 'بوسطة'}</div>
+        ${lastSavedInvoice.shippingAddress ? `<div>📍 ${lastSavedInvoice.shippingAddress}</div>` : ''}
+        ${lastSavedInvoice.receiverPhone ? `<div>📞 مستلم: ${lastSavedInvoice.receiverPhone}</div>` : ''}
+        ${lastSavedInvoice.trackingNumber ? `<div>🏷️ تتبع: ${lastSavedInvoice.trackingNumber}</div>` : ''}
+      </div>
+    ` : '';
+
+    w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head>
+      <meta charset="UTF-8"><title>إيصال ${lastSavedInvoice.invoiceNumber}</title>
+      <style>
+        @page { size: 80mm 297mm; margin: 0; }
+        * { box-sizing:border-box; margin:0; padding:0; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
+        body { font-family:'Cairo', system-ui, -apple-system, sans-serif; direction:rtl; color:#000; font-size:8.5pt; width:68mm; max-width:68mm; margin:0 auto; padding:2mm 1.5mm; }
+        .center { text-align:center; }
+        .divider { border-top:1px dashed #000; margin:1.5mm 0; }
+        table { width:100%; border-collapse:collapse; border:1px solid #000; font-size:8pt; }
+        thead tr { background:#e2e8f0; font-weight:900; border-bottom:1px solid #000; }
+      </style></head><body>
+        <div class="center">
+          <div style="font-weight:900; font-size:11pt;">مؤسسة كشك للأقمشة والستائر</div>
+          <div style="font-size:8pt; font-weight:bold;">👑 ${bCfg.name}</div>
+          <div style="font-size:7.5pt; color:#333;">${bCfg.address}</div>
+          ${bPhones ? `<div style="font-size:7.5pt; font-family:monospace; font-weight:bold;">${bPhones}</div>` : ''}
+        </div>
+        <div class="divider"></div>
+        <div style="display:flex; justify-content:space-between; font-size:8pt; font-weight:bold;">
+          <span>فاتورة: ${lastSavedInvoice.invoiceNumber}</span>
+          <span>${lastSavedInvoice.date || new Date().toLocaleDateString('ar-EG')}</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; font-size:8.5pt; padding:1mm 0;">
+          <span><b>العميل:</b> ${lastSavedInvoice.customerName}</span>
+          ${lastSavedInvoice.phone ? `<span style="font-family:monospace;">${lastSavedInvoice.phone}</span>` : ''}
+        </div>
+        <div class="divider"></div>
+        <table>
+          <thead><tr>
+            <th style="padding:1mm; text-align:right;">الصنف</th>
+            <th style="padding:1mm; text-align:center; border-right:1px solid #000; border-left:1px solid #000;">الأمتار</th>
+            <th style="padding:1mm; text-align:center; border-left:1px solid #000;">السعر</th>
+            <th style="padding:1mm; text-align:left;">الإجمالي</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+        ${shippingHtml}
+        <div class="divider"></div>
+        <div style="font-size:8.5pt; font-weight:bold;">
+          <div style="display:flex; justify-content:space-between; color:#475569;">
+            <span>المجموع الفرعي:</span><span>${lastSavedInvoice.subtotal} ج.م</span>
+          </div>
+          ${lastSavedInvoice.discountAmount > 0 ? `<div style="display:flex; justify-content:space-between; color:#b45309;"><span>الخصم:</span><span>- ${lastSavedInvoice.discountAmount} ج.م</span></div>` : ''}
+          ${lastSavedInvoice.isOnlineOrder ? `<div style="display:flex; justify-content:space-between; color:#1d4ed8;"><span>مصاريف الشحن:</span><span>+ ${lastSavedInvoice.shippingFee || 110} ج.م</span></div>` : ''}
+          <div style="display:flex; justify-content:space-between; font-size:9.5pt; font-weight:900; padding-top:1mm; border-top:1px solid #cbd5e1;">
+            <span>الصافي المستحق:</span><span>${lastSavedInvoice.totalAmount} ج.م</span>
+          </div>
+          ${paymentRows}
+          <div style="display:flex; justify-content:space-between; font-weight:900;">
+            <span>إجمالي المدفوع:</span><span>${lastSavedInvoice.paidAmount} ج.م</span>
+          </div>
+          ${lastSavedInvoice.remainingAmount > 0 ? `<div style="display:flex; justify-content:space-between; color:#e11d48; font-weight:bold;"><span>المتبقي:</span><span>${lastSavedInvoice.remainingAmount} ج.م</span></div>` : ''}
+        </div>
+        <div class="divider"></div>
+        <div class="center" style="font-size:7.5pt;">
+          <div style="font-weight:bold;">شكراً لتعاملكم مع مؤسسة كشك للأقمشة والستائر ✨</div>
+          <div style="font-weight:900; border:1px solid #000; padding:1mm; border-radius:1mm; margin-top:1mm;">⚠️ البضاعة المباعة لا ترد ولا تستبدل بعد القص</div>
+        </div>
+      </body></html>`);
+    w.document.close();
+    setTimeout(() => { w.print(); w.close(); }, 300);
+  };
+
   const handleClearCart = () => {
     if (items.length === 0) return;
     if (confirm('هل أنت متأكد من تفريغ كافة أصناف الفاتورة؟')) {
@@ -1660,7 +1776,7 @@ export default function NewSalesInvoicePOSPage() {
             <div className="flex gap-2">
               <button
                 type="button"
-                onClick={() => window.print()}
+                onClick={handlePrintReceiptNow}
                 className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-black py-2.5 rounded-xl text-xs flex items-center justify-center gap-1 cursor-pointer"
               >
                 <span>🖨️ طباعة الآن</span>
