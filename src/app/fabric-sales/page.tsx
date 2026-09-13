@@ -97,6 +97,24 @@ export default function FabricSalesPage() {
     })();
   }, []);
 
+  // #FEATURE: بحث عن صنف من المخزون الحقيقي عند إضافة بند جديد فى مودال تعديل
+  // الفاتورة — كانت "إضافة بند" بتعمل صف وهمي ("صنف قماش جديد") بلا أي بحث فى
+  // الأصناف المتكودة، فيضطر المستخدم يكتب كل حاجة يدوي بلا أي ربط بالمخزون الفعلي.
+  const [inventoryProducts, setInventoryProducts] = useState<any[]>([]);
+  const [itemSearchOpenIndex, setItemSearchOpenIndex] = useState<number | null>(null);
+  const [itemSearchQuery, setItemSearchQuery] = useState('');
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/inventory', { cache: 'no-store' });
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && Array.isArray(json.items)) setInventoryProducts(json.items);
+        }
+      } catch {}
+    })();
+  }, []);
+
   // Parse URL tab parameter on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -274,10 +292,19 @@ export default function FabricSalesPage() {
       updatedItem.totalPrice = Math.round(m * p * 100) / 100;
     }
     currentItems[index] = updatedItem;
+    applyEditItemsRecalc(currentItems);
+  };
 
+  // #FIX (باغ "الـ110 مش بتتضاف لوحدها"): التلات دوال دي كانت بتحسب الإجمالي
+  // من الأصناف والخصم بس، وتتجاهل مصاريف الشحن (shippingFee) تمامًا — فأي
+  // إضافة/تعديل/حذف بند فى فاتورة أونلاين كان بيصفّر أثر الشحن من الإجمالي
+  // المعروض حتى لو الفاتورة كانت أونلاين فعلاً، ويضطر المستخدم يضيفها يدوي.
+  const applyEditItemsRecalc = (currentItems: SalesInvoiceItem[]) => {
+    if (!editingInvoice) return;
     const newSubtotal = currentItems.reduce((acc, it) => acc + (Number(it.totalPrice) || 0), 0);
     const disc = Number(editingInvoice.discountAmount) || 0;
-    const newTotal = Math.max(0, Math.round((newSubtotal - disc) * 100) / 100);
+    const shipping = editingInvoice.isOnlineOrder ? (Number(editingInvoice.shippingFee) || 0) : 0;
+    const newTotal = Math.max(0, Math.round((newSubtotal - disc + shipping) * 100) / 100);
 
     const wasFullyPaid = (Number(editingInvoice.paidAmount) || 0) >= (Number(editingInvoice.totalAmount) || 0);
     const newPaid = wasFullyPaid ? newTotal : Math.min(Number(editingInvoice.paidAmount) || 0, newTotal);
@@ -304,46 +331,36 @@ export default function FabricSalesPage() {
       totalPrice: 100,
     };
     currentItems.push(newItem);
+    setItemSearchOpenIndex(currentItems.length - 1);
+    setItemSearchQuery('');
+    applyEditItemsRecalc(currentItems);
+  };
 
-    const newSubtotal = currentItems.reduce((acc, it) => acc + (Number(it.totalPrice) || 0), 0);
-    const disc = Number(editingInvoice.discountAmount) || 0;
-    const newTotal = Math.max(0, Math.round((newSubtotal - disc) * 100) / 100);
-
-    const wasFullyPaid = (Number(editingInvoice.paidAmount) || 0) >= (Number(editingInvoice.totalAmount) || 0);
-    const newPaid = wasFullyPaid ? newTotal : Math.min(Number(editingInvoice.paidAmount) || 0, newTotal);
-    const newRemaining = Math.max(0, newTotal - newPaid);
-
-    setEditingInvoice({
-      ...editingInvoice,
-      items: currentItems,
-      subtotal: newSubtotal,
-      totalAmount: newTotal,
-      paidAmount: newPaid,
-      remainingAmount: newRemaining,
-    });
+  // اختيار صنف حقيقي من المخزون لبند معيّن (سواء بند جديد أو تعديل بند موجود) —
+  // بيسحب الكود/الاسم/سعر البيع الفعلي بدل الكتابة اليدوية العمياء.
+  const handleEditSelectProductForRow = (index: number, product: any) => {
+    if (!editingInvoice) return;
+    const currentItems = Array.isArray(editingInvoice.items) ? [...editingInvoice.items] : [];
+    if (!currentItems[index]) return;
+    const meters = Number(currentItems[index].meters) || 1;
+    const price = Number(product.sellPrice) || 0;
+    currentItems[index] = {
+      ...currentItems[index],
+      code: product.code,
+      name: product.name,
+      pricePerMeter: price,
+      totalPrice: Math.round(meters * price * 100) / 100,
+    };
+    setItemSearchOpenIndex(null);
+    setItemSearchQuery('');
+    applyEditItemsRecalc(currentItems);
   };
 
   const handleEditDeleteItem = (index: number) => {
     if (!editingInvoice) return;
     const currentItems = Array.isArray(editingInvoice.items) ? [...editingInvoice.items] : [];
     currentItems.splice(index, 1);
-
-    const newSubtotal = currentItems.reduce((acc, it) => acc + (Number(it.totalPrice) || 0), 0);
-    const disc = Number(editingInvoice.discountAmount) || 0;
-    const newTotal = Math.max(0, Math.round((newSubtotal - disc) * 100) / 100);
-
-    const wasFullyPaid = (Number(editingInvoice.paidAmount) || 0) >= (Number(editingInvoice.totalAmount) || 0);
-    const newPaid = wasFullyPaid ? newTotal : Math.min(Number(editingInvoice.paidAmount) || 0, newTotal);
-    const newRemaining = Math.max(0, newTotal - newPaid);
-
-    setEditingInvoice({
-      ...editingInvoice,
-      items: currentItems,
-      subtotal: newSubtotal,
-      totalAmount: newTotal,
-      paidAmount: newPaid,
-      remainingAmount: newRemaining,
-    });
+    applyEditItemsRecalc(currentItems);
   };
 
   // Submit Sales Return
@@ -1552,14 +1569,43 @@ export default function FabricSalesPage() {
                               <td className="p-2 text-center font-mono font-bold text-slate-400 text-[11px]">
                                 {idx + 1}
                               </td>
-                              <td className="p-2">
+                              <td className="p-2 relative">
                                 <input
                                   type="text"
                                   value={item.name || ''}
-                                  placeholder="الصنف..."
-                                  onChange={e => handleEditItemChange(idx, 'name', e.target.value)}
+                                  placeholder="ابحث بالاسم أو الكود..."
+                                  onChange={e => {
+                                    handleEditItemChange(idx, 'name', e.target.value);
+                                    setItemSearchOpenIndex(idx);
+                                    setItemSearchQuery(e.target.value);
+                                  }}
+                                  onFocus={() => { setItemSearchOpenIndex(idx); setItemSearchQuery(item.name || ''); }}
+                                  onBlur={() => setTimeout(() => setItemSearchOpenIndex(null), 150)}
                                   className="w-full font-bold text-slate-900 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-amber-500 focus:bg-white bg-slate-50/50"
                                 />
+                                {itemSearchOpenIndex === idx && itemSearchQuery.trim() !== '' && (() => {
+                                  const q = itemSearchQuery.trim().toLowerCase();
+                                  const matches = inventoryProducts.filter((p: any) =>
+                                    (!editingInvoice.branch || normalizeBranchName(p.branch) === normalizeBranchName(editingInvoice.branch)) &&
+                                    ((p.name || '').toLowerCase().includes(q) || (p.code || '').toLowerCase().includes(q))
+                                  ).slice(0, 8);
+                                  if (matches.length === 0) return null;
+                                  return (
+                                    <div className="absolute z-20 top-full right-0 left-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-52 overflow-y-auto">
+                                      {matches.map((p: any) => (
+                                        <button
+                                          type="button"
+                                          key={p.id}
+                                          onMouseDown={() => handleEditSelectProductForRow(idx, p)}
+                                          className="w-full text-right px-3 py-2 hover:bg-amber-50 text-xs border-b border-slate-100 last:border-0 flex items-center justify-between gap-2 cursor-pointer"
+                                        >
+                                          <span className="font-bold text-slate-900">{p.name}</span>
+                                          <span className="text-slate-400 font-mono text-[10px]">{p.code} • {p.sellPrice} ج</span>
+                                        </button>
+                                      ))}
+                                    </div>
+                                  );
+                                })()}
                               </td>
                               <td className="p-2">
                                 <input
