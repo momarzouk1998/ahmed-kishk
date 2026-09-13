@@ -10,7 +10,7 @@ import {
   isMonthlyEmployee
 } from '@/lib/employeeStore';
 import { BRANCHES_LIST, normalizeBranchName } from '@/lib/branches';
-import { formatDateOnly, getTodayDateStr } from '@/lib/dateUtils';
+import { formatDateOnly, getTodayDateStr, getYesterdayDateStr } from '@/lib/dateUtils';
 import { useCurrentUser } from '@/lib/useCurrentUser';
 import Pagination from '@/components/Pagination';
 
@@ -68,6 +68,7 @@ export default function EmployeesManagementPage() {
   const [logStatusFilter, setLogStatusFilter] = useState<string>('الكل');
   const [logDateFrom, setLogDateFrom] = useState<string>('');
   const [logDateTo, setLogDateTo] = useState<string>('');
+  const [logQuickFilter, setLogQuickFilter] = useState<'yesterday' | 'today' | 'week' | 'month' | 'all' | 'custom'>('all');
   const [logCurrentPage, setLogCurrentPage] = useState<number>(1);
   const logPageSize = 20;
   const [showLogModal, setShowLogModal] = useState<boolean>(false);
@@ -358,6 +359,30 @@ export default function EmployeesManagementPage() {
   }, [attendance, isAdmin, isSuperAdmin, user, logBranchFilter, logStatusFilter, logDateFrom, logDateTo, logSearch]);
 
   const paginatedLogRecords = filteredLogRecords.slice((logCurrentPage - 1) * logPageSize, logCurrentPage * logPageSize);
+
+  const applyLogQuickFilter = (key: 'yesterday' | 'today' | 'week' | 'month' | 'all') => {
+    setLogQuickFilter(key);
+    const today = getTodayDateStr();
+    if (key === 'yesterday') {
+      const y = getYesterdayDateStr();
+      setLogDateFrom(y);
+      setLogDateTo(y);
+    } else if (key === 'today') {
+      setLogDateFrom(today);
+      setLogDateTo(today);
+    } else if (key === 'week') {
+      const d = new Date(today);
+      d.setDate(d.getDate() - 7);
+      setLogDateFrom(d.toISOString().slice(0, 10));
+      setLogDateTo(today);
+    } else if (key === 'month') {
+      setLogDateFrom(`${today.substring(0, 7)}-01`);
+      setLogDateTo(today);
+    } else {
+      setLogDateFrom('');
+      setLogDateTo('');
+    }
+  };
 
   const openAddLog = () => {
     setEditingLogRecord(null);
@@ -1381,6 +1406,28 @@ export default function EmployeesManagementPage() {
               </button>
             </div>
 
+            {/* Quick date filters */}
+            <div className="flex bg-slate-100 p-1 rounded-xl gap-1 border border-slate-200 text-xs font-bold overflow-x-auto w-fit">
+              {([
+                { key: 'yesterday', label: 'أمس' },
+                { key: 'today', label: 'اليوم' },
+                { key: 'week', label: 'الأسبوع' },
+                { key: 'month', label: 'الشهر' },
+                { key: 'all', label: 'الكل' },
+              ] as { key: 'yesterday' | 'today' | 'week' | 'month' | 'all'; label: string }[]).map(t => (
+                <button
+                  key={t.key}
+                  type="button"
+                  onClick={() => applyLogQuickFilter(t.key)}
+                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
+                    logQuickFilter === t.key ? 'bg-purple-700 text-white font-black shadow-xs' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
             {/* Filters */}
             <div className="flex flex-wrap items-center gap-2">
               <input
@@ -1418,7 +1465,7 @@ export default function EmployeesManagementPage() {
                 <input
                   type="date"
                   value={logDateFrom}
-                  onChange={(e) => setLogDateFrom(e.target.value)}
+                  onChange={(e) => { setLogDateFrom(e.target.value); setLogQuickFilter('custom'); }}
                   className="p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold"
                 />
               </div>
@@ -1427,14 +1474,14 @@ export default function EmployeesManagementPage() {
                 <input
                   type="date"
                   value={logDateTo}
-                  onChange={(e) => setLogDateTo(e.target.value)}
+                  onChange={(e) => { setLogDateTo(e.target.value); setLogQuickFilter('custom'); }}
                   className="p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold"
                 />
               </div>
               {(logSearch || logBranchFilter !== 'الكل' || logStatusFilter !== 'الكل' || logDateFrom || logDateTo) && (
                 <button
                   type="button"
-                  onClick={() => { setLogSearch(''); setLogBranchFilter('الكل'); setLogStatusFilter('الكل'); setLogDateFrom(''); setLogDateTo(''); }}
+                  onClick={() => { setLogSearch(''); setLogBranchFilter('الكل'); setLogStatusFilter('الكل'); setLogDateFrom(''); setLogDateTo(''); setLogQuickFilter('all'); }}
                   className="px-3 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold cursor-pointer"
                 >
                   ✕ مسح التصفية
