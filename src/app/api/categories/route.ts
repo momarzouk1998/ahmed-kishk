@@ -188,6 +188,10 @@ export async function DELETE(request: Request) {
     if (!name) {
       return NextResponse.json({ success: false, error: 'اسم التصنيف مطلوب' }, { status: 400 });
     }
+    // حذف التصنيفات متاح للأدمن فقط، بغض النظر عن صلاحية حذف المخزون الممنوحة لمدير الفرع.
+    if (!scope.isAdmin) {
+      return NextResponse.json({ success: false, error: 'حذف التصنيفات متاح للأدمن فقط' }, { status: 403 });
+    }
     const perm = await assertPagePermission(request, 'p_inventory', 'delete');
     if (!perm.ok) return NextResponse.json({ success: false, error: perm.error }, { status: perm.status });
 

@@ -166,6 +166,10 @@ export async function DELETE(request: Request) {
     if (!scope.isAdmin && existing.branch !== scope.branch) {
       return NextResponse.json({ success: false, error: 'غير مصرح بحذف صنف من فرع آخر' }, { status: 403 });
     }
+    // حذف صنف من المخزون متاح للأدمن فقط، حتى لو مدير الفرع معاه صلاحية "حذف" عامة على المخزون.
+    if (!scope.isAdmin) {
+      return NextResponse.json({ success: false, error: 'حذف أصناف المخزون متاح للأدمن فقط' }, { status: 403 });
+    }
     const perm = await assertPagePermission(request, 'p_inventory', 'delete');
     if (!perm.ok) return NextResponse.json({ success: false, error: perm.error }, { status: perm.status });
 

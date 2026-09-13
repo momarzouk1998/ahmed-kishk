@@ -4088,20 +4088,6 @@
     "supplier": "ورشة كشك"
   },
   {
-    "id": "INV-OMR-KHY-001",
-    "code": "OMR-KHY-001",
-    "name": "خياطة وتفصيل ستارة عادية",
-    "category": "خياطة",
-    "unit": "متر",
-    "totalQuantity": 999,
-    "reservedQuantity": 0,
-    "costPrice": 20,
-    "sellPrice": 50,
-    "branch": "فرع عمر أفندي",
-    "minAlert": 10,
-    "supplier": "ورشة كشك"
-  },
-  {
     "id": "INV-COM-001",
     "code": "COM-001",
     "name": "كتان فرنساوى",

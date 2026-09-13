@@ -504,7 +504,7 @@ export default function InventoryPage() {
 
         {/* Tab Navigation — تاب إحصائيات الفروع للأدمن فقط */}
         <div className="flex gap-2 border-b border-slate-200 overflow-x-auto pb-px">
-          {TABS.filter(t => t.key !== 'stores' || isAdmin).map(t => (
+          {TABS.filter(t => (t.key !== 'stores' && t.key !== 'categories') || isAdmin).map(t => (
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
@@ -754,14 +754,16 @@ export default function InventoryPage() {
                       >
                         <span>✏️</span> تعديل وجرد مباشر
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteItem(item.id, item.name)}
-                        className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 p-1.5 rounded-xl text-xs font-bold"
-                        title="حذف الصنف"
-                      >
-                        🗑️
-                      </button>
+                      {isAdmin && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteItem(item.id, item.name)}
+                          className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 p-1.5 rounded-xl text-xs font-bold"
+                          title="حذف الصنف (أدمن فقط)"
+                        >
+                          🗑️
+                        </button>
+                      )}
                     </div>
                   </div>
                 );
@@ -945,14 +947,16 @@ export default function InventoryPage() {
                               >
                                 <span>✏️</span> تعديل
                               </button>
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteItem(item.id, item.name)}
-                                className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 p-1 rounded-lg text-xs font-bold cursor-pointer transition-colors"
-                                title="حذف الصنف"
-                              >
-                                🗑️
-                              </button>
+                              {isAdmin && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteItem(item.id, item.name)}
+                                  className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 p-1 rounded-lg text-xs font-bold cursor-pointer transition-colors"
+                                  title="حذف الصنف (أدمن فقط)"
+                                >
+                                  🗑️
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -1476,13 +1480,15 @@ export default function InventoryPage() {
                                       ✏️
                                     </button>
 
-                                    <button
-                                      onClick={() => handleDeleteCategory(row.category, row.branch)}
-                                      title="حذف التصنيف من الفرع"
-                                      className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition text-xs font-bold"
-                                    >
-                                      🗑️
-                                    </button>
+                                    {isAdmin && (
+                                      <button
+                                        onClick={() => handleDeleteCategory(row.category, row.branch)}
+                                        title="حذف التصنيف من الفرع (أدمن فقط)"
+                                        className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition text-xs font-bold"
+                                      >
+                                        🗑️
+                                      </button>
+                                    )}
                                   </div>
                                 </td>
                               </tr>
