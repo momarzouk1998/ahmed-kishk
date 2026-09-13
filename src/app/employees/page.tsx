@@ -200,11 +200,70 @@ export default function EmployeesManagementPage() {
     return map;
   }, [branchFilteredEmployees, selectedBranch]);
 
+  // ── Advances/Deductions log — بحث + تصفية + باجنيشن + تعديل ──
+  const [advSearch, setAdvSearch] = useState<string>('');
+  const [advBranchFilter, setAdvBranchFilter] = useState<string>('الكل');
+  const [advTypeFilter, setAdvTypeFilter] = useState<string>('الكل');
+  const [advCurrentPage, setAdvCurrentPage] = useState<number>(1);
+  const advPageSize = 20;
+  const [showAdvEditModal, setShowAdvEditModal] = useState<boolean>(false);
+  const [editingAdv, setEditingAdv] = useState<EmployeeAdvance | null>(null);
+  const [advEditForm, setAdvEditForm] = useState<{ date: string; type: 'سلفة' | 'خصم' | 'مكافأة'; amount: string; reason: string }>({
+    date: getTodayDateStr(),
+    type: 'سلفة',
+    amount: '',
+    reason: '',
+  });
+  const [savingAdvEdit, setSavingAdvEdit] = useState<boolean>(false);
+
+  useEffect(() => { setAdvCurrentPage(1); }, [advSearch, advBranchFilter, advTypeFilter, selectedBranch]);
+
   const filteredAdvances = useMemo(() => {
     const activeBranch = (!isAdmin && !isSuperAdmin && user?.branch) ? user.branch : selectedBranch;
-    if (activeBranch === 'الكل') return advances;
-    return advances.filter(a => normalizeBranchName(a.branch) === normalizeBranchName(activeBranch));
-  }, [advances, selectedBranch, isAdmin, isSuperAdmin, user]);
+    const branchScoped = activeBranch === 'الكل' ? advances : advances.filter(a => normalizeBranchName(a.branch) === normalizeBranchName(activeBranch));
+    return branchScoped
+      .filter(a => advBranchFilter === 'الكل' || normalizeBranchName(a.branch) === normalizeBranchName(advBranchFilter))
+      .filter(a => advTypeFilter === 'الكل' || a.type === advTypeFilter)
+      .filter(a => {
+        if (!advSearch.trim()) return true;
+        const q = advSearch.trim().toLowerCase();
+        return a.employeeName.toLowerCase().includes(q) || (a.reason || '').toLowerCase().includes(q);
+      })
+      .sort((a, b) => b.date.localeCompare(a.date) || a.branch.localeCompare(b.branch, 'ar'));
+  }, [advances, selectedBranch, isAdmin, isSuperAdmin, user, advBranchFilter, advTypeFilter, advSearch]);
+
+  const paginatedAdvances = filteredAdvances.slice((advCurrentPage - 1) * advPageSize, advCurrentPage * advPageSize);
+
+  const openEditAdv = (adv: EmployeeAdvance) => {
+    setEditingAdv(adv);
+    setAdvEditForm({ date: adv.date, type: adv.type, amount: String(adv.amount), reason: adv.reason || '' });
+    setShowAdvEditModal(true);
+  };
+
+  const handleSaveAdvEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingAdv) return;
+    if (!advEditForm.amount || Number(advEditForm.amount) <= 0) {
+      alert('من فضلك أدخل مبلغ صحيح أكبر من صفر');
+      return;
+    }
+    setSavingAdvEdit(true);
+    const updated: EmployeeAdvance = {
+      ...editingAdv,
+      date: advEditForm.date,
+      type: advEditForm.type,
+      amount: parseFloat(advEditForm.amount),
+      reason: advEditForm.reason,
+    };
+    const ok = await saveAdvance(updated);
+    setSavingAdvEdit(false);
+    if (!ok) {
+      alert('فشل حفظ التعديل — من فضلك حاول مرة أخرى');
+      return;
+    }
+    setAdvances(prev => prev.map(a => (a.id === updated.id ? updated : a)));
+    setShowAdvEditModal(false);
+  };
 
   // Employee CRUD handlers
   const handleOpenAddEmp = () => {
@@ -988,6 +1047,48 @@ export default function EmployeesManagementPage() {
                 <span className="text-xs font-normal text-slate-500">إجمالي: {filteredAdvances.length} حركة</span>
               </h3>
 
+              {/* Filters */}
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  type="text"
+                  value={advSearch}
+                  onChange={(e) => setAdvSearch(e.target.value)}
+                  placeholder="🔍 ابحث باسم الموظف أو السبب..."
+                  className="flex-1 min-w-[180px] p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold"
+                />
+                {canViewWages && (
+                  <select
+                    value={advBranchFilter}
+                    onChange={(e) => setAdvBranchFilter(e.target.value)}
+                    className="p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold"
+                  >
+                    <option value="الكل">🌐 كل الفروع</option>
+                    {BRANCHES_LIST.map(b => (
+                      <option key={b.id} value={b.name}>{b.name}</option>
+                    ))}
+                  </select>
+                )}
+                <select
+                  value={advTypeFilter}
+                  onChange={(e) => setAdvTypeFilter(e.target.value)}
+                  className="p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold"
+                >
+                  <option value="الكل">كل الأنواع</option>
+                  <option value="سلفة">سلفة</option>
+                  <option value="خصم">خصم</option>
+                  <option value="مكافأة">مكافأة</option>
+                </select>
+                {(advSearch || advBranchFilter !== 'الكل' || advTypeFilter !== 'الكل') && (
+                  <button
+                    type="button"
+                    onClick={() => { setAdvSearch(''); setAdvBranchFilter('الكل'); setAdvTypeFilter('الكل'); }}
+                    className="px-3 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold cursor-pointer"
+                  >
+                    ✕ مسح التصفية
+                  </button>
+                )}
+              </div>
+
               <div className="overflow-x-auto">
                 <table className="w-full text-right text-xs">
                   <thead className="bg-slate-100 text-slate-700 font-bold uppercase border-b border-slate-200">
@@ -998,16 +1099,16 @@ export default function EmployeesManagementPage() {
                       <th className="p-2.5">النوع</th>
                       <th className="p-2.5 font-mono">المبلغ</th>
                       <th className="p-2.5">السبب</th>
-                      {canViewWages && <th className="p-2.5 text-center">حذف</th>}
+                      {canViewWages && <th className="p-2.5 text-center">إجراءات</th>}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200">
-                    {filteredAdvances.length === 0 ? (
+                    {paginatedAdvances.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="p-8 text-center text-slate-400">لا توجد سلف أو خصومات مسجلة حتى الآن</td>
+                        <td colSpan={7} className="p-8 text-center text-slate-400">لا توجد سلف أو خصومات مطابقة</td>
                       </tr>
                     ) : (
-                      filteredAdvances.map(adv => (
+                      paginatedAdvances.map(adv => (
                         <tr key={adv.id} className="hover:bg-slate-50">
                           <td className="p-2.5 font-mono text-slate-600">{adv.date}</td>
                           <td className="p-2.5 font-bold text-slate-900">{adv.employeeName}</td>
@@ -1025,12 +1126,21 @@ export default function EmployeesManagementPage() {
                           <td className="p-2.5 text-slate-500 text-[11px]">{adv.reason}</td>
                           {canViewWages && (
                             <td className="p-2.5 text-center">
-                              <button
-                                onClick={() => handleDeleteAdvance(adv.id)}
-                                className="text-rose-600 hover:text-rose-800 font-bold text-xs p-1"
-                              >
-                                ✕
-                              </button>
+                              <div className="flex items-center justify-center gap-1">
+                                <button
+                                  onClick={() => openEditAdv(adv)}
+                                  className="px-2 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-[11px] font-bold cursor-pointer"
+                                >
+                                  ✏️ تعديل
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteAdvance(adv.id)}
+                                  className="text-rose-600 hover:text-rose-800 font-bold text-xs p-1.5"
+                                  title="حذف"
+                                >
+                                  ✕
+                                </button>
+                              </div>
                             </td>
                           )}
                         </tr>
@@ -1039,7 +1149,104 @@ export default function EmployeesManagementPage() {
                   </tbody>
                 </table>
               </div>
+
+              <Pagination
+                currentPage={advCurrentPage}
+                totalItems={filteredAdvances.length}
+                pageSize={advPageSize}
+                onPageChange={setAdvCurrentPage}
+                itemName="حركة"
+              />
             </div>
+          </div>
+        )}
+
+        {/* Advance/Deduction Edit Modal (Admin Only) */}
+        {showAdvEditModal && editingAdv && (
+          <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+            <form
+              onSubmit={handleSaveAdvEdit}
+              className="bg-white max-w-md w-full rounded-3xl p-6 space-y-4 shadow-2xl border border-slate-200 max-h-[90vh] overflow-y-auto"
+            >
+              <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+                <span>✏️</span>
+                <span>تعديل سلفة / خصم</span>
+              </h3>
+              <p className="text-[11px] text-slate-400">{editingAdv.employeeName} — {editingAdv.branch}</p>
+
+              <div>
+                <label className="text-xs font-bold text-slate-600 block mb-1">التاريخ</label>
+                <input
+                  type="date"
+                  value={advEditForm.date}
+                  onChange={(e) => setAdvEditForm({ ...advEditForm, date: e.target.value })}
+                  required
+                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-600 block mb-1">نوع الحركة</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(['سلفة', 'خصم', 'مكافأة'] as const).map(type => (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => setAdvEditForm({ ...advEditForm, type })}
+                      className={`py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                        advEditForm.type === type
+                          ? type === 'سلفة' ? 'bg-amber-600 text-white border-amber-600 shadow-xs' :
+                            type === 'خصم' ? 'bg-rose-600 text-white border-rose-600 shadow-xs' :
+                            'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      {type}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-600 block mb-1">المبلغ بالجنيه</label>
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={advEditForm.amount}
+                  onChange={(e) => setAdvEditForm({ ...advEditForm, amount: e.target.value })}
+                  required
+                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-mono font-bold"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-600 block mb-1">السبب / البيان</label>
+                <input
+                  type="text"
+                  value={advEditForm.reason}
+                  onChange={(e) => setAdvEditForm({ ...advEditForm, reason: e.target.value })}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 pt-2">
+                <button
+                  type="submit"
+                  disabled={savingAdvEdit}
+                  className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl font-bold text-xs cursor-pointer"
+                >
+                  {savingAdvEdit ? 'جاري الحفظ...' : 'حفظ التعديل'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowAdvEditModal(false)}
+                  className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs cursor-pointer"
+                >
+                  إلغاء
+                </button>
+              </div>
+            </form>
           </div>
         )}
 

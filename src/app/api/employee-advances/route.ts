@@ -57,6 +57,7 @@ export async function POST(request: Request) {
         recordedBy: recordedBy || undefined,
       },
       update: {
+        date: date || undefined,
         type: type || undefined,
         amount: amount !== undefined ? Number(amount) : undefined,
         reason: reason !== undefined ? reason : undefined,
