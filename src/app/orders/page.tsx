@@ -354,6 +354,13 @@ export default function CentralOrdersLedgerPage() {
 
     // Fallback نادر: أوردر بدون عقد تسعير مرتبط — نعرض تقدير تقريبى واضح إنه غير رسمي
     console.warn(`No matching QuotationOrder found for order ${order.id} — printing an estimate only.`);
+    const fallbackRooms = order.rooms || [];
+    const roomCount = Math.max(1, fallbackRooms.length);
+    // تقسيم الإجمالي بالتساوي: كل غرفة إلا الأخيرة بالتقريب، والأخيرة = الباقي
+    // (total - مجموع الباقي) — بيضمن إن مجموع أسعار الغرف يطابق totalAmount
+    // بالظبط، بدل ما يفرق قرش/جنيه لو القسمة مش صحيحة (Math.round لكل غرفة
+    // بمفرده كان ممكن يخلي المجموع أكبر أو أصغر من totalAmount الحقيقي).
+    const perRoomShare = Math.round((order.totalAmount || 0) / roomCount);
     const printData: PrintContractData = {
       id: order.orderId || order.id,
       inspectionId: order.id,
@@ -366,29 +373,35 @@ export default function CentralOrdersLedgerPage() {
       totalAmount: order.totalAmount || 0,
       depositPaid: order.depositPaid || 0,
       remainingAmount: order.remainingAmount || 0,
-      rooms: (order.rooms || []).map((r, idx) => ({
-        id: `rm-${idx}`,
-        name: r.roomName || r.name || `غرفة ${idx + 1}`,
-        widthCm: r.widthCm || 0,
-        heightCm: r.heightCm || 0,
-        sides: r.sides || 2,
-        heavyFabricName: r.heavyFabric?.name || '',
-        heavyMeters: r.heavyFabric?.meters || 0,
-        heavyPrice: 0,
-        sheerFabricName: r.sheerFabric?.name || '',
-        sheerMeters: r.sheerFabric?.meters || 0,
-        sheerPrice: 0,
-        blackoutFabricName: r.blackoutFabric?.name || '',
-        blackoutMeters: r.blackoutFabric?.meters || 0,
-        blackoutPrice: 0,
-        trackMeters: 0,
-        trackPrice: 0,
-        tapeMeters: 0,
-        tapePrice: 0,
-        tailorPricePerSide: 0,
-        installFee: 0,
-        totalSellPrice: order.totalAmount ? Math.round((order.totalAmount || 0) / Math.max(1, (order.rooms || []).length)) : 0,
-      })),
+      rooms: fallbackRooms.map((r, idx) => {
+        const isLast = idx === fallbackRooms.length - 1;
+        const totalSellPrice = order.totalAmount
+          ? (isLast ? (order.totalAmount || 0) - perRoomShare * (roomCount - 1) : perRoomShare)
+          : 0;
+        return {
+          id: `rm-${idx}`,
+          name: r.roomName || r.name || `غرفة ${idx + 1}`,
+          widthCm: r.widthCm || 0,
+          heightCm: r.heightCm || 0,
+          sides: r.sides || 2,
+          heavyFabricName: r.heavyFabric?.name || '',
+          heavyMeters: r.heavyFabric?.meters || 0,
+          heavyPrice: 0,
+          sheerFabricName: r.sheerFabric?.name || '',
+          sheerMeters: r.sheerFabric?.meters || 0,
+          sheerPrice: 0,
+          blackoutFabricName: r.blackoutFabric?.name || '',
+          blackoutMeters: r.blackoutFabric?.meters || 0,
+          blackoutPrice: 0,
+          trackMeters: 0,
+          trackPrice: 0,
+          tapeMeters: 0,
+          tapePrice: 0,
+          tailorPricePerSide: 0,
+          installFee: 0,
+          totalSellPrice,
+        };
+      }),
     };
     setPrintContractData(printData);
     setIsContractPrintOpen(true);
