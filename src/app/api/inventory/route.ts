@@ -119,23 +119,43 @@ export async function POST(request: Request) {
         },
       });
     } else {
-      const uniqueCode = await generateUniqueInventoryCode();
-      item = await prisma.inventoryItem.create({
-        data: {
-          id: id || `INV-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`,
-          code: uniqueCode,
-          name: name.trim(),
-          category: category || 'ستائر',
-          unit: unit || 'متر',
-          totalQuantity: Number(totalQuantity) || 0,
-          reservedQuantity: Number(reservedQuantity) || 0,
-          costPrice: Number(costPrice) || 0,
-          sellPrice: Number(sellPrice) || 0,
-          branch: effBranch,
-          minAlert: Number(minAlert) || 20,
-          supplier: supplier || 'شركة النيل',
-        },
+      // #FIX (باغ "الأسماء بتروح وبترجع"): "إضافة صنف جديد" من الواجهة كانت
+      // بتبعت id مؤقت جديد كل مرة (مفيش id حقيقي يتطابق مع صنف موجود)، فكانت
+      // بتعمل صف جديد بكود جديد كل مرة حتى لو صنف بنفس الاسم والفرع موجود
+      // بالفعل — فيتفتت مخزون نفس القماش على أكواد متفرقة، ولو الكاشير مالقهوش
+      // فى البحث بيسجله تاني فيزيد التفتت. دلوقتى بندوّر أول حاجة على صنف
+      // بنفس الاسم (بعد trim) ونفس الفرع، ولو موجود بنضيف الكمية الجديدة له
+      // بدل ما نعمل صف مستقل تاني.
+      const existingByName = await prisma.inventoryItem.findFirst({
+        where: { name: name.trim(), branch: effBranch },
       });
+
+      if (existingByName) {
+        item = await prisma.inventoryItem.update({
+          where: { id: existingByName.id },
+          data: {
+            totalQuantity: { increment: Number(totalQuantity) || 0 },
+          },
+        });
+      } else {
+        const uniqueCode = await generateUniqueInventoryCode();
+        item = await prisma.inventoryItem.create({
+          data: {
+            id: id || `INV-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`,
+            code: uniqueCode,
+            name: name.trim(),
+            category: category || 'ستائر',
+            unit: unit || 'متر',
+            totalQuantity: Number(totalQuantity) || 0,
+            reservedQuantity: Number(reservedQuantity) || 0,
+            costPrice: Number(costPrice) || 0,
+            sellPrice: Number(sellPrice) || 0,
+            branch: effBranch,
+            minAlert: Number(minAlert) || 20,
+            supplier: supplier || 'شركة النيل',
+          },
+        });
+      }
     }
 
     return NextResponse.json({ success: true, item });

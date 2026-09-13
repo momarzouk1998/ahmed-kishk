@@ -16,50 +16,20 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: false, error: 'غير مصرح' }, { status: 401 });
     }
 
-    let inserted = 0;
-
-    // 1. مسح وإعادة ضبط أصناف الفرع التجاري وفرع عرابي لضمان عدم وجود تكرار
-    await prisma.inventoryItem.deleteMany({
-      where: {
-        OR: [
-          { branch: 'الفرع التجاري' },
-          { branch: { contains: 'تجاري' } },
-          { branch: { contains: 'تجارى' } },
-        ],
-      },
+    // ⚠️ كان هنا خطوة (1) بتمسح deleteMany كل أصناف الفرع التجاري بالكامل قبل
+    // كل ديلوي، والخطوة (2) كانت upsert بـ update يكتب فوق أي صنف رسمي موجود
+    // فعلاً. النتيجة: أي صنف يضيفه الكاشير يدويًا للفرع التجاري (زي "روزالين")
+    // كان بيتمسح تمامًا فى الديلوي اللي بعده — واتأكدنا من كده فعليًا: 74 من
+    // 75 صنف فى الفرع التجاري كانوا كلهم اتسجلوا فى نفس الدقيقة (وقت آخر
+    // ديلوي)، يعني بيتعملهم إعادة ضبط كامل مع كل نشر للكود مهما كان بعيد عن
+    // المخزون تمامًا. دلوقتى الجرد إضافي بحت: بيتأكد إن الأصناف الرسمية الـ326
+    // موجودة على الأقل مرة واحدة (create لو ناقصة) ومبيلمسش أي صنف موجود فعلاً
+    // (مُضاف يدويًا أو رسمي اتعدّل سعره) — بلا حذف وبلا استبدال إطلاقًا.
+    const created = await prisma.inventoryItem.createMany({
+      data: initialInventory as any,
+      skipDuplicates: true,
     });
-
-    // 2. إدراج وتحديث كافة الأصناف الرسمية الجديدة من initialInventory.json
-    for (const item of (initialInventory as any[])) {
-      await prisma.inventoryItem.upsert({
-        where: { code: item.code },
-        create: {
-          id: item.id,
-          code: item.code,
-          name: item.name,
-          category: item.category,
-          unit: item.unit,
-          totalQuantity: item.totalQuantity,
-          reservedQuantity: item.reservedQuantity || 0,
-          costPrice: item.costPrice,
-          sellPrice: item.sellPrice,
-          branch: item.branch,
-          minAlert: item.minAlert || 20,
-          supplier: item.supplier || 'مورد عام',
-        },
-        update: {
-          name: item.name,
-          category: item.category,
-          unit: item.unit,
-          totalQuantity: item.totalQuantity,
-          costPrice: item.costPrice,
-          sellPrice: item.sellPrice,
-          branch: item.branch,
-          minAlert: item.minAlert || 20,
-        },
-      });
-      inserted++;
-    }
+    const inserted = created.count;
 
     // 3. مزامنة التصنيفات لجميع الفروع تلقائياً
     const distinctMap = new Map<string, { name: string; branch: string }>();

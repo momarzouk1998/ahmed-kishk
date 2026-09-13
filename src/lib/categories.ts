@@ -67,14 +67,28 @@ export function getBranchCustomCategories(branchName?: string): string[] {
   }
 }
 
-export function saveBranchCustomCategory(branchName: string, newCategory: string): string[] {
+// #FIX: التلات دوال دي (إضافة/حذف/تعديل تصنيف) كانت بتبعت الطلب الحقيقي لقاعدة
+// البيانات (/api/categories) fire-and-forget (.catch(() => {}) بلا await ولا
+// فحص للنتيجة) وترجّع نجاح للواجهة فورًا من الكاش المحلي بس — لو السيرفر رفض
+// الطلب (403 مثلاً) كانت الواجهة تفضل عارضة "تم الحفظ/الحذف" رغم إن قاعدة
+// البيانات ماتغيرتش خالص. دلوقتى async وبتستنى رد السيرفر فعليًا وترجّع
+// true/false حقيقية، والكاش المحلي بيتحدّث بس لو السيرفر أكّد النجاح.
+
+export async function saveBranchCustomCategory(branchName: string, newCategory: string): Promise<boolean> {
   const cat = newCategory.trim();
-  if (!cat || typeof window === 'undefined') return [];
+  if (!cat || typeof window === 'undefined') return false;
+  const targetBranch = branchName || 'الكل';
   try {
+    const res = await fetch('/api/categories', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: cat, branch: targetBranch }),
+    });
+    const json = await res.json().catch(() => null);
+    if (!res.ok || !json?.success) return false;
+
     const raw = localStorage.getItem(BRANCH_CUSTOM_CATEGORIES_KEY);
     const map: Record<string, string[]> = raw ? JSON.parse(raw) : {};
-    
-    const targetBranch = branchName || 'الكل';
     if (targetBranch === 'الكل') {
       ALL_BRANCH_NAMES.forEach(b => {
         map[b] = Array.from(new Set([...(map[b] || []), cat]));
@@ -82,32 +96,30 @@ export function saveBranchCustomCategory(branchName: string, newCategory: string
     } else {
       map[targetBranch] = Array.from(new Set([...(map[targetBranch] || []), cat]));
     }
-    
     localStorage.setItem(BRANCH_CUSTOM_CATEGORIES_KEY, JSON.stringify(map));
-    
-    // Save to dedicated DB API
-    fetch('/api/categories', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: cat, branch: targetBranch }),
-    }).catch(() => {});
 
-    // Sync to SystemStore
+    // Sync to SystemStore (legacy fallback, best-effort)
     fetch('/api/system-data', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ key: BRANCH_CUSTOM_CATEGORIES_KEY, data: map }),
     }).catch(() => {});
-    
-    return map[targetBranch] || [];
+
+    return true;
   } catch {
-    return [];
+    return false;
   }
 }
 
-export function deleteBranchCategory(branchName: string, categoryToDelete: string) {
-  if (typeof window === 'undefined') return;
+export async function deleteBranchCategory(branchName: string, categoryToDelete: string): Promise<boolean> {
+  if (typeof window === 'undefined') return false;
   try {
+    const res = await fetch(`/api/categories?name=${encodeURIComponent(categoryToDelete)}&branch=${encodeURIComponent(branchName || 'الكل')}`, {
+      method: 'DELETE',
+    });
+    const json = await res.json().catch(() => null);
+    if (!res.ok || !json?.success) return false;
+
     const raw = localStorage.getItem(BRANCH_CUSTOM_CATEGORIES_KEY);
     const map: Record<string, string[]> = raw ? JSON.parse(raw) : {};
     if (!branchName || branchName === 'الكل') {
@@ -118,58 +130,59 @@ export function deleteBranchCategory(branchName: string, categoryToDelete: strin
       map[branchName] = map[branchName].filter(c => c !== categoryToDelete);
     }
     localStorage.setItem(BRANCH_CUSTOM_CATEGORIES_KEY, JSON.stringify(map));
-    
-    // Delete from DB API
-    fetch(`/api/categories?name=${encodeURIComponent(categoryToDelete)}&branch=${encodeURIComponent(branchName || 'الكل')}`, {
-      method: 'DELETE',
-    }).catch(() => {});
 
-    // Sync to SystemStore
     fetch('/api/system-data', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ key: BRANCH_CUSTOM_CATEGORIES_KEY, data: map }),
     }).catch(() => {});
-  } catch {}
+
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function getPersistentCategories(): string[] {
   return getBranchCustomCategories('الكل');
 }
 
-export function saveCustomCategory(newCategory: string): string[] {
+export async function saveCustomCategory(newCategory: string): Promise<boolean> {
   return saveBranchCustomCategory('الكل', newCategory);
 }
 
-export function deleteCategory(categoryToDelete: string): string[] {
-  deleteBranchCategory('الكل', categoryToDelete);
-  return getBranchCustomCategories('الكل');
+export async function deleteCategory(categoryToDelete: string): Promise<boolean> {
+  return deleteBranchCategory('الكل', categoryToDelete);
 }
 
-export function renameCategory(oldName: string, newName: string, branchName?: string): string[] {
+export async function renameCategory(oldName: string, newName: string, branchName?: string): Promise<boolean> {
   const cleanNew = newName.trim();
-  if (!cleanNew || typeof window === 'undefined') return [];
+  if (!cleanNew || typeof window === 'undefined') return false;
   try {
+    const res = await fetch('/api/categories', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ oldName, newName: cleanNew, branch: branchName || 'الكل' }),
+    });
+    const json = await res.json().catch(() => null);
+    if (!res.ok || !json?.success) return false;
+
     const raw = localStorage.getItem(BRANCH_CUSTOM_CATEGORIES_KEY);
     const map: Record<string, string[]> = raw ? JSON.parse(raw) : {};
     Object.keys(map).forEach(k => {
       map[k] = (map[k] || []).map(c => (c === oldName ? cleanNew : c));
     });
     localStorage.setItem(BRANCH_CUSTOM_CATEGORIES_KEY, JSON.stringify(map));
-    
-    // Rename in DB API
-    fetch('/api/categories', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ oldName, newName: cleanNew, branch: branchName || 'الكل' }),
-    }).catch(() => {});
 
     fetch('/api/system-data', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ key: BRANCH_CUSTOM_CATEGORIES_KEY, data: map }),
     }).catch(() => {});
-  } catch {}
-  return getBranchCustomCategories('الكل');
+
+    return true;
+  } catch {
+    return false;
+  }
 }
 

@@ -99,12 +99,16 @@ export default function InventoryPage() {
   const [categoryTabBranch, setCategoryTabBranch] = useState<string>('الكل');
   const [categorySearch, setCategorySearch] = useState<string>('');
 
-  const handleAddNewCategory = (e?: React.FormEvent) => {
+  const handleAddNewCategory = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const clean = newCategoryName.trim();
     if (!clean) return;
     const targetBranch = newCategoryBranch || (categoryTabBranch !== 'الكل' ? categoryTabBranch : 'الكل');
-    saveBranchCustomCategory(targetBranch, clean);
+    const ok = await saveBranchCustomCategory(targetBranch, clean);
+    if (!ok) {
+      alert('فشل حفظ التصنيف على السيرفر — من فضلك حاول مرة أخرى');
+      return;
+    }
     setCategories(['الكل', ...getBranchCustomCategories('الكل')]);
     setNewCategoryName('');
     alert(`تمت إضافة تصنيف "${clean}" بنجاح ${targetBranch === 'الكل' ? 'لكل الفروع (5 أسطر)' : `إلى ${targetBranch}`}`);
@@ -122,26 +126,23 @@ export default function InventoryPage() {
       return;
     }
 
-    const updatedCats = renameCategory(oldName, cleanNew, branchName);
-    setCategories(['الكل', ...updatedCats]);
+    const ok = await renameCategory(oldName, cleanNew, branchName);
+    if (!ok) {
+      alert('فشل تعديل اسم التصنيف على السيرفر — من فضلك حاول مرة أخرى');
+      setEditingCategoryKey(null);
+      return;
+    }
+    setCategories(['الكل', ...getBranchCustomCategories('الكل')]);
 
+    // /api/categories PUT بيعدّل فعليًا كل صنف بنفس التصنيف القديم فى قاعدة
+    // البيانات — بنحدّث الواجهة هنا بس عشان تتزامن فورًا من غير انتظار reload.
     const updatedItems = items.map(it => {
       const matchBranch = branchName === 'الكل' || normalizeBranchName(it.branch) === normalizeBranchName(branchName);
       return (matchBranch && it.category === oldName) ? { ...it, category: cleanNew } : it;
     });
     setItems(updatedItems);
     setEditingCategoryKey(null);
-
-    try {
-      await fetch('/api/system-data', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key: 'ahmed_kishk_inventory_v3', data: updatedItems }),
-      });
-      alert(`تم تحديث اسم التصنيف إلى "${cleanNew}" وتعديل كافة الأصناف المرتبطة به بنجاح.`);
-    } catch (err) {
-      console.error('Failed to sync renamed category items:', err);
-    }
+    alert(`تم تحديث اسم التصنيف إلى "${cleanNew}" وتعديل كافة الأصناف المرتبطة به بنجاح.`);
   };
 
   const handleDeleteCategory = async (catToDelete: string, branchName?: string) => {
@@ -161,23 +162,22 @@ export default function InventoryPage() {
       }
     }
 
-    deleteBranchCategory(targetBranch, catToDelete);
+    const ok = await deleteBranchCategory(targetBranch, catToDelete);
+    if (!ok) {
+      alert('فشل حذف التصنيف على السيرفر — من فضلك حاول مرة أخرى');
+      return;
+    }
     const updatedCats = getBranchCustomCategories('الكل');
     setCategories(['الكل', ...updatedCats]);
 
+    // /api/categories DELETE بينقل فعليًا كل صنف كان بالتصنيف ده لـ "غير مصنف"
+    // فى قاعدة البيانات — بنحدّث الواجهة هنا بس عشان تتزامن فورًا.
     if (branchItems.length > 0) {
       const updatedItems = items.map(it => {
         const matchBranch = targetBranch === 'الكل' || normalizeBranchName(it.branch) === normalizeBranchName(targetBranch);
         return (matchBranch && it.category === catToDelete) ? { ...it, category: 'غير مصنف' } : it;
       });
       setItems(updatedItems);
-      try {
-        await fetch('/api/system-data', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ key: 'ahmed_kishk_inventory_v3', data: updatedItems }),
-        });
-      } catch (e) {}
     }
   };
 
@@ -319,11 +319,18 @@ export default function InventoryPage() {
       // ⚠️ الكمية بتتبعت كفارق (quantityDelta) مش كرقم مطلق — لو فاتورة شراء زوّدت
       // المخزون وإحنا بنفتح فورم التعديل، الفارق ده بيتطبق فوق القيمة الحالية
       // الحقيقية فى الداتابيز وقت الحفظ (atomic increment) بدل ما يمحيها.
-      await fetch('/api/inventory', {
+      const res = await fetch('/api/inventory', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...inlineForm, quantityDelta: newTotal - oldTotal }),
       });
+      const json = await res.json().catch(() => null);
+      // #FIX: كان بيتجاهل رد السيرفر تمامًا — لو رفض التعديل (403 تعديل سعر
+      // بلا صلاحية، فرع تاني...) كان التعديل يفضل ظاهر ناجح فى الواجهة رغم
+      // إن قاعدة البيانات لسه فيها القيمة القديمة.
+      if (!res.ok || !json?.success) {
+        throw new Error(json?.error || 'فشل الحفظ على السيرفر');
+      }
 
       // 2. If stock quantity changed, log adjustment in audit history
       if (isStockChanged) {
@@ -360,7 +367,12 @@ export default function InventoryPage() {
 
     const catToUse = category === 'NEW' ? newCatInput.trim() : category;
     if (category === 'NEW' && newCatInput.trim()) {
-      saveCustomCategory(newCatInput.trim());
+      // الصنف نفسه بيحمل التصنيف مباشرة فى عموده الخاص بغض النظر عن نجاح تسجيله
+      // فى جدول BranchCategory المنفصل (بيستخدم بس لقوائم الفلترة/الإضافة السريعة)،
+      // فمفيش داعي نوقف إضافة الصنف لو التسجيل ده فشل — بس نسجّل الخطأ لو حصل.
+      saveCustomCategory(newCatInput.trim()).then(ok => {
+        if (!ok) console.error('Failed to register new category in BranchCategory table');
+      });
       if (!categories.includes(newCatInput.trim())) {
         setCategories([...categories, newCatInput.trim()]);
       }
@@ -401,7 +413,18 @@ export default function InventoryPage() {
         body: JSON.stringify(newItem),
       });
       const json = await res.json().catch(() => null);
-      const savedItem: InventoryItem = json?.item || newItem;
+
+      // #FIX: كان بيثق فى json?.item || newItem بلا شرط — لو السيرفر رفض
+      // الطلب (403/500 مثلاً) json.item بيبقى undefined فيرجع لنفس newItem
+      // الوهمي (id مؤقت، code فاضي) وكأن الحفظ نجح فعلاً، فيظهر صنف فى الواجهة
+      // مش موجود أصلاً فى قاعدة البيانات. دلوقتى أي فشل بيتراجع عن الإضافة
+      // بالكامل من الواجهة ويوضّح للمستخدم إن الحفظ فشل.
+      if (!res.ok || !json?.success || !json?.item) {
+        setItems(prev => prev.filter(it => it.id !== newItem.id));
+        alert('فشل حفظ الصنف على السيرفر: ' + (json?.error || 'حاول مرة أخرى'));
+        return;
+      }
+      const savedItem: InventoryItem = json.item;
 
       // استبدل الصنف المؤقت (id/code وهميين) بالنسخة الحقيقية من السيرفر بكودها الفعلى
       setItems(prev => prev.map(it => it.id === newItem.id ? savedItem : it));
@@ -421,6 +444,8 @@ export default function InventoryPage() {
       });
       loadAdjustments();
     } catch (err) {
+      setItems(prev => prev.filter(it => it.id !== newItem.id));
+      alert('فشل حفظ الصنف على السيرفر — تحقق من الاتصال وحاول مرة أخرى');
       console.error('Failed to save item to API:', err);
     }
   };
@@ -428,12 +453,24 @@ export default function InventoryPage() {
   // Delete Item Handler
   const handleDeleteItem = async (id: string, itemName: string) => {
     if (confirm(`هل أنت متأكد من حذف الصنف "${itemName}" من المخزن نهائياً؟`)) {
+      const previous = items;
       const updated = items.filter(it => it.id !== id);
       setItems(updated);
 
       try {
-        await fetch(`/api/inventory?id=${id}`, { method: 'DELETE' });
+        const res = await fetch(`/api/inventory?id=${id}`, { method: 'DELETE' });
+        const json = await res.json().catch(() => null);
+        // #FIX: كان بيمسح الصنف من الواجهة بلا أي تحقق من نجاح الحذف فعليًا
+        // فى السيرفر — لو رفض (403 مثلاً لموظف مش أدمن حاول ينده الـ API
+        // مباشرة) كان الصنف يختفي من شاشة اللي عمل الحذف بس يفضل موجود فعليًا
+        // فى قاعدة البيانات، وهو أخطر من عدم الحذف: بيوهم إن الحذف نجح.
+        if (!res.ok || !json?.success) {
+          setItems(previous);
+          alert('فشل حذف الصنف من السيرفر: ' + (json?.error || 'حاول مرة أخرى'));
+        }
       } catch (err) {
+        setItems(previous);
+        alert('فشل حذف الصنف — تحقق من الاتصال وحاول مرة أخرى');
         console.error('Failed to delete item:', err);
       }
     }
