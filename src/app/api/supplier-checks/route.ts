@@ -27,7 +27,8 @@ export async function GET(request: Request) {
     const checks = await prisma.supplierCheck.findMany({ where, orderBy: { createdAt: 'desc' } });
     return NextResponse.json({ success: true, checks });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    console.error(error);
+    return NextResponse.json({ success: false, error: 'حدث خطأ فى الخادم' }, { status: 500 });
   }
 }
 
@@ -71,6 +72,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, check: results[0], checks: results });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    console.error(error);
+    return NextResponse.json({ success: false, error: 'حدث خطأ فى الخادم' }, { status: 500 });
   }
 }

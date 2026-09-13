@@ -27,7 +27,8 @@ export async function GET(request: Request) {
     const payments = await prisma.supplierPayment.findMany({ where, orderBy: { createdAt: 'desc' } });
     return NextResponse.json({ success: true, payments });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    console.error(error);
+    return NextResponse.json({ success: false, error: 'حدث خطأ فى الخادم' }, { status: 500 });
   }
 }
 
@@ -93,6 +94,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, payment });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    console.error(error);
+    return NextResponse.json({ success: false, error: 'حدث خطأ فى الخادم' }, { status: 500 });
   }
 }

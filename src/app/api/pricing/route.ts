@@ -135,7 +135,8 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ success: true, quotations: updatedCombined });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    console.error(error);
+    return NextResponse.json({ success: false, error: 'حدث خطأ فى الخادم' }, { status: 500 });
   }
 }
 
@@ -153,6 +154,12 @@ export async function POST(request: Request) {
       if (!item || !item.id) continue;
       const { id, inspectionId, customerName, phone, address, branch, status, totalAmount, discountAmount, depositPaid, remainingAmount, paymentMethod, splitPayments, treasury, date, deliveryDate, inspectionDate, installationDate, estimatorName, rooms } = item;
       const effBranch = effectiveCreateBranch(scope, branch);
+
+      // #GUARD: موظف مقيّد ميقدرش يعدّل عرض سعر تابع لفرع تاني حتى لو عرف الـ id.
+      const existingQuotation = await prisma.quotationOrder.findUnique({ where: { id }, select: { branch: true } });
+      if (existingQuotation && !scope.isAdmin && existingQuotation.branch !== scope.branch) {
+        continue; // تجاهل هذا العنصر بصمت — باقي عناصر نفس الطلب (لو دفعة) لسه تتنفذ
+      }
 
       const quotation = await prisma.quotationOrder.upsert({
         where: { id },
@@ -204,6 +211,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, quotation: results[0], quotations: results });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    console.error(error);
+    return NextResponse.json({ success: false, error: 'حدث خطأ فى الخادم' }, { status: 500 });
   }
 }

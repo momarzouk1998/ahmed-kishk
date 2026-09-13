@@ -21,6 +21,7 @@ export async function POST(request: Request) {
     if (!ok) return NextResponse.json({ ok: false, error: 'كلمة سر مدير الفرع غير صحيحة' }, { status: 401 });
     return NextResponse.json({ ok: true });
   } catch (e: any) {
-    return NextResponse.json({ ok: false, error: e?.message || 'خطأ' }, { status: 500 });
+    console.error(e);
+    return NextResponse.json({ ok: false, error: 'حدث خطأ فى الخادم' }, { status: 500 });
   }
 }

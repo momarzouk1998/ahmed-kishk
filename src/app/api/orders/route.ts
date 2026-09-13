@@ -57,6 +57,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true, order });
   } catch (error: any) {
     console.error('Error creating order:', error);
-    return NextResponse.json({ success: false, error: `حدث خطأ أثناء حفظ الأوردر: ${error?.message}` }, { status: 500 });
+    return NextResponse.json({ success: false, error: 'حدث خطأ أثناء حفظ الأوردر' }, { status: 500 });
   }
 }

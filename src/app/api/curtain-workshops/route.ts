@@ -12,7 +12,8 @@ export async function GET(request: Request) {
     const list = await getCurtainWorkshops();
     return NextResponse.json({ list });
   } catch (e: any) {
-    return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });
+    console.error(e);
+    return NextResponse.json({ error: 'حدث خطأ فى الخادم' }, { status: 500 });
   }
 }
 
@@ -31,6 +32,7 @@ export async function POST(request: Request) {
     const saved = await setCurtainWorkshops(body.list);
     return NextResponse.json({ ok: true, list: saved });
   } catch (e: any) {
-    return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });
+    console.error(e);
+    return NextResponse.json({ error: 'حدث خطأ فى الخادم' }, { status: 500 });
   }
 }

@@ -140,7 +140,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, item });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    console.error(error);
+    return NextResponse.json({ success: false, error: 'حدث خطأ فى الخادم' }, { status: 500 });
   }
 }
 
@@ -157,12 +158,13 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ success: false, error: 'المعرف مطلوب للحذف' }, { status: 400 });
     }
 
+    const existing = await prisma.inventoryItem.findUnique({ where: { id } });
+    if (!existing) {
+      return NextResponse.json({ success: false, error: 'الصنف غير موجود' }, { status: 404 });
+    }
     // #GUARD: موظف مقيّد ميقدرش يمسح صنف من فرع تاني حتى لو عرف الـ id.
-    if (!scope.isAdmin) {
-      const existing = await prisma.inventoryItem.findUnique({ where: { id } });
-      if (existing && existing.branch !== scope.branch) {
-        return NextResponse.json({ success: false, error: 'غير مصرح بحذف صنف من فرع آخر' }, { status: 403 });
-      }
+    if (!scope.isAdmin && existing.branch !== scope.branch) {
+      return NextResponse.json({ success: false, error: 'غير مصرح بحذف صنف من فرع آخر' }, { status: 403 });
     }
 
     await prisma.inventoryItem.delete({
@@ -170,6 +172,7 @@ export async function DELETE(request: Request) {
     });
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    console.error(error);
+    return NextResponse.json({ success: false, error: 'حدث خطأ فى الخادم' }, { status: 500 });
   }
 }

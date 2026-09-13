@@ -18,7 +18,8 @@ export async function GET(request: Request) {
     });
     return NextResponse.json({ success: true, returns });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    console.error(error);
+    return NextResponse.json({ success: false, error: 'حدث خطأ فى الخادم' }, { status: 500 });
   }
 }
 
@@ -83,7 +84,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, return: ret });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    console.error(error);
+    return NextResponse.json({ success: false, error: 'حدث خطأ فى الخادم' }, { status: 500 });
   }
 }
 
@@ -100,17 +102,19 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ success: false, error: 'المعرف مطلوب للحذف' }, { status: 400 });
     }
 
+    const existing = await prisma.salesReturn.findUnique({ where: { id } });
+    if (!existing) {
+      return NextResponse.json({ success: false, error: 'المرتجع غير موجود' }, { status: 404 });
+    }
     // #GUARD: موظف مقيّد ميقدرش يمسح مرتجع من فرع تاني حتى لو عرف الـ id.
-    if (!scope.isAdmin) {
-      const existing = await prisma.salesReturn.findUnique({ where: { id } });
-      if (existing && existing.branch !== scope.branch) {
-        return NextResponse.json({ success: false, error: 'غير مصرح بحذف مرتجع من فرع آخر' }, { status: 403 });
-      }
+    if (!scope.isAdmin && existing.branch !== scope.branch) {
+      return NextResponse.json({ success: false, error: 'غير مصرح بحذف مرتجع من فرع آخر' }, { status: 403 });
     }
 
     await prisma.salesReturn.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    console.error(error);
+    return NextResponse.json({ success: false, error: 'حدث خطأ فى الخادم' }, { status: 500 });
   }
 }

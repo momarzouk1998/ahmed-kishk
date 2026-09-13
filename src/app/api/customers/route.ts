@@ -393,7 +393,7 @@ export async function GET(request: Request) {
     });
   } catch (error: any) {
     console.error('Customers GET error:', error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: 'حدث خطأ فى الخادم' }, { status: 500 });
   }
 }
 
@@ -457,7 +457,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, customer });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    console.error('Customers POST error:', error);
+    return NextResponse.json({ success: false, error: 'حدث خطأ فى الخادم' }, { status: 500 });
   }
 }
 
@@ -495,7 +496,7 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ success: true, message: 'تم حذف العميل بنجاح' });
   } catch (error: any) {
     console.error('Delete customer error:', error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: 'حدث خطأ فى الخادم' }, { status: 500 });
   }
 }
 

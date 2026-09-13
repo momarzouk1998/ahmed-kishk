@@ -196,18 +196,18 @@ export default function FabricSalesPage() {
 
   // state محلى فقط (فى ذاكرة الصفحة، مش على القرص) — التحديث الحقيقى للسيرفر يتم
   // بشكل مباشر فى كل مكان يستدعيها (حذف حقيقى، أو POST لـ /api/fabric-sales).
-  const saveInvoicesState = (list: SalesInvoice[]) => {
+  const setInvoicesLocal = (list: SalesInvoice[]) => {
     setInvoices(list);
   };
 
-  const saveReturnsState = (list: CustomerSalesReturn[]) => {
+  const setReturnsLocal = (list: CustomerSalesReturn[]) => {
     setReturns(list);
   };
 
   const handleDeleteInvoice = async (id: string, num: string) => {
     if (!confirm(`هل أنت متأكد من حذف فاتورة المبيعات (${num})؟`)) return;
     const updated = invoices.filter(i => i.id !== id);
-    await saveInvoicesState(updated);
+    await setInvoicesLocal(updated);
     if (selectedInvoice?.id === id) setSelectedInvoice(null);
     // #FIX: حذف حقيقى من قاعدة البيانات — كان يرجع بعد أى ريفريش
     try {
@@ -219,7 +219,7 @@ export default function FabricSalesPage() {
 
   const handleDeleteReturn = async (id: string, num: string) => {
     if (!confirm(`هل أنت متأكد من حذف إذن مرتجع المبيعات (${num})؟`)) return;
-    saveReturnsState(returns.filter(r => r.id !== id));
+    setReturnsLocal(returns.filter(r => r.id !== id));
     try {
       await fetch(`/api/sales-returns?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
     } catch (err) {
@@ -365,7 +365,7 @@ export default function FabricSalesPage() {
       refundMethod: retMethod,
     };
 
-    saveReturnsState([newRet, ...returns]);
+    setReturnsLocal([newRet, ...returns]);
     try {
       await fetch('/api/sales-returns', {
         method: 'POST',

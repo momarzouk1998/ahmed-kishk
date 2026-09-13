@@ -50,7 +50,8 @@ export async function GET(request: Request) {
     }
     return NextResponse.json({ success: true, logs });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    console.error(error);
+    return NextResponse.json({ success: false, error: 'حدث خطأ فى الخادم' }, { status: 500 });
   }
 }
 
@@ -93,6 +94,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, log: newLog });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    console.error(error);
+    return NextResponse.json({ success: false, error: 'حدث خطأ فى الخادم' }, { status: 500 });
   }
 }

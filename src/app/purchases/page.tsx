@@ -116,17 +116,17 @@ export default function PurchasesPage() {
 
   // state محلى فقط (فى ذاكرة الصفحة، مش على القرص)؛ الحفظ الحقيقى يتم صراحةً فى كل
   // مكان يستدعيها (حذف حقيقى، أو POST لـ /api/purchases).
-  const savePurchasesState = (list: PurchaseInvoice[]) => {
+  const setPurchasesLocal = (list: PurchaseInvoice[]) => {
     setPurchases(list);
   };
 
-  const saveReturnsState = (list: SupplierPurchaseReturn[]) => {
+  const setReturnsLocal = (list: SupplierPurchaseReturn[]) => {
     setReturns(list);
   };
 
   const handleDeletePurchase = async (id: string, num: string) => {
     if (!confirm(`هل أنت متأكد من حذف فاتورة الشراء (${num})؟`)) return;
-    savePurchasesState(purchases.filter(p => p.id !== id));
+    setPurchasesLocal(purchases.filter(p => p.id !== id));
     // #FIX: الحذف كان بيروح لمفتاح system-data خاطئ (ahmed_kishk_purchase_invoices_v1)
     // مختلف عن المصدر الحقيقى اللى الصفحة بتقرأ منه (/api/purchases → جدول PurchaseInvoice)،
     // فكان بيرجع بعد أى ريفريش. دلوقتى بيحذف من الجدول الحقيقى مباشرة.
@@ -139,7 +139,7 @@ export default function PurchasesPage() {
 
   const handleDeleteReturn = async (id: string, num: string) => {
     if (!confirm(`هل أنت أسر بالتأكيد من حذف إذن مرتجع المشتريات (${num})؟`)) return;
-    saveReturnsState(returns.filter(r => r.id !== id));
+    setReturnsLocal(returns.filter(r => r.id !== id));
     try {
       await fetch(`/api/purchase-returns?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
     } catch (err) {
@@ -312,7 +312,7 @@ export default function PurchasesPage() {
 
     const updatedObj = { ...editingPurchase, remainingAmount: remaining, status: statusLabel };
     const updated = purchases.map(p => p.id === editingPurchase.id ? updatedObj : p);
-    savePurchasesState(updated);
+    setPurchasesLocal(updated);
 
     // #FIX: كان التعديل بيتحفظ فى blob ميت. دلوقتى بيتحفظ مباشرة فى جدول الفاتورة الحقيقى.
     try {
@@ -333,7 +333,7 @@ export default function PurchasesPage() {
     if (!editingReturn) return;
 
     const updated = returns.map(r => r.id === editingReturn.id ? editingReturn : r);
-    saveReturnsState(updated);
+    setReturnsLocal(updated);
     try {
       await fetch('/api/purchase-returns', {
         method: 'POST',
@@ -365,7 +365,7 @@ export default function PurchasesPage() {
       refundMethod: retMethod,
     };
 
-    saveReturnsState([newRet, ...returns]);
+    setReturnsLocal([newRet, ...returns]);
     try {
       await fetch('/api/purchase-returns', {
         method: 'POST',

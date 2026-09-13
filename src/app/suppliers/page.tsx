@@ -199,15 +199,15 @@ export default function SuppliersPage() {
   }, []);
 
   // state محلى فقط (فى ذاكرة الصفحة، مش على القرص)؛ الحفظ الحقيقى يتم صراحةً فى كل دالة تستدعيها.
-  const saveSuppliersState = (list: Supplier[]) => {
+  const setSuppliersLocal = (list: Supplier[]) => {
     setSuppliers(list);
   };
 
-  const savePaymentsState = (list: SupplierPayment[]) => {
+  const setPaymentsLocal = (list: SupplierPayment[]) => {
     setPayments(list);
   };
 
-  const saveChecksState = (list: SupplierCheck[]) => {
+  const setChecksLocal = (list: SupplierCheck[]) => {
     setChecks(list);
   };
 
@@ -231,7 +231,7 @@ export default function SuppliersPage() {
       createdAt: getTodayDateStr(),
     };
 
-    saveSuppliersState([newSup, ...suppliers]);
+    setSuppliersLocal([newSup, ...suppliers]);
     setShowAddSupplierModal(false);
     setSupName('');
     setSupPhone('');
@@ -286,7 +286,7 @@ export default function SuppliersPage() {
       balanceOwed: newBalanceOwed,
     };
 
-    saveSuppliersState(suppliers.map(s => (s.id === updatedObj.id ? updatedObj : s)));
+    setSuppliersLocal(suppliers.map(s => (s.id === updatedObj.id ? updatedObj : s)));
     if (selectedSupplier?.id === updatedObj.id) setSelectedSupplier(updatedObj);
     setEditingSupplier(null);
 
@@ -328,7 +328,7 @@ export default function SuppliersPage() {
       notes: payNotes.trim(),
     };
 
-    savePaymentsState([newPay, ...payments]);
+    setPaymentsLocal([newPay, ...payments]);
     setShowAddPaymentModal(false);
     setPayAmount(1000);
     setPayNotes('');
@@ -375,7 +375,7 @@ export default function SuppliersPage() {
       notes: r.notes.trim() || 'شيك متعدد مجمع',
     }));
 
-    saveChecksState([...createdChecks, ...checks]);
+    setChecksLocal([...createdChecks, ...checks]);
     setShowBatchChecksModal(false);
     setBatchCheckRows([
       { checkNumber: '', bankName: 'QNB', amount: 5000, dueDate: '2026-09-30', notes: '' },
@@ -398,7 +398,7 @@ export default function SuppliersPage() {
     if (!target) return;
     const nextStatus: SupplierCheck['status'] = target.status === 'قيد الانتظار' ? 'تم الصرف' : 'قيد الانتظار';
     const updated = checks.map(c => c.id === chkId ? { ...c, status: nextStatus } : c);
-    saveChecksState(updated);
+    setChecksLocal(updated);
     try {
       await fetch('/api/supplier-checks', {
         method: 'POST',
@@ -412,7 +412,7 @@ export default function SuppliersPage() {
 
   const handleDeleteSupplier = async (id: string, name: string) => {
     if (!confirm(`هل أنت متأكد من حذف المورد "${name}"؟`)) return;
-    saveSuppliersState(suppliers.filter(s => s.id !== id));
+    setSuppliersLocal(suppliers.filter(s => s.id !== id));
     if (selectedSupplier?.id === id) setSelectedSupplier(null);
     // حذف حقيقى من قاعدة البيانات — نفس المفتاح المُعرَّف فى DELETE /api/system-data
     try {
@@ -812,7 +812,7 @@ export default function SuppliersPage() {
                                   const newAmount = Number(newAmountStr);
                                   if (newAmount > 0) {
                                     const updated = payments.map(p => p.id === pay.id ? { ...p, amount: newAmount } : p);
-                                    savePaymentsState(updated);
+                                    setPaymentsLocal(updated);
                                   }
                                 }
                               }}
@@ -826,7 +826,7 @@ export default function SuppliersPage() {
                               type="button"
                               onClick={() => {
                                 if (confirm(`هل أنت أسر بالتأكيد من حذف إذن سداد بمبلغ ${pay.amount} ج للمورد "${pay.supplierName}"؟`)) {
-                                  savePaymentsState(payments.filter(p => p.id !== pay.id));
+                                  setPaymentsLocal(payments.filter(p => p.id !== pay.id));
                                 }
                               }}
                               className="bg-rose-100 text-rose-800 px-2 py-1 rounded-lg text-xs font-bold cursor-pointer"
@@ -952,7 +952,7 @@ export default function SuppliersPage() {
                                   const newNum = prompt(`تعديل رقم الشيك للمورد "${chk.supplierName}":`, chk.checkNumber);
                                   if (newNum !== null && newNum.trim()) {
                                     const updated = checks.map(c => c.id === chk.id ? { ...c, checkNumber: newNum.trim() } : c);
-                                    saveChecksState(updated);
+                                    setChecksLocal(updated);
                                   }
                                 }}
                                 className="bg-amber-100 text-amber-950 px-2 py-1 rounded-lg text-xs font-bold cursor-pointer"
@@ -965,7 +965,7 @@ export default function SuppliersPage() {
                                 type="button"
                                 onClick={() => {
                                   if (confirm(`هل أنت أسر بالتأكيد من حذف الشيك رقم #${chk.checkNumber} للمورد "${chk.supplierName}"؟`)) {
-                                    saveChecksState(checks.filter(c => c.id !== chk.id));
+                                    setChecksLocal(checks.filter(c => c.id !== chk.id));
                                   }
                                 }}
                                 className="bg-rose-100 text-rose-800 px-2 py-1 rounded-lg text-xs font-bold cursor-pointer"

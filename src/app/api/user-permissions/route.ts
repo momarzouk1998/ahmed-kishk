@@ -135,7 +135,8 @@ export async function GET(request: Request) {
 
     return NextResponse.json(entry);
   } catch (e: any) {
-    return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });
+    console.error(e);
+    return NextResponse.json({ error: 'حدث خطأ فى الخادم' }, { status: 500 });
   }
 }
 
@@ -191,6 +192,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ ok: true, phone, allowedCount: allowedPageIds.length });
   } catch (e: any) {
-    return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });
+    console.error(e);
+    return NextResponse.json({ error: 'حدث خطأ فى الخادم' }, { status: 500 });
   }
 }

@@ -157,9 +157,6 @@ export default function BranchesAndPermissionsPage() {
   const quickChangeBranch = async (emp: Employee, newBranch: string) => {
     setEmployees(prev => prev.map(e => e.id === emp.id ? { ...e, branch: newBranch } : e));
     try {
-      localStorage.setItem(`user_branch_${emp.phone}`, newBranch);
-    } catch {}
-    try {
       await fetch('/api/user-permissions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -253,13 +250,6 @@ export default function BranchesAndPermissionsPage() {
       restrictToBranch: newRestrict,
       allowedPageIds: newPerms,
     } : e));
-
-    try {
-      localStorage.setItem(`user_perms_${empPhone}`, JSON.stringify(newPerms));
-      localStorage.setItem(`user_branch_${empPhone}`, newBranch);
-      localStorage.setItem(`user_restrict_${empPhone}`, String(newRestrict));
-      window.dispatchEvent(new Event('storage'));
-    } catch {}
 
     try {
       const res = await fetch('/api/user-permissions', {

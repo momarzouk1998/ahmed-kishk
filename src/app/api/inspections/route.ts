@@ -40,7 +40,8 @@ export async function GET(request: Request) {
     const combined = Array.from(insMap.values());
     return NextResponse.json({ success: true, inspections: combined });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    console.error(error);
+    return NextResponse.json({ success: false, error: 'حدث خطأ فى الخادم' }, { status: 500 });
   }
 }
 
@@ -61,6 +62,12 @@ export async function POST(request: Request) {
 
     // موظف مقيّد بفرع: لا يمكنه إنشاء أو نقل معاينة لفرع آخر مهما أرسل الـ client.
     const effBranch = effectiveCreateBranch(scope, branch);
+
+    // #GUARD: موظف مقيّد ميقدرش يعدّل معاينة تابعة لفرع تاني حتى لو عرف الـ id.
+    const existingInspection = await prisma.inspectionRequest.findUnique({ where: { id: targetId }, select: { branch: true } });
+    if (existingInspection && !scope.isAdmin && existingInspection.branch !== scope.branch) {
+      return NextResponse.json({ success: false, error: 'غير مصرح بتعديل معاينة فرع آخر' }, { status: 403 });
+    }
 
     const inspection = await prisma.inspectionRequest.upsert({
       where: { id: targetId },
@@ -93,6 +100,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, inspection });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    console.error(error);
+    return NextResponse.json({ success: false, error: 'حدث خطأ فى الخادم' }, { status: 500 });
   }
 }

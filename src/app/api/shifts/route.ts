@@ -145,7 +145,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ success: true, shifts });
   } catch (error: any) {
     console.error('Failed to get shifts:', error);
-    return NextResponse.json({ success: false, shifts: [], error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, shifts: [], error: 'حدث خطأ فى الخادم' }, { status: 500 });
   }
 }
 
@@ -279,7 +279,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true, shift: shiftRecord });
   } catch (error: any) {
     console.error('Failed to create/update shift:', error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: 'حدث خطأ فى الخادم' }, { status: 500 });
   }
 }
 
@@ -348,7 +348,7 @@ export async function PUT(request: Request) {
     return NextResponse.json({ success: true, shift: updated });
   } catch (error: any) {
     console.error('Failed to close shift:', error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: 'حدث خطأ فى الخادم' }, { status: 500 });
   }
 }
 
@@ -366,11 +366,14 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ success: false, error: 'معرف الوردية مطلوب' }, { status: 400 });
     }
 
+    const existing = await (prisma as any).shift.findUnique({ where: { id } }).catch(() => null);
+    if (!existing) {
+      return NextResponse.json({ success: false, error: 'الوردية غير موجودة' }, { status: 404 });
+    }
+    if (!scope.isAdmin && existing.branch !== scope.branch) {
+      return NextResponse.json({ success: false, error: 'غير مصرح بحذف شيفت فرع آخر' }, { status: 403 });
+    }
     try {
-      const existing = await (prisma as any).shift.findUnique({ where: { id } });
-      if (existing && !scope.isAdmin && existing.branch !== scope.branch) {
-        return NextResponse.json({ success: false, error: 'غير مصرح بحذف شيفت فرع آخر' }, { status: 403 });
-      }
       await (prisma as any).shift.delete({ where: { id } });
     } catch (e) {
       console.error('Error deleting shift from DB:', e);
@@ -388,6 +391,6 @@ export async function DELETE(request: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: 'حدث خطأ فى الخادم' }, { status: 500 });
   }
 }

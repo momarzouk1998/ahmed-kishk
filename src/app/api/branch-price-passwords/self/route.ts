@@ -32,6 +32,7 @@ export async function POST(request: Request) {
     await setBranchPricePassword(branch, newPassword);
     return NextResponse.json({ ok: true, branch });
   } catch (e: any) {
-    return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });
+    console.error(e);
+    return NextResponse.json({ error: 'حدث خطأ فى الخادم' }, { status: 500 });
   }
 }

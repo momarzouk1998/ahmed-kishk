@@ -90,7 +90,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ success: true, data: dataMap });
   } catch (error: any) {
     console.error('Error fetching relational data from PostgreSQL:', error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: 'حدث خطأ فى الخادم' }, { status: 500 });
   }
 }
 
@@ -291,7 +291,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true, count: data.length });
   } catch (error: any) {
     console.error('Error persisting relational data to PostgreSQL:', error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: 'حدث خطأ فى الخادم' }, { status: 500 });
   }
 }
 
@@ -369,6 +369,6 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ success: true, deleted, ids: cleanIds });
   } catch (error: any) {
     console.error('Error deleting from PostgreSQL:', error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: 'حدث خطأ فى الخادم' }, { status: 500 });
   }
 }

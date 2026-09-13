@@ -19,7 +19,8 @@ export async function GET(request: Request) {
     const status = await getBranchPricePasswordsStatus();
     return NextResponse.json({ success: true, status });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    console.error(error);
+    return NextResponse.json({ success: false, error: 'حدث خطأ فى الخادم' }, { status: 500 });
   }
 }
 
@@ -45,6 +46,7 @@ export async function POST(request: Request) {
     await setBranchPricePassword(branch, password);
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    console.error(error);
+    return NextResponse.json({ success: false, error: 'حدث خطأ فى الخادم' }, { status: 500 });
   }
 }

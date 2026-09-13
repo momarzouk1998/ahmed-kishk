@@ -17,7 +17,8 @@ export async function GET(request: Request) {
     });
     return NextResponse.json({ success: true, expenses });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    console.error(error);
+    return NextResponse.json({ success: false, error: 'حدث خطأ فى الخادم' }, { status: 500 });
   }
 }
 
@@ -69,7 +70,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, expense });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    console.error(error);
+    return NextResponse.json({ success: false, error: 'حدث خطأ فى الخادم' }, { status: 500 });
   }
 }
 
@@ -83,16 +85,18 @@ export async function DELETE(request: Request) {
     const id = searchParams.get('id');
     if (!id) return NextResponse.json({ success: false, error: 'المعرف مطلوب للحذف' }, { status: 400 });
 
-    if (!scope.isAdmin) {
-      const existing = await prisma.expense.findUnique({ where: { id } });
-      if (existing && existing.branch !== scope.branch) {
-        return NextResponse.json({ success: false, error: 'غير مصرح بحذف مصروف من فرع آخر' }, { status: 403 });
-      }
+    const existing = await prisma.expense.findUnique({ where: { id } });
+    if (!existing) {
+      return NextResponse.json({ success: false, error: 'المصروف غير موجود' }, { status: 404 });
+    }
+    if (!scope.isAdmin && existing.branch !== scope.branch) {
+      return NextResponse.json({ success: false, error: 'غير مصرح بحذف مصروف من فرع آخر' }, { status: 403 });
     }
 
     await prisma.expense.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    console.error(error);
+    return NextResponse.json({ success: false, error: 'حدث خطأ فى الخادم' }, { status: 500 });
   }
 }
