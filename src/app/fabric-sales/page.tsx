@@ -130,6 +130,13 @@ export default function FabricSalesPage() {
 
   // Filters (افتراضي اليوم)
   const [dateFilter, setDateFilter] = useState<DateFilterType>('today');
+  // تاب الشحنات وفواتير الأونلاين له فلتر وبحث مستقلين بالكامل عن تاب فواتير
+  // المبيعات (كان بيشارك نفس search/dateFilter بلا أي واجهة خاصة بيه أصلاً)،
+  // ديفولت "اليوم" زي المطلوب.
+  const [onlineDateFilter, setOnlineDateFilter] = useState<DateFilterType>('today');
+  const [onlineDateFrom, setOnlineDateFrom] = useState('');
+  const [onlineDateTo, setOnlineDateTo] = useState('');
+  const [onlineSearch, setOnlineSearch] = useState('');
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
   const [branchFilter, setBranchFilter] = useState<string>('ALL');
@@ -401,33 +408,41 @@ export default function FabricSalesPage() {
   };
 
   // Date & Branch helpers (Cairo local time 12:00 AM boundary)
-  const matchesDate = (invDateStr: string | undefined): boolean => {
-    if (!invDateStr) return dateFilter === 'all';
+  const matchesDateGeneric = (
+    invDateStr: string | undefined,
+    filter: DateFilterType,
+    from: string,
+    to: string
+  ): boolean => {
+    if (!invDateStr) return filter === 'all';
     const d = getTodayDateStr(invDateStr) || invDateStr.split('T')[0].split(' ')[0];
     const today = getTodayDateStr();
 
-    if (dateFrom || dateTo) {
-      if (dateFrom && d < dateFrom) return false;
-      if (dateTo && d > dateTo) return false;
+    if (from || to) {
+      if (from && d < from) return false;
+      if (to && d > to) return false;
       return true;
     }
 
-    if (dateFilter === 'today') return d === today;
-    if (dateFilter === 'yesterday') {
+    if (filter === 'today') return d === today;
+    if (filter === 'yesterday') {
       const yesterday = getYesterdayDateStr();
       return d === yesterday;
     }
-    if (dateFilter === 'week') {
+    if (filter === 'week') {
       const todayDate = new Date(today);
       const itemDate = new Date(d);
       const diffDays = (todayDate.getTime() - itemDate.getTime()) / (1000 * 3600 * 24);
       return diffDays >= 0 && diffDays <= 7;
     }
-    if (dateFilter === 'month') {
+    if (filter === 'month') {
       return d.substring(0, 7) === today.substring(0, 7);
     }
     return true;
   };
+
+  const matchesDate = (invDateStr: string | undefined): boolean =>
+    matchesDateGeneric(invDateStr, dateFilter, dateFrom, dateTo);
 
   const matchesBranch = (branchStr: string | undefined): boolean => {
     if (!branchFilter || branchFilter === 'ALL' || branchFilter === 'الكل') return true;
@@ -461,21 +476,21 @@ export default function FabricSalesPage() {
     return matchSearch && matchPayment && matchStatus && matchDate && matchBr;
   });
 
-  // Filtered Online Invoices (الفرع التجاري أو شحن أونلاين)
+  // Filtered Online Invoices (الفرع التجاري أو شحن أونلاين) — فلتر وبحث مستقلين
   const filteredOnlineInvoices = invoices.filter(inv => {
     const isOnline = !!inv.isOnlineOrder;
     if (!isOnline) return false;
 
     const custPhone = inv.phone || inv.customerPhone || inv.receiverPhone || '';
     const matchSearch =
-      !search.trim() ||
-      (inv.customerName && inv.customerName.toLowerCase().includes(search.toLowerCase())) ||
-      (inv.invoiceNumber && inv.invoiceNumber.toLowerCase().includes(search.toLowerCase())) ||
-      (inv.trackingNumber && inv.trackingNumber.toLowerCase().includes(search.toLowerCase())) ||
-      (inv.shippingAddress && inv.shippingAddress.toLowerCase().includes(search.toLowerCase())) ||
-      custPhone.includes(search);
+      !onlineSearch.trim() ||
+      (inv.customerName && inv.customerName.toLowerCase().includes(onlineSearch.toLowerCase())) ||
+      (inv.invoiceNumber && inv.invoiceNumber.toLowerCase().includes(onlineSearch.toLowerCase())) ||
+      (inv.trackingNumber && inv.trackingNumber.toLowerCase().includes(onlineSearch.toLowerCase())) ||
+      (inv.shippingAddress && inv.shippingAddress.toLowerCase().includes(onlineSearch.toLowerCase())) ||
+      custPhone.includes(onlineSearch);
 
-    const matchDate = matchesDate(inv.date);
+    const matchDate = matchesDateGeneric(inv.date, onlineDateFilter, onlineDateFrom, onlineDateTo);
     return matchSearch && matchDate;
   });
 
@@ -932,6 +947,69 @@ export default function FabricSalesPage() {
               <div className="bg-amber-50/80 p-3.5 rounded-2xl border border-amber-200 text-center shadow-3xs">
                 <span className="text-amber-900 font-bold block text-[11px]">متبقي للتحصيل عند الاستلام (COD)</span>
                 <strong className="text-lg font-black text-amber-950 mt-0.5 block font-mono">{totalOnlineCOD.toLocaleString()} ج</strong>
+              </div>
+            </div>
+
+            {/* Independent Date Filter & Search — خاص بتاب الشحنات بس، ديفولت اليوم */}
+            <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs space-y-2.5">
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex bg-slate-100 p-1 rounded-xl gap-1 border border-slate-200 text-xs font-bold overflow-x-auto">
+                  {(
+                    [
+                      { key: 'yesterday', label: 'أمس' },
+                      { key: 'today', label: 'اليوم' },
+                      { key: 'week', label: 'الأسبوع' },
+                      { key: 'month', label: 'الشهر' },
+                      { key: 'all', label: 'الكل' },
+                    ] as { key: DateFilterType; label: string }[]
+                  ).map(t => (
+                    <button
+                      key={t.key}
+                      type="button"
+                      onClick={() => {
+                        setOnlineDateFilter(t.key);
+                        setOnlineDateFrom('');
+                        setOnlineDateTo('');
+                      }}
+                      className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
+                        onlineDateFilter === t.key && !onlineDateFrom && !onlineDateTo
+                          ? 'bg-blue-600 text-white font-black shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                      }`}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] font-bold text-slate-500">من</span>
+                  <input
+                    type="date"
+                    value={onlineDateFrom}
+                    onChange={e => { setOnlineDateFrom(e.target.value); setOnlineDateFilter('custom'); }}
+                    className="p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold"
+                  />
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] font-bold text-slate-500">إلى</span>
+                  <input
+                    type="date"
+                    value={onlineDateTo}
+                    onChange={e => { setOnlineDateTo(e.target.value); setOnlineDateFilter('custom'); }}
+                    className="p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold"
+                  />
+                </div>
+              </div>
+
+              <div className="relative">
+                <span className="material-symbols-outlined absolute right-3.5 top-2.5 text-slate-400 text-base">search</span>
+                <input
+                  type="text"
+                  placeholder="بحث برقم الفاتورة، اسم العميل، الهاتف، رقم التتبع أو العنوان..."
+                  value={onlineSearch}
+                  onChange={e => setOnlineSearch(e.target.value)}
+                  className="w-full pr-10 pl-4 py-2 border border-slate-200 rounded-xl focus:border-blue-500 focus:outline-none font-bold text-slate-900 shadow-2xs text-xs bg-slate-50"
+                />
               </div>
             </div>
 
