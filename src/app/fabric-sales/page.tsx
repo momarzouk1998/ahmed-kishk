@@ -451,6 +451,9 @@ export default function FabricSalesPage() {
 
   // Filtered Invoices
   const filteredInvoices = invoices.filter(inv => {
+    // طلبات الأونلاين ليها تابها الخاص (شحنات وفواتير الأونلاين) — متتكررش هنا كمان.
+    if (inv.isOnlineOrder) return false;
+
     const custPhone = inv.phone || inv.customerPhone || '';
     const matchSearch =
       !search.trim() ||
