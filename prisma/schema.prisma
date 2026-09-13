@@ -69,6 +69,26 @@ model Customer {
   InspectionRequest InspectionRequest[]
 }
 
+/// سند تحصيل واحد من عميل. كانت كل سندات كل العملاء قبل كده متخزنة كمصفوفة JSON
+/// واحدة مشتركة فى SystemStore، وأي إضافة/تعديل/حذف كان بيبعت المصفوفة **كاملة**
+/// فيستبدلها كاملة فى الداتابيز — لو مستخدمين اتنين ضافوا سند لعميلين مختلفين فى
+/// نفس اللحظة تقريبًا، اللي يحفظ تاني كان بيمحي سند التاني نهائيًا بصمت. دلوقتى كل
+/// سند صف مستقل حقيقي، فالإضافة INSERT مستقل مش استبدال قائمة كاملة.
+model CustomerCollection {
+  id           String   @id @default(cuid())
+  date         String
+  customerId   String
+  customerName String
+  phone        String
+  branch       String   @default("الفرع الرئيسي")
+  amount       Float    @default(0)
+  method       String   @default("نقدي")
+  treasury     String   @default("خزينة الفرع الرئيسي (سعد زغلول)")
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
 model InspectionRequest {
   id           String    @id @default(cuid())
   customerId   String?
@@ -170,6 +190,12 @@ model Supplier {
   notes              String?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
+
+  // مطابقة فواتير الشراء/الشيكات/المدفوعات بالمورد بتعتمد على الاسم (مفيش
+  // supplierId فى الجداول دي) — القيد ده يمنع إنشاء موردين بنفس الاسم فى نفس
+  // الفرع أصلاً، فمنطق المطابقة بالاسم يفضل موثوق (اتأكد فعليًا إنه لا يوجد
+  // تكرار حالي فى قاعدة البيانات قبل إضافة القيد).
+  @@unique([name, branch])
 }
 
 model SupplierPayment {

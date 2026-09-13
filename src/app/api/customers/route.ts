@@ -30,13 +30,15 @@ export async function GET(request: Request) {
       prisma.quotationOrder.findMany({ where: restricted ? { branch: scope!.branch } : {}, orderBy: { createdAt: 'desc' } }),
       prisma.pipelineOrder.findMany({ where: restricted ? { branch: scope!.branch } : {}, orderBy: { createdAt: 'desc' } }),
       prisma.salesInvoice.findMany({ where: restricted ? { branch: scope!.branch } : {}, orderBy: { createdAt: 'desc' } }),
-      prisma.systemStore.findUnique({ where: { key: 'ahmed_kishk_collections_v3' } }).catch(() => null),
+      prisma.customerCollection.findMany({ where: restricted ? { branch: scope!.branch } : {}, orderBy: { createdAt: 'desc' } }),
       prisma.systemStore.findUnique({ where: { key: 'ahmed_kishk_quotations_data_v4' } }).catch(() => null),
       prisma.systemStore.findUnique({ where: { key: 'ahmed_kishk_pipeline_orders_v5' } }).catch(() => null),
       prisma.systemStore.findUnique({ where: { key: 'ahmed_kishk_inspections_data_v4' } }).catch(() => null),
     ]);
 
-    const rawCollections: any[] = collectionsStore?.data && Array.isArray(collectionsStore.data) ? collectionsStore.data : [];
+    // ⚠️ سندات التحصيل بقت صفوف حقيقية فى جدول CustomerCollection (كل سند مستقل)
+    // بدل مصفوفة JSON واحدة مشتركة كانت بتتستبدل بالكامل عند أي إضافة/تعديل/حذف.
+    const rawCollections: any[] = collectionsStore as any[];
 
     // Merge quotations from DB + SystemStore
     const qMap = new Map<string, any>();
@@ -192,8 +194,9 @@ export async function GET(request: Request) {
       customerMap.get(key).sales.push(s);
     }
 
-    // 6. Match Collections — لا يوجد حقل branch على سند التحصيل نفسه؛ عزل الفرع
-    // يتم بالتبعية عبر مطابقته بعميل موجود بالفعل فى customerMap (المُفلترة أصلاً بالفرع).
+    // 6. Match Collections — rawCollections مفلترة بالفعل بالفرع من الاستعلام
+    // نفسه (branch column موجود على CustomerCollection)، وهنا كمان بتتأكد إن
+    // السند فعلاً بيخص عميل ظاهر فى customerMap (نفس الفرع) قبل ضمه.
     const visibleCollections: any[] = [];
     for (const col of rawCollections) {
       const key = normPhone(col.phone) || normName(col.customerName);
@@ -401,81 +404,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'غير مصرح' }, { status: 401 });
     }
     const body = await request.json();
-    const { id, name, phone, address, city, balance, notes, collections } = body;
-
-    // Helper to normalize phone / name
-    const normPhone = (p: string | null | undefined) => (p || '').replace(/\D/g, '').slice(-10);
-    const normName = (n: string | null | undefined) => (n || '').trim().toLowerCase();
-
-    // If saving collections list
-    if (collections && Array.isArray(collections)) {
-      await prisma.systemStore.upsert({
-        where: { key: 'ahmed_kishk_collections_v3' },
-        create: {
-          key: 'ahmed_kishk_collections_v3',
-          data: collections,
-        },
-        update: {
-          data: collections,
-        },
-      });
-
-      // مزامنة فورية مع طلبات الستائر وأوامر الشغل
-      try {
-        const custCollectionsMap = new Map<string, number>();
-        for (const col of collections) {
-          const key = normPhone(col.phone) || normName(col.customerName);
-          if (!key) continue;
-          custCollectionsMap.set(key, (custCollectionsMap.get(key) || 0) + (Number(col.amount) || 0));
-        }
-
-        const allQuotations = await prisma.quotationOrder.findMany();
-        for (const q of allQuotations) {
-          const key = normPhone(q.phone) || normName(q.customerName);
-          if (key && custCollectionsMap.has(key)) {
-            const totalCol = custCollectionsMap.get(key) || 0;
-            const totalAmt = Number(q.totalAmount) || 0;
-            const newDeposit = Math.min(totalAmt > 0 ? totalAmt : totalCol, totalCol);
-            const newRemaining = Math.max(0, totalAmt - newDeposit);
-            const newStatus = (newRemaining === 0 && totalAmt > 0)
-              ? (['تم التحويل للورشة', 'في الورشة', 'تم التركيب والتسليم'].includes(q.status) ? q.status : 'معتمد ومسدد بالكامل')
-              : (newDeposit > 0 ? 'معتمد ومسدد العربون' : q.status);
-
-            await prisma.quotationOrder.update({
-              where: { id: q.id },
-              data: {
-                depositPaid: newDeposit,
-                remainingAmount: newRemaining,
-                status: newStatus,
-              },
-            });
-          }
-        }
-
-        const allPipelines = await prisma.pipelineOrder.findMany();
-        for (const p of allPipelines) {
-          const key = normPhone(p.phone) || normName(p.customerName);
-          if (key && custCollectionsMap.has(key)) {
-            const totalCol = custCollectionsMap.get(key) || 0;
-            const totalAmt = Number(p.totalAmount) || 0;
-            const newDeposit = Math.min(totalAmt > 0 ? totalAmt : totalCol, totalCol);
-            const newRemaining = Math.max(0, totalAmt - newDeposit);
-
-            await prisma.pipelineOrder.update({
-              where: { id: p.id },
-              data: {
-                depositPaid: newDeposit,
-                remainingAmount: newRemaining,
-              },
-            });
-          }
-        }
-      } catch (syncErr) {
-        console.error('Failed to sync collections with orders:', syncErr);
-      }
-
-      return NextResponse.json({ success: true, collections });
-    }
+    // ⚠️ سندات التحصيل بقى ليها endpoint مخصص (/api/customer-collections) بيحفظ
+    // كل سند كصف مستقل بدل استبدال مصفوفة كاملة — راجع تعليق CustomerCollection
+    // فى schema.prisma. لو وصل هنا payload قديم فيه `collections`، اتجاهله عمدًا.
+    const { id, name, phone, address, city, balance, notes } = body;
 
     if (!name || !phone) {
       return NextResponse.json({ success: false, error: 'الاسم ورقم الهاتف مطلوبان' }, { status: 400 });

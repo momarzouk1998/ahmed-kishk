@@ -103,15 +103,10 @@ export async function GET(request: Request) {
 
     const combined = Array.from(qMap.values());
 
-    // مزامنة المبالغ المسددة من سندات التحصيل فى شاشة العملاء
+    // مزامنة المبالغ المسددة من سندات التحصيل فى شاشة العملاء (جدول CustomerCollection الحقيقي)
     let collectionsList: any[] = [];
     try {
-      const colStore = await prisma.systemStore.findUnique({
-        where: { key: 'ahmed_kishk_collections_v3' },
-      });
-      if (colStore && Array.isArray(colStore.data)) {
-        collectionsList = colStore.data as any[];
-      }
+      collectionsList = await prisma.customerCollection.findMany();
     } catch {}
 
     const normPhone = (p: string | null | undefined) => (p || '').replace(/\D/g, '').slice(-10);

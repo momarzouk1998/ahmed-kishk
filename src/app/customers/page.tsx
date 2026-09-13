@@ -51,7 +51,6 @@ interface CustomerCollection {
 }
 
 const CUSTOMERS_KEY = 'ahmed_kishk_customers_v3';
-const COLLECTIONS_KEY = 'ahmed_kishk_collections_v3';
 
 export default function CustomersPage() {
   const router = useRouter();
@@ -153,16 +152,32 @@ export default function CustomersPage() {
     }
   };
 
-  const saveCollectionsState = async (list: CustomerCollection[]) => {
-    setCollections(list);
+  // ⚠️ كل سند تحصيل بيتحفظ الآن كصف مستقل عبر /api/customer-collections (بدل
+  // إعادة إرسال مصفوفة التحصيلات كاملة لكل العملاء) — يمنع ضياع سند لعميل تاني
+  // لو مستخدمين اتنين حفظوا فى نفس اللحظة تقريبًا. راجع src/app/api/customer-collections/route.ts.
+  const saveOneCollection = async (col: CustomerCollection): Promise<boolean> => {
     try {
-      await fetch('/api/customers', {
+      const res = await fetch('/api/customer-collections', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ collections: list }),
+        body: JSON.stringify(col),
       });
+      const json = await res.json().catch(() => null);
+      return !!json?.success;
     } catch (err) {
-      console.error('Failed to sync collections with server:', err);
+      console.error('Failed to sync collection with server:', err);
+      return false;
+    }
+  };
+
+  const deleteOneCollection = async (id: string): Promise<boolean> => {
+    try {
+      const res = await fetch(`/api/customer-collections?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+      const json = await res.json().catch(() => null);
+      return !!json?.success;
+    } catch (err) {
+      console.error('Failed to delete collection on server:', err);
+      return false;
     }
   };
 
@@ -223,9 +238,7 @@ export default function CustomersPage() {
       notes: colNotes.trim(),
     };
 
-    const updatedCollections = [newCol, ...collections];
-    await saveCollectionsState(updatedCollections);
-
+    await saveOneCollection(newCol);
     await loadData();
 
     setShowAddCollectionModal(false);
@@ -251,21 +264,19 @@ export default function CustomersPage() {
       return;
     }
 
-    const updated = collections.map(col => {
-      if (col.id === colId) {
-        return {
-          ...col,
-          date: inlineColForm.date,
-          amount: Number(inlineColForm.amount) || 0,
-          method: inlineColForm.method,
-          treasury: inlineColForm.treasury,
-          notes: inlineColForm.notes.trim(),
-        };
-      }
-      return col;
-    });
+    const original = collections.find(c => c.id === colId);
+    if (!original) return;
 
-    await saveCollectionsState(updated);
+    const updatedCol: CustomerCollection = {
+      ...original,
+      date: inlineColForm.date,
+      amount: Number(inlineColForm.amount) || 0,
+      method: inlineColForm.method,
+      treasury: inlineColForm.treasury,
+      notes: inlineColForm.notes.trim(),
+    };
+
+    await saveOneCollection(updatedCol);
     setEditingColId(null);
     await loadData();
   };
@@ -850,8 +861,7 @@ export default function CustomersPage() {
                                   type="button"
                                   onClick={async () => {
                                     if (confirm(`هل أنت متأكد من حذف سند التحصيل بمبلغ ${col.amount} ج للعميل "${col.customerName}"؟`)) {
-                                      const updated = collections.filter(c => c.id !== col.id);
-                                      await saveCollectionsState(updated);
+                                      await deleteOneCollection(col.id);
                                       await loadData();
                                     }
                                   }}
