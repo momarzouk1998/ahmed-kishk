@@ -26,6 +26,33 @@ export default function EmployeesManagementPage() {
       .trim();
   };
 
+  // تحويل بين وقت 24 ساعة (قيمة <input type="time">) والصيغة العربية المخزّنة
+  // فعليًا فى السجلات (مثال: "١١:٠٠ ص") — عشان الأدمن يختار من ساعة بدل ما يكتبها بإيده.
+  const arabicDigitsToEnglish = (s: string): string =>
+    s.replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)));
+
+  const arabicTimeTo24h = (t?: string): string => {
+    if (!t) return '';
+    const normalized = arabicDigitsToEnglish(t).trim();
+    const m = normalized.match(/(\d{1,2}):(\d{2})\s*(ص|م|AM|PM)?/i);
+    if (!m) return '';
+    let h = parseInt(m[1], 10);
+    const min = m[2];
+    const period = (m[3] || '').toUpperCase();
+    if (period === 'م' || period === 'PM') { if (h !== 12) h += 12; }
+    else if (period === 'ص' || period === 'AM') { if (h === 12) h = 0; }
+    return `${String(h).padStart(2, '0')}:${min}`;
+  };
+
+  const time24hToArabic = (t: string): string => {
+    if (!t) return '';
+    const [hStr, mStr] = t.split(':');
+    if (hStr === undefined || mStr === undefined) return '';
+    const d = new Date();
+    d.setHours(parseInt(hStr, 10), parseInt(mStr, 10), 0, 0);
+    return d.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+  };
+
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [advances, setAdvances] = useState<EmployeeAdvance[]>([]);
@@ -37,6 +64,7 @@ export default function EmployeesManagementPage() {
 
   // ── Attendance Log tab (سجل الحضور) — بحث/تصفية/باجنيشن + تعديل/حذف/إضافة، أدمن فقط
   const [logSearch, setLogSearch] = useState<string>('');
+  const [logBranchFilter, setLogBranchFilter] = useState<string>('الكل');
   const [logStatusFilter, setLogStatusFilter] = useState<string>('الكل');
   const [logDateFrom, setLogDateFrom] = useState<string>('');
   const [logDateTo, setLogDateTo] = useState<string>('');
@@ -142,7 +170,7 @@ export default function EmployeesManagementPage() {
     }
   }, [isAdmin, isSuperAdmin, user, canViewWages, activeTab]);
 
-  useEffect(() => { setLogCurrentPage(1); }, [logSearch, logStatusFilter, logDateFrom, logDateTo, selectedBranch]);
+  useEffect(() => { setLogCurrentPage(1); }, [logSearch, logStatusFilter, logDateFrom, logDateTo, logBranchFilter]);
 
   const branchFilteredEmployees = useMemo(() => {
     const activeBranch = (!isAdmin && !isSuperAdmin && user?.branch) ? user.branch : selectedBranch;
@@ -306,7 +334,7 @@ export default function EmployeesManagementPage() {
 
   // ── Attendance Log (سجل الحضور): بحث + تصفية + باجنيشن على كل سجلات الحضور ──
   const filteredLogRecords = useMemo(() => {
-    const activeBranch = (!isAdmin && !isSuperAdmin && user?.branch) ? user.branch : selectedBranch;
+    const activeBranch = (!isAdmin && !isSuperAdmin && user?.branch) ? user.branch : logBranchFilter;
     return attendance
       .filter(a => activeBranch === 'الكل' || normalizeBranchName(a.branch) === normalizeBranchName(activeBranch))
       .filter(a => logStatusFilter === 'الكل' || a.status === logStatusFilter)
@@ -317,8 +345,17 @@ export default function EmployeesManagementPage() {
         const q = logSearch.trim().toLowerCase();
         return a.employeeName.toLowerCase().includes(q) || (a.recordedBy || '').toLowerCase().includes(q);
       })
-      .sort((a, b) => b.date.localeCompare(a.date));
-  }, [attendance, isAdmin, isSuperAdmin, user, selectedBranch, logStatusFilter, logDateFrom, logDateTo, logSearch]);
+      // الترتيب: آخر التسجيلات أولاً (بالتاريخ ثم وقت الإدخال الفعلي)، وبعدها الفرع كمستوى ترتيب ثانٍ
+      .sort((a, b) => {
+        const dateCmp = b.date.localeCompare(a.date);
+        if (dateCmp !== 0) return dateCmp;
+        const branchCmp = a.branch.localeCompare(b.branch, 'ar');
+        if (branchCmp !== 0) return branchCmp;
+        const at = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const bt = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return bt - at;
+      });
+  }, [attendance, isAdmin, isSuperAdmin, user, logBranchFilter, logStatusFilter, logDateFrom, logDateTo, logSearch]);
 
   const paginatedLogRecords = filteredLogRecords.slice((logCurrentPage - 1) * logPageSize, logCurrentPage * logPageSize);
 
@@ -334,8 +371,8 @@ export default function EmployeesManagementPage() {
       employeeId: record.employeeId,
       date: record.date,
       status: record.status,
-      checkInTime: record.checkInTime || '',
-      checkOutTime: record.checkOutTime || '',
+      checkInTime: arabicTimeTo24h(record.checkInTime),
+      checkOutTime: arabicTimeTo24h(record.checkOutTime),
       notes: record.notes || '',
     });
     setShowLogModal(true);
@@ -356,8 +393,8 @@ export default function EmployeesManagementPage() {
       employeeName: emp?.name || editingLogRecord!.employeeName,
       branch: emp?.branch || editingLogRecord!.branch,
       status: logForm.status,
-      checkInTime: logForm.checkInTime || undefined,
-      checkOutTime: logForm.checkOutTime || undefined,
+      checkInTime: time24hToArabic(logForm.checkInTime) || undefined,
+      checkOutTime: time24hToArabic(logForm.checkOutTime) || undefined,
       notes: logForm.notes || undefined,
       recordedBy: user?.name || 'أدمن',
     };
@@ -1353,6 +1390,18 @@ export default function EmployeesManagementPage() {
                 placeholder="🔍 ابحث باسم الموظف أو مسجّل الحضور..."
                 className="flex-1 min-w-[200px] p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold"
               />
+              {canViewWages && (
+                <select
+                  value={logBranchFilter}
+                  onChange={(e) => setLogBranchFilter(e.target.value)}
+                  className="p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold"
+                >
+                  <option value="الكل">🌐 كل الفروع</option>
+                  {BRANCHES_LIST.map(b => (
+                    <option key={b.id} value={b.name}>{b.name}</option>
+                  ))}
+                </select>
+              )}
               <select
                 value={logStatusFilter}
                 onChange={(e) => setLogStatusFilter(e.target.value)}
@@ -1382,10 +1431,10 @@ export default function EmployeesManagementPage() {
                   className="p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold"
                 />
               </div>
-              {(logSearch || logStatusFilter !== 'الكل' || logDateFrom || logDateTo) && (
+              {(logSearch || logBranchFilter !== 'الكل' || logStatusFilter !== 'الكل' || logDateFrom || logDateTo) && (
                 <button
                   type="button"
-                  onClick={() => { setLogSearch(''); setLogStatusFilter('الكل'); setLogDateFrom(''); setLogDateTo(''); }}
+                  onClick={() => { setLogSearch(''); setLogBranchFilter('الكل'); setLogStatusFilter('الكل'); setLogDateFrom(''); setLogDateTo(''); }}
                   className="px-3 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold cursor-pointer"
                 >
                   ✕ مسح التصفية
@@ -1532,20 +1581,18 @@ export default function EmployeesManagementPage() {
                 <div>
                   <label className="text-xs font-bold text-slate-600 block mb-1">وقت الحضور</label>
                   <input
-                    type="text"
+                    type="time"
                     value={logForm.checkInTime}
                     onChange={(e) => setLogForm({ ...logForm, checkInTime: e.target.value })}
-                    placeholder="مثال: ١١:٠٠ ص"
                     className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono"
                   />
                 </div>
                 <div>
                   <label className="text-xs font-bold text-slate-600 block mb-1">وقت الانصراف</label>
                   <input
-                    type="text"
+                    type="time"
                     value={logForm.checkOutTime}
                     onChange={(e) => setLogForm({ ...logForm, checkOutTime: e.target.value })}
-                    placeholder="مثال: ١١:٣٠ م"
                     className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono"
                   />
                 </div>

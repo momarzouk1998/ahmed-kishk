@@ -54,6 +54,7 @@ export interface AttendanceRecord {
   delayMinutes?: number;
   notes?: string;
   recordedBy?: string; // Branch manager name
+  createdAt?: string;
 }
 
 export interface EmployeeAdvance {
