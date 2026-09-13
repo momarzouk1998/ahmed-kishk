@@ -3,8 +3,14 @@
 import React, { useEffect, useState } from 'react';
 import { BRANCHES_LIST, branchLabel } from '@/lib/branches';
 
+interface BranchPwdStatus {
+  isSet: boolean;
+  isDefault: boolean;
+}
+
 export default function BranchPricePasswordsCard() {
-  const [passwords, setPasswords] = useState<Record<string, string>>({});
+  const [status, setStatus] = useState<Record<string, BranchPwdStatus>>({});
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [savingBranch, setSavingBranch] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ branch: string; ok: boolean; text: string } | null>(null);
@@ -13,22 +19,34 @@ export default function BranchPricePasswordsCard() {
     fetch('/api/branch-price-passwords', { cache: 'no-store' })
       .then(r => r.json())
       .then(data => {
-        if (data?.success) setPasswords(data.passwords || {});
+        if (data?.success) setStatus(data.status || {});
       })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
+  // ⚠️ من الآن الكلمة محفوظة كـ bcrypt hash — مفيش أي طريقة تقنية نعرض بيها الباسورد
+  // الحالي، فالأدمن بس يقدر "يعيّن باسورد جديد" مش "يشوف/يعدّل القديم" (نفس مبدأ أي
+  // نظام باسوردات آمن). الحقل بيفضل فاضي وبيتقفل تانى بعد نجاح الحفظ.
   const saveBranch = async (branch: string) => {
+    const newPassword = (drafts[branch] || '').trim();
+    if (!newPassword || newPassword.length < 3) {
+      setMsg({ branch, ok: false, text: 'كلمة السر قصيرة جداً' });
+      return;
+    }
     setSavingBranch(branch);
     setMsg(null);
     try {
       const res = await fetch('/api/branch-price-passwords', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ branch, password: passwords[branch] || '' }),
+        body: JSON.stringify({ branch, password: newPassword }),
       });
       const data = await res.json();
+      if (data?.success) {
+        setStatus(prev => ({ ...prev, [branch]: { isSet: true, isDefault: false } }));
+        setDrafts(prev => ({ ...prev, [branch]: '' }));
+      }
       setMsg({ branch, ok: !!data?.success, text: data?.success ? 'تم الحفظ' : (data?.error || 'فشل الحفظ') });
     } catch (e: any) {
       setMsg({ branch, ok: false, text: e?.message || 'خطأ فى الاتصال' });
@@ -46,7 +64,7 @@ export default function BranchPricePasswordsCard() {
         <div>
           <h3 className="font-black text-slate-900 text-sm">باسورد الأسعار لكل فرع</h3>
           <p className="text-[11px] text-slate-500 mt-0.5">
-            كل فرع له باسورد خاص به يستخدمه مديره لفتح تعديل الأسعار والخصومات لموظفيه. الأدمن بس يقدر يشوف ويغيّر باسورد أي فرع من هنا.
+            كل فرع له باسورد خاص به يستخدمه مديره لفتح تعديل الأسعار والخصومات لموظفيه. الأدمن بس يقدر يعيّن باسورد جديد لأي فرع من هنا (لا يمكن عرض الباسورد الحالي لأسباب أمنية).
           </p>
         </div>
       </div>
@@ -55,29 +73,37 @@ export default function BranchPricePasswordsCard() {
         <p className="text-xs text-slate-400 font-bold">جارِ التحميل...</p>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-          {BRANCHES_LIST.map(b => (
-            <div key={b.id} className="flex items-center gap-2.5 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
-              <span className="text-xs font-bold text-slate-700 flex-1 truncate">{branchLabel(b.name)}</span>
-              <input
-                type="text"
-                value={passwords[b.name] || ''}
-                onChange={e => setPasswords(prev => ({ ...prev, [b.name]: e.target.value }))}
-                className="w-20 shrink-0 border border-slate-300 rounded-lg px-2 py-1.5 text-sm text-center font-bold font-mono text-slate-900 focus:outline-none focus:border-amber-500"
-                placeholder="1234"
-              />
-              <button
-                type="button"
-                onClick={() => saveBranch(b.name)}
-                disabled={savingBranch === b.name}
-                className="shrink-0 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-slate-950 py-1.5 px-3 rounded-lg font-bold text-xs shadow"
-              >
-                {savingBranch === b.name ? '...' : 'حفظ'}
-              </button>
-              {msg && msg.branch === b.name && (
-                <span className={`text-[11px] font-bold shrink-0 ${msg.ok ? 'text-emerald-700' : 'text-red-600'}`}>{msg.text}</span>
-              )}
-            </div>
-          ))}
+          {BRANCHES_LIST.map(b => {
+            const s = status[b.name];
+            return (
+              <div key={b.id} className="flex items-center gap-2.5 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                <div className="flex-1 min-w-0">
+                  <span className="text-xs font-bold text-slate-700 block truncate">{branchLabel(b.name)}</span>
+                  <span className={`text-[10px] font-bold ${s?.isDefault ? 'text-amber-700' : 'text-emerald-700'}`}>
+                    {s?.isDefault ? '⚠️ لسه على الباسورد الافتراضي — غيّره' : '✓ باسورد مخصص مضبوط'}
+                  </span>
+                </div>
+                <input
+                  type="password"
+                  value={drafts[b.name] || ''}
+                  onChange={e => setDrafts(prev => ({ ...prev, [b.name]: e.target.value }))}
+                  className="w-24 shrink-0 border border-slate-300 rounded-lg px-2 py-1.5 text-sm text-center font-bold font-mono text-slate-900 focus:outline-none focus:border-amber-500"
+                  placeholder="باسورد جديد"
+                />
+                <button
+                  type="button"
+                  onClick={() => saveBranch(b.name)}
+                  disabled={savingBranch === b.name}
+                  className="shrink-0 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-slate-950 py-1.5 px-3 rounded-lg font-bold text-xs shadow"
+                >
+                  {savingBranch === b.name ? '...' : 'حفظ'}
+                </button>
+                {msg && msg.branch === b.name && (
+                  <span className={`text-[11px] font-bold shrink-0 ${msg.ok ? 'text-emerald-700' : 'text-red-600'}`}>{msg.text}</span>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

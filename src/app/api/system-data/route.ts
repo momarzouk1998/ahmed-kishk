@@ -5,9 +5,18 @@ import { getTodayDateStr } from '@/lib/dateUtils';
 
 export const dynamic = 'force-dynamic';
 
+// مفاتيح SystemStore الحساسة (صلاحيات المستخدمين / كلمات سر الأسعار) — لها
+// route مخصص ومحمي خاص بيها (/api/user-permissions، /api/branch-price-passwords)،
+// فبنمنع كتابتها من مسار POST العام هنا حتى لو كان الطلب موثّق، عشان نقفل أي
+// طريق تصعيد صلاحيات عبر هذا الـ endpoint العام.
+const PROTECTED_SYSTEM_STORE_KEYS = new Set(['user_permissions_v1', 'branch_price_passwords_v1']);
+
 export async function GET(request: Request) {
   try {
     const scope = await getBranchScope(request);
+    if (!scope) {
+      return NextResponse.json({ success: false, error: 'غير مصرح' }, { status: 401 });
+    }
     const bw = branchWhere(scope);
     // Customer ليس له عمود branch — الفرع مُخزَّن فى city.
     const customerWhere = scope && !scope.isAdmin ? { city: scope.branch } : {};
@@ -87,11 +96,20 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const scope = await getBranchScope(request);
+    if (!scope) {
+      return NextResponse.json({ success: false, error: 'غير مصرح' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { key, data } = body;
 
     if (!key || !Array.isArray(data)) {
       return NextResponse.json({ success: false, error: 'Key and array data are required' }, { status: 400 });
+    }
+
+    if (PROTECTED_SYSTEM_STORE_KEYS.has(key)) {
+      return NextResponse.json({ success: false, error: 'هذا المفتاح محمي — استخدم الـ endpoint المخصص له' }, { status: 403 });
     }
 
     // Sync into specific relational table

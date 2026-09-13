@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getBranchScope } from '@/lib/branchScope';
 import initialInventory from '@/data/initialInventory.json';
 
 export const dynamic = 'force-dynamic';
@@ -66,6 +67,10 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const scope = await getBranchScope(request);
+    if (!scope) {
+      return NextResponse.json({ success: false, error: 'غير مصرح' }, { status: 401 });
+    }
     const body = await request.json();
     const name = (body.name || '').trim();
     const targetBranch = (body.branch || 'الكل').trim();
@@ -124,6 +129,10 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
   try {
+    const scope = await getBranchScope(request);
+    if (!scope) {
+      return NextResponse.json({ success: false, error: 'غير مصرح' }, { status: 401 });
+    }
     const body = await request.json();
     const oldName = (body.oldName || '').trim();
     const newName = (body.newName || '').trim();
@@ -165,6 +174,10 @@ export async function PUT(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    const scope = await getBranchScope(request);
+    if (!scope) {
+      return NextResponse.json({ success: false, error: 'غير مصرح' }, { status: 401 });
+    }
     const { searchParams } = new URL(request.url);
     const name = searchParams.get('name')?.trim();
     const branch = searchParams.get('branch')?.trim();

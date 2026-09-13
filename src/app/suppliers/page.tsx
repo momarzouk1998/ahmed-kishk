@@ -142,22 +142,33 @@ export default function SuppliersPage() {
     { checkNumber: '', bankName: 'QNB', amount: 3000, dueDate: '2026-10-15', notes: '' },
   ]);
 
+  // يجيب قائمة الموردين مباشرة من قاعدة البيانات — المصدر الوحيد للحقيقة لأرصدتهم
+  // (totalPurchases/paidAmount/balanceOwed). يُستخدم عند التحميل الأول وبعد أى عملية
+  // سداد، عشان الرقم المعروض يبقى دايمًا نفس اللي اتحسب وتحفظ ذرّيًا فى السيرفر
+  // (increment/decrement)، مش نسخة محسوبة محليًا فى الـ JS ممكن تبقى قديمة.
+  const fetchAndSetSuppliers = async (): Promise<Supplier[] | null> => {
+    try {
+      const res = await fetch('/api/suppliers', { cache: 'no-store' });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && Array.isArray(json.suppliers)) {
+          const mapped = json.suppliers.map(mapApiSupplier);
+          setSuppliers(mapped);
+          return mapped;
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    return null;
+  };
+
   // #FIX: كانت بترجع لنسخة قديمة محفوظة على قرص الجهاز (localStorage) لو الطلب فشل أو
   // رجّع فاضى — ده اللي بيسبب ظهور بيانات قديمة/غلط. دلوقتى مفيش أى تخزين على القرص،
   // القوائم بتفضل فاضية بدل ما تعرض بيانات مضلِّلة.
   useEffect(() => {
     async function loadSuppliers() {
-      try {
-        const res = await fetch('/api/suppliers', { cache: 'no-store' });
-        if (res.ok) {
-          const json = await res.json();
-          if (json.success && Array.isArray(json.suppliers)) {
-            setSuppliers(json.suppliers.map(mapApiSupplier));
-          }
-        }
-      } catch (e) {
-        console.error(e);
-      }
+      await fetchAndSetSuppliers();
 
       try {
         const payRes = await fetch('/api/supplier-payments', { cache: 'no-store' });
@@ -318,36 +329,25 @@ export default function SuppliersPage() {
     };
 
     savePaymentsState([newPay, ...payments]);
-
-    // Deduct balance owed
-    const updatedPaid = targetSup.paidAmount + payAmount;
-    const updatedBalance = Math.max(0, targetSup.balanceOwed - payAmount);
-    const updatedSuppliers = suppliers.map(s => {
-      if (s.id === targetSup.id) {
-        const updatedObj = { ...s, paidAmount: updatedPaid, balanceOwed: updatedBalance };
-        if (selectedSupplier?.id === s.id) setSelectedSupplier(updatedObj);
-        return updatedObj;
-      }
-      return s;
-    });
-    saveSuppliersState(updatedSuppliers);
-
     setShowAddPaymentModal(false);
     setPayAmount(1000);
     setPayNotes('');
 
-    // #FIX: سند السداد ورصيد المورد المُحدَّث كانا localStorage فقط بلا أى مزامنة سيرفر.
+    // ⚠️ الرصيد الجديد بيتحسب ويتحفظ ذرّيًا (atomic increment/decrement) داخل
+    // /api/supplier-payments نفسها — مش هنا فى الـ JS من نسخة محلية ممكن تبقى قديمة.
+    // ده بيمنع فقدان دفعة كاملة لو حصل سدادين لنفس المورد فى نفس اللحظة تقريبًا.
+    // بعد الحفظ، نجيب قائمة الموردين تانى من قاعدة البيانات عشان نعرض الرصيد الحقيقي.
     try {
       await fetch('/api/supplier-payments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newPay),
       });
-      await fetch('/api/suppliers', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: targetSup.id, paidAmount: updatedPaid, balance: updatedBalance }),
-      });
+      const refreshed = await fetchAndSetSuppliers();
+      if (refreshed && selectedSupplier?.id === targetSup.id) {
+        const updatedSelected = refreshed.find(s => s.id === targetSup.id);
+        if (updatedSelected) setSelectedSupplier(updatedSelected);
+      }
     } catch (err) {
       console.error('Failed to sync payment to server:', err);
     }

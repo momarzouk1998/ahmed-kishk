@@ -33,6 +33,11 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const scope = await getBranchScope(request);
+    if (!scope) {
+      return NextResponse.json({ success: false, error: 'غير مصرح' }, { status: 401 });
+    }
+
     const body = await request.json();
     // يدعم إما شيك واحد أو مصفوفة شيكات (دفعة من فاتورة مشتريات مثلاً)
     const rawList = Array.isArray(body.checks) ? body.checks : (Array.isArray(body) ? body : [body]);

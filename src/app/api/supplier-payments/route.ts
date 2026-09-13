@@ -33,6 +33,11 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const scope = await getBranchScope(request);
+    if (!scope) {
+      return NextResponse.json({ success: false, error: 'غير مصرح' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { id, date, supplierId, supplierName, amount, method, treasury, notes } = body;
 
@@ -41,6 +46,13 @@ export async function POST(request: Request) {
     }
 
     const paymentId = id || `SPAY-${Date.now()}`;
+    // نلتقط المبلغ القديم (لو السند ده تعديل لسند موجود) قبل الـ upsert، عشان
+    // نحسب الفارق (delta) بدل ما نفترض إن كل POST سند جديد بالكامل.
+    const existingPayment = await prisma.supplierPayment.findUnique({ where: { id: paymentId } }).catch(() => null);
+    const oldAmount = existingPayment ? Number(existingPayment.amount) || 0 : 0;
+    const newAmount = Number(amount) || 0;
+    const deltaAmount = newAmount - oldAmount;
+
     const payment = await prisma.supplierPayment.upsert({
       where: { id: paymentId },
       create: {
@@ -48,18 +60,36 @@ export async function POST(request: Request) {
         date: date || getTodayDateStr(),
         supplierId,
         supplierName: supplierName || '',
-        amount: Number(amount) || 0,
+        amount: newAmount,
         method: method || 'نقدي',
         treasury: treasury || 'خزينة الفرع الرئيسي (سعد زغلول)',
         notes: notes || '',
       },
       update: {
-        amount: Number(amount) || 0,
+        amount: newAmount,
         method: method || undefined,
         treasury: treasury || undefined,
         notes: notes !== undefined ? notes : undefined,
       },
     });
+
+    // ⚠️ تحديث ذرّي (atomic increment/decrement) لرصيد المورد — بدل ما العميل
+    // يحسب الرصيد الجديد فى الـ JS من نسخة محلية ممكن تكون قديمة (stale) ويبعتها
+    // كقيمة مطلقة، مما كان بيسبب فقدان دفعة كاملة لو حصل سدادين متزامنين لنفس
+    // المورد. السداد بيزوّد paidAmount وينزّل balance (المستحق) بنفس القيمة.
+    if (deltaAmount !== 0 && supplierId) {
+      try {
+        await prisma.supplier.update({
+          where: { id: supplierId },
+          data: {
+            paidAmount: { increment: deltaAmount },
+            balance: { decrement: deltaAmount },
+          },
+        });
+      } catch (e) {
+        console.error('Failed to atomically update supplier balance from payment:', e);
+      }
+    }
 
     return NextResponse.json({ success: true, payment });
   } catch (error: any) {

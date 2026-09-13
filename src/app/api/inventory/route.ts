@@ -55,8 +55,11 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const scope = await getBranchScope(request);
+    if (!scope) {
+      return NextResponse.json({ success: false, error: 'غير مصرح' }, { status: 401 });
+    }
     const body = await request.json();
-    const { id, name, category, unit, totalQuantity, reservedQuantity, costPrice, sellPrice, branch, minAlert, supplier } = body;
+    const { id, name, category, unit, totalQuantity, quantityDelta, reservedQuantity, costPrice, sellPrice, branch, minAlert, supplier } = body;
 
     if (!name) {
       return NextResponse.json({ success: false, error: 'اسم الصنف مطلوب' }, { status: 400 });
@@ -72,6 +75,12 @@ export async function POST(request: Request) {
     // (اللي كان بيمسح صنف زي "خياطة" بصمت) بقى مستحيل هيكليًا مش بس معالج بعد ما يحصل.
     const existingById = id ? await prisma.inventoryItem.findUnique({ where: { id } }) : null;
 
+    // #GUARD: موظف مقيّد ميقدرش يعدّل صنف من فرع تاني حتى لو عرف الـ id
+    // (كان مسموحًا للحقول غير السعرية — الاسم/الكمية/التصنيف — قبل هذا التعديل).
+    if (existingById && !scope.isAdmin && existingById.branch !== scope.branch) {
+      return NextResponse.json({ success: false, error: 'غير مصرح بتعديل صنف من فرع آخر' }, { status: 403 });
+    }
+
     let item;
     if (existingById) {
       // #GUARD: تغيير سعر البيع/التكلفة لصنف موجود فعلاً يتطلب صلاحية "تعديل
@@ -85,6 +94,11 @@ export async function POST(request: Request) {
         if (!pricePerm.ok) return NextResponse.json({ success: false, error: pricePerm.error }, { status: pricePerm.status });
       }
 
+      // ⚠️ تعديل الكمية بالجرد اليدوي (quantityDelta) بيتطبق كفارق ذرّي (atomic
+      // increment) على القيمة الحالية فعليًا فى الداتابيز وقت الحفظ — مش استبدال
+      // الرقم بالكامل بقيمة كانت معروضة فى الفورم لحظة ما الموظف فتحه. ده بيمنع
+      // ضياع زيادة مخزون وصلت من فاتورة شراء متزامنة وقت ما الموظف كان بيعدّل.
+      // totalQuantity المطلق لسه مدعوم فقط لو مفيش quantityDelta (توافق قديم).
       item = await prisma.inventoryItem.update({
         where: { id: existingById.id },
         data: {
@@ -92,11 +106,14 @@ export async function POST(request: Request) {
           name: name.trim(),
           category: category || undefined,
           unit: unit || undefined,
-          totalQuantity: totalQuantity !== undefined ? Number(totalQuantity) : undefined,
+          totalQuantity:
+            quantityDelta !== undefined
+              ? { increment: Number(quantityDelta) || 0 }
+              : (totalQuantity !== undefined ? Number(totalQuantity) : undefined),
           reservedQuantity: reservedQuantity !== undefined ? Number(reservedQuantity) : undefined,
           costPrice: costPrice !== undefined ? Number(costPrice) : undefined,
           sellPrice: sellPrice !== undefined ? Number(sellPrice) : undefined,
-          branch: scope && !scope.isAdmin ? scope.branch : (branch || undefined),
+          branch: !scope.isAdmin ? scope.branch : (branch || undefined),
           minAlert: minAlert !== undefined ? Number(minAlert) : undefined,
           supplier: supplier || undefined,
         },

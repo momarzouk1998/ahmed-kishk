@@ -316,10 +316,13 @@ export default function InventoryPage() {
 
     try {
       // 1. Save updated item to Inventory API
+      // ⚠️ الكمية بتتبعت كفارق (quantityDelta) مش كرقم مطلق — لو فاتورة شراء زوّدت
+      // المخزون وإحنا بنفتح فورم التعديل، الفارق ده بيتطبق فوق القيمة الحالية
+      // الحقيقية فى الداتابيز وقت الحفظ (atomic increment) بدل ما يمحيها.
       await fetch('/api/inventory', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(inlineForm),
+        body: JSON.stringify({ ...inlineForm, quantityDelta: newTotal - oldTotal }),
       });
 
       // 2. If stock quantity changed, log adjustment in audit history

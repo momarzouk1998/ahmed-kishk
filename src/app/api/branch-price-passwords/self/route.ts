@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { verifyAuthCookie } from '@/lib/auth';
-import { getBranchPricePasswords, setBranchPricePassword } from '@/lib/branchPricePasswords';
+import { verifyBranchPricePassword, setBranchPricePassword } from '@/lib/branchPricePasswords';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,9 +24,8 @@ export async function POST(request: Request) {
     }
 
     const branch = user.branch || 'الفرع الرئيسي';
-    const passwords = await getBranchPricePasswords();
-    const expected = passwords[branch] || passwords['الفرع الرئيسي'];
-    if (currentPassword !== expected) {
+    const isCurrentValid = await verifyBranchPricePassword(branch, currentPassword);
+    if (!isCurrentValid) {
       return NextResponse.json({ error: 'كلمة السر الحالية غير صحيحة' }, { status: 401 });
     }
 

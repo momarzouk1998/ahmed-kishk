@@ -9,6 +9,9 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: Request) {
   try {
     const scope = await getBranchScope(request);
+    if (!scope) {
+      return NextResponse.json({ success: false, error: 'غير مصرح' }, { status: 401 });
+    }
     const sales = await prisma.salesInvoice.findMany({
       where: branchWhere(scope),
       orderBy: { updatedAt: 'desc' },
@@ -41,6 +44,9 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const scope = await getBranchScope(request);
+    if (!scope) {
+      return NextResponse.json({ success: false, error: 'غير مصرح' }, { status: 401 });
+    }
     const body = await request.json();
     const {
       id, invoiceNumber, customerName, phone, branch, totalAmount, paidAmount, remainingAmount, date, items, notes, splitPayments,
@@ -58,6 +64,11 @@ export async function POST(request: Request) {
 
     // Check if this is an update to an existing record
     const existingById = id ? await prisma.salesInvoice.findUnique({ where: { id } }) : null;
+
+    if (existingById && !scope.isAdmin && existingById.branch !== scope.branch) {
+      return NextResponse.json({ success: false, error: 'غير مصرح بتعديل فاتورة فرع آخر' }, { status: 403 });
+    }
+
     let invoice;
 
     if (existingById) {
@@ -67,7 +78,7 @@ export async function POST(request: Request) {
         data: {
           customerName: customerName || undefined,
           phone: phone || undefined,
-          branch: branch || undefined,
+          branch: !scope.isAdmin ? scope.branch : (branch || undefined),
           totalAmount: totalAmount !== undefined ? Number(totalAmount) : undefined,
           paidAmount: paidAmount !== undefined ? Number(paidAmount) : undefined,
           remainingAmount: remainingAmount !== undefined ? Number(remainingAmount) : undefined,
@@ -114,6 +125,34 @@ export async function POST(request: Request) {
           orderSource: orderSource || undefined,
         },
       });
+
+      // ⚠️ خصم فعلي وذرّي (atomic decrement) من المخزون عند تسجيل فاتورة بيع جديدة.
+      // قبل هذا التعديل، المخزون كان بيزيد بس من فواتير الشراء ومفيش أي مكان بينقص
+      // عند البيع، فـ"الكمية المتاحة" المعروضة فى كل الشاشات كانت بعيدة تدريجيًا عن
+      // الواقع. بيطبَّق مرة واحدة بس عند الإنشاء (مش عند أي تعديل لاحق على الفاتورة)
+      // تفاديًا لخصم مضاعف لو اتعدلت بيانات دفع الفاتورة بعدين بدون تغيير الأصناف.
+      if (Array.isArray(items) && items.length > 0) {
+        const targetBranch = effectiveCreateBranch(scope, branch);
+        for (const it of items) {
+          const qtyToDeduct = Number(it.meters || it.quantity) || 0;
+          const itemCode = (it.code || '').trim();
+          if (qtyToDeduct <= 0) continue;
+          try {
+            let existingItem = itemCode ? await prisma.inventoryItem.findUnique({ where: { code: itemCode } }) : null;
+            if (!existingItem && it.name) {
+              existingItem = await prisma.inventoryItem.findFirst({ where: { name: String(it.name).trim(), branch: targetBranch } });
+            }
+            if (existingItem) {
+              await prisma.inventoryItem.update({
+                where: { id: existingItem.id },
+                data: { totalQuantity: { decrement: qtyToDeduct } },
+              });
+            }
+          } catch (err) {
+            console.error('Failed to deduct inventory quantity for sale:', err);
+          }
+        }
+      }
     }
 
     const normalizedInvoice = {

@@ -3,47 +3,48 @@ import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
 import { signToken, AUTH_COOKIE } from '@/lib/auth';
 
-// Canonical user roster — Super Admins + مديري/كاشير الفروع الأربعة.
-// كلمة السر الافتراضية للجميع: 123456 (يمكن للمدير تغييرها لاحقاً من صفحته).
-const DEFAULT_USERS_ROSTER = [
-  // Super admins
-  { name: 'openappo', phone: '01558282760', role: 'ADMIN', branch: 'المدير العام' },
-  { name: 'أحمد كشك', phone: '01063821000', role: 'ADMIN', branch: 'الفرع الرئيسي' },
-  // الفرع الرئيسي — سعد زغلول
-  { name: 'يوسف ياسر', phone: '01279549182', role: 'ADMIN', branch: 'الفرع الرئيسي' },
-  // فرع عرابي
-  { name: 'أحمد عبدالله', phone: '01023232370', role: 'ADMIN', branch: 'فرع عرابي' },
-  { name: 'محمد نصار', phone: '01055288214', role: 'BRANCH_STAFF', branch: 'فرع عرابي' },
-  // فرع عمر أفندي (فرع أقمشة فقط — بدون مراحل الستائر)
-  { name: 'محمد كشك', phone: '01018728640', role: 'BRANCH_STAFF', branch: 'فرع عمر أفندي' },
-  { name: 'أحمد عبدالعال', phone: '01275763008', role: 'BRANCH_STAFF', branch: 'فرع عمر أفندي' },
-  // فرع الثلاثيني (فرع أقمشة فقط — بدون مراحل الستائر)
-  { name: 'عبدالله كشك', phone: '01033447262', role: 'BRANCH_STAFF', branch: 'فرع الثلاثيني' },
-  // الفرع التجاري (أقمشة وشحن أونلاين)
-  { name: 'عبدالرحمن كشك', phone: '01280042900', role: 'ADMIN', branch: 'الفرع التجاري' },
-  { name: 'محمد على', phone: '01220999355', role: 'BRANCH_STAFF', branch: 'الفرع التجاري' },
-];
+// ⚠️ حساب/إعادة إنشاء المستخدمين الافتراضيين تم نقلها بالكامل لـ prisma/seed.ts
+// (تُشغَّل يدويًا مرة واحدة عند إعداد النظام: `npm run db:seed`). كانت هنا بتتنفذ
+// على *كل* طلب تسجيل دخول، فلو أى حساب من الروستر الثابت اتمسح (قصدًا أو غلط)،
+// كان بيرجع يتزرع تلقائيًا بباسورد افتراضى ضعيف (123456) بلا أى تدخل من الأدمن —
+// عمليًا باب خلفي دائم. حذفها من هنا يمنع هذا السيناريو نهائيًا.
 
-async function ensureDefaultUsers() {
-  try {
-    const hashedPassword = await bcrypt.hash('123456', 10);
-    // Additive upsert — لن يمس المستخدمين القدامى ولا كلمات السر التى غيّرها المدير.
-    for (const u of DEFAULT_USERS_ROSTER) {
-      await prisma.user.upsert({
-        where: { phone: u.phone },
-        update: {}, // لا شئ عند وجود المستخدم — نحترم كلمة سره الحالية
-        create: {
-          name: u.name,
-          phone: u.phone,
-          password: hashedPassword,
-          role: u.role as any,
-          branch: u.branch,
-        },
-      });
-    }
-  } catch (err) {
-    console.error('Auto-seed check failed:', err);
+// ─────────────────────────────────────────────────────────────────────────
+// Rate limiting بسيط فى الذاكرة (in-memory) لمنع محاولات brute-force على تسجيل
+// الدخول. كافٍ لكونتينر واحد (single instance) — لو النظام اتوسّع لأكتر من
+// نسخة/سيرفر مستقبلاً، لازم يتحول لمخزن مشترك (Redis) بدل الـ Map المحلية دي.
+// ─────────────────────────────────────────────────────────────────────────
+const LOGIN_WINDOW_MS = 15 * 60 * 1000; // 15 دقيقة
+const LOGIN_MAX_ATTEMPTS = 5;
+const loginAttempts = new Map<string, { count: number; windowStart: number }>();
+
+function getLoginRateLimitKey(request: Request, phone: string): string {
+  const xff = request.headers.get('x-forwarded-for');
+  const ip = (xff ? xff.split(',')[0].trim() : null) || 'unknown-ip';
+  return `${ip}::${phone}`;
+}
+
+function isRateLimited(key: string): boolean {
+  const entry = loginAttempts.get(key);
+  if (!entry) return false;
+  if (Date.now() - entry.windowStart > LOGIN_WINDOW_MS) {
+    loginAttempts.delete(key);
+    return false;
   }
+  return entry.count >= LOGIN_MAX_ATTEMPTS;
+}
+
+function recordFailedLoginAttempt(key: string): void {
+  const entry = loginAttempts.get(key);
+  if (!entry || Date.now() - entry.windowStart > LOGIN_WINDOW_MS) {
+    loginAttempts.set(key, { count: 1, windowStart: Date.now() });
+  } else {
+    entry.count += 1;
+  }
+}
+
+function clearLoginAttempts(key: string): void {
+  loginAttempts.delete(key);
 }
 
 export async function POST(request: Request) {
@@ -56,8 +57,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'رقم الهاتف وكلمة السر مطلوبان' }, { status: 400 });
     }
 
-    // Ensure default admin users exist in DB if empty
-    await ensureDefaultUsers();
+    const rateLimitKey = getLoginRateLimitKey(request, phone);
+    if (isRateLimited(rateLimitKey)) {
+      return NextResponse.json(
+        { error: 'محاولات كثيرة جدًا لتسجيل الدخول. من فضلك حاول مرة أخرى بعد قليل.' },
+        { status: 429 }
+      );
+    }
 
     // Find user by phone (exact match or with/without leading zero)
     const normalizedPhone = phone.replace(/^0/, '');
@@ -72,13 +78,17 @@ export async function POST(request: Request) {
     });
 
     if (!user) {
+      recordFailedLoginAttempt(rateLimitKey);
       return NextResponse.json({ error: 'رقم الهاتف غير مسجل في النظام' }, { status: 401 });
     }
 
     const passwordMatch = await bcrypt.compare(password, user.password);
     if (!passwordMatch) {
+      recordFailedLoginAttempt(rateLimitKey);
       return NextResponse.json({ error: 'كلمة السر غير صحيحة' }, { status: 401 });
     }
+
+    clearLoginAttempts(rateLimitKey);
 
     const token = await signToken({
       userId: user.id,
@@ -105,7 +115,7 @@ export async function POST(request: Request) {
   } catch (error: any) {
     console.error('Login API error:', error);
     return NextResponse.json(
-      { error: `حدث خطأ في الخادم: ${error?.message || 'خطأ غير معروف'}` },
+      { error: 'حدث خطأ فى الخادم، من فضلك حاول مرة أخرى' },
       { status: 500 }
     );
   }

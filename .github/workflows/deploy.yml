@@ -70,6 +70,7 @@ jobs:
               -e PORT=3009 \
               -e DATABASE_URL="${{ secrets.DATABASE_URL }}" \
               -e AUTH_SECRET="${{ secrets.AUTH_SECRET }}" \
+              -e SEED_SECRET="${{ secrets.SEED_SECRET }}" \
               -e NODE_ENV="production" \
               ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
 
@@ -80,9 +81,9 @@ jobs:
             docker exec ahmed-kishk sh -c "node node_modules/prisma/build/index.js db push --skip-generate"
 
             echo "🌱 Seeding and syncing 326 official inventory items into production PostgreSQL database..."
-            docker exec ahmed-kishk node -e "
+            docker exec -e SEED_SECRET="${{ secrets.SEED_SECRET }}" ahmed-kishk node -e "
               const http = require('http');
-              http.get('http://127.0.0.1:3009/api/seed-inventory', (res) => {
+              http.get('http://127.0.0.1:3009/api/seed-inventory', { headers: { 'x-seed-secret': process.env.SEED_SECRET } }, (res) => {
                 let data = '';
                 res.on('data', chunk => data += chunk);
                 res.on('end', () => console.log('Seed response:', data));

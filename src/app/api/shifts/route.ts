@@ -1,12 +1,15 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getBranchScope, branchWhere } from '@/lib/branchScope';
+import { getBranchScope, branchWhere, effectiveCreateBranch } from '@/lib/branchScope';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   try {
     const scope = await getBranchScope(request);
+    if (!scope) {
+      return NextResponse.json({ success: false, shifts: [], error: 'غير مصرح' }, { status: 401 });
+    }
     const { searchParams } = new URL(request.url);
     const branchParam = searchParams.get('branch');
 
@@ -148,10 +151,15 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const scope = await getBranchScope(request);
+    if (!scope) {
+      return NextResponse.json({ success: false, error: 'غير مصرح' }, { status: 401 });
+    }
+
     const body = await request.json();
     const {
       id,
-      branch,
+      branch: requestedBranch,
       shiftType,
       employeeId,
       employeeName,
@@ -175,8 +183,21 @@ export async function POST(request: Request) {
       endTime,
     } = body;
 
+    // موظف مقيّد لازم يفتح شيفت لفرعه هو بس، بغض النظر عمّا أُرسل من العميل
+    const branch = effectiveCreateBranch(scope, requestedBranch);
+
     const shiftId = id || ('SHF-' + Date.now().toString().slice(-6));
     const nowIso = new Date().toISOString();
+
+    // لو ده تعديل لشيفت موجود بالفعل، امنع موظف مقيّد من تعديل شيفت فرع تاني
+    if (id) {
+      try {
+        const existingForOwnershipCheck = await (prisma as any).shift.findUnique({ where: { id } });
+        if (existingForOwnershipCheck && !scope.isAdmin && existingForOwnershipCheck.branch !== scope.branch) {
+          return NextResponse.json({ success: false, error: 'غير مصرح بتعديل شيفت فرع آخر' }, { status: 403 });
+        }
+      } catch {}
+    }
 
     // Auto-close any previous OPEN shift for this branch
     try {
@@ -264,6 +285,11 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
   try {
+    const scope = await getBranchScope(request);
+    if (!scope) {
+      return NextResponse.json({ success: false, error: 'غير مصرح' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { shiftId, actualClosingCash, discrepancyReason, handoverDestination, handoverReceiverName, closingNotes, openingDrawerBalance } = body;
 
@@ -275,6 +301,10 @@ export async function PUT(request: Request) {
     try {
       existing = await (prisma as any).shift.findUnique({ where: { id: shiftId } });
     } catch (e) {}
+
+    if (existing && !scope.isAdmin && existing.branch !== scope.branch) {
+      return NextResponse.json({ success: false, error: 'غير مصرح بتعديل شيفت فرع آخر' }, { status: 403 });
+    }
 
     const nowIso = new Date().toISOString();
     const opening = openingDrawerBalance !== undefined ? Number(openingDrawerBalance) : (Number(existing?.openingDrawerBalance) || 0);
@@ -324,6 +354,11 @@ export async function PUT(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    const scope = await getBranchScope(request);
+    if (!scope) {
+      return NextResponse.json({ success: false, error: 'غير مصرح' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
@@ -332,6 +367,10 @@ export async function DELETE(request: Request) {
     }
 
     try {
+      const existing = await (prisma as any).shift.findUnique({ where: { id } });
+      if (existing && !scope.isAdmin && existing.branch !== scope.branch) {
+        return NextResponse.json({ success: false, error: 'غير مصرح بحذف شيفت فرع آخر' }, { status: 403 });
+      }
       await (prisma as any).shift.delete({ where: { id } });
     } catch (e) {
       console.error('Error deleting shift from DB:', e);

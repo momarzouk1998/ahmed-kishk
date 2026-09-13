@@ -11,11 +11,13 @@ export const dynamic = 'force-dynamic';
  *   - totalPurchases: يزيد/ينقص بفارق صافى الفاتورة (totalAmount)
  *   - balance (= balanceOwed): يزيد/ينقص بفارق المتبقى الآجل (remainingAmount)
  *
- * التحديث تفاضلى (delta) وليس إعادة حساب من الصفر، فلا يوجد خطر تكرار أو مسح.
- * المطابقة بالاسم (لا يوجد supplierId فى الموديل، وشاشة إنشاء الفاتورة تُدخل الاسم
- * كنص حر) — ولا يُلمس أى مورد إلا إذا كان هناك مورد واحد فقط بنفس الاسم (+ نفس الفرع
- * إن توفّر). سداد الموردين (SupplierPayment) يظل يخصم من balance بشكل مستقل عبر
- * الواجهة، فإنشاء فاتورة آجلة يرفع balance والسداد يخفضه — سلوك متسق.
+ * ⚠️ يستخدم Prisma `{ increment }` بدل "اقرأ ثم اكتب" — الزيادة/النقصان بيحصل فى
+ * استعلام SQL واحد ذرّي على مستوى الداتابيز، فمفيش نافذة زمنية بين القراءة والكتابة
+ * يقدر فيها طلب متزامن (فاتورة شراء تانية لنفس المورد فى نفس اللحظة) يقرأ نفس القيمة
+ * القديمة ويمحي أثر الأول (lost update). النسخة القديمة كانت تقرأ القيمة فى JS ثم
+ * تكتبها كاملة — وده فيه race condition حقيقي حتى لو الحساب نفسه delta مش absolute.
+ * المطابقة بالاسم (لا يوجد supplierId فى الموديل) — ولا يُلمس أى مورد إلا لو فيه
+ * مورد واحد بالظبط بنفس الاسم (+ نفس الفرع إن توفّر).
  */
 async function adjustSupplierAggregate(
   name: string | null | undefined,
@@ -26,14 +28,14 @@ async function adjustSupplierAggregate(
   if (!name || (deltaTotalPurchases === 0 && deltaBalanceOwed === 0)) return;
   const matches = await prisma.supplier.findMany({
     where: { name, ...(branch ? { branch } : {}) },
+    select: { id: true },
   });
   if (matches.length !== 1) return; // اسم غير موجود أو غير فريد → لا نخمّن
-  const s = matches[0];
   await prisma.supplier.update({
-    where: { id: s.id },
+    where: { id: matches[0].id },
     data: {
-      totalPurchases: Math.max(0, (Number(s.totalPurchases) || 0) + deltaTotalPurchases),
-      balance: Math.max(0, (Number(s.balance) || 0) + deltaBalanceOwed),
+      totalPurchases: { increment: deltaTotalPurchases },
+      balance: { increment: deltaBalanceOwed },
     },
   });
 }
@@ -69,6 +71,9 @@ async function syncSupplierFromPurchase(
 export async function GET(request: Request) {
   try {
     const scope = await getBranchScope(request);
+    if (!scope) {
+      return NextResponse.json({ success: false, error: 'غير مصرح' }, { status: 401 });
+    }
     const purchases = await prisma.purchaseInvoice.findMany({
       where: branchWhere(scope),
       orderBy: { updatedAt: 'desc' },
@@ -82,6 +87,9 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const scope = await getBranchScope(request);
+    if (!scope) {
+      return NextResponse.json({ success: false, error: 'غير مصرح' }, { status: 401 });
+    }
     const body = await request.json();
     const {
       id, invoiceNumber, supplierName, supplierPhone, branch,
@@ -92,6 +100,11 @@ export async function POST(request: Request) {
     let invNum = (invoiceNumber || '').trim();
 
     const existingById = id ? await prisma.purchaseInvoice.findUnique({ where: { id } }) : null;
+
+    if (existingById && !scope.isAdmin && existingById.branch !== scope.branch) {
+      return NextResponse.json({ success: false, error: 'غير مصرح بتعديل فاتورة فرع آخر' }, { status: 403 });
+    }
+
     let existingInvoice = existingById;
     let invoice;
 
@@ -101,7 +114,7 @@ export async function POST(request: Request) {
         data: {
           supplierName: supplierName || undefined,
           supplierPhone: supplierPhone !== undefined ? supplierPhone : undefined,
-          branch: branch || undefined,
+          branch: !scope.isAdmin ? scope.branch : (branch || undefined),
           subtotal: subtotal !== undefined ? Number(subtotal) : undefined,
           discountAmount: discountAmount !== undefined ? Number(discountAmount) : undefined,
           totalAmount: totalAmount !== undefined ? Number(totalAmount) : undefined,

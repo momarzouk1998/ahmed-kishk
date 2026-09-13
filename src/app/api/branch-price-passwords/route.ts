@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { verifyAuthCookie } from '@/lib/auth';
 import { BRANCHES_LIST } from '@/lib/branches';
-import { getBranchPricePasswords, setBranchPricePassword } from '@/lib/branchPricePasswords';
+import { getBranchPricePasswordsStatus, setBranchPricePassword } from '@/lib/branchPricePasswords';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,8 +13,11 @@ export async function GET(request: Request) {
     if (user.role !== 'ADMIN') {
       return NextResponse.json({ success: false, error: 'عرض باسوردات الأسعار متاح للأدمن فقط' }, { status: 403 });
     }
-    const passwords = await getBranchPricePasswords();
-    return NextResponse.json({ success: true, passwords });
+    // ⚠️ ما بترجعش الباسورد الحالي (نص أو hash) إطلاقًا — بعد الترحيل لـ bcrypt أصبح
+    // من المستحيل أصلاً استرجاع الباسورد الأصلي، وده الصح أمنيًا. الواجهة بتعرض حالة
+    // كل فرع بس (متغيّر أو لسه على الافتراضي) وتسمح بتعيين باسورد جديد فقط.
+    const status = await getBranchPricePasswordsStatus();
+    return NextResponse.json({ success: true, status });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }

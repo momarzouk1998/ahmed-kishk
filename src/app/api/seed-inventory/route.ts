@@ -4,8 +4,18 @@ import initialInventory from '@/data/initialInventory.json';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    // ⚠️ الـ endpoint ده بيمسح (deleteMany) أصناف فرع كامل قبل إعادة تعبئتها — كان
+    // بلا أي حماية إطلاقًا وقابل للتنفيذ بمجرد فتح اللينك (GET). دلوقتى محمي بمفتاح
+    // سري مشترك (SEED_SECRET) بيتبعت من سكريبت الديبلوي بس عبر هيدر مخصص، فمفيش أي
+    // طلب خارجي عادي (متصفح/بوت/كراولر) يقدر يشغّله.
+    const secretHeader = request.headers.get('x-seed-secret');
+    const expectedSecret = process.env.SEED_SECRET;
+    if (!expectedSecret || secretHeader !== expectedSecret) {
+      return NextResponse.json({ success: false, error: 'غير مصرح' }, { status: 401 });
+    }
+
     let inserted = 0;
 
     // 1. مسح وإعادة ضبط أصناف الفرع التجاري وفرع عرابي لضمان عدم وجود تكرار

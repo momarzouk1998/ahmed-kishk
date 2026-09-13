@@ -8,7 +8,10 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: Request) {
   try {
     const scope = await getBranchScope(request);
-    const restricted = !!(scope && !scope.isAdmin);
+    if (!scope) {
+      return NextResponse.json({ success: false, error: 'غير مصرح' }, { status: 401 });
+    }
+    const restricted = !scope.isAdmin;
 
     // "الفرع" للعميل مُخزَّن فعلياً فى city (لا يوجد عمود branch منفصل — راجع تعليق الـ schema).
     const [
@@ -394,6 +397,9 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const scope = await getBranchScope(request);
+    if (!scope) {
+      return NextResponse.json({ success: false, error: 'غير مصرح' }, { status: 401 });
+    }
     const body = await request.json();
     const { id, name, phone, address, city, balance, notes, collections } = body;
 
@@ -477,6 +483,11 @@ export async function POST(request: Request) {
 
     const targetId = (id || '').trim();
     const existingById = targetId ? await prisma.customer.findUnique({ where: { id: targetId } }).catch(() => null) : null;
+
+    if (existingById && !scope.isAdmin && existingById.city !== scope.branch) {
+      return NextResponse.json({ success: false, error: 'غير مصرح بتعديل عميل فرع آخر' }, { status: 403 });
+    }
+
     let customer;
 
     if (existingById) {
@@ -521,6 +532,9 @@ export async function POST(request: Request) {
 export async function DELETE(request: Request) {
   try {
     const scope = await getBranchScope(request);
+    if (!scope) {
+      return NextResponse.json({ success: false, error: 'غير مصرح' }, { status: 401 });
+    }
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     const phone = searchParams.get('phone');
