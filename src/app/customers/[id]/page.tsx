@@ -199,14 +199,17 @@ export default function CustomerDetailsPage() {
         notes: colNotes.trim(),
       };
 
-      const updatedCollections = [newCol, ...allCollections];
-      const res = await fetch('/api/customers', {
+      // ⚠️ سند تحصيل واحد بيتحفظ كصف مستقل عبر /api/customer-collections — مش
+      // بإعادة إرسال مصفوفة كل سندات كل العملاء (كان بيسبب ضياع سندات عملاء
+      // تانيين لو اتحفظوا فى نفس اللحظة تقريبًا من شاشة تانية). راجع customers/page.tsx.
+      const res = await fetch('/api/customer-collections', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ collections: updatedCollections }),
+        body: JSON.stringify(newCol),
       });
+      const json = await res.json().catch(() => null);
 
-      if (res.ok) {
+      if (json?.success) {
         setShowAddCollectionModal(false);
         setColNotes('');
         setColAmount(1000);
