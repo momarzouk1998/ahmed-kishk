@@ -2,7 +2,12 @@
 
 /**
  * نظام إدارة الموظفين، الحضور والانصراف، السلف، وتقفيل الرواتب الأسبوعية (كل خميس).
- * مدعوم بقاعدة بيانات الـ 18 موظفاً المعتمدة في المستند.
+ *
+ * ⚠️ كانت البيانات دي بالكامل فى localStorage (+ نسخة احتياطية كـ JSON blob واحد
+ * فى SystemStore)، وأي حفظ كان بيستبدل المصفوفة كاملة. دلوقتى كل سجل صف مستقل
+ * حقيقي فى جداول Prisma (Employee, AttendanceRecord, EmployeeAdvance,
+ * PayrollSettlement) عبر endpoints مخصصة (/api/employees، /api/employee-attendance،
+ * /api/employee-advances، /api/employee-payroll) — نفس نمط supplier-payments.
  */
 
 export interface Employee {
@@ -87,11 +92,6 @@ export interface WeeklyPayrollSettlement {
   payType?: 'شهري' | 'أسبوعي';
 }
 
-const EMPLOYEES_STORAGE_KEY = 'ahmed_kishk_employees_v1';
-const ATTENDANCE_STORAGE_KEY = 'ahmed_kishk_attendance_v1';
-const ADVANCES_STORAGE_KEY = 'ahmed_kishk_advances_v1';
-const PAYROLL_STORAGE_KEY = 'ahmed_kishk_payroll_v1';
-
 export const INITIAL_EMPLOYEES: Employee[] = [
   // الفرع الرئيسي (3)
   { id: 'emp_1', name: 'محمود', branch: 'الفرع الرئيسي', dailyWage: 350, payType: 'أسبوعي', workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'مسؤول الفرع الرئيسي', isActive: true },
@@ -121,98 +121,114 @@ export const INITIAL_EMPLOYEES: Employee[] = [
   { id: 'emp_16', name: 'محمد على', phone: '01220999355', branch: 'الفرع التجاري', dailyWage: 250, payType: 'شهري', workStartTime: '12:00 PM', workEndTime: '11:30 PM', role: 'كاشير الفرع التجاري (شهري)', isActive: true },
 ];
 
-export function getEmployees(): Employee[] {
-  if (typeof window === 'undefined') return INITIAL_EMPLOYEES;
+async function safeFetchJson(url: string): Promise<any> {
   try {
-    const raw = localStorage.getItem(EMPLOYEES_STORAGE_KEY);
-    if (!raw) {
-      localStorage.setItem(EMPLOYEES_STORAGE_KEY, JSON.stringify(INITIAL_EMPLOYEES));
-      return INITIAL_EMPLOYEES;
-    }
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed) || parsed.length === 0) return INITIAL_EMPLOYEES;
-    
-    // Filter out deleted emp_18 (موسى) from legacy storage if exists
-    const cleaned = parsed.filter((e: Employee) => e.id !== 'emp_18' && e.name !== 'موسى');
-    if (cleaned.length !== parsed.length) {
-      localStorage.setItem(EMPLOYEES_STORAGE_KEY, JSON.stringify(cleaned));
-    }
-    return cleaned;
+    const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok) return null;
+    return await res.json();
   } catch {
-    return INITIAL_EMPLOYEES;
+    return null;
   }
 }
 
-export function saveEmployees(employees: Employee[]): void {
-  if (typeof window !== 'undefined') {
-    localStorage.setItem(EMPLOYEES_STORAGE_KEY, JSON.stringify(employees));
+/** يجيب الموظفين من قاعدة البيانات. لو الجدول لسه فاضي (تشغيل أول مرة)، يرجّع الروستر الافتراضي كعرض أولي فقط (بلا حفظ تلقائي). */
+export async function getEmployees(): Promise<Employee[]> {
+  const json = await safeFetchJson('/api/employees');
+  if (json?.success && Array.isArray(json.employees) && json.employees.length > 0) {
+    return json.employees;
   }
-  fetch('/api/system-data', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ key: EMPLOYEES_STORAGE_KEY, data: employees }),
-  }).catch(() => {});
+  return INITIAL_EMPLOYEES;
 }
 
-export function getAttendance(): AttendanceRecord[] {
-  if (typeof window === 'undefined') return [];
+/** يحفظ موظف واحد (إضافة أو تعديل) — مش المصفوفة كاملة. يرجّع true لو نجح الحفظ فعليًا. */
+export async function saveEmployee(employee: Employee): Promise<boolean> {
   try {
-    const raw = localStorage.getItem(ATTENDANCE_STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
+    const res = await fetch('/api/employees', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(employee),
+    });
+    const json = await res.json().catch(() => null);
+    return !!json?.success;
   } catch {
-    return [];
+    return false;
   }
 }
 
-export function saveAttendance(records: AttendanceRecord[]): void {
-  if (typeof window !== 'undefined') {
-    localStorage.setItem(ATTENDANCE_STORAGE_KEY, JSON.stringify(records));
-  }
-  fetch('/api/system-data', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ key: ATTENDANCE_STORAGE_KEY, data: records }),
-  }).catch(() => {});
-}
-
-export function getAdvances(): EmployeeAdvance[] {
-  if (typeof window === 'undefined') return [];
+export async function deleteEmployee(id: string): Promise<boolean> {
   try {
-    const raw = localStorage.getItem(ADVANCES_STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
+    const res = await fetch(`/api/employees?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+    const json = await res.json().catch(() => null);
+    return !!json?.success;
   } catch {
-    return [];
+    return false;
   }
 }
 
-export function saveAdvances(advances: EmployeeAdvance[]): void {
-  if (typeof window !== 'undefined') {
-    localStorage.setItem(ADVANCES_STORAGE_KEY, JSON.stringify(advances));
-  }
-  fetch('/api/system-data', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ key: ADVANCES_STORAGE_KEY, data: advances }),
-  }).catch(() => {});
+export async function getAttendance(): Promise<AttendanceRecord[]> {
+  const json = await safeFetchJson('/api/employee-attendance');
+  return json?.success && Array.isArray(json.records) ? json.records : [];
 }
 
-export function getPayrolls(): WeeklyPayrollSettlement[] {
-  if (typeof window === 'undefined') return [];
+/** يسجّل/يعدّل حضور موظف ليوم واحد — صف مستقل، مش استبدال سجل الحضور كله. */
+export async function saveAttendanceRecord(record: AttendanceRecord): Promise<boolean> {
   try {
-    const raw = localStorage.getItem(PAYROLL_STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
+    const res = await fetch('/api/employee-attendance', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(record),
+    });
+    const json = await res.json().catch(() => null);
+    return !!json?.success;
   } catch {
-    return [];
+    return false;
   }
 }
 
-export function savePayrolls(payrolls: WeeklyPayrollSettlement[]): void {
-  if (typeof window !== 'undefined') {
-    localStorage.setItem(PAYROLL_STORAGE_KEY, JSON.stringify(payrolls));
+export async function getAdvances(): Promise<EmployeeAdvance[]> {
+  const json = await safeFetchJson('/api/employee-advances');
+  return json?.success && Array.isArray(json.advances) ? json.advances : [];
+}
+
+export async function saveAdvance(advance: EmployeeAdvance): Promise<boolean> {
+  try {
+    const res = await fetch('/api/employee-advances', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(advance),
+    });
+    const json = await res.json().catch(() => null);
+    return !!json?.success;
+  } catch {
+    return false;
   }
-  fetch('/api/system-data', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ key: PAYROLL_STORAGE_KEY, data: payrolls }),
-  }).catch(() => {});
+}
+
+export async function deleteAdvance(id: string): Promise<boolean> {
+  try {
+    const res = await fetch(`/api/employee-advances?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+    const json = await res.json().catch(() => null);
+    return !!json?.success;
+  } catch {
+    return false;
+  }
+}
+
+export async function getPayrolls(): Promise<WeeklyPayrollSettlement[]> {
+  const json = await safeFetchJson('/api/employee-payroll');
+  return json?.success && Array.isArray(json.settlements) ? json.settlements : [];
+}
+
+export async function savePayrollSettlement(settlement: WeeklyPayrollSettlement): Promise<boolean> {
+  try {
+    const res = await fetch('/api/employee-payroll', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(settlement),
+    });
+    const json = await res.json().catch(() => null);
+    return !!json?.success;
+  } catch {
+    return false;
+  }
 }

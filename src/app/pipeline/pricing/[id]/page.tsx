@@ -500,7 +500,7 @@ export default function PricingDetailPage() {
     if (heavyEnabled) nextTapeTypePrices[heavyTapeType] = heavyTapePrice;
     if (sheerEnabled) nextTapeTypePrices[sheerTapeType] = sheerTapePrice;
     if (blackoutEnabled) nextTapeTypePrices[blackoutTapeType] = blackoutTapePrice;
-    saveTapeTypePrices(nextTapeTypePrices);
+    saveTapeTypePrices(nextTapeTypePrices).catch(err => console.error('Failed to sync default tape prices:', err));
   };
 
   const handleDiscountChange = (amount: number) => {

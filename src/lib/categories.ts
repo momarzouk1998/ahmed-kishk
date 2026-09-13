@@ -21,8 +21,35 @@ export const ALL_BRANCH_NAMES = [
 const BRANCH_CUSTOM_CATEGORIES_KEY = 'ahmed_kishk_branch_categories_v2';
 const CUSTOM_CATEGORIES_KEY = 'ahmed_kishk_custom_categories_v1';
 
+// ⚠️ كانت الدالة دي بتقرأ حصريًا من localStorage — تصنيف مضاف من جهاز/متصفح متعرفش
+// عليه أي جهاز تاني إلا لو حد أضاف/عدّل حاجة على الجهاز التانى فحدّثت الـ map محليًا
+// بالصدفة. `/api/categories` (جدول BranchCategory حقيقي) موجود بالفعل وبيتغذّى من
+// كل عمليات الإضافة، فبنعمل مزامنة خلفية منه فى localStorage — نفس نمط
+// brandSettings/curtainDefaults/tapeTypePrices (قراءة فورية من الكاش المحلي +
+// تحديث فى الخلفية يظهر أثره فى الاستدعاء التالى).
+let categoriesSyncInFlight = false;
+function syncBranchCategoriesFromServer(): void {
+  if (typeof window === 'undefined' || categoriesSyncInFlight) return;
+  categoriesSyncInFlight = true;
+  fetch('/api/categories?branch=الكل', { cache: 'no-store' })
+    .then(res => (res.ok ? res.json() : null))
+    .then(json => {
+      if (!json?.success || !Array.isArray(json.categories)) return;
+      const map: Record<string, string[]> = {};
+      json.categories.forEach((c: any) => {
+        if (!c?.branch || !c?.name) return;
+        if (!map[c.branch]) map[c.branch] = [];
+        if (!map[c.branch].includes(c.name)) map[c.branch].push(c.name);
+      });
+      localStorage.setItem(BRANCH_CUSTOM_CATEGORIES_KEY, JSON.stringify(map));
+    })
+    .catch(() => {})
+    .finally(() => { categoriesSyncInFlight = false; });
+}
+
 export function getBranchCustomCategories(branchName?: string): string[] {
   if (typeof window === 'undefined') return [];
+  syncBranchCategoriesFromServer();
   try {
     const raw = localStorage.getItem(BRANCH_CUSTOM_CATEGORIES_KEY);
     if (!raw) return [];

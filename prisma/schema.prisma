@@ -365,4 +365,84 @@ model Expense {
   updatedAt     DateTime @updatedAt
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// شؤون الموظفين والرواتب — كانت الأربعة موديولات دي (الموظفين، الحضور، السلف،
+// تقفيل الرواتب) متخزنة بالكامل فى localStorage + نسخة احتياطية كـ JSON blob
+// واحد فى SystemStore لكل موديول (نفس فئة المشكلة اللي كانت فى CustomerCollection
+// قبل ما تتحول لجدول حقيقي) — أي إضافة/تعديل كانت تستبدل المصفوفة كاملة. دلوقتى
+// كل سجل صف مستقل حقيقي.
+// ─────────────────────────────────────────────────────────────────────────
+
+model Employee {
+  id            String   @id @default(cuid())
+  name          String
+  branch        String   @default("الفرع الرئيسي")
+  dailyWage     Float    @default(0)
+  monthlySalary Float?
+  payType       String   @default("أسبوعي")
+  workStartTime String   @default("11:00 AM")
+  workEndTime   String   @default("11:30 PM")
+  phone         String?
+  role          String?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model AttendanceRecord {
+  id            String   @id @default(cuid())
+  date          String
+  employeeId    String
+  employeeName  String
+  branch        String   @default("الفرع الرئيسي")
+  status        String
+  checkInTime   String?
+  checkOutTime  String?
+  delayMinutes  Float?
+  notes         String?
+  recordedBy    String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model EmployeeAdvance {
+  id                 String   @id @default(cuid())
+  date               String
+  employeeId         String
+  employeeName       String
+  branch             String   @default("الفرع الرئيسي")
+  type               String
+  amount             Float    @default(0)
+  reason             String?
+  treasuryDeducted   Boolean  @default(true)
+  settledInPayrollId String?
+  recordedBy         String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model PayrollSettlement {
+  id               String   @id @default(cuid())
+  settlementDate   String
+  weekStartDate    String
+  weekEndDate      String
+  branch           String   @default("الفرع الرئيسي")
+  employeeId       String
+  employeeName     String
+  dailyWage        Float    @default(0)
+  daysAttended     Float    @default(0)
+  baseSalaryEarned Float    @default(0)
+  totalBonuses     Float    @default(0)
+  totalDeductions  Float    @default(0)
+  totalAdvances    Float    @default(0)
+  netPayout        Float    @default(0)
+  isPaid           Boolean  @default(false)
+  paidAt           String?
+  paidFromTreasury String?
+  notes            String?
+  payType          String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
 

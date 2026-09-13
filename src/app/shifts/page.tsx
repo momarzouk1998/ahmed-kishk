@@ -66,7 +66,7 @@ export default function ShiftsAndDrawerPage() {
     try {
       const serverShifts = await fetchShiftsFromServer();
       setShifts(serverShifts);
-      setEmployees(getEmployees());
+      setEmployees(await getEmployees());
     } catch (e) {
       console.error('Error loading shifts from DB:', e);
     }

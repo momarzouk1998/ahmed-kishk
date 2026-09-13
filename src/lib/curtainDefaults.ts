@@ -88,13 +88,16 @@ export async function saveCurtainDefaults(next: CurtainDefaults): Promise<void> 
   if (typeof window !== 'undefined') {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch {}
   }
-  try {
-    await fetch('/api/system-data', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ key: STORAGE_KEY, data: [next] }),
-    });
-  } catch (err) {
-    console.error('failed to sync curtain defaults', err);
+  // ⚠️ كانت بتبلع أي فشل فى الحفظ على السيرفر (console.error بس) — المستخدم كان
+  // يفتكر إن الحفظ نجح رغم إنه فضل محلي بس على جهازه. دلوقتى بترمي استثناء صريح
+  // عشان الواجهة تقدر تعرض رسالة خطأ حقيقية للمستخدم.
+  const res = await fetch('/api/system-data', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ key: STORAGE_KEY, data: [next] }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.error || 'فشل حفظ الإعدادات الافتراضية على السيرفر');
   }
 }

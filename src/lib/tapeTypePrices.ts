@@ -46,13 +46,14 @@ export async function saveTapeTypePrices(next: Record<string, number>): Promise<
   if (typeof window !== 'undefined') {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch {}
   }
-  try {
-    await fetch('/api/system-data', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ key: STORAGE_KEY, data: [next] }),
-    });
-  } catch (err) {
-    console.error('failed to sync tape type prices', err);
+  // ⚠️ كانت بتبلع أي فشل فى الحفظ على السيرفر بصمت — دلوقتى بترمي استثناء صريح.
+  const res = await fetch('/api/system-data', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ key: STORAGE_KEY, data: [next] }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.error || 'فشل حفظ أسعار الأشرطة على السيرفر');
   }
 }

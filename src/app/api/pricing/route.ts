@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getBranchScope, branchWhere, effectiveCreateBranch } from '@/lib/branchScope';
 import { getTodayDateStr } from '@/lib/dateUtils';
+import { assertPagePermission } from '@/lib/permissionsServer';
 
 export const dynamic = 'force-dynamic';
 
@@ -156,9 +157,16 @@ export async function POST(request: Request) {
       const effBranch = effectiveCreateBranch(scope, branch);
 
       // #GUARD: موظف مقيّد ميقدرش يعدّل عرض سعر تابع لفرع تاني حتى لو عرف الـ id.
-      const existingQuotation = await prisma.quotationOrder.findUnique({ where: { id }, select: { branch: true } });
+      const existingQuotation = await prisma.quotationOrder.findUnique({ where: { id }, select: { branch: true, totalAmount: true } });
       if (existingQuotation && !scope.isAdmin && existingQuotation.branch !== scope.branch) {
         continue; // تجاهل هذا العنصر بصمت — باقي عناصر نفس الطلب (لو دفعة) لسه تتنفذ
+      }
+
+      // #GUARD: تعديل صافى عرض سعر موجود يتطلب صلاحية "تعديل الأسعار" فعليًا على
+      // السيرفر، مش بس إخفاء الحقل فى الواجهة.
+      if (existingQuotation && totalAmount !== undefined && Number(totalAmount) !== existingQuotation.totalAmount) {
+        const pricePerm = await assertPagePermission(request, 'p_pricing', 'edit_price');
+        if (!pricePerm.ok) continue; // تجاهل هذا العنصر — باقي عناصر الدفعة لسه تتنفذ
       }
 
       const quotation = await prisma.quotationOrder.upsert({

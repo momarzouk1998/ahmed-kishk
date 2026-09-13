@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getBranchScope, branchWhere, effectiveCreateBranch } from '@/lib/branchScope';
 import { generateUniqueSalesInvoiceNumber } from '@/lib/uniqueCode';
 import { getTodayDateStr } from '@/lib/dateUtils';
+import { assertPagePermission } from '@/lib/permissionsServer';
 
 export const dynamic = 'force-dynamic';
 
@@ -68,6 +69,14 @@ export async function POST(request: Request) {
 
     if (existingById && !scope.isAdmin && existingById.branch !== scope.branch) {
       return NextResponse.json({ success: false, error: 'غير مصرح بتعديل فاتورة فرع آخر' }, { status: 403 });
+    }
+
+    // #GUARD: تعديل صافى فاتورة بيع موجودة (السعر/الخصم) بعد إنشائها يتطلب صلاحية
+    // "تعديل الأسعار" — نفس القفل الشغال فى الواجهة (ManagerUnlockGate)، هنا بيتحقق
+    // منه فعليًا على السيرفر بدل ما يتوقف على مجرد إخفاء الحقل فى الواجهة.
+    if (existingById && totalAmount !== undefined && Number(totalAmount) !== existingById.totalAmount) {
+      const pricePerm = await assertPagePermission(request, 'p_fabric_sales', 'edit_price');
+      if (!pricePerm.ok) return NextResponse.json({ success: false, error: pricePerm.error }, { status: pricePerm.status });
     }
 
     let invoice;

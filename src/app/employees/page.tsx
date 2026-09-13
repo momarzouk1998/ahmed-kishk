@@ -2,10 +2,10 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import PageShell from '@/components/PageShell';
-import { 
+import {
   Employee, AttendanceRecord, EmployeeAdvance, WeeklyPayrollSettlement,
-  getEmployees, saveEmployees, getAttendance, saveAttendance,
-  getAdvances, saveAdvances, getPayrolls, savePayrolls, INITIAL_EMPLOYEES,
+  getEmployees, saveEmployee, deleteEmployee, getAttendance, saveAttendanceRecord,
+  getAdvances, saveAdvance, deleteAdvance, getPayrolls, savePayrollSettlement, INITIAL_EMPLOYEES,
   isMonthlyEmployee
 } from '@/lib/employeeStore';
 import { BRANCHES_LIST, normalizeBranchName } from '@/lib/branches';
@@ -83,63 +83,25 @@ export default function EmployeesManagementPage() {
   });
 
   useEffect(() => {
-    setEmployees(getEmployees());
-    setAttendance(getAttendance());
-    setAdvances(getAdvances());
-    setPayrolls(getPayrolls());
-
-    async function syncFromServer() {
-      try {
-        const [attRes, empRes, advRes, payRes] = await Promise.all([
-          fetch('/api/system-data?key=ahmed_kishk_attendance_v1', { cache: 'no-store' }),
-          fetch('/api/system-data?key=ahmed_kishk_employees_v1', { cache: 'no-store' }),
-          fetch('/api/system-data?key=ahmed_kishk_advances_v1', { cache: 'no-store' }),
-          fetch('/api/system-data?key=ahmed_kishk_payroll_v1', { cache: 'no-store' }),
-        ]);
-
-        if (attRes.ok) {
-          const json = await attRes.json();
-          if (json.success && Array.isArray(json.data) && json.data.length > 0) {
-            setAttendance(json.data);
-            if (typeof window !== 'undefined') {
-              localStorage.setItem('ahmed_kishk_attendance_v1', JSON.stringify(json.data));
-            }
-          }
-        }
-        if (empRes.ok) {
-          const json = await empRes.json();
-          if (json.success && Array.isArray(json.data) && json.data.length > 0) {
-            setEmployees(json.data);
-            if (typeof window !== 'undefined') {
-              localStorage.setItem('ahmed_kishk_employees_v1', JSON.stringify(json.data));
-            }
-          }
-        }
-        if (advRes.ok) {
-          const json = await advRes.json();
-          if (json.success && Array.isArray(json.data) && json.data.length > 0) {
-            setAdvances(json.data);
-            if (typeof window !== 'undefined') {
-              localStorage.setItem('ahmed_kishk_advances_v1', JSON.stringify(json.data));
-            }
-          }
-        }
-        if (payRes.ok) {
-          const json = await payRes.json();
-          if (json.success && Array.isArray(json.data) && json.data.length > 0) {
-            setPayrolls(json.data);
-            if (typeof window !== 'undefined') {
-              localStorage.setItem('ahmed_kishk_payroll_v1', JSON.stringify(json.data));
-            }
-          }
-        }
-      } catch (err) {
-        console.error('Error fetching employee/attendance data:', err);
-      }
+    // ⚠️ الموظفين/الحضور/السلف/الرواتب بقوا فى جداول Prisma حقيقية (Employee،
+    // AttendanceRecord، EmployeeAdvance، PayrollSettlement) بدل localStorage +
+    // SystemStore blob — كل جلب هنا بيقرأ من قاعدة البيانات مباشرة، مفيش أي
+    // تخزين محلي وسيط ممكن يعرض بيانات قديمة/مضلِّلة.
+    async function loadAll() {
+      const [emps, att, adv, pay] = await Promise.all([
+        getEmployees(),
+        getAttendance(),
+        getAdvances(),
+        getPayrolls(),
+      ]);
+      setEmployees(emps);
+      setAttendance(att);
+      setAdvances(adv);
+      setPayrolls(pay);
     }
 
-    syncFromServer();
-    const interval = setInterval(syncFromServer, 15000);
+    loadAll();
+    const interval = setInterval(loadAll, 15000);
     return () => clearInterval(interval);
   }, []);
 
@@ -219,76 +181,93 @@ export default function EmployeesManagementPage() {
     setShowEmpModal(true);
   };
 
-  const handleSaveEmp = (e: React.FormEvent) => {
+  const handleSaveEmp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!empForm.name.trim()) return;
 
-    let updatedList: Employee[];
-    if (editingEmp) {
-      updatedList = employees.map(e => e.id === editingEmp.id ? { 
-        ...e, 
-        ...empForm, 
-        name: empForm.name.trim(), 
-        dailyWage: Number(empForm.dailyWage) || 0,
-        payType: empForm.payType,
-        phone: empForm.phone.trim(),
-        role: empForm.role.trim() 
-      } : e);
-    } else {
-      const newEmp: Employee = {
-        id: `emp_${Date.now()}`,
-        name: empForm.name.trim(),
-        branch: empForm.branch,
-        dailyWage: Number(empForm.dailyWage) || 0,
-        payType: empForm.payType,
-        workStartTime: empForm.workStartTime,
-        workEndTime: empForm.workEndTime,
-        phone: empForm.phone.trim(),
-        role: empForm.role.trim(),
-        isActive: empForm.isActive,
-      };
-      updatedList = [...employees, newEmp];
-    }
+    const savedEmp: Employee = editingEmp
+      ? {
+          ...editingEmp,
+          ...empForm,
+          name: empForm.name.trim(),
+          dailyWage: Number(empForm.dailyWage) || 0,
+          payType: empForm.payType,
+          phone: empForm.phone.trim(),
+          role: empForm.role.trim(),
+        }
+      : {
+          id: `emp_${Date.now()}`,
+          name: empForm.name.trim(),
+          branch: empForm.branch,
+          dailyWage: Number(empForm.dailyWage) || 0,
+          payType: empForm.payType,
+          workStartTime: empForm.workStartTime,
+          workEndTime: empForm.workEndTime,
+          phone: empForm.phone.trim(),
+          role: empForm.role.trim(),
+          isActive: empForm.isActive,
+        };
+
+    // تحديث تفاؤلي فورى للواجهة، ثم الحفظ الحقيقى فى السيرفر — لو فشل، بنرجّع
+    // القائمة القديمة ونوضح للمستخدم إن الحفظ ماتمّش (بدل ما نخليه يفتكر إنه اتحفظ).
+    const previousList = employees;
+    const updatedList = editingEmp
+      ? employees.map(e => (e.id === editingEmp.id ? savedEmp : e))
+      : [...employees, savedEmp];
     setEmployees(updatedList);
-    saveEmployees(updatedList);
     setShowEmpModal(false);
-    alert(editingEmp ? 'تم تحديث وتثبيت بيانات الموظف بنجاح 💾' : 'تمت إضافة الموظف الجديد بنجاح ✨');
+
+    const ok = await saveEmployee(savedEmp);
+    if (ok) {
+      alert(editingEmp ? 'تم تحديث وتثبيت بيانات الموظف بنجاح 💾' : 'تمت إضافة الموظف الجديد بنجاح ✨');
+    } else {
+      setEmployees(previousList);
+      alert('فشل حفظ بيانات الموظف على السيرفر — من فضلك حاول مرة أخرى');
+    }
   };
 
-  const handleDeleteEmp = (empId: string, empName: string) => {
+  const handleDeleteEmp = async (empId: string, empName: string) => {
     if (!confirm(`هل أنت متأكد من حذف الموظف "${empName}" من النظام؟`)) return;
-    const updatedList = employees.filter(e => e.id !== empId);
-    setEmployees(updatedList);
-    saveEmployees(updatedList);
+    const previousList = employees;
+    setEmployees(employees.filter(e => e.id !== empId));
+    const ok = await deleteEmployee(empId);
+    if (!ok) {
+      setEmployees(previousList);
+      alert('فشل حذف الموظف على السيرفر — من فضلك حاول مرة أخرى');
+    }
   };
 
   // Attendance logic
-  const handleMarkAttendance = (emp: Employee, status: AttendanceRecord['status']) => {
-    const existingIdx = attendance.findIndex(a => a.employeeId === emp.id && a.date === attendanceDate);
-    const updated = [...attendance];
+  const handleMarkAttendance = async (emp: Employee, status: AttendanceRecord['status']) => {
+    const existing = attendance.find(a => a.employeeId === emp.id && a.date === attendanceDate);
     const nowTime = new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
 
-    if (existingIdx >= 0) {
-      updated[existingIdx] = {
-        ...updated[existingIdx],
-        status,
-        checkInTime: status === 'حاضر' ? (updated[existingIdx].checkInTime || nowTime) : undefined,
-        recordedBy: user?.name || 'مدير الفرع',
-      };
-    } else {
-      updated.push({
-        id: `att_${Date.now()}_${emp.id}`,
-        date: attendanceDate,
-        employeeId: emp.id,
-        employeeName: emp.name,
-        branch: emp.branch,
-        status,
-        checkInTime: status === 'حاضر' ? nowTime : undefined,
-        recordedBy: user?.name || 'مدير الفرع',
-      });
+    const record: AttendanceRecord = existing
+      ? {
+          ...existing,
+          status,
+          checkInTime: status === 'حاضر' ? (existing.checkInTime || nowTime) : undefined,
+          recordedBy: user?.name || 'مدير الفرع',
+        }
+      : {
+          id: `att_${Date.now()}_${emp.id}`,
+          date: attendanceDate,
+          employeeId: emp.id,
+          employeeName: emp.name,
+          branch: emp.branch,
+          status,
+          checkInTime: status === 'حاضر' ? nowTime : undefined,
+          recordedBy: user?.name || 'مدير الفرع',
+        };
+
+    const previous = attendance;
+    setAttendance(existing ? attendance.map(a => (a.id === existing.id ? record : a)) : [...attendance, record]);
+
+    const ok = await saveAttendanceRecord(record);
+    if (!ok) {
+      setAttendance(previous);
+      alert('فشل حفظ الحضور على السيرفر — من فضلك حاول مرة أخرى');
     }
-    setAttendance(updated);
-    saveAttendance(updated);
   };
 
   const getAttendanceForEmp = (empId: string, dateStr: string) => {
@@ -296,7 +275,7 @@ export default function EmployeesManagementPage() {
   };
 
   // Advance submission
-  const handleAddAdvance = (e: React.FormEvent) => {
+  const handleAddAdvance = async (e: React.FormEvent) => {
     e.preventDefault();
     const emp = employees.find(e => e.id === advanceEmployeeId);
     if (!emp || !advanceAmount) return;
@@ -314,19 +293,29 @@ export default function EmployeesManagementPage() {
       recordedBy: user?.name || 'مدير الفرع',
     };
 
-    const updated = [newAdv, ...advances];
-    setAdvances(updated);
-    saveAdvances(updated);
+    const previous = advances;
+    setAdvances([newAdv, ...advances]);
     setAdvanceAmount('');
     setAdvanceReason('');
-    alert(`تم تسجيل الـ (${advanceType}) بقيمة ${newAdv.amount} ج للموظف ${emp.name} بنجاح`);
+
+    const ok = await saveAdvance(newAdv);
+    if (ok) {
+      alert(`تم تسجيل الـ (${advanceType}) بقيمة ${newAdv.amount} ج للموظف ${emp.name} بنجاح`);
+    } else {
+      setAdvances(previous);
+      alert('فشل حفظ السجل على السيرفر — من فضلك حاول مرة أخرى');
+    }
   };
 
-  const handleDeleteAdvance = (id: string) => {
+  const handleDeleteAdvance = async (id: string) => {
     if (!confirm('هل أنت متأكد من حذف هذا السجل؟')) return;
-    const updated = advances.filter(a => a.id !== id);
-    setAdvances(updated);
-    saveAdvances(updated);
+    const previous = advances;
+    setAdvances(advances.filter(a => a.id !== id));
+    const ok = await deleteAdvance(id);
+    if (!ok) {
+      setAdvances(previous);
+      alert('فشل حذف السجل على السيرفر — من فضلك حاول مرة أخرى');
+    }
   };
 
   // Payroll calculation (Weekly: Saturday to Thursday / Monthly: Month start to end)
@@ -511,11 +500,15 @@ export default function EmployeesManagementPage() {
         paidFromTreasury: row.employee.branch,
         payType: row.isMonthly ? 'شهري' : 'أسبوعي',
       };
-      const updatedPayrolls = [...payrolls.filter(p => p.id !== settlement.id), settlement];
-      setPayrolls(updatedPayrolls);
-      savePayrolls(updatedPayrolls);
-
-      alert(`✅ تم قبض راتب ${row.employee.name} (${finalAmount.toLocaleString()} ج) وخصمه من خزينة ${row.employee.branch}`);
+      const ok = await savePayrollSettlement(settlement);
+      if (ok) {
+        setPayrolls([...payrolls.filter(p => p.id !== settlement.id), settlement]);
+        alert(`✅ تم قبض راتب ${row.employee.name} (${finalAmount.toLocaleString()} ج) وخصمه من خزينة ${row.employee.branch}`);
+      } else {
+        // ⚠️ المصروف اتخصم من الخزينة بالفعل (الخطوة اللي فاتت) لكن تسجيل التقفيل
+        // فشل — لازم تنبيه واضح بدل ما نسيب الحالة غامضة (فلوس خرجت بلا سجل تقفيل).
+        alert(`⚠️ تم خصم ${finalAmount.toLocaleString()} ج من الخزينة لكن فشل تسجيل تقفيل الراتب — راجع سجل المصروفات يدويًا وحاول تسجيل التقفيل تانى.`);
+      }
     } catch (err: any) {
       alert('خطأ فى الاتصال بالسيرفر: ' + (err?.message || ''));
     } finally {
