@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import PageShell from '@/components/PageShell';
 import { useRouter } from 'next/navigation';
 import { formatDateOnly, getTodayDateStr, getYesterdayDateStr } from '@/lib/dateUtils';
@@ -103,6 +104,23 @@ export default function FabricSalesPage() {
   const [inventoryProducts, setInventoryProducts] = useState<any[]>([]);
   const [itemSearchOpenIndex, setItemSearchOpenIndex] = useState<number | null>(null);
   const [itemSearchQuery, setItemSearchQuery] = useState('');
+  // ⚠️ جدول بنود الفاتورة له overflow-x-auto — بيخلّي المتصفح يقفل overflow-y
+  // تلقائيًا (قاعدة فى الـ CSS spec)، فأي dropdown نسبي (absolute) جوه الجدول
+  // كان بيتقص/يختفي فى أي صف قريب من آخر الجدول. الحل: الدروب داون بيتعرض عبر
+  // portal لـ document.body بموضع fixed محسوب من مكان الحقل فعليًا، فمش بيتقصّه
+  // أي عنصر أب عنده overflow.
+  const [itemSearchPos, setItemSearchPos] = useState<{ top: number; left: number; width: number } | null>(null);
+  const itemSearchInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
+
+  const openItemSearchAt = (index: number, query: string) => {
+    setItemSearchOpenIndex(index);
+    setItemSearchQuery(query);
+    const el = itemSearchInputRefs.current[index];
+    if (el) {
+      const r = el.getBoundingClientRect();
+      setItemSearchPos({ top: r.bottom, left: r.left, width: r.width });
+    }
+  };
   useEffect(() => {
     (async () => {
       try {
@@ -1415,7 +1433,10 @@ export default function FabricSalesPage() {
       {/* ✏️ Modal: Edit Saved Invoice (تعديل الفاتورة المحفوظة للأدمن ومدير الفرع) */}
       {editingInvoice && (
         <div className="modal-overlay fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-2xl w-full p-5 sm:p-6 space-y-4 shadow-2xl border border-slate-200 my-auto max-h-[92vh] overflow-y-auto">
+          <div
+            className="bg-white rounded-3xl max-w-2xl w-full p-5 sm:p-6 space-y-4 shadow-2xl border border-slate-200 my-auto max-h-[92vh] overflow-y-auto"
+            onScroll={() => setItemSearchOpenIndex(null)}
+          >
             <div className="flex justify-between items-center pb-3 border-b border-slate-200">
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-amber-600 text-xl">edit_note</span>
@@ -1623,7 +1644,10 @@ export default function FabricSalesPage() {
                   </button>
                 </div>
 
-                <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+                <div
+                  className="overflow-x-auto rounded-xl border border-slate-200 bg-white"
+                  onScroll={() => setItemSearchOpenIndex(null)}
+                >
                   <table className="w-full text-right text-xs border-collapse">
                     <thead className="bg-slate-100/90 text-slate-700 font-bold border-b border-slate-200 text-[11px]">
                       <tr>
@@ -1652,41 +1676,18 @@ export default function FabricSalesPage() {
                               </td>
                               <td className="p-2 relative">
                                 <input
+                                  ref={el => { itemSearchInputRefs.current[idx] = el; }}
                                   type="text"
                                   value={item.name || ''}
                                   placeholder="ابحث بالاسم أو الكود..."
                                   onChange={e => {
                                     handleEditItemChange(idx, 'name', e.target.value);
-                                    setItemSearchOpenIndex(idx);
-                                    setItemSearchQuery(e.target.value);
+                                    openItemSearchAt(idx, e.target.value);
                                   }}
-                                  onFocus={() => { setItemSearchOpenIndex(idx); setItemSearchQuery(item.name || ''); }}
+                                  onFocus={() => openItemSearchAt(idx, item.name || '')}
                                   onBlur={() => setTimeout(() => setItemSearchOpenIndex(null), 150)}
                                   className="w-full font-bold text-slate-900 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-amber-500 focus:bg-white bg-slate-50/50"
                                 />
-                                {itemSearchOpenIndex === idx && itemSearchQuery.trim() !== '' && (() => {
-                                  const q = itemSearchQuery.trim().toLowerCase();
-                                  const matches = inventoryProducts.filter((p: any) =>
-                                    (!editingInvoice.branch || normalizeBranchName(p.branch) === normalizeBranchName(editingInvoice.branch)) &&
-                                    ((p.name || '').toLowerCase().includes(q) || (p.code || '').toLowerCase().includes(q))
-                                  ).slice(0, 8);
-                                  if (matches.length === 0) return null;
-                                  return (
-                                    <div className="absolute z-20 top-full right-0 left-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-52 overflow-y-auto">
-                                      {matches.map((p: any) => (
-                                        <button
-                                          type="button"
-                                          key={p.id}
-                                          onMouseDown={() => handleEditSelectProductForRow(idx, p)}
-                                          className="w-full text-right px-3 py-2 hover:bg-amber-50 text-xs border-b border-slate-100 last:border-0 flex items-center justify-between gap-2 cursor-pointer"
-                                        >
-                                          <span className="font-bold text-slate-900">{p.name}</span>
-                                          <span className="text-slate-400 font-mono text-[10px]">{p.code} • {p.sellPrice} ج</span>
-                                        </button>
-                                      ))}
-                                    </div>
-                                  );
-                                })()}
                               </td>
                               <td className="p-2">
                                 <input
@@ -1730,6 +1731,38 @@ export default function FabricSalesPage() {
                     </tbody>
                   </table>
                 </div>
+
+                {/* Item search dropdown — بيتعرض عبر portal بموضع fixed محسوب من مكان
+                    الحقل فعليًا، عشان مايتقصّش بسبب overflow-x-auto على جدول البنود */}
+                {typeof document !== 'undefined' && itemSearchOpenIndex !== null && itemSearchQuery.trim() !== '' && itemSearchPos && editingInvoice.items?.[itemSearchOpenIndex] && createPortal(
+                  (() => {
+                    const q = itemSearchQuery.trim().toLowerCase();
+                    const matches = inventoryProducts.filter((p: any) =>
+                      (!editingInvoice.branch || normalizeBranchName(p.branch) === normalizeBranchName(editingInvoice.branch)) &&
+                      ((p.name || '').toLowerCase().includes(q) || (p.code || '').toLowerCase().includes(q))
+                    ).slice(0, 8);
+                    if (matches.length === 0) return null;
+                    return (
+                      <div
+                        className="fixed z-[9999] bg-white border border-slate-200 rounded-xl shadow-2xl max-h-52 overflow-y-auto"
+                        style={{ top: itemSearchPos.top + 4, left: itemSearchPos.left, width: Math.max(itemSearchPos.width, 220) }}
+                      >
+                        {matches.map((p: any) => (
+                          <button
+                            type="button"
+                            key={p.id}
+                            onMouseDown={() => handleEditSelectProductForRow(itemSearchOpenIndex, p)}
+                            className="w-full text-right px-3 py-2 hover:bg-amber-50 text-xs border-b border-slate-100 last:border-0 flex items-center justify-between gap-2 cursor-pointer"
+                          >
+                            <span className="font-bold text-slate-900">{p.name}</span>
+                            <span className="text-slate-400 font-mono text-[10px]">{p.code} • {p.sellPrice} ج</span>
+                          </button>
+                        ))}
+                      </div>
+                    );
+                  })(),
+                  document.body
+                )}
               </div>
 
               {/* Financial & Payment Edit */}
