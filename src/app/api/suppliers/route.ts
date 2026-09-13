@@ -7,6 +7,9 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: Request) {
   try {
     const scope = await getBranchScope(request);
+    if (!scope) {
+      return NextResponse.json({ success: false, error: 'غير مصرح' }, { status: 401 });
+    }
     const suppliers = await prisma.supplier.findMany({
       where: branchWhere(scope),
       orderBy: { updatedAt: 'desc' },
@@ -20,6 +23,9 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const scope = await getBranchScope(request);
+    if (!scope) {
+      return NextResponse.json({ success: false, error: 'غير مصرح' }, { status: 401 });
+    }
     const body = await request.json();
     const {
       id, name, phone, address, branch, notes,
@@ -33,6 +39,15 @@ export async function POST(request: Request) {
     }
 
     const supplierId = id || `SUP-${Date.now()}`;
+
+    // #GUARD: موظف مقيّد ميقدرش يعدّل مورد فرع تاني (بما فيه أرصدته المالية) حتى
+    // لو عرف الـ id بالظبط — كان مفتوح بالكامل قبل هذا التعديل.
+    if (id) {
+      const existingSupplier = await prisma.supplier.findUnique({ where: { id }, select: { branch: true } });
+      if (existingSupplier && !scope.isAdmin && existingSupplier.branch !== scope.branch) {
+        return NextResponse.json({ success: false, error: 'غير مصرح بتعديل مورد فرع آخر' }, { status: 403 });
+      }
+    }
 
     if (isPartialUpdate) {
       // تحديث جزئى (مثلاً بعد تسجيل سداد) — لا يمس الحقول غير المُرسَلة

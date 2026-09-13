@@ -7,6 +7,9 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: Request) {
   try {
     const scope = await getBranchScope(request);
+    if (!scope) {
+      return NextResponse.json({ success: false, error: 'غير مصرح' }, { status: 401 });
+    }
     const orders = await prisma.pipelineOrder.findMany({
       where: branchWhere(scope),
       orderBy: { updatedAt: 'desc' },
@@ -80,6 +83,9 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const scope = await getBranchScope(request);
+    if (!scope) {
+      return NextResponse.json({ success: false, error: 'غير مصرح' }, { status: 401 });
+    }
     const body = await request.json();
     const rawList = Array.isArray(body.orders) ? body.orders : (Array.isArray(body) ? body : [body]);
 

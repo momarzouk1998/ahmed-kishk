@@ -41,6 +41,9 @@ async function writeAdjustments(logs: InventoryAdjustmentLog[]): Promise<void> {
 export async function GET(request: Request) {
   try {
     const scope = await getBranchScope(request);
+    if (!scope) {
+      return NextResponse.json({ success: false, error: 'غير مصرح' }, { status: 401 });
+    }
     let logs = await readAdjustments();
     if (scope && !scope.isAdmin) {
       logs = logs.filter(l => normalizeBranchName(l.branch) === normalizeBranchName(scope.branch));
@@ -55,6 +58,9 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const scope = await getBranchScope(request);
+    if (!scope) {
+      return NextResponse.json({ success: false, error: 'غير مصرح' }, { status: 401 });
+    }
     const user = await verifyAuthCookie(request);
     const body = await request.json();
 

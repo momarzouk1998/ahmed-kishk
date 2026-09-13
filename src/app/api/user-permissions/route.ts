@@ -114,6 +114,17 @@ export async function GET(request: Request) {
 
     const phone = normalizePhone(rawPhone);
     const normNoZero = phone.replace(/^0/, '');
+
+    // #GUARD: مستخدم عادي يقدر يشوف صلاحياته هو بس — عرض صلاحيات/فرع أي مستخدم
+    // تاني (حتى لو مجرد قراءة) متاح للأدمن فقط، لأنه بيكشف معلومات حساسة عن
+    // هيكل الصلاحيات فى النظام.
+    const requesterPhone = normalizePhone(user.phone || '');
+    const requesterNoZero = requesterPhone.replace(/^0/, '');
+    const isSelf = requesterPhone === phone || requesterNoZero === normNoZero;
+    const isSuperAdmin = requesterPhone === '01558282760' || requesterPhone === '01063821000' || user.role === 'ADMIN' || user.branch === 'المدير العام';
+    if (!isSelf && !isSuperAdmin) {
+      return NextResponse.json({ error: 'غير مصرح بعرض صلاحيات مستخدم آخر' }, { status: 403 });
+    }
     const map = await readAllPerms();
 
     const entry = map[phone] || map[normNoZero] || map[`0${normNoZero}`] || DEFAULT_PERMS_ROSTER[phone] || DEFAULT_PERMS_ROSTER[normNoZero] || {

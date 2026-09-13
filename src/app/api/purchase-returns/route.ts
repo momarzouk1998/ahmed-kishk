@@ -25,6 +25,9 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const scope = await getBranchScope(request);
+    if (!scope) {
+      return NextResponse.json({ success: false, error: 'غير مصرح' }, { status: 401 });
+    }
     const body = await request.json();
     const {
       id, returnNumber, date, invoiceNumber, supplierName, supplierPhone,
@@ -41,6 +44,11 @@ export async function POST(request: Request) {
     // id هو مفتاح التعديل الحقيقى الوحيد، ورقم المرتجع الجديد بيتولّد ويتحقق منه
     // فعليًا من قاعدة البيانات عند الإنشاء.
     const existingById = id ? await prisma.purchaseReturn.findUnique({ where: { id } }) : null;
+
+    if (existingById && !scope.isAdmin && existingById.branch !== scope.branch) {
+      return NextResponse.json({ success: false, error: 'غير مصرح بتعديل مرتجع فرع آخر' }, { status: 403 });
+    }
+
     let ret;
     if (existingById) {
       ret = await prisma.purchaseReturn.update({
