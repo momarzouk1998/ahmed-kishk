@@ -78,7 +78,16 @@ jobs:
             sleep 10
 
             echo "🗄️ Syncing Prisma schema to database (Creating/updating tables — no destructive changes allowed)..."
-            docker exec ahmed-kishk sh -c "node node_modules/prisma/build/index.js db push --skip-generate"
+            # ⚠️ لو الأمر ده فشل (زى تحذير data-loss محتمل على قيد unique جديد)، الديبلوي
+            # القديم كان يكمّل عادي ويطبع "✅ Deployment completed successfully!" فى الآخر
+            # بلا أي إشارة إن الـ schema فعليًا ما اتزامنتش مع الكود — يعني الكونتينر بيشتغل
+            # بكود بيتوقع جدول/عمود مش موجود فعليًا فى قاعدة البيانات. دلوقتى بيوقف الديبلوي
+            # كله ويفشل بوضوح لو db push فشل، عشان محدش يفوّت المشكلة دي تانى.
+            if ! docker exec ahmed-kishk sh -c "node node_modules/prisma/build/index.js db push --skip-generate"; then
+              echo "❌ Prisma db push failed — الكود اتنشر لكن الـ schema لسه غير متزامن مع قاعدة البيانات."
+              echo "❌ راجع تحذير data-loss فوق: لو تعديل غير هدّام فعلاً (مثلاً unique constraint اتأكد يدويًا مفيش تكرار)، شغّل يدويًا: docker exec ahmed-kishk sh -c \"node node_modules/prisma/build/index.js db push --skip-generate --accept-data-loss\""
+              exit 1
+            fi
 
             echo "🌱 Seeding and syncing 326 official inventory items into production PostgreSQL database..."
             docker exec -e SEED_SECRET="${{ secrets.SEED_SECRET }}" ahmed-kishk node -e "
