@@ -100,6 +100,7 @@ export default function ReportsPage() {
   const [collections, setCollections] = useState<any[]>([]);
   const [shifts, setShifts] = useState<any[]>([]);
   const [expenses, setExpenses] = useState<any[]>([]);
+  const [advances, setAdvances] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // ─── Load all data ───────────────────────────────────────────
@@ -107,7 +108,7 @@ export default function ReportsPage() {
     (async () => {
       setLoading(true);
       try {
-        const [salesRes, purRes, invRes, custRes, supRes, insRes, priRes, ordRes, shiftRes, expRes] = await Promise.all([
+        const [salesRes, purRes, invRes, custRes, supRes, insRes, priRes, ordRes, shiftRes, expRes, advRes] = await Promise.all([
           fetch('/api/fabric-sales', { cache: 'no-store' }).catch(() => null),
           fetch('/api/purchases', { cache: 'no-store' }).catch(() => null),
           fetch('/api/inventory', { cache: 'no-store' }).catch(() => null),
@@ -118,6 +119,7 @@ export default function ReportsPage() {
           fetch('/api/pipeline-orders', { cache: 'no-store' }).catch(() => null),
           fetch('/api/shifts', { cache: 'no-store' }).catch(() => null),
           fetch('/api/expenses', { cache: 'no-store' }).catch(() => null),
+          fetch('/api/employee-advances', { cache: 'no-store' }).catch(() => null),
         ]);
 
         if (salesRes?.ok) {
@@ -131,6 +133,10 @@ export default function ReportsPage() {
         if (expRes?.ok) {
           const j = await expRes.json();
           if (Array.isArray(j?.expenses)) setExpenses(j.expenses);
+        }
+        if (advRes?.ok) {
+          const j = await advRes.json();
+          if (Array.isArray(j?.advances)) setAdvances(j.advances);
         }
         if (purRes?.ok) {
           const j = await purRes.json();
@@ -221,6 +227,7 @@ export default function ReportsPage() {
   const purchaseDate = (p: any): string | undefined => p?.date;
   const shiftDate = (s: any): string | undefined => s?.startTime || s?.createdAt || s?.endTime;
   const expenseDate = (e: any): string | undefined => e?.date || e?.createdAt;
+  const advanceDate = (a: any): string | undefined => a?.date || a?.createdAt;
 
   const fInvoices = useMemo(
     () => invoices.filter(i => inBranch(i.branch) && inPeriod(invoiceDate(i))),
@@ -514,6 +521,24 @@ export default function ReportsPage() {
           }
         });
 
+        // 5. سلف/مكافآت الموظفين النقدية فى نفس الوردية — بتتخصم كاش من الدرج
+        let bAdvancesTotal = 0;
+        advances.filter((a: any) => matchB(a.branch) && a.treasuryDeducted !== false && inPeriod(advanceDate(a))).forEach((adv: any) => {
+          const advTime = adv.createdAt ? new Date(adv.createdAt).getTime() : (adv.date ? new Date(adv.date).getTime() : 0);
+          let belongs = false;
+          if (targetShift) {
+            belongs = b.shiftType === 'مسائي' ? (advTime >= shiftStartMs - 60000) : (targetShift.endTime ? advTime <= shiftEndMs + 60000 : true);
+          } else {
+            const h = advTime ? new Date(advTime).getHours() : 12;
+            belongs = b.shiftType === 'صباحي' ? h < 17 : h >= 17;
+          }
+          if (belongs) {
+            const amt = Number(adv.amount) || 0;
+            bAdvancesTotal += amt;
+            bCash -= amt;
+          }
+        });
+
         const shiftRecordCash = omarShifts.reduce((acc, s) => acc + Number(s.actualClosingCash ?? s.expectedCashInDrawer ?? s.cashSales ?? 0), 0);
         const finalCash = bCash > 0 ? bCash : shiftRecordCash;
         const total = finalCash + bInstapay + bVodafone + bVisa;
@@ -529,6 +554,7 @@ export default function ReportsPage() {
           visa: bVisa,
           total,
           expensesTotal: bExpensesTotal,
+          advancesTotal: bAdvancesTotal,
           count: bCount || omarShifts.length,
           employeeName,
           shiftSales: total,
@@ -627,6 +653,15 @@ export default function ReportsPage() {
         else bCash -= amt;
       });
 
+      // 5. سلف/مكافآت الموظفين النقدية فى نفس الفترة — بتتخصم كاش من الدرج
+      // (زي أي مبلغ بيتاخد من الخزينة، مفيش طريقة دفع تانية للسلفة).
+      let bAdvancesTotal = 0;
+      advances.filter((a: any) => matchB(a.branch) && a.treasuryDeducted !== false && inPeriod(advanceDate(a))).forEach((adv: any) => {
+        const amt = Number(adv.amount) || 0;
+        bAdvancesTotal += amt;
+        bCash -= amt;
+      });
+
       const total = bCash + bInstapay + bVodafone + bVisa;
       return {
         ...b,
@@ -634,6 +669,7 @@ export default function ReportsPage() {
         instapay: bInstapay,
         vodafone: bVodafone,
         expensesTotal: bExpensesTotal,
+        advancesTotal: bAdvancesTotal,
         visa: bVisa,
         total,
         count: bCount,
@@ -1084,6 +1120,15 @@ function SalesReport({ kpis, invoices, quotations, collections, branchLabel, per
                         <span>مصروفات مخصومة:</span>
                       </span>
                       <strong className="font-mono">-{b.expensesTotal.toLocaleString()} ج</strong>
+                    </div>
+                  )}
+                  {(b.advancesTotal || 0) > 0 && (
+                    <div className="flex justify-between items-center text-rose-800 bg-rose-50 px-2 py-1 rounded border border-rose-200 font-bold mt-1">
+                      <span className="flex items-center gap-1">
+                        <span>💸</span>
+                        <span>سلف موظفين مخصومة:</span>
+                      </span>
+                      <strong className="font-mono">-{b.advancesTotal.toLocaleString()} ج</strong>
                     </div>
                   )}
                 </div>

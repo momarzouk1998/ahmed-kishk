@@ -44,9 +44,11 @@ export async function GET(request: Request) {
 
     // Auto-enrich shifts with real-time sales made during the shift timeframe
     try {
-      const [allInvoices, allQuotations] = await Promise.all([
+      const [allInvoices, allQuotations, allExpenses, allAdvances] = await Promise.all([
         (prisma as any).salesInvoice.findMany().catch(() => []),
         (prisma as any).quotationOrder.findMany().catch(() => []),
+        (prisma as any).expense.findMany().catch(() => []),
+        (prisma as any).employeeAdvance.findMany().catch(() => []),
       ]);
 
       shifts = shifts.map((s: any) => {
@@ -117,13 +119,39 @@ export async function GET(request: Request) {
           }
         });
 
+        // مصروفات الفرع (نقدي فقط — طرق الدفع التانية متأثرتش بيها كاش الدرج) وسلف
+        // الموظفين النقدية خلال نفس فترة الوردية — بتتخصم فعليًا من الدرج، تمامًا
+        // زي المصروفات الحقيقية دلوقتي فى صفحة التقارير. كانت الحقول المخزّنة
+        // s.expensesPaid/s.advancesPaid صفر دايمًا لأن مفيش أي مكان فى الكود بيبعتها،
+        // فكانت أي سلفة أو مصروف نقدي بياخد فلوس من الدرج من غير ما يظهر فى
+        // "المتوقع"، فيطلع عجز وهمي عند التقفيل.
+        let calculatedExpenses = 0;
+        allExpenses.forEach((exp: any) => {
+          if (!matchBranch(exp.branch)) return;
+          const expTime = exp.createdAt ? new Date(exp.createdAt).getTime() : (exp.date ? new Date(exp.date).getTime() : 0);
+          if (expTime < shiftStart - 60000 || expTime > shiftEnd + 60000) return;
+          const m = (exp.paymentMethod || '').trim();
+          if (!m || m.includes('نقد')) calculatedExpenses += Number(exp.amount) || 0;
+        });
+
+        let calculatedAdvances = 0;
+        allAdvances.forEach((adv: any) => {
+          if (!matchBranch(adv.branch)) return;
+          if (adv.treasuryDeducted === false) return;
+          const advTime = adv.createdAt ? new Date(adv.createdAt).getTime() : (adv.date ? new Date(adv.date).getTime() : 0);
+          if (advTime < shiftStart - 60000 || advTime > shiftEnd + 60000) return;
+          calculatedAdvances += Number(adv.amount) || 0;
+        });
+
         const effectiveCash = (s.cashSales && s.cashSales > 0) ? s.cashSales : calculatedCash;
         const effectiveTotal = (s.totalSales && s.totalSales > 0) ? s.totalSales : (calculatedTotal > 0 ? calculatedTotal : effectiveCash);
         const effectiveInstapay = (s.instapaySales && s.instapaySales > 0) ? s.instapaySales : calculatedInstapay;
         const effectiveVodafone = (s.vodafoneSales && s.vodafoneSales > 0) ? s.vodafoneSales : calculatedVodafone;
         const effectiveVisa = (s.visaSales && s.visaSales > 0) ? s.visaSales : calculatedVisa;
+        const effectiveExpensesPaid = (s.expensesPaid && s.expensesPaid > 0) ? s.expensesPaid : calculatedExpenses;
+        const effectiveAdvancesPaid = (s.advancesPaid && s.advancesPaid > 0) ? s.advancesPaid : calculatedAdvances;
 
-        const expected = Number(s.openingDrawerBalance || 0) + effectiveCash - (Number(s.expensesPaid || 0) + Number(s.advancesPaid || 0));
+        const expected = Number(s.openingDrawerBalance || 0) + effectiveCash - (effectiveExpensesPaid + effectiveAdvancesPaid);
         const actualCash = s.actualClosingCash !== null && s.actualClosingCash !== undefined ? s.actualClosingCash : (s.status === 'CLOSED' ? expected : null);
         const discrepancy = actualCash !== null ? (actualCash - expected) : null;
 
@@ -134,6 +162,8 @@ export async function GET(request: Request) {
           instapaySales: effectiveInstapay,
           vodafoneSales: effectiveVodafone,
           visaSales: effectiveVisa,
+          expensesPaid: effectiveExpensesPaid,
+          advancesPaid: effectiveAdvancesPaid,
           expectedCashInDrawer: expected,
           actualClosingCash: actualCash,
           cashDiscrepancy: discrepancy,
