@@ -68,3 +68,29 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, error: 'حدث خطأ فى الخادم' }, { status: 500 });
   }
 }
+
+export async function DELETE(request: Request) {
+  try {
+    const scope = await getBranchScope(request);
+    if (!scope) {
+      return NextResponse.json({ success: false, error: 'غير مصرح' }, { status: 401 });
+    }
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    if (!id) {
+      return NextResponse.json({ success: false, error: 'المعرّف مطلوب' }, { status: 400 });
+    }
+    const existing = await prisma.attendanceRecord.findUnique({ where: { id } });
+    if (!existing) {
+      return NextResponse.json({ success: false, error: 'السجل غير موجود' }, { status: 404 });
+    }
+    if (!scope.isAdmin && existing.branch !== scope.branch) {
+      return NextResponse.json({ success: false, error: 'غير مصرح بحذف حضور فرع آخر' }, { status: 403 });
+    }
+    await prisma.attendanceRecord.delete({ where: { id } });
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error(error);
+    return NextResponse.json({ success: false, error: 'حدث خطأ فى الخادم' }, { status: 500 });
+  }
+}

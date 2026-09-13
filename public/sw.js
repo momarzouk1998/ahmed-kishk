@@ -1,5 +1,5 @@
 // Cache version — bump this string on every deploy to force full cache refresh
-const CACHE_VERSION = 'v10';
+const CACHE_VERSION = 'v11';
 const CACHE_NAME = `ahmed-kishk-pwa-${CACHE_VERSION}`;
 
 // Only truly static, infrequently-changing assets belong here
@@ -11,6 +11,12 @@ const STATIC_ASSETS = [
   '/apple-touch-icon.png',
   '/icon-maskable.png',
 ];
+
+// امتدادات ملفات ثابتة بحتة (صور/أيقونات) يُسمح بالتخزين المؤقت ليها فقط.
+// أي حاجة تانية (صفحات HTML، JS، API...) لازم تعدّي على الشبكة دايمًا، عشان
+// صفحة جديدة زي /employees متتخبيش فى كاش قديم لمجرد إننا نسيّنا نضيفها لقائمة
+// استثناءات — القائمة دي كانت بالظبط سبب مشكلة ضياع حضور الفروع فى 2026-09-13.
+const STATIC_EXTENSIONS = /\.(png|jpg|jpeg|svg|ico|webp|gif|woff2?|ttf)$/i;
 
 // ─── Install: pre-cache only static assets ─────────────────────────────────
 self.addEventListener('install', (event) => {
@@ -30,7 +36,9 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// ─── Fetch: Network-first for everything; cache-fallback only for pure static ─
+// ─── Fetch: Network-first for everything except a fixed allowlist of pure
+// static asset files. Every page/HTML/JS/API request always hits the
+// network — no per-page allowlist to forget to update. ────────────────────
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
@@ -38,27 +46,14 @@ self.addEventListener('fetch', (event) => {
   // Skip non-GET and non-http(s) requests completely
   if (request.method !== 'GET' || !url.protocol.startsWith('http')) return;
 
-  // ── NEVER cache these — always hit the network ──────────────────────────
-  const bypassPatterns = [
-    url.pathname.startsWith('/api/'),          // API routes
-    url.pathname.startsWith('/_next/'),         // Next.js JS/CSS chunks (can change on every build)
-    url.pathname === '/',                       // Home/dashboard (live data)
-    url.pathname.startsWith('/pipeline/'),      // Pipeline pages (live data)
-    url.pathname.startsWith('/customers'),
-    url.pathname.startsWith('/orders'),
-    url.pathname.startsWith('/inventory'),
-    url.pathname.startsWith('/reports'),
-    url.pathname.startsWith('/purchases'),
-    url.pathname.startsWith('/suppliers'),
-    url.pathname.startsWith('/fabric-sales'),
-    url.pathname.startsWith('/settings'),
-    url.pathname.startsWith('/branches'),
-    url.pathname.startsWith('/workshop'),
-    url.pathname.startsWith('/login'),
-    url.pathname.startsWith('/profile'),
-  ];
+  // Only cache same-origin requests for genuinely static files by extension,
+  // or files explicitly listed in STATIC_ASSETS. Everything else — every
+  // page navigation, every /_next chunk, every API call — always goes to
+  // the network, so a new deploy takes effect immediately everywhere.
+  const isStatic = url.origin === self.location.origin &&
+    (STATIC_ASSETS.includes(url.pathname) || STATIC_EXTENSIONS.test(url.pathname));
 
-  if (bypassPatterns.some(Boolean)) return; // let browser handle it normally
+  if (!isStatic) return; // let browser handle it normally (network)
 
   // ── Static assets only: stale-while-revalidate ───────────────────────────
   event.respondWith(

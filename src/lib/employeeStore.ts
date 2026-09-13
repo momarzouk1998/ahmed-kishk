@@ -185,6 +185,16 @@ export async function saveAttendanceRecord(record: AttendanceRecord): Promise<bo
   }
 }
 
+export async function deleteAttendanceRecord(id: string): Promise<boolean> {
+  try {
+    const res = await fetch(`/api/employee-attendance?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+    const json = await res.json().catch(() => null);
+    return !!json?.success;
+  } catch {
+    return false;
+  }
+}
+
 export async function getAdvances(): Promise<EmployeeAdvance[]> {
   const json = await safeFetchJson('/api/employee-advances');
   return json?.success && Array.isArray(json.advances) ? json.advances : [];

@@ -5,12 +5,14 @@ import PageShell from '@/components/PageShell';
 import {
   Employee, AttendanceRecord, EmployeeAdvance, WeeklyPayrollSettlement,
   getEmployees, saveEmployee, deleteEmployee, getAttendance, saveAttendanceRecord,
+  deleteAttendanceRecord,
   getAdvances, saveAdvance, deleteAdvance, getPayrolls, savePayrollSettlement, INITIAL_EMPLOYEES,
   isMonthlyEmployee
 } from '@/lib/employeeStore';
 import { BRANCHES_LIST, normalizeBranchName } from '@/lib/branches';
 import { formatDateOnly, getTodayDateStr } from '@/lib/dateUtils';
 import { useCurrentUser } from '@/lib/useCurrentUser';
+import Pagination from '@/components/Pagination';
 
 export default function EmployeesManagementPage() {
   const { user, isAdmin, isSuperAdmin } = useCurrentUser();
@@ -29,9 +31,35 @@ export default function EmployeesManagementPage() {
   const [advances, setAdvances] = useState<EmployeeAdvance[]>([]);
   const [payrolls, setPayrolls] = useState<WeeklyPayrollSettlement[]>([]);
 
-  const [activeTab, setActiveTab] = useState<'attendance' | 'advances' | 'payroll' | 'directory'>('attendance');
+  const [activeTab, setActiveTab] = useState<'attendance' | 'advances' | 'payroll' | 'directory' | 'log'>('attendance');
   const [selectedBranch, setSelectedBranch] = useState<string>('الكل');
   const [attendanceDate, setAttendanceDate] = useState<string>(() => getTodayDateStr());
+
+  // ── Attendance Log tab (سجل الحضور) — بحث/تصفية/باجنيشن + تعديل/حذف/إضافة، أدمن فقط
+  const [logSearch, setLogSearch] = useState<string>('');
+  const [logStatusFilter, setLogStatusFilter] = useState<string>('الكل');
+  const [logDateFrom, setLogDateFrom] = useState<string>('');
+  const [logDateTo, setLogDateTo] = useState<string>('');
+  const [logCurrentPage, setLogCurrentPage] = useState<number>(1);
+  const logPageSize = 20;
+  const [showLogModal, setShowLogModal] = useState<boolean>(false);
+  const [editingLogRecord, setEditingLogRecord] = useState<AttendanceRecord | null>(null);
+  const [logForm, setLogForm] = useState<{
+    employeeId: string;
+    date: string;
+    status: AttendanceRecord['status'];
+    checkInTime: string;
+    checkOutTime: string;
+    notes: string;
+  }>({
+    employeeId: '',
+    date: getTodayDateStr(),
+    status: 'حاضر',
+    checkInTime: '',
+    checkOutTime: '',
+    notes: '',
+  });
+  const [savingLog, setSavingLog] = useState<boolean>(false);
 
   // Payroll classification mode: 'weekly' (Thursday) | 'monthly' (End of month) | 'all'
   const [payrollMode, setPayrollMode] = useState<'weekly' | 'monthly' | 'all'>('weekly');
@@ -109,10 +137,12 @@ export default function EmployeesManagementPage() {
     if (!isAdmin && !isSuperAdmin && user?.branch) {
       setSelectedBranch(user.branch);
     }
-    if (!canViewWages && (activeTab === 'payroll' || activeTab === 'directory')) {
+    if (!canViewWages && (activeTab === 'payroll' || activeTab === 'directory' || activeTab === 'log')) {
       setActiveTab('attendance');
     }
   }, [isAdmin, isSuperAdmin, user, canViewWages, activeTab]);
+
+  useEffect(() => { setLogCurrentPage(1); }, [logSearch, logStatusFilter, logDateFrom, logDateTo, selectedBranch]);
 
   const branchFilteredEmployees = useMemo(() => {
     const activeBranch = (!isAdmin && !isSuperAdmin && user?.branch) ? user.branch : selectedBranch;
@@ -272,6 +302,87 @@ export default function EmployeesManagementPage() {
 
   const getAttendanceForEmp = (empId: string, dateStr: string) => {
     return attendance.find(a => a.employeeId === empId && a.date === dateStr);
+  };
+
+  // ── Attendance Log (سجل الحضور): بحث + تصفية + باجنيشن على كل سجلات الحضور ──
+  const filteredLogRecords = useMemo(() => {
+    const activeBranch = (!isAdmin && !isSuperAdmin && user?.branch) ? user.branch : selectedBranch;
+    return attendance
+      .filter(a => activeBranch === 'الكل' || normalizeBranchName(a.branch) === normalizeBranchName(activeBranch))
+      .filter(a => logStatusFilter === 'الكل' || a.status === logStatusFilter)
+      .filter(a => !logDateFrom || a.date >= logDateFrom)
+      .filter(a => !logDateTo || a.date <= logDateTo)
+      .filter(a => {
+        if (!logSearch.trim()) return true;
+        const q = logSearch.trim().toLowerCase();
+        return a.employeeName.toLowerCase().includes(q) || (a.recordedBy || '').toLowerCase().includes(q);
+      })
+      .sort((a, b) => b.date.localeCompare(a.date));
+  }, [attendance, isAdmin, isSuperAdmin, user, selectedBranch, logStatusFilter, logDateFrom, logDateTo, logSearch]);
+
+  const paginatedLogRecords = filteredLogRecords.slice((logCurrentPage - 1) * logPageSize, logCurrentPage * logPageSize);
+
+  const openAddLog = () => {
+    setEditingLogRecord(null);
+    setLogForm({ employeeId: '', date: getTodayDateStr(), status: 'حاضر', checkInTime: '', checkOutTime: '', notes: '' });
+    setShowLogModal(true);
+  };
+
+  const openEditLog = (record: AttendanceRecord) => {
+    setEditingLogRecord(record);
+    setLogForm({
+      employeeId: record.employeeId,
+      date: record.date,
+      status: record.status,
+      checkInTime: record.checkInTime || '',
+      checkOutTime: record.checkOutTime || '',
+      notes: record.notes || '',
+    });
+    setShowLogModal(true);
+  };
+
+  const handleSaveLog = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const emp = employees.find(x => x.id === logForm.employeeId);
+    if (!emp && !editingLogRecord) {
+      alert('من فضلك اختر الموظف');
+      return;
+    }
+    setSavingLog(true);
+    const record: AttendanceRecord = {
+      id: editingLogRecord?.id || `att-${Date.now()}-${logForm.employeeId}`,
+      date: logForm.date,
+      employeeId: logForm.employeeId || editingLogRecord!.employeeId,
+      employeeName: emp?.name || editingLogRecord!.employeeName,
+      branch: emp?.branch || editingLogRecord!.branch,
+      status: logForm.status,
+      checkInTime: logForm.checkInTime || undefined,
+      checkOutTime: logForm.checkOutTime || undefined,
+      notes: logForm.notes || undefined,
+      recordedBy: user?.name || 'أدمن',
+    };
+    const ok = await saveAttendanceRecord(record);
+    setSavingLog(false);
+    if (!ok) {
+      alert('فشل حفظ السجل — من فضلك حاول مرة أخرى');
+      return;
+    }
+    setAttendance(prev => {
+      const exists = prev.some(a => a.id === record.id);
+      return exists ? prev.map(a => (a.id === record.id ? record : a)) : [...prev, record];
+    });
+    setShowLogModal(false);
+  };
+
+  const handleDeleteLog = async (record: AttendanceRecord) => {
+    if (!confirm(`تأكيد حذف سجل حضور "${record.employeeName}" بتاريخ ${record.date}؟`)) return;
+    const previous = attendance;
+    setAttendance(prev => prev.filter(a => a.id !== record.id));
+    const ok = await deleteAttendanceRecord(record.id);
+    if (!ok) {
+      setAttendance(previous);
+      alert('فشل حذف السجل — من فضلك حاول مرة أخرى');
+    }
   };
 
   // Advance submission
@@ -560,6 +671,15 @@ export default function EmployeesManagementPage() {
                 >
                   <span>👥</span>
                   <span>دليل الموظفين</span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('log')}
+                  className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer ${
+                    activeTab === 'log' ? 'bg-purple-700 text-white shadow-md' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  }`}
+                >
+                  <span>🗂️</span>
+                  <span>سجل الحضور</span>
                 </button>
               </>
             )}
@@ -1200,6 +1320,264 @@ export default function EmployeesManagementPage() {
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {/* ── TAB 5: ATTENDANCE LOG (سجل الحضور) — أدمن فقط ── */}
+        {activeTab === 'log' && canViewWages && (
+          <div className="bg-white p-5 md:p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-slate-200">
+              <div>
+                <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+                  <span>🗂️</span>
+                  <span>سجل الحضور الكامل</span>
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">بحث وتصفية فى كل سجلات الحضور مع إمكانية التعديل والحذف والإضافة اليدوية</p>
+              </div>
+              <button
+                type="button"
+                onClick={openAddLog}
+                className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-sm cursor-pointer shrink-0"
+              >
+                <span>➕</span>
+                <span>إضافة سجل حضور</span>
+              </button>
+            </div>
+
+            {/* Filters */}
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                type="text"
+                value={logSearch}
+                onChange={(e) => setLogSearch(e.target.value)}
+                placeholder="🔍 ابحث باسم الموظف أو مسجّل الحضور..."
+                className="flex-1 min-w-[200px] p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold"
+              />
+              <select
+                value={logStatusFilter}
+                onChange={(e) => setLogStatusFilter(e.target.value)}
+                className="p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold"
+              >
+                <option value="الكل">كل الحالات</option>
+                <option value="حاضر">حاضر</option>
+                <option value="غياب">غياب</option>
+                <option value="إجازة">إجازة</option>
+                <option value="نصف يوم">نصف يوم</option>
+              </select>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] font-bold text-slate-500">من</span>
+                <input
+                  type="date"
+                  value={logDateFrom}
+                  onChange={(e) => setLogDateFrom(e.target.value)}
+                  className="p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold"
+                />
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] font-bold text-slate-500">إلى</span>
+                <input
+                  type="date"
+                  value={logDateTo}
+                  onChange={(e) => setLogDateTo(e.target.value)}
+                  className="p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold"
+                />
+              </div>
+              {(logSearch || logStatusFilter !== 'الكل' || logDateFrom || logDateTo) && (
+                <button
+                  type="button"
+                  onClick={() => { setLogSearch(''); setLogStatusFilter('الكل'); setLogDateFrom(''); setLogDateTo(''); }}
+                  className="px-3 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold cursor-pointer"
+                >
+                  ✕ مسح التصفية
+                </button>
+              )}
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-right text-xs">
+                <thead className="bg-slate-100 text-slate-700 font-bold uppercase border-b border-slate-200">
+                  <tr>
+                    <th className="p-3">التاريخ</th>
+                    <th className="p-3">اسم الموظف</th>
+                    <th className="p-3">الفرع</th>
+                    <th className="p-3">الحالة</th>
+                    <th className="p-3 font-mono">الحضور</th>
+                    <th className="p-3 font-mono">الانصراف</th>
+                    <th className="p-3">سجّله</th>
+                    <th className="p-3 text-center">إجراءات</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                  {paginatedLogRecords.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="p-6 text-center text-slate-400 font-bold">لا توجد سجلات مطابقة</td>
+                    </tr>
+                  ) : (
+                    paginatedLogRecords.map((record) => (
+                      <tr key={record.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="p-3 font-mono font-bold text-slate-700">{record.date}</td>
+                        <td className="p-3 font-extrabold text-slate-900">{record.employeeName}</td>
+                        <td className="p-3">
+                          <span className="bg-slate-100 border border-slate-300 px-2 py-0.5 rounded text-[11px] font-bold text-slate-700">
+                            {record.branch}
+                          </span>
+                        </td>
+                        <td className="p-3">
+                          <span className={`px-2.5 py-1 rounded-lg text-xs font-black border ${
+                            record.status === 'حاضر' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' :
+                            record.status === 'غياب' ? 'bg-rose-100 text-rose-800 border-rose-300' :
+                            record.status === 'إجازة' ? 'bg-blue-100 text-blue-800 border-blue-300' :
+                            'bg-amber-100 text-amber-800 border-amber-300'
+                          }`}>
+                            {record.status}
+                          </span>
+                        </td>
+                        <td className="p-3 font-mono text-slate-700">{record.checkInTime || '—'}</td>
+                        <td className="p-3 font-mono text-slate-700">{record.checkOutTime || '—'}</td>
+                        <td className="p-3 text-slate-500">{record.recordedBy || '—'}</td>
+                        <td className="p-3 text-center">
+                          <div className="flex items-center justify-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => openEditLog(record)}
+                              className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer"
+                            >
+                              <span>✏️</span>
+                              <span>تعديل</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteLog(record)}
+                              className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-bold border border-rose-200 cursor-pointer"
+                              title="حذف السجل"
+                            >
+                              🗑️
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <Pagination
+              currentPage={logCurrentPage}
+              totalItems={filteredLogRecords.length}
+              pageSize={logPageSize}
+              onPageChange={setLogCurrentPage}
+              itemName="سجل"
+            />
+          </div>
+        )}
+
+        {/* Attendance Log Add/Edit Modal (Admin Only) */}
+        {showLogModal && (
+          <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+            <form
+              onSubmit={handleSaveLog}
+              className="bg-white max-w-md w-full rounded-3xl p-6 space-y-4 shadow-2xl border border-slate-200 max-h-[90vh] overflow-y-auto"
+            >
+              <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+                <span>{editingLogRecord ? '✏️' : '➕'}</span>
+                <span>{editingLogRecord ? 'تعديل سجل حضور' : 'إضافة سجل حضور'}</span>
+              </h3>
+
+              <div>
+                <label className="text-xs font-bold text-slate-600 block mb-1">الموظف</label>
+                <select
+                  value={logForm.employeeId}
+                  onChange={(e) => setLogForm({ ...logForm, employeeId: e.target.value })}
+                  disabled={!!editingLogRecord}
+                  required
+                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold disabled:opacity-60"
+                >
+                  <option value="">— اختر الموظف —</option>
+                  {employees.map(emp => (
+                    <option key={emp.id} value={emp.id}>{emp.name} ({emp.branch})</option>
+                  ))}
+                </select>
+                {editingLogRecord && (
+                  <p className="text-[10px] text-slate-400 mt-1">{editingLogRecord.employeeName} — {editingLogRecord.branch}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-600 block mb-1">التاريخ</label>
+                <input
+                  type="date"
+                  value={logForm.date}
+                  onChange={(e) => setLogForm({ ...logForm, date: e.target.value })}
+                  required
+                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-600 block mb-1">الحالة</label>
+                <select
+                  value={logForm.status}
+                  onChange={(e) => setLogForm({ ...logForm, status: e.target.value as AttendanceRecord['status'] })}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold"
+                >
+                  <option value="حاضر">حاضر</option>
+                  <option value="غياب">غياب</option>
+                  <option value="إجازة">إجازة</option>
+                  <option value="نصف يوم">نصف يوم</option>
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-bold text-slate-600 block mb-1">وقت الحضور</label>
+                  <input
+                    type="text"
+                    value={logForm.checkInTime}
+                    onChange={(e) => setLogForm({ ...logForm, checkInTime: e.target.value })}
+                    placeholder="مثال: ١١:٠٠ ص"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-600 block mb-1">وقت الانصراف</label>
+                  <input
+                    type="text"
+                    value={logForm.checkOutTime}
+                    onChange={(e) => setLogForm({ ...logForm, checkOutTime: e.target.value })}
+                    placeholder="مثال: ١١:٣٠ م"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-600 block mb-1">ملاحظات</label>
+                <textarea
+                  value={logForm.notes}
+                  onChange={(e) => setLogForm({ ...logForm, notes: e.target.value })}
+                  rows={2}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 pt-2">
+                <button
+                  type="submit"
+                  disabled={savingLog}
+                  className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl font-bold text-xs cursor-pointer"
+                >
+                  {savingLog ? 'جاري الحفظ...' : (editingLogRecord ? 'حفظ التعديل' : 'إضافة السجل')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowLogModal(false)}
+                  className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs cursor-pointer"
+                >
+                  إلغاء
+                </button>
+              </div>
+            </form>
           </div>
         )}
 
