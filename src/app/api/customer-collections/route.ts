@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getBranchScope, branchWhere, effectiveCreateBranch } from '@/lib/branchScope';
 import { getTodayDateStr } from '@/lib/dateUtils';
 import { syncCustomerOrdersFromCollections } from '@/lib/customerCollectionsSync';
+import { assertPagePermission } from '@/lib/permissionsServer';
 
 export const dynamic = 'force-dynamic';
 
@@ -101,6 +102,8 @@ export async function DELETE(request: Request) {
     if (!scope.isAdmin && existing.branch !== scope.branch) {
       return NextResponse.json({ success: false, error: 'غير مصرح بحذف سند فرع آخر' }, { status: 403 });
     }
+    const perm = await assertPagePermission(request, 'p_customers', 'delete');
+    if (!perm.ok) return NextResponse.json({ success: false, error: perm.error }, { status: perm.status });
 
     await prisma.customerCollection.delete({ where: { id } });
     await syncCustomerOrdersFromCollections(existing.customerName, existing.phone);

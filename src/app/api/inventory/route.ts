@@ -166,6 +166,8 @@ export async function DELETE(request: Request) {
     if (!scope.isAdmin && existing.branch !== scope.branch) {
       return NextResponse.json({ success: false, error: 'غير مصرح بحذف صنف من فرع آخر' }, { status: 403 });
     }
+    const perm = await assertPagePermission(request, 'p_inventory', 'delete');
+    if (!perm.ok) return NextResponse.json({ success: false, error: perm.error }, { status: perm.status });
 
     await prisma.inventoryItem.delete({
       where: { id },

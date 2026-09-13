@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getBranchScope, branchWhere } from '@/lib/branchScope';
 import { getTodayDateStr } from '@/lib/dateUtils';
+import { assertPagePermission } from '@/lib/permissionsServer';
 
 export const dynamic = 'force-dynamic';
 
@@ -329,6 +330,26 @@ export async function DELETE(request: Request) {
 
     if (!key || ids.length === 0) {
       return NextResponse.json({ success: false, error: 'key and id(s) required' }, { status: 400 });
+    }
+
+    // #GUARD: صلاحية "حذف السجلات" (hasDeleteControl) كانت بتتحقق فى الواجهة بس
+    // (بتخفي زرار الحذف) — أي طلب DELETE مباشر لهذا الـ endpoint كان بيتنفذ عادي
+    // بلا أي تحقق فعلي. دلوقتى كل key بيتحدد له الصفحة المرتبطة به وتتحقق صلاحية
+    // الحذف فعليًا على السيرفر قبل أي مسح.
+    const KEY_TO_DELETE_PAGE: Record<string, string> = {
+      ahmed_kishk_inspections_data_v4: 'p_orders',
+      ahmed_kishk_quotations_data_v4: 'p_orders',
+      ahmed_kishk_pipeline_orders_v5: 'p_orders',
+      ahmed_kishk_customers_v3: 'p_customers',
+      ahmed_kishk_inventory_v3: 'p_inventory',
+      ahmed_kishk_suppliers_v3: 'p_suppliers',
+      ahmed_kishk_sales_invoices_v1: 'p_fabric_sales',
+      ahmed_kishk_purchases_v3: 'p_purchases',
+    };
+    const deletePageId = KEY_TO_DELETE_PAGE[key];
+    if (deletePageId) {
+      const perm = await assertPagePermission(request, deletePageId, 'delete');
+      if (!perm.ok) return NextResponse.json({ success: false, error: perm.error }, { status: perm.status });
     }
 
     const cleanIds = ids.map(String).filter(Boolean);

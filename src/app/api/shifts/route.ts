@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getBranchScope, branchWhere, effectiveCreateBranch } from '@/lib/branchScope';
+import { assertPagePermission } from '@/lib/permissionsServer';
 
 export const dynamic = 'force-dynamic';
 
@@ -373,6 +374,8 @@ export async function DELETE(request: Request) {
     if (!scope.isAdmin && existing.branch !== scope.branch) {
       return NextResponse.json({ success: false, error: 'غير مصرح بحذف شيفت فرع آخر' }, { status: 403 });
     }
+    const perm = await assertPagePermission(request, 'p_shifts', 'delete');
+    if (!perm.ok) return NextResponse.json({ success: false, error: perm.error }, { status: perm.status });
     try {
       await (prisma as any).shift.delete({ where: { id } });
     } catch (e) {

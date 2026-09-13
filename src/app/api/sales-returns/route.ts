@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getBranchScope, branchWhere, effectiveCreateBranch } from '@/lib/branchScope';
 import { generateUniqueSalesReturnNumber } from '@/lib/uniqueCode';
 import { getTodayDateStr } from '@/lib/dateUtils';
+import { assertPagePermission } from '@/lib/permissionsServer';
 
 export const dynamic = 'force-dynamic';
 
@@ -110,6 +111,8 @@ export async function DELETE(request: Request) {
     if (!scope.isAdmin && existing.branch !== scope.branch) {
       return NextResponse.json({ success: false, error: 'غير مصرح بحذف مرتجع من فرع آخر' }, { status: 403 });
     }
+    const perm = await assertPagePermission(request, 'p_fabric_sales', 'delete');
+    if (!perm.ok) return NextResponse.json({ success: false, error: perm.error }, { status: perm.status });
 
     await prisma.salesReturn.delete({ where: { id } });
     return NextResponse.json({ success: true });

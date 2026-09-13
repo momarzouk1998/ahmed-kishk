@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getBranchScope, branchWhere, effectiveCreateBranch } from '@/lib/branchScope';
+import { assertPagePermission } from '@/lib/permissionsServer';
 
 export const dynamic = 'force-dynamic';
 
@@ -64,9 +65,17 @@ export async function POST(request: Request) {
     const effBranch = effectiveCreateBranch(scope, branch);
 
     // #GUARD: موظف مقيّد ميقدرش يعدّل معاينة تابعة لفرع تاني حتى لو عرف الـ id.
-    const existingInspection = await prisma.inspectionRequest.findUnique({ where: { id: targetId }, select: { branch: true } });
+    const existingInspection = await prisma.inspectionRequest.findUnique({ where: { id: targetId }, select: { branch: true, isLocked: true } });
     if (existingInspection && !scope.isAdmin && existingInspection.branch !== scope.branch) {
       return NextResponse.json({ success: false, error: 'غير مصرح بتعديل معاينة فرع آخر' }, { status: 403 });
+    }
+
+    // #GUARD: المعاينة تتقفل تلقائيًا بعد اعتماد العربون (منع تعديل المقاسات بعدها).
+    // إعادة فتحها/تعديلها بعد القفل يتطلب صلاحية "تعديل السجلات" فعليًا على السيرفر
+    // — مش بس إخفاء الزرار فى الواجهة (OrderRowActions).
+    if (existingInspection?.isLocked) {
+      const editPerm = await assertPagePermission(request, 'p_inspections', 'edit');
+      if (!editPerm.ok) return NextResponse.json({ success: false, error: editPerm.error }, { status: editPerm.status });
     }
 
     const inspection = await prisma.inspectionRequest.upsert({

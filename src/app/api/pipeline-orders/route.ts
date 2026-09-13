@@ -1,8 +1,46 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getBranchScope, branchWhere, effectiveCreateBranch } from '@/lib/branchScope';
+import { assertPagePermission } from '@/lib/permissionsServer';
 
 export const dynamic = 'force-dynamic';
+
+// أي مرحلة بعد "فى المقص" — أول مرة الأوردر يدخل واحدة من دول تبقى لحظة "خلاص القص".
+const PAST_CUTTING_STAGES = ['في الورشة', 'تجهيز الاكسسوارات', 'جاهز للاستلام', 'جاهز للتركيب', 'مكتمل'];
+
+/**
+ * بمجرد ما القص يخلص (أول انتقال للأوردر لمرحلة بعد "فى المقص")، بيتخصم القماش
+ * المُستخدم فعليًا (heavy/sheer/blackout لكل غرفة، بالكود والأمتار) من المخزون —
+ * بدل نظام "حجز" منفصل (reservedQuantity) كان أصلاً مش مستخدم فى أي مكان تانى فى
+ * النظام. الخصم ذرّي (atomic decrement)، ومحمي من التكرار لأن الشرط بيتحقق من
+ * حالة الأوردر *قبل* هذا التحديث تحديدًا (مش مجرد "هل المرحلة الحالية بعد القص؟")،
+ * فمينفعش يتنفذ مرتين لنفس الأوردر حتى لو الحالة اتبعتت تانى بنفس القيمة.
+ */
+async function deductFabricForCompletedCutting(rooms: any[]): Promise<void> {
+  const usageByCode = new Map<string, number>();
+  for (const room of rooms || []) {
+    for (const layer of ['heavyFabric', 'sheerFabric', 'blackoutFabric'] as const) {
+      const fabric = room?.[layer];
+      const meters = Number(fabric?.meters) || 0;
+      if (fabric?.code && meters > 0) {
+        usageByCode.set(fabric.code, (usageByCode.get(fabric.code) || 0) + meters);
+      }
+    }
+  }
+  for (const [code, meters] of Array.from(usageByCode.entries())) {
+    try {
+      const item = await prisma.inventoryItem.findUnique({ where: { code } });
+      if (item) {
+        await prisma.inventoryItem.update({
+          where: { id: item.id },
+          data: { totalQuantity: { decrement: meters } },
+        });
+      }
+    } catch (err) {
+      console.error(`Failed to deduct fabric (code=${code}) after cutting:`, err);
+    }
+  }
+}
 
 export async function GET(request: Request) {
   try {
@@ -163,6 +201,15 @@ export async function POST(request: Request) {
         },
       });
 
+      // ⚠️ خصم القماش من المخزون عند أول انتقال لمرحلة بعد "فى المقص" — راجع تعليق
+      // deductFabricForCompletedCutting فوق. الشرط بيتحقق من حالة الأوردر *قبل*
+      // هذا التحديث، فمش ممكن يتكرر لنفس الأوردر.
+      const wasPastCutting = existing ? PAST_CUTTING_STAGES.includes(existing.status) : false;
+      const isNowPastCutting = PAST_CUTTING_STAGES.includes(order.status);
+      if (existing && !wasPastCutting && isNowPastCutting) {
+        await deductFabricForCompletedCutting((order.rooms as any[]) || []);
+      }
+
       // Cleanup any other duplicate rows with same orderId or customerName
       if (existing) {
         await prisma.pipelineOrder.deleteMany({
@@ -201,6 +248,8 @@ export async function DELETE(req: Request) {
     if (!id && !name) {
       return NextResponse.json({ success: false, error: 'id or name is required' }, { status: 400 });
     }
+    const perm = await assertPagePermission(req, 'p_orders', 'delete');
+    if (!perm.ok) return NextResponse.json({ success: false, error: perm.error }, { status: perm.status });
 
     const conditions: any[] = [];
     if (id) {

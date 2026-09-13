@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getBranchScope } from '@/lib/branchScope';
+import { assertPagePermission } from '@/lib/permissionsServer';
 import initialInventory from '@/data/initialInventory.json';
 
 export const dynamic = 'force-dynamic';
@@ -187,6 +188,8 @@ export async function DELETE(request: Request) {
     if (!name) {
       return NextResponse.json({ success: false, error: 'اسم التصنيف مطلوب' }, { status: 400 });
     }
+    const perm = await assertPagePermission(request, 'p_inventory', 'delete');
+    if (!perm.ok) return NextResponse.json({ success: false, error: perm.error }, { status: perm.status });
 
     try {
       if (branch && branch !== 'الكل') {

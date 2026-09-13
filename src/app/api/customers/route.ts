@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getBranchScope, effectiveCreateBranch } from '@/lib/branchScope';
 import { getTodayDateStr } from '@/lib/dateUtils';
+import { assertPagePermission } from '@/lib/permissionsServer';
 
 export const dynamic = 'force-dynamic';
 
@@ -475,6 +476,9 @@ export async function DELETE(request: Request) {
     if (!id && !phone) {
       return NextResponse.json({ success: false, error: 'المعرف أو رقم الهاتف مطلوب للحذف' }, { status: 400 });
     }
+
+    const perm = await assertPagePermission(request, 'p_customers', 'delete');
+    if (!perm.ok) return NextResponse.json({ success: false, error: perm.error }, { status: perm.status });
 
     const whereClause: any = {};
     if (id && !id.startsWith('CUST-') && id.length > 10) {

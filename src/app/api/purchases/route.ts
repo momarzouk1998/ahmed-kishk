@@ -218,6 +218,9 @@ export async function DELETE(request: Request) {
     if (!id) {
       return NextResponse.json({ success: false, error: 'المعرف مطلوب للحذف' }, { status: 400 });
     }
+    const perm = await assertPagePermission(request, 'p_purchases', 'delete');
+    if (!perm.ok) return NextResponse.json({ success: false, error: perm.error }, { status: perm.status });
+
     // اقرأ الفواتير المستهدفة قبل الحذف لعكس أثرها على رصيد المورد
     // #GUARD: موظف مقيّد ميقدرش يمسح فاتورة من فرع تاني حتى لو عرف الـ id.
     const deleteWhere = { AND: [{ OR: [{ id }, { invoiceNumber: id }] }, branchWhere(scope)] };
