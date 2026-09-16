@@ -22,6 +22,7 @@ interface Expense {
 
 const EXPENSE_CATEGORIES = ['إيجار', 'كهرباء ومياه', 'صيانة', 'مواصلات وشحن', 'رواتب وسلف', 'أدوات ومستلزمات', 'دعاية وإعلان', 'أخرى'];
 const PAYMENT_METHODS = ['نقدي', 'إنستاباي', 'فودافون كاش', 'فيزا / كارت'];
+const MULTI_PAYMENT_OPTION = 'متعدد / مزيج';
 
 type DateFilterType = 'yesterday' | 'today' | 'week' | 'month' | 'all';
 
@@ -45,6 +46,31 @@ export default function ExpensesPage() {
   const [formAmount, setFormAmount] = useState<number | ''>('');
   const [formPaymentMethod, setFormPaymentMethod] = useState(PAYMENT_METHODS[0]);
   const [saving, setSaving] = useState(false);
+
+  // دفع متعدد (متاح للأدمن فقط): يفتح رصيد الفرع الفعلي بكل طريقة دفع، ويسيب
+  // الأدمن يوزّع مبلغ المصروف على أكتر من طريقة بدل ما يكون كله من طريقة واحدة —
+  // بيتخزن كسطر مصروف مستقل لكل طريقة (نفس التصنيف/الوصف/التاريخ)، فحسابات
+  // التقارير والورديات (اللي بتقرأ كل سطر مصروف بطريقة دفعه الفعلية) تتخصم صح
+  // من غير أي تعديل عليها.
+  const [branchBalance, setBranchBalance] = useState<{ cash: number; instapay: number; vodafone: number; visa: number } | null>(null);
+  const [loadingBalance, setLoadingBalance] = useState(false);
+  const [splitCash, setSplitCash] = useState<number | ''>('');
+  const [splitInstapay, setSplitInstapay] = useState<number | ''>('');
+  const [splitVodafone, setSplitVodafone] = useState<number | ''>('');
+  const [splitVisa, setSplitVisa] = useState<number | ''>('');
+  const isMultiPayment = formPaymentMethod === MULTI_PAYMENT_OPTION;
+  const splitTotal = (Number(splitCash) || 0) + (Number(splitInstapay) || 0) + (Number(splitVodafone) || 0) + (Number(splitVisa) || 0);
+
+  useEffect(() => {
+    if (!isMultiPayment || !formBranch) { setBranchBalance(null); return; }
+    setLoadingBalance(true);
+    fetch(`/api/branch-balance?branch=${encodeURIComponent(formBranch)}`, { cache: 'no-store' })
+      .then(res => res.json())
+      .then(json => { if (json?.success) setBranchBalance(json.balance); })
+      .catch(() => {})
+      .finally(() => setLoadingBalance(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isMultiPayment, formBranch]);
 
   const isAdminView = isAdmin || isSuperAdmin;
 
@@ -109,6 +135,58 @@ export default function ExpensesPage() {
       alert('يرجى إدخال وصف مختصر للمصروف');
       return;
     }
+
+    if (isMultiPayment) {
+      if (Math.abs(splitTotal - Number(formAmount)) > 0.01) {
+        alert(`مجموع التوزيع (${splitTotal.toLocaleString()} ج) لازم يساوي مبلغ المصروف (${Number(formAmount).toLocaleString()} ج) بالظبط`);
+        return;
+      }
+      const parts: { amount: number; method: string }[] = [
+        { amount: Number(splitCash) || 0, method: 'نقدي' },
+        { amount: Number(splitInstapay) || 0, method: 'إنستاباي' },
+        { amount: Number(splitVodafone) || 0, method: 'فودافون كاش' },
+        { amount: Number(splitVisa) || 0, method: 'فيزا / كارت' },
+      ].filter(p => p.amount > 0);
+      if (parts.length < 2) {
+        alert('الدفع المتعدد لازم يوزّع المبلغ على طريقتين على الأقل — لو طريقة واحدة بس اختارها مباشرة');
+        return;
+      }
+      setSaving(true);
+      try {
+        for (const part of parts) {
+          const res = await fetch('/api/expenses', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              date: formDate,
+              branch: formBranch,
+              category: formCategory,
+              description: formDescription.trim(),
+              amount: part.amount,
+              paymentMethod: part.method,
+            }),
+          });
+          const data = await res.json();
+          if (!res.ok || !data.success) {
+            alert(`فشل حفظ جزء الدفع (${part.method}): ${data?.error || 'خطأ غير معروف'} — راجع السجل، الأجزاء اللي اتحفظت قبل كده متسجلة بالفعل`);
+            await loadExpenses();
+            setSaving(false);
+            return;
+          }
+        }
+        setShowAddModal(false);
+        setFormDescription('');
+        setFormAmount('');
+        setSplitCash(''); setSplitInstapay(''); setSplitVodafone(''); setSplitVisa('');
+        await loadExpenses();
+      } catch (err: any) {
+        alert('خطأ فى الاتصال بالسيرفر: ' + (err?.message || ''));
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
+
     setSaving(true);
     try {
       const res = await fetch('/api/expenses', {
@@ -359,6 +437,7 @@ export default function ExpensesPage() {
                     className="w-full border border-slate-200 rounded-xl px-2.5 py-1.5 font-bold text-slate-900 focus:outline-none"
                   >
                     {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
+                    {isAdminView && <option value={MULTI_PAYMENT_OPTION}>🔀 {MULTI_PAYMENT_OPTION}</option>}
                   </select>
                 </div>
               </div>
@@ -387,6 +466,51 @@ export default function ExpensesPage() {
                   className="w-full border border-slate-200 rounded-xl px-3 py-1.5 font-mono font-black text-rose-700 focus:outline-none focus:border-amber-500"
                 />
               </div>
+
+              {isMultiPayment && (
+                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 space-y-2.5">
+                  <div className="text-slate-700 font-black text-[11px] flex items-center gap-1.5">
+                    <span>💰</span>
+                    <span>رصيد {formBranch} الحالي بكل طريقة — حدد المبلغ المخصوم من كل واحدة:</span>
+                  </div>
+                  {loadingBalance ? (
+                    <div className="text-center text-slate-400 py-2">...جاري تحميل الرصيد</div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { label: '💵 نقدي', balance: branchBalance?.cash, value: splitCash, setter: setSplitCash },
+                        { label: '⚡ إنستاباي', balance: branchBalance?.instapay, value: splitInstapay, setter: setSplitInstapay },
+                        { label: '📱 فودافون كاش', balance: branchBalance?.vodafone, value: splitVodafone, setter: setSplitVodafone },
+                        { label: '💳 فيزا / كارت', balance: branchBalance?.visa, value: splitVisa, setter: setSplitVisa },
+                      ].map(row => (
+                        <div key={row.label} className="bg-white border border-slate-200 rounded-xl p-2">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-bold text-slate-700">{row.label}</span>
+                            <span className="font-mono text-slate-400 text-[10px]">
+                              متاح: {(row.balance ?? 0).toLocaleString()} ج
+                            </span>
+                          </div>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={row.value}
+                            onChange={e => row.setter(e.target.value === '' ? '' : Number(e.target.value))}
+                            placeholder="0"
+                            className="w-full border border-slate-200 rounded-lg px-2 py-1 font-mono font-black text-slate-900 text-xs focus:outline-none focus:border-amber-500"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className={`flex items-center justify-between px-1 font-bold ${
+                    Math.abs(splitTotal - (Number(formAmount) || 0)) < 0.01 ? 'text-emerald-700' : 'text-rose-600'
+                  }`}>
+                    <span>إجمالي الموزّع: {splitTotal.toLocaleString()} ج</span>
+                    <span>مبلغ المصروف: {(Number(formAmount) || 0).toLocaleString()} ج</span>
+                  </div>
+                </div>
+              )}
 
               <div className="flex gap-2 pt-2">
                 <button
