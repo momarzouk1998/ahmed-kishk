@@ -44,11 +44,12 @@ export async function GET(request: Request) {
 
     // Auto-enrich shifts with real-time sales made during the shift timeframe
     try {
-      const [allInvoices, allQuotations, allExpenses, allAdvances] = await Promise.all([
+      const [allInvoices, allQuotations, allExpenses, allAdvances, allCollections] = await Promise.all([
         (prisma as any).salesInvoice.findMany().catch(() => []),
         (prisma as any).quotationOrder.findMany().catch(() => []),
         (prisma as any).expense.findMany().catch(() => []),
         (prisma as any).employeeAdvance.findMany().catch(() => []),
+        (prisma as any).customerCollection.findMany().catch(() => []),
       ]);
 
       shifts = shifts.map((s: any) => {
@@ -117,6 +118,24 @@ export async function GET(request: Request) {
             }
             calculatedTotal += Number(q.totalAmount || deposit);
           }
+        });
+
+        // سندات تحصيل ومقبوضات مباشرة من العملاء خلال نفس فترة الوردية — دي كانت
+        // بتتحسب فعلاً فى صفحة التقارير (matchB(col.treasury)) بس متجاهلة تمامًا
+        // هنا، فكان ممكن الكاشير يحصّل من عميل فيزا مثلاً ويظهر فى التقرير
+        // التنفيذي بس مش فى شاشة الوردية بتاعته هو، فيبان اختلاف بين الشاشتين
+        // لنفس الفلوس بالظبط.
+        allCollections.forEach((col: any) => {
+          if (!matchBranch(col.treasury)) return;
+          const colTime = col.createdAt ? new Date(col.createdAt).getTime() : (col.date ? new Date(col.date).getTime() : 0);
+          if (colTime < shiftStart - 60000 || colTime > shiftEnd + 60000) return;
+          const amt = Number(col.amount) || 0;
+          const m = (col.method || '').trim();
+          if (m.includes('فودافون')) calculatedVodafone += amt;
+          else if (m.includes('إنستا') || m.includes('انستا')) calculatedInstapay += amt;
+          else if (m.includes('فيزا') || m.includes('كارت')) calculatedVisa += amt;
+          else calculatedCash += amt;
+          calculatedTotal += amt;
         });
 
         // مصروفات الفرع (نقدي فقط — طرق الدفع التانية متأثرتش بيها كاش الدرج) وسلف
