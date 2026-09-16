@@ -27,6 +27,15 @@ function bucketFor(method: string | undefined | null): 'cash' | 'instapay' | 'vo
   return 'cash';
 }
 
+// شيكات بنكية وآجل/دفعات مش فلوس خرجت من الخزينة فعليًا وقت الفاتورة — عكس
+// نقدي/إنستاباي/فودافون/فيزا اللي بتتخصم من الرصيد فورًا.
+function isImmediateTreasuryMethod(method: string | undefined | null): boolean {
+  const m = (method || '').trim();
+  if (!m) return false;
+  if (m.includes('شيكات') || m.includes('آجل') || m.includes('دفعات')) return false;
+  return true;
+}
+
 export async function GET(request: Request) {
   try {
     const scope = await getBranchScope(request);
@@ -44,12 +53,13 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: false, error: 'الفرع مطلوب' }, { status: 400 });
     }
 
-    const [invoices, quotations, collections, expenses, advances] = await Promise.all([
+    const [invoices, quotations, collections, expenses, advances, purchases] = await Promise.all([
       prisma.salesInvoice.findMany({ where: {}, select: { branch: true, paidAmount: true, paymentType: true, notes: true } }),
       prisma.quotationOrder.findMany({ where: {}, select: { branch: true, depositPaid: true, paymentMethod: true, splitPayments: true } }),
       prisma.customerCollection.findMany({ where: {}, select: { treasury: true, amount: true, method: true } }),
       prisma.expense.findMany({ where: {}, select: { branch: true, amount: true, paymentMethod: true } }),
       prisma.employeeAdvance.findMany({ where: {}, select: { branch: true, amount: true, treasuryDeducted: true } }),
+      prisma.purchaseInvoice.findMany({ where: {}, select: { branch: true, paidAmount: true, paymentMethod: true, splitPayments: true } }),
     ]);
 
     const balance = { cash: 0, instapay: 0, vodafone: 0, visa: 0 };
@@ -101,6 +111,23 @@ export async function GET(request: Request) {
       if (!matchesBranch(adv.branch, branch)) return;
       // السلف دايمًا كاش من الدرج — مفيش لها طريقة دفع مسجلة أصلاً.
       balance.cash -= Number(adv.amount || 0);
+    });
+
+    purchases.forEach(p => {
+      if (!matchesBranch(p.branch, branch)) return;
+      const paid = Number(p.paidAmount || 0);
+      if (paid <= 0) return;
+      const split = p.splitPayments as any;
+      if (split && typeof split === 'object') {
+        balance.cash -= Number(split.cash || 0);
+        balance.instapay -= Number(split.instapay || 0);
+        balance.vodafone -= Number(split.vodafone || 0);
+        balance.visa -= Number(split.visa || 0);
+      } else if (isImmediateTreasuryMethod(p.paymentMethod)) {
+        balance[bucketFor(p.paymentMethod)] -= paid;
+      }
+      // شيكات بنكية/آجل: المبلغ المدفوع فوري مش موجود أصلاً غالبًا، ولو موجود
+      // (دفعة مقدمة) بيتسجل بطريقة دفع فعلية مش "شيكات"، فمش هيتفوّت هنا.
     });
 
     return NextResponse.json({ success: true, branch, balance });

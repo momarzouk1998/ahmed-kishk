@@ -96,7 +96,7 @@ export async function POST(request: Request) {
     const {
       id, invoiceNumber, supplierName, supplierPhone, branch,
       subtotal, discountAmount, totalAmount, paidAmount, remainingAmount,
-      paymentMethod, status, date, items, notes,
+      paymentMethod, splitPayments, status, date, items, notes,
     } = body;
 
     let invNum = (invoiceNumber || '').trim();
@@ -130,6 +130,7 @@ export async function POST(request: Request) {
           paidAmount: paidAmount !== undefined ? Number(paidAmount) : undefined,
           remainingAmount: remainingAmount !== undefined ? Number(remainingAmount) : undefined,
           paymentMethod: paymentMethod || undefined,
+          splitPayments: splitPayments !== undefined ? splitPayments : undefined,
           status: status || undefined,
           items: items !== undefined ? items : undefined,
           notes: notes !== undefined ? notes : undefined,
@@ -155,6 +156,7 @@ export async function POST(request: Request) {
           paidAmount: Number(paidAmount) || 0,
           remainingAmount: Number(remainingAmount) || 0,
           paymentMethod: paymentMethod || 'نقدي (كاش)',
+          splitPayments: splitPayments || undefined,
           status: status || 'آجل / غير مسدد',
           date: date || getTodayDateStr(),
           items: items || [],

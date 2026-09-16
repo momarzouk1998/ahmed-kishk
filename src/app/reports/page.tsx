@@ -228,6 +228,19 @@ export default function ReportsPage() {
   const shiftDate = (s: any): string | undefined => s?.startTime || s?.createdAt || s?.endTime;
   const expenseDate = (e: any): string | undefined => e?.date || e?.createdAt;
   const advanceDate = (a: any): string | undefined => a?.date || a?.createdAt;
+  // شيكات بنكية وآجل/دفعات مش فلوس خرجت من الخزينة فعليًا وقت فاتورة الشراء.
+  const isImmediateTreasuryMethod = (m: any): boolean => {
+    const s = String(m || '').trim();
+    if (!s) return false;
+    return !s.includes('شيكات') && !s.includes('آجل') && !s.includes('دفعات');
+  };
+  const bucketForMethod = (m: any): 'cash' | 'instapay' | 'vodafone' | 'visa' => {
+    const s = String(m || '').trim();
+    if (s.includes('فودافون')) return 'vodafone';
+    if (s.includes('إنستا') || s.includes('انستا')) return 'instapay';
+    if (s.includes('فيزا') || s.includes('كارت')) return 'visa';
+    return 'cash';
+  };
 
   const fInvoices = useMemo(
     () => invoices.filter(i => inBranch(i.branch) && inPeriod(invoiceDate(i))),
@@ -539,6 +552,39 @@ export default function ReportsPage() {
           }
         });
 
+        // 6. فواتير الشراء المدفوعة فورًا (نقدي/إنستاباي/فودافون/فيزا) فى نفس
+        // الوردية — بتتخصم من الدرج زي أي مصروف تمامًا. الشيكات والآجل مستبعدة
+        // لأنها مش فلوس خرجت فعليًا وقت الفاتورة.
+        let bPurchasesTotal = 0;
+        purchases.filter((p: any) => matchB(p.branch) && inPeriod(purchaseDate(p))).forEach((p: any) => {
+          const paid = Number(p.paidAmount) || 0;
+          if (paid <= 0) return;
+          const pTime = p.createdAt ? new Date(p.createdAt).getTime() : (p.date ? new Date(p.date).getTime() : 0);
+          let belongs = false;
+          if (targetShift) {
+            belongs = b.shiftType === 'مسائي' ? (pTime >= shiftStartMs - 60000) : (targetShift.endTime ? pTime <= shiftEndMs + 60000 : true);
+          } else {
+            const h = pTime ? new Date(pTime).getHours() : 12;
+            belongs = b.shiftType === 'صباحي' ? h < 17 : h >= 17;
+          }
+          if (!belongs) return;
+          const split = p.splitPayments;
+          if (split && typeof split === 'object') {
+            bCash -= Number(split.cash || 0);
+            bInstapay -= Number(split.instapay || 0);
+            bVodafone -= Number(split.vodafone || 0);
+            bVisa -= Number(split.visa || 0);
+            bPurchasesTotal += paid;
+          } else if (isImmediateTreasuryMethod(p.paymentMethod)) {
+            const bucket = bucketForMethod(p.paymentMethod);
+            if (bucket === 'cash') bCash -= paid;
+            else if (bucket === 'instapay') bInstapay -= paid;
+            else if (bucket === 'vodafone') bVodafone -= paid;
+            else bVisa -= paid;
+            bPurchasesTotal += paid;
+          }
+        });
+
         const shiftRecordCash = omarShifts.reduce((acc, s) => acc + Number(s.actualClosingCash ?? s.expectedCashInDrawer ?? s.cashSales ?? 0), 0);
         const finalCash = bCash > 0 ? bCash : shiftRecordCash;
         const total = finalCash + bInstapay + bVodafone + bVisa;
@@ -555,6 +601,7 @@ export default function ReportsPage() {
           total,
           expensesTotal: bExpensesTotal,
           advancesTotal: bAdvancesTotal,
+          purchasesTotal: bPurchasesTotal,
           count: bCount || omarShifts.length,
           employeeName,
           shiftSales: total,
@@ -662,6 +709,29 @@ export default function ReportsPage() {
         bCash -= amt;
       });
 
+      // 6. فواتير الشراء المدفوعة فورًا فى نفس الفترة — بتتخصم من رصيد الخزينة
+      // حسب طريقة دفعها (الشيكات والآجل مستبعدة، مفيش فلوس خرجت فعليًا وقتها).
+      let bPurchasesTotal = 0;
+      purchases.filter((p: any) => matchB(p.branch) && inPeriod(purchaseDate(p))).forEach((p: any) => {
+        const paid = Number(p.paidAmount) || 0;
+        if (paid <= 0) return;
+        const split = p.splitPayments;
+        if (split && typeof split === 'object') {
+          bCash -= Number(split.cash || 0);
+          bInstapay -= Number(split.instapay || 0);
+          bVodafone -= Number(split.vodafone || 0);
+          bVisa -= Number(split.visa || 0);
+          bPurchasesTotal += paid;
+        } else if (isImmediateTreasuryMethod(p.paymentMethod)) {
+          const bucket = bucketForMethod(p.paymentMethod);
+          if (bucket === 'cash') bCash -= paid;
+          else if (bucket === 'instapay') bInstapay -= paid;
+          else if (bucket === 'vodafone') bVodafone -= paid;
+          else bVisa -= paid;
+          bPurchasesTotal += paid;
+        }
+      });
+
       const total = bCash + bInstapay + bVodafone + bVisa;
       return {
         ...b,
@@ -670,6 +740,7 @@ export default function ReportsPage() {
         vodafone: bVodafone,
         expensesTotal: bExpensesTotal,
         advancesTotal: bAdvancesTotal,
+        purchasesTotal: bPurchasesTotal,
         visa: bVisa,
         total,
         count: bCount,
@@ -1129,6 +1200,15 @@ function SalesReport({ kpis, invoices, quotations, collections, branchLabel, per
                         <span>سلف موظفين مخصومة:</span>
                       </span>
                       <strong className="font-mono">-{b.advancesTotal.toLocaleString()} ج</strong>
+                    </div>
+                  )}
+                  {(b.purchasesTotal || 0) > 0 && (
+                    <div className="flex justify-between items-center text-rose-800 bg-rose-50 px-2 py-1 rounded border border-rose-200 font-bold mt-1">
+                      <span className="flex items-center gap-1">
+                        <span>🛒</span>
+                        <span>مشتريات مدفوعة فورًا:</span>
+                      </span>
+                      <strong className="font-mono">-{b.purchasesTotal.toLocaleString()} ج</strong>
                     </div>
                   )}
                 </div>

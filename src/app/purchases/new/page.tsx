@@ -100,10 +100,32 @@ export default function NewPurchaseInvoicePage() {
   const [discountValue, setDiscountValue] = useState<number>(0);
 
   // Payment Method & Settlement
-  const [paymentMethod, setPaymentMethod] = useState<'نقدي (كاش)' | 'شيكات بنكية' | 'على دفعات / آجل' | 'إنستاباي' | 'فودافون كاش' | 'فيزا / كارت'>('نقدي (كاش)');
+  const [paymentMethod, setPaymentMethod] = useState<'نقدي (كاش)' | 'شيكات بنكية' | 'على دفعات / آجل' | 'إنستاباي' | 'فودافون كاش' | 'فيزا / كارت' | 'متعدد / مزيج'>('نقدي (كاش)');
   const [paidAmount, setPaidAmount] = useState<number>(0);
   const [purNotes, setPurNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // دفع متعدد (أدمن فقط): يوزّع المبلغ المدفوع على أكتر من طريقة دفع بدل ما
+  // يكون كله من طريقة واحدة — بيفتح رصيد الفرع الفعلي الحالي لكل طريقة الأول.
+  const [branchBalance, setBranchBalance] = useState<{ cash: number; instapay: number; vodafone: number; visa: number } | null>(null);
+  const [loadingBalance, setLoadingBalance] = useState(false);
+  const [splitCash, setSplitCash] = useState<number | ''>('');
+  const [splitInstapay, setSplitInstapay] = useState<number | ''>('');
+  const [splitVodafone, setSplitVodafone] = useState<number | ''>('');
+  const [splitVisa, setSplitVisa] = useState<number | ''>('');
+  const isMultiPayment = paymentMethod === 'متعدد / مزيج';
+  const splitTotal = (Number(splitCash) || 0) + (Number(splitInstapay) || 0) + (Number(splitVodafone) || 0) + (Number(splitVisa) || 0);
+
+  useEffect(() => {
+    if (!isMultiPayment || !branch) { setBranchBalance(null); return; }
+    setLoadingBalance(true);
+    fetch(`/api/branch-balance?branch=${encodeURIComponent(branch)}`, { cache: 'no-store' })
+      .then(res => res.json())
+      .then(json => { if (json?.success) setBranchBalance(json.balance); })
+      .catch(() => {})
+      .finally(() => setLoadingBalance(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isMultiPayment, branch]);
 
   // Checks rows
   const [checkRows, setCheckRows] = useState<PurchaseCheckRow[]>([]);
@@ -374,6 +396,11 @@ export default function NewPurchaseInvoicePage() {
       }
     }
 
+    if (isMultiPayment && Math.abs(splitTotal - (Number(paidAmount) || 0)) > 0.01) {
+      alert(`مجموع التوزيع (${splitTotal.toLocaleString()} ج) لازم يساوي المبلغ المدفوع (${(Number(paidAmount) || 0).toLocaleString()} ج) بالظبط`);
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -396,6 +423,12 @@ export default function NewPurchaseInvoicePage() {
         paidAmount,
         remainingAmount,
         paymentMethod,
+        splitPayments: isMultiPayment ? {
+          cash: Number(splitCash) || 0,
+          instapay: Number(splitInstapay) || 0,
+          vodafone: Number(splitVodafone) || 0,
+          visa: Number(splitVisa) || 0,
+        } : undefined,
         status: statusLabel,
         notes: purNotes.trim(),
         checks: attachedChecks,
@@ -847,6 +880,7 @@ export default function NewPurchaseInvoicePage() {
                   { id: 'إنستاباي', label: '⚡ إنستاباي' },
                   { id: 'فودافون كاش', label: '📱 فودافون' },
                   { id: 'فيزا / كارت', label: '💳 فيزا' },
+                  ...(isAdmin ? [{ id: 'متعدد / مزيج', label: '🔀 متعدد' }] : []),
                 ].map(m => (
                   <button
                     key={m.id}
@@ -953,6 +987,50 @@ export default function NewPurchaseInvoicePage() {
                   <span className="font-mono text-base text-emerald-400">{totalAmount.toLocaleString()} ج.م</span>
                 </div>
               </div>
+
+              {/* Multi-Payment Split (Admin Only) */}
+              {isMultiPayment && (
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-2 space-y-2 text-[11px]">
+                  <div className="text-slate-700 font-black flex items-center gap-1.5">
+                    <span>💰</span>
+                    <span>رصيد {branch} الحالي — حدد المبلغ المدفوع من كل طريقة:</span>
+                  </div>
+                  {loadingBalance ? (
+                    <div className="text-center text-slate-400 py-2">...جاري تحميل الرصيد</div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {[
+                        { label: '💵 نقدي', balance: branchBalance?.cash, value: splitCash, setter: setSplitCash },
+                        { label: '⚡ إنستاباي', balance: branchBalance?.instapay, value: splitInstapay, setter: setSplitInstapay },
+                        { label: '📱 فودافون', balance: branchBalance?.vodafone, value: splitVodafone, setter: setSplitVodafone },
+                        { label: '💳 فيزا', balance: branchBalance?.visa, value: splitVisa, setter: setSplitVisa },
+                      ].map(row => (
+                        <div key={row.label} className="bg-white border border-slate-200 rounded-lg p-1.5">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-bold text-slate-700">{row.label}</span>
+                            <span className="font-mono text-slate-400 text-[9px]">متاح: {(row.balance ?? 0).toLocaleString()}</span>
+                          </div>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={row.value}
+                            onChange={e => row.setter(e.target.value === '' ? '' : Number(e.target.value))}
+                            placeholder="0"
+                            className="w-full border border-slate-200 rounded px-1.5 py-0.5 font-mono font-black text-slate-900 text-[11px] focus:outline-none focus:border-amber-500"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className={`flex items-center justify-between px-1 font-bold ${
+                    Math.abs(splitTotal - (Number(paidAmount) || 0)) < 0.01 ? 'text-emerald-700' : 'text-rose-600'
+                  }`}>
+                    <span>الموزّع: {splitTotal.toLocaleString()} ج</span>
+                    <span>المدفوع: {(Number(paidAmount) || 0).toLocaleString()} ج</span>
+                  </div>
+                </div>
+              )}
 
               {/* Paid & Remaining */}
               <div className="bg-amber-50/80 border border-amber-200 p-2 rounded-xl space-y-1 text-[11px]">

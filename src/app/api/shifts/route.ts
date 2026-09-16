@@ -44,12 +44,13 @@ export async function GET(request: Request) {
 
     // Auto-enrich shifts with real-time sales made during the shift timeframe
     try {
-      const [allInvoices, allQuotations, allExpenses, allAdvances, allCollections] = await Promise.all([
+      const [allInvoices, allQuotations, allExpenses, allAdvances, allCollections, allPurchases] = await Promise.all([
         (prisma as any).salesInvoice.findMany().catch(() => []),
         (prisma as any).quotationOrder.findMany().catch(() => []),
         (prisma as any).expense.findMany().catch(() => []),
         (prisma as any).employeeAdvance.findMany().catch(() => []),
         (prisma as any).customerCollection.findMany().catch(() => []),
+        (prisma as any).purchaseInvoice.findMany().catch(() => []),
       ]);
 
       shifts = shifts.map((s: any) => {
@@ -162,12 +163,30 @@ export async function GET(request: Request) {
           calculatedAdvances += Number(adv.amount) || 0;
         });
 
+        // فواتير الشراء المدفوعة كاش فورًا خلال نفس فترة الوردية — بتتخصم من
+        // الدرج زي أي مصروف نقدي، مفيش ليها حقل مخزّن قديم فبتتحسب لايف دايمًا.
+        let calculatedPurchases = 0;
+        allPurchases.forEach((p: any) => {
+          if (!matchBranch(p.branch)) return;
+          const paid = Number(p.paidAmount) || 0;
+          if (paid <= 0) return;
+          const pTime = p.createdAt ? new Date(p.createdAt).getTime() : (p.date ? new Date(p.date).getTime() : 0);
+          if (pTime < shiftStart - 60000 || pTime > shiftEnd + 60000) return;
+          const split = p.splitPayments;
+          if (split && typeof split === 'object') {
+            calculatedPurchases += Number(split.cash || 0);
+          } else {
+            const m = (p.paymentMethod || '').trim();
+            if (m.includes('نقد')) calculatedPurchases += paid;
+          }
+        });
+
         const effectiveCash = (s.cashSales && s.cashSales > 0) ? s.cashSales : calculatedCash;
         const effectiveTotal = (s.totalSales && s.totalSales > 0) ? s.totalSales : (calculatedTotal > 0 ? calculatedTotal : effectiveCash);
         const effectiveInstapay = (s.instapaySales && s.instapaySales > 0) ? s.instapaySales : calculatedInstapay;
         const effectiveVodafone = (s.vodafoneSales && s.vodafoneSales > 0) ? s.vodafoneSales : calculatedVodafone;
         const effectiveVisa = (s.visaSales && s.visaSales > 0) ? s.visaSales : calculatedVisa;
-        const effectiveExpensesPaid = (s.expensesPaid && s.expensesPaid > 0) ? s.expensesPaid : calculatedExpenses;
+        const effectiveExpensesPaid = (s.expensesPaid && s.expensesPaid > 0) ? s.expensesPaid : (calculatedExpenses + calculatedPurchases);
         const effectiveAdvancesPaid = (s.advancesPaid && s.advancesPaid > 0) ? s.advancesPaid : calculatedAdvances;
 
         const expected = Number(s.openingDrawerBalance || 0) + effectiveCash - (effectiveExpensesPaid + effectiveAdvancesPaid);
