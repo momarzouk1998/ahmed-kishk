@@ -447,3 +447,23 @@ model PayrollSettlement {
 }
 
 
+
+// تحويلات البضاعة (والتسويات النقدية) بين الفروع — بديل الحل القديم (فاتورة بيع
+// وهمية + فاتورة شراء وهمية) اللي كان بيلخبط أرقام المبيعات/المشتريات الحقيقية.
+// نفس الموديل بيستخدم لنوعين (kind): "نقل بضاعة" (الفرع المستلم toBranch بقى
+// مديون للفرع المرسل fromBranch بقيمة الأصناف)، و"تسوية نقدية" (fromBranch هنا
+// هو الفرع المدين اللي بيسدد، toBranch هو الفرع الدائن اللي بياخد، وده بيقفل
+// جزء من الدين بنفس الاتجاه).
+model BranchTransfer {
+  id            String   @id @default(cuid())
+  date          String
+  kind          String   @default("نقل بضاعة")
+  fromBranch    String
+  toBranch      String
+  items         Json     @default("[]")
+  totalValue    Float    @default(0)
+  notes         String?
+  createdByName String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}

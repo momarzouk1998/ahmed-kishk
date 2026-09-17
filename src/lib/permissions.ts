@@ -33,6 +33,7 @@ export const ALL_SYSTEM_PAGES: PagePermission[] = [
   // الإدارة والمخزون
   { id: 'p_employees', name: 'الموظفين والحضور والرواتب', shortName: 'الموظفين', category: 'الإدارة والمخزون', href: '/employees', icon: 'badge', hasEditControl: true, hasDeleteControl: true },
   { id: 'p_inventory', name: 'المخزون والأصناف', shortName: 'المخزون', category: 'الإدارة والمخزون', href: '/inventory', icon: 'texture', hasPriceControl: true, hasEditControl: true, hasDeleteControl: true },
+  { id: 'p_branch_transfers', name: 'تحويلات بين الفروع', shortName: 'التحويلات', category: 'الإدارة والمخزون', href: '/branch-transfers', icon: 'swap_horiz' },
   { id: 'p_reports', name: 'التقارير المالية والتنفيذية', shortName: 'التقارير', category: 'الإدارة والمخزون', href: '/reports', icon: 'bar_chart' },
   { id: 'p_branches', name: 'الفروع والصلاحيات', shortName: 'الفروع', category: 'الإدارة والمخزون', href: '/branches', icon: 'corporate_fare' },
   { id: 'p_settings', name: 'الإعدادات والهوية', shortName: 'الإعدادات', category: 'الإدارة والمخزون', href: '/settings', icon: 'settings' },
