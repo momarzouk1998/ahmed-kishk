@@ -101,6 +101,7 @@ export default function ReportsPage() {
   const [shifts, setShifts] = useState<any[]>([]);
   const [expenses, setExpenses] = useState<any[]>([]);
   const [advances, setAdvances] = useState<any[]>([]);
+  const [branchTransfers, setBranchTransfers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // ─── Load all data ───────────────────────────────────────────
@@ -108,7 +109,7 @@ export default function ReportsPage() {
     (async () => {
       setLoading(true);
       try {
-        const [salesRes, purRes, invRes, custRes, supRes, insRes, priRes, ordRes, shiftRes, expRes, advRes] = await Promise.all([
+        const [salesRes, purRes, invRes, custRes, supRes, insRes, priRes, ordRes, shiftRes, expRes, advRes, transRes] = await Promise.all([
           fetch('/api/fabric-sales', { cache: 'no-store' }).catch(() => null),
           fetch('/api/purchases', { cache: 'no-store' }).catch(() => null),
           fetch('/api/inventory', { cache: 'no-store' }).catch(() => null),
@@ -120,6 +121,7 @@ export default function ReportsPage() {
           fetch('/api/shifts', { cache: 'no-store' }).catch(() => null),
           fetch('/api/expenses', { cache: 'no-store' }).catch(() => null),
           fetch('/api/employee-advances', { cache: 'no-store' }).catch(() => null),
+          fetch('/api/branch-transfers', { cache: 'no-store' }).catch(() => null),
         ]);
 
         if (salesRes?.ok) {
@@ -137,6 +139,10 @@ export default function ReportsPage() {
         if (advRes?.ok) {
           const j = await advRes.json();
           if (Array.isArray(j?.advances)) setAdvances(j.advances);
+        }
+        if (transRes?.ok) {
+          const j = await transRes.json();
+          if (Array.isArray(j?.transfers)) setBranchTransfers(j.transfers);
         }
         if (purRes?.ok) {
           const j = await purRes.json();
@@ -225,6 +231,7 @@ export default function ReportsPage() {
   const quotationDate = (q: any): string | undefined => q?.date || q?.depositDate || q?.createdAt;
   const inspectionDate = (i: any): string | undefined => i?.createdAt || i?.scheduledAt;
   const purchaseDate = (p: any): string | undefined => p?.date;
+  const transferDate = (t: any): string | undefined => t?.date || t?.createdAt;
   const shiftDate = (s: any): string | undefined => s?.startTime || s?.createdAt || s?.endTime;
   const expenseDate = (e: any): string | undefined => e?.date || e?.createdAt;
   const advanceDate = (a: any): string | undefined => a?.date || a?.createdAt;
@@ -585,6 +592,27 @@ export default function ReportsPage() {
           }
         });
 
+        // 7. تسويات نقدية بين الفروع فى نفس الوردية — بتتخصم من الفرع الدافع
+        // وتتضاف للفرع المستلم فعليًا، لكل طريقة دفع على حدة.
+        branchTransfers.filter((t: any) => t.kind === 'تسوية نقدية' && (matchB(t.fromBranch) || matchB(t.toBranch))).forEach((t: any) => {
+          const split = t.splitPayments;
+          if (!split || typeof split !== 'object') return;
+          const tTime = t.createdAt ? new Date(t.createdAt).getTime() : (t.date ? new Date(t.date).getTime() : 0);
+          let belongs = false;
+          if (targetShift) {
+            belongs = b.shiftType === 'مسائي' ? (tTime >= shiftStartMs - 60000) : (targetShift.endTime ? tTime <= shiftEndMs + 60000 : true);
+          } else {
+            const h = tTime ? new Date(tTime).getHours() : 12;
+            belongs = b.shiftType === 'صباحي' ? h < 17 : h >= 17;
+          }
+          if (!belongs) return;
+          const sign = matchB(t.fromBranch) ? -1 : 1;
+          bCash += sign * (Number(split.cash) || 0);
+          bInstapay += sign * (Number(split.instapay) || 0);
+          bVodafone += sign * (Number(split.vodafone) || 0);
+          bVisa += sign * (Number(split.visa) || 0);
+        });
+
         const shiftRecordCash = omarShifts.reduce((acc, s) => acc + Number(s.actualClosingCash ?? s.expectedCashInDrawer ?? s.cashSales ?? 0), 0);
         const finalCash = bCash > 0 ? bCash : shiftRecordCash;
         const total = finalCash + bInstapay + bVodafone + bVisa;
@@ -730,6 +758,18 @@ export default function ReportsPage() {
           else bVisa -= paid;
           bPurchasesTotal += paid;
         }
+      });
+
+      // 7. تسويات نقدية بين الفروع فى نفس الفترة — بتتخصم من الفرع الدافع
+      // وتتضاف للفرع المستلم فعليًا، لكل طريقة دفع على حدة.
+      branchTransfers.filter((t: any) => t.kind === 'تسوية نقدية' && (matchB(t.fromBranch) || matchB(t.toBranch)) && inPeriod(transferDate(t))).forEach((t: any) => {
+        const split = t.splitPayments;
+        if (!split || typeof split !== 'object') return;
+        const sign = matchB(t.fromBranch) ? -1 : 1;
+        bCash += sign * (Number(split.cash) || 0);
+        bInstapay += sign * (Number(split.instapay) || 0);
+        bVodafone += sign * (Number(split.vodafone) || 0);
+        bVisa += sign * (Number(split.visa) || 0);
       });
 
       const total = bCash + bInstapay + bVodafone + bVisa;

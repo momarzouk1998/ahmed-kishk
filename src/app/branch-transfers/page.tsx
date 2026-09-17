@@ -166,25 +166,48 @@ export default function BranchTransfersPage() {
     }
   };
 
-  // ── Settlement Modal (Admin) ────────────────────────────────────────
+  // ── Settlement Modal (Admin) — بتتقسم على طرق الدفع فعليًا، وبتتخصم من رصيد
+  // الفرع الدافع وتتضاف لرصيد الفرع المستلم فى كل حسابات الخزينة فعليًا.
   const [showSettleModal, setShowSettleModal] = useState(false);
   const [settleFrom, setSettleFrom] = useState('');
   const [settleTo, setSettleTo] = useState('');
   const [settleAmount, setSettleAmount] = useState<number | ''>('');
   const [settleNotes, setSettleNotes] = useState('');
   const [savingSettle, setSavingSettle] = useState(false);
+  const [fromBranchBalance, setFromBranchBalance] = useState<{ cash: number; instapay: number; vodafone: number; visa: number } | null>(null);
+  const [loadingFromBalance, setLoadingFromBalance] = useState(false);
+  const [settleSplitCash, setSettleSplitCash] = useState<number | ''>('');
+  const [settleSplitInstapay, setSettleSplitInstapay] = useState<number | ''>('');
+  const [settleSplitVodafone, setSettleSplitVodafone] = useState<number | ''>('');
+  const [settleSplitVisa, setSettleSplitVisa] = useState<number | ''>('');
+  const settleSplitTotal = (Number(settleSplitCash) || 0) + (Number(settleSplitInstapay) || 0) + (Number(settleSplitVodafone) || 0) + (Number(settleSplitVisa) || 0);
 
   const openSettle = (debtor: string, creditor: string, amount: number) => {
     setSettleFrom(debtor);
     setSettleTo(creditor);
     setSettleAmount(amount);
     setSettleNotes('');
+    setSettleSplitCash(''); setSettleSplitInstapay(''); setSettleSplitVodafone(''); setSettleSplitVisa('');
     setShowSettleModal(true);
   };
+
+  useEffect(() => {
+    if (!showSettleModal || !settleFrom) { setFromBranchBalance(null); return; }
+    setLoadingFromBalance(true);
+    fetch(`/api/branch-balance?branch=${encodeURIComponent(settleFrom)}`, { cache: 'no-store' })
+      .then(res => res.json())
+      .then(json => { if (json?.success) setFromBranchBalance(json.balance); })
+      .catch(() => {})
+      .finally(() => setLoadingFromBalance(false));
+  }, [showSettleModal, settleFrom]);
 
   const handleSaveSettlement = async () => {
     if (!settleAmount || Number(settleAmount) <= 0) {
       alert('أدخل مبلغ صحيح أكبر من صفر');
+      return;
+    }
+    if (Math.abs(settleSplitTotal - Number(settleAmount)) > 0.01) {
+      alert(`مجموع التوزيع (${settleSplitTotal.toLocaleString()} ج) لازم يساوي مبلغ التسوية (${Number(settleAmount).toLocaleString()} ج) بالظبط`);
       return;
     }
     setSavingSettle(true);
@@ -198,6 +221,12 @@ export default function BranchTransfersPage() {
           fromBranch: settleFrom, toBranch: settleTo,
           items: [],
           totalValue: Number(settleAmount),
+          splitPayments: {
+            cash: Number(settleSplitCash) || 0,
+            instapay: Number(settleSplitInstapay) || 0,
+            vodafone: Number(settleSplitVodafone) || 0,
+            visa: Number(settleSplitVisa) || 0,
+          },
           notes: settleNotes.trim(),
           createdByName: user?.name || '',
         }),
@@ -539,6 +568,46 @@ export default function BranchTransfersPage() {
                 className="w-full border border-slate-200 rounded-xl px-3 py-1.5 font-mono font-black text-rose-700 focus:outline-none focus:border-amber-500"
               />
             </div>
+
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 space-y-2 text-[11px]">
+              <div className="text-slate-700 font-black flex items-center gap-1.5">
+                <span>💰</span>
+                <span>رصيد {settleFrom} الحالي — حدد المدفوع من كل طريقة:</span>
+              </div>
+              {loadingFromBalance ? (
+                <div className="text-center text-slate-400 py-2">...جاري تحميل الرصيد</div>
+              ) : (
+                <div className="grid grid-cols-2 gap-1.5">
+                  {[
+                    { label: '💵 نقدي', balance: fromBranchBalance?.cash, value: settleSplitCash, setter: setSettleSplitCash },
+                    { label: '⚡ إنستاباي', balance: fromBranchBalance?.instapay, value: settleSplitInstapay, setter: setSettleSplitInstapay },
+                    { label: '📱 فودافون', balance: fromBranchBalance?.vodafone, value: settleSplitVodafone, setter: setSettleSplitVodafone },
+                    { label: '💳 فيزا', balance: fromBranchBalance?.visa, value: settleSplitVisa, setter: setSettleSplitVisa },
+                  ].map(row => (
+                    <div key={row.label} className="bg-white border border-slate-200 rounded-lg p-1.5">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-bold text-slate-700">{row.label}</span>
+                        <span className="font-mono text-slate-400 text-[9px]">متاح: {(row.balance ?? 0).toLocaleString()}</span>
+                      </div>
+                      <input
+                        type="number" step="0.01" min="0"
+                        value={row.value}
+                        onChange={e => row.setter(e.target.value === '' ? '' : Number(e.target.value))}
+                        placeholder="0"
+                        className="w-full border border-slate-200 rounded px-1.5 py-0.5 font-mono font-black text-slate-900 text-[11px] focus:outline-none focus:border-amber-500"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className={`flex items-center justify-between px-1 font-bold ${
+                Math.abs(settleSplitTotal - (Number(settleAmount) || 0)) < 0.01 ? 'text-emerald-700' : 'text-rose-600'
+              }`}>
+                <span>الموزّع: {settleSplitTotal.toLocaleString()} ج</span>
+                <span>المبلغ: {(Number(settleAmount) || 0).toLocaleString()} ج</span>
+              </div>
+            </div>
+
             <div>
               <label className="text-slate-700 font-bold block mb-1 text-xs">ملاحظات (اختياري):</label>
               <input

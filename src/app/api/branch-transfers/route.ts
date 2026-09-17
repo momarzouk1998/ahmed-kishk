@@ -42,7 +42,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { date, kind, fromBranch, toBranch, items, totalValue, notes, createdByName } = body;
+    const { date, kind, fromBranch, toBranch, items, totalValue, splitPayments, notes, createdByName } = body;
 
     const cleanKind = kind === 'تسوية نقدية' ? 'تسوية نقدية' : 'نقل بضاعة';
     const from = (fromBranch || '').trim();
@@ -55,8 +55,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'لازم الفرعين يكونوا مختلفين' }, { status: 400 });
     }
 
-    // #GUARD: مدير فرع مقيّد يقدر يسجل بس تحويل فرعه طرف فيه (مرسل أو مستلم)،
-    // مش أي تحويل بين فرعين تانيين خالص.
+    // #GUARD: التسوية النقدية بتأثر فعليًا على أرصدة الفروع الحقيقية — للأدمن بس.
+    // نقل البضاعة العادي مدير أي فرع طرف فيه (مرسل أو مستلم) يقدر يسجله.
+    if (cleanKind === 'تسوية نقدية' && !scope.isAdmin) {
+      return NextResponse.json({ success: false, error: 'التسوية بين الفروع متاحة للأدمن فقط' }, { status: 403 });
+    }
     if (!scope.isAdmin) {
       const myBranch = normalizeBranchName(scope.branch);
       if (myBranch !== normalizeBranchName(from) && myBranch !== normalizeBranchName(to)) {
@@ -66,6 +69,18 @@ export async function POST(request: Request) {
 
     const cleanItems = cleanKind === 'نقل بضاعة' && Array.isArray(items) ? items : [];
     const value = Number(totalValue) || 0;
+    const cleanSplit = cleanKind === 'تسوية نقدية' && splitPayments && typeof splitPayments === 'object' ? {
+      cash: Number(splitPayments.cash) || 0,
+      instapay: Number(splitPayments.instapay) || 0,
+      vodafone: Number(splitPayments.vodafone) || 0,
+      visa: Number(splitPayments.visa) || 0,
+    } : undefined;
+    if (cleanKind === 'تسوية نقدية') {
+      const splitSum = cleanSplit ? (cleanSplit.cash + cleanSplit.instapay + cleanSplit.vodafone + cleanSplit.visa) : 0;
+      if (!cleanSplit || Math.abs(splitSum - value) > 0.01) {
+        return NextResponse.json({ success: false, error: 'توزيع التسوية على طرق الدفع لازم يساوي المبلغ بالظبط' }, { status: 400 });
+      }
+    }
     if (cleanKind === 'نقل بضاعة' && cleanItems.length === 0) {
       return NextResponse.json({ success: false, error: 'لازم صنف واحد على الأقل فى تحويل البضاعة' }, { status: 400 });
     }
@@ -126,6 +141,7 @@ export async function POST(request: Request) {
         toBranch: to,
         items: cleanItems,
         totalValue: value,
+        splitPayments: cleanSplit,
         notes: notes || undefined,
         createdByName: createdByName || undefined,
       },

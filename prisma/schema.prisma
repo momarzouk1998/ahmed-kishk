@@ -462,6 +462,11 @@ model BranchTransfer {
   toBranch      String
   items         Json     @default("[]")
   totalValue    Float    @default(0)
+  // للتسوية النقدية بس: توزيع المبلغ على طرق الدفع (نقدي/إنستاباي/فودافون/فيزا)
+  // — بيتخصم فعليًا من رصيد fromBranch ويتضاف فعليًا لرصيد toBranch بنفس
+  // الطريقة، فى كل الأماكن اللي بتحسب رصيد الفرع (التقارير، الورديات، رصيد
+  // الدفع المتعدد) — مش مجرد رقم فى دفتر منفصل.
+  splitPayments Json?
   notes         String?
   createdByName String?
   createdAt     DateTime @default(now())

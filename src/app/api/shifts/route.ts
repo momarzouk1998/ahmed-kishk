@@ -44,13 +44,14 @@ export async function GET(request: Request) {
 
     // Auto-enrich shifts with real-time sales made during the shift timeframe
     try {
-      const [allInvoices, allQuotations, allExpenses, allAdvances, allCollections, allPurchases] = await Promise.all([
+      const [allInvoices, allQuotations, allExpenses, allAdvances, allCollections, allPurchases, allTransfers] = await Promise.all([
         (prisma as any).salesInvoice.findMany().catch(() => []),
         (prisma as any).quotationOrder.findMany().catch(() => []),
         (prisma as any).expense.findMany().catch(() => []),
         (prisma as any).employeeAdvance.findMany().catch(() => []),
         (prisma as any).customerCollection.findMany().catch(() => []),
         (prisma as any).purchaseInvoice.findMany().catch(() => []),
+        (prisma as any).branchTransfer.findMany({ where: { kind: 'تسوية نقدية' } }).catch(() => []),
       ]);
 
       shifts = shifts.map((s: any) => {
@@ -137,6 +138,24 @@ export async function GET(request: Request) {
           else if (m.includes('فيزا') || m.includes('كارت')) calculatedVisa += amt;
           else calculatedCash += amt;
           calculatedTotal += amt;
+        });
+
+        // تسويات نقدية بين الفروع خلال نفس فترة الوردية — الفرع الدافع بتتخصم
+        // منه فعليًا (زي أي فلوس خرجت من الدرج)، والفرع المستلم بتتضاف له.
+        allTransfers.forEach((t: any) => {
+          const split = t.splitPayments;
+          if (!split || typeof split !== 'object') return;
+          const isFrom = matchBranch(t.fromBranch);
+          const isTo = matchBranch(t.toBranch);
+          if (!isFrom && !isTo) return;
+          const tTime = t.createdAt ? new Date(t.createdAt).getTime() : (t.date ? new Date(t.date).getTime() : 0);
+          if (tTime < shiftStart - 60000 || tTime > shiftEnd + 60000) return;
+          const sign = isFrom ? -1 : 1;
+          calculatedCash += sign * (Number(split.cash) || 0);
+          calculatedInstapay += sign * (Number(split.instapay) || 0);
+          calculatedVodafone += sign * (Number(split.vodafone) || 0);
+          calculatedVisa += sign * (Number(split.visa) || 0);
+          calculatedTotal += sign * ((Number(split.cash) || 0) + (Number(split.instapay) || 0) + (Number(split.vodafone) || 0) + (Number(split.visa) || 0));
         });
 
         // مصروفات الفرع (نقدي فقط — طرق الدفع التانية متأثرتش بيها كاش الدرج) وسلف

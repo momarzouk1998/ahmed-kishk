@@ -53,13 +53,14 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: false, error: 'الفرع مطلوب' }, { status: 400 });
     }
 
-    const [invoices, quotations, collections, expenses, advances, purchases] = await Promise.all([
+    const [invoices, quotations, collections, expenses, advances, purchases, transfers] = await Promise.all([
       prisma.salesInvoice.findMany({ where: {}, select: { branch: true, paidAmount: true, paymentType: true, notes: true } }),
       prisma.quotationOrder.findMany({ where: {}, select: { branch: true, depositPaid: true, paymentMethod: true, splitPayments: true } }),
       prisma.customerCollection.findMany({ where: {}, select: { treasury: true, amount: true, method: true } }),
       prisma.expense.findMany({ where: {}, select: { branch: true, amount: true, paymentMethod: true } }),
       prisma.employeeAdvance.findMany({ where: {}, select: { branch: true, amount: true, treasuryDeducted: true } }),
       prisma.purchaseInvoice.findMany({ where: {}, select: { branch: true, paidAmount: true, paymentMethod: true, splitPayments: true } }),
+      prisma.branchTransfer.findMany({ where: { kind: 'تسوية نقدية' }, select: { fromBranch: true, toBranch: true, splitPayments: true } }),
     ]);
 
     const balance = { cash: 0, instapay: 0, vodafone: 0, visa: 0 };
@@ -128,6 +129,25 @@ export async function GET(request: Request) {
       }
       // شيكات بنكية/آجل: المبلغ المدفوع فوري مش موجود أصلاً غالبًا، ولو موجود
       // (دفعة مقدمة) بيتسجل بطريقة دفع فعلية مش "شيكات"، فمش هيتفوّت هنا.
+    });
+
+    // تسويات نقدية بين الفروع — الفرع الدافع (fromBranch) بتتخصم منه الفلوس
+    // فعليًا، والفرع المستلم (toBranch) بتتضاف له، لكل طريقة دفع على حدة.
+    transfers.forEach(t => {
+      const split = t.splitPayments as any;
+      if (!split || typeof split !== 'object') return;
+      if (matchesBranch(t.fromBranch, branch)) {
+        balance.cash -= Number(split.cash || 0);
+        balance.instapay -= Number(split.instapay || 0);
+        balance.vodafone -= Number(split.vodafone || 0);
+        balance.visa -= Number(split.visa || 0);
+      }
+      if (matchesBranch(t.toBranch, branch)) {
+        balance.cash += Number(split.cash || 0);
+        balance.instapay += Number(split.instapay || 0);
+        balance.vodafone += Number(split.vodafone || 0);
+        balance.visa += Number(split.visa || 0);
+      }
     });
 
     return NextResponse.json({ success: true, branch, balance });
