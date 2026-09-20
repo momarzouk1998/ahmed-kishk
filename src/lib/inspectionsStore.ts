@@ -306,16 +306,20 @@ export function getStoredQuotations(): QuotationOrder[] {
   return quotationsMemoryCache;
 }
 
-export async function saveAllQuotations(list: QuotationOrder[]): Promise<void> {
+/** بترجع أسباب أي عنصر اتجاهل فعليًا فى السيرفر (صلاحيات...) — مصفوفة فاضية يعني كل حاجة اتحفظت. */
+export async function saveAllQuotations(list: QuotationOrder[]): Promise<{ id: string; reason: string }[]> {
   quotationsMemoryCache = list;
   try {
-    await fetch('/api/pricing', {
+    const res = await fetch('/api/pricing', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ quotations: list }),
     });
+    const json = await res.json().catch(() => null);
+    return Array.isArray(json?.skipped) ? json.skipped : [];
   } catch (err) {
     console.error('Failed to save quotations to database:', err);
+    return [];
   }
 }
 

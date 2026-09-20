@@ -359,7 +359,7 @@ export default function PricingDetailPage() {
     saveAllQuotations(updated);
   };
 
-  const saveRoomPricing = (roomId: string) => {
+  const saveRoomPricing = (roomId: string, closeAfter: boolean = true) => {
     if (!quotation) return;
 
     const heavyFab = inventory.find(f => f.code === heavyCode);
@@ -492,8 +492,14 @@ export default function PricingDetailPage() {
     });
 
     setQuotations(updatedList);
-    saveAllQuotations(updatedList);
-    setEditingRoomId(null);
+    saveAllQuotations(updatedList).then(skipped => {
+      // بلاغ الفشل بس عند الحفظ الصريح (مش الحفظ التلقائي كل 8 ثواني) — عشان
+      // مايظهرش alert متكرر كل شوية لو فيه مشكلة صلاحيات مستمرة.
+      if (!closeAfter) return;
+      const mine = skipped.find(s => s.id === quotation.id);
+      if (mine) alert(`تنبيه: تسعير الغرفة لم يُحفظ على السيرفر — ${mine.reason}`);
+    });
+    if (closeAfter) setEditingRoomId(null);
 
     // #FEATURE: كل نوع شريط له سعر افتراضى مشترك — أي تعديل يدوى هنا يحدّثه لكل الأوردرات الجديدة
     const nextTapeTypePrices = { ...tapeTypePrices };
@@ -502,6 +508,22 @@ export default function PricingDetailPage() {
     if (blackoutEnabled) nextTapeTypePrices[blackoutTapeType] = blackoutTapePrice;
     saveTapeTypePrices(nextTapeTypePrices).catch(err => console.error('Failed to sync default tape prices:', err));
   };
+
+  // #FIX (باغ "التسعير اللي بيتكتب لمدة نص ساعة بيتمسح كله"): كل بيانات تسعير
+  // الغرفة (الأقمشة/الأشرطة/التراك/الإكسسوارات) كانت بتفضل فى local state بس
+  // لحد ما المستخدم يدوس "حفظ" بنفسه — لو أي حاجة قاطعته قبل كده (قفل الشاشة،
+  // تصفح غلط، تسكر التاب بالغلط) كل الشغل يضيع بلا أي أثر فى قاعدة البيانات،
+  // لأن مفيش أي حفظ تلقائى كان بيحصل أصلاً. دلوقتى بيتحفظ أوتوماتيك كل 8 ثواني
+  // من غير ما يقفل لوحة التعديل (closeAfter=false)، بنفس دالة الحفظ الحقيقية.
+  const saveRoomPricingRef = React.useRef(saveRoomPricing);
+  saveRoomPricingRef.current = saveRoomPricing;
+  useEffect(() => {
+    if (!editingRoomId) return;
+    const timer = setInterval(() => {
+      saveRoomPricingRef.current(editingRoomId, false);
+    }, 8000);
+    return () => clearInterval(timer);
+  }, [editingRoomId]);
 
   const handleDiscountChange = (amount: number) => {
     if (!quotation) return;
@@ -523,6 +545,13 @@ export default function PricingDetailPage() {
 
   const handleDepositChange = (amount: number, method?: string, split?: any) => {
     if (!quotation) return;
+    // #FIX: لو السعر الكلي لسه صفر (لأن تسعير الغرف لسه مش محفوظ)، أي عربون
+    // كان بيتقفل على صفر بصمت (Math.min(amount, 0) = 0) من غير أي تنبيه —
+    // بالظبط الشكوى "بيدفع عربون ومبيسجلش فى الخزنة خالص".
+    if (quotation.totalAmount <= 0) {
+      alert('لازم تحفظ تسعير الغرف الأول (السعر الكلي لسه صفر) قبل ما تسجل العربون، وإلا هيتقفل على صفر.');
+      return;
+    }
     const nowIso = new Date().toISOString();
     const todayStr = nowIso.split('T')[0];
     const updatedList = quotations.map(q => {
@@ -541,7 +570,10 @@ export default function PricingDetailPage() {
       };
     });
     setQuotations(updatedList);
-    saveAllQuotations(updatedList);
+    saveAllQuotations(updatedList).then(skipped => {
+      const mine = skipped.find(s => s.id === quotation.id);
+      if (mine) alert(`تنبيه: العربون لم يُحفظ على السيرفر — ${mine.reason}`);
+    });
   };
 
   const handlePaymentMethodChange = (method: string) => {

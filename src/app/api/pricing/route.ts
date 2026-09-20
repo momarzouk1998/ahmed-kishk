@@ -151,6 +151,11 @@ export async function POST(request: Request) {
     const rawList = Array.isArray(body.quotations) ? body.quotations : (Array.isArray(body) ? body : [body]);
 
     const results = [];
+    // #FIX: كان بيتجاهل أي عنصر مرفوض بصمت (continue) من غير ما يرجّع أي خطأ
+    // للعميل — الـ fetch كان بيرجع 200/success ويوهم الواجهة إن كل حاجة اتحفظت
+    // فعلاً حتى لو عنصر معيّن (زي عربون فاتورة) اتجاهل تمامًا فى السيرفر. دلوقتى
+    // كل عنصر متجاهَل بيتسجل مع سببه ويترجع فى الرد، عشان أي فشل يبان بوضوح.
+    const skipped: { id: string; reason: string }[] = [];
     for (const item of rawList) {
       if (!item || !item.id) continue;
       const { id, inspectionId, customerName, phone, address, branch, status, totalAmount, discountAmount, depositPaid, remainingAmount, paymentMethod, splitPayments, treasury, date, deliveryDate, inspectionDate, installationDate, estimatorName, rooms } = item;
@@ -159,14 +164,18 @@ export async function POST(request: Request) {
       // #GUARD: موظف مقيّد ميقدرش يعدّل عرض سعر تابع لفرع تاني حتى لو عرف الـ id.
       const existingQuotation = await prisma.quotationOrder.findUnique({ where: { id }, select: { branch: true, totalAmount: true } });
       if (existingQuotation && !scope.isAdmin && existingQuotation.branch !== scope.branch) {
-        continue; // تجاهل هذا العنصر بصمت — باقي عناصر نفس الطلب (لو دفعة) لسه تتنفذ
+        skipped.push({ id, reason: 'غير مصرح بتعديل عرض سعر فرع آخر' });
+        continue;
       }
 
       // #GUARD: تعديل صافى عرض سعر موجود يتطلب صلاحية "تعديل الأسعار" فعليًا على
       // السيرفر، مش بس إخفاء الحقل فى الواجهة.
       if (existingQuotation && totalAmount !== undefined && Number(totalAmount) !== existingQuotation.totalAmount) {
         const pricePerm = await assertPagePermission(request, 'p_pricing', 'edit_price');
-        if (!pricePerm.ok) continue; // تجاهل هذا العنصر — باقي عناصر الدفعة لسه تتنفذ
+        if (!pricePerm.ok) {
+          skipped.push({ id, reason: pricePerm.error || 'غير مصرح بتعديل السعر' });
+          continue;
+        }
       }
 
       const quotation = await prisma.quotationOrder.upsert({
@@ -217,7 +226,7 @@ export async function POST(request: Request) {
       results.push(quotation);
     }
 
-    return NextResponse.json({ success: true, quotation: results[0], quotations: results });
+    return NextResponse.json({ success: true, quotation: results[0], quotations: results, skipped });
   } catch (error: any) {
     console.error(error);
     return NextResponse.json({ success: false, error: 'حدث خطأ فى الخادم' }, { status: 500 });
