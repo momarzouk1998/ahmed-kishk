@@ -193,6 +193,8 @@ export default function PricingDetailPage() {
 
   // Installation Category: Track vs Forge Pipe
   const [installationCategory, setInstallationCategory] = useState<'تراك' | 'مواسير فورجيه'>('تراك');
+  // مفرد: التقيل والخفيف على تراك واحد مشترك. مزدوج (افتراضي): كل قماش على تراك مستقل.
+  const [trackMode, setTrackMode] = useState<'مفرد' | 'مزدوج'>('مزدوج');
   const [trackPricePerMeter, setTrackPricePerMeter] = useState<number>(100);
   const [pipeTypeDescription, setPipeTypeDescription] = useState<'سادة' | 'مجدول'>('سادة');
   const [pipeColor, setPipeColor] = useState<'فضى' | 'أوكسيديه' | 'أسود' | 'زيتى'>('فضى');
@@ -290,6 +292,7 @@ export default function PricingDetailPage() {
 
     const isPipe = room.installationType?.includes('مواسير') || room.installationCategory === 'مواسير فورجيه';
     setInstallationCategory(isPipe ? 'مواسير فورجيه' : 'تراك');
+    setTrackMode(room.trackMode === 'مفرد' ? 'مفرد' : 'مزدوج');
     setTrackPricePerMeter(room.trackPrice || 100);
     setPipeTypeDescription(room.pipeTypeDescription || 'سادة');
     setPipeColor(room.pipeColor || 'فضى');
@@ -394,7 +397,9 @@ export default function PricingDetailPage() {
         let trackPrice = 0;
 
         if (installationCategory === 'تراك') {
-          trackMeters = editingWidthM * activeLayersCount;
+          // مفرد: كل الأقمشة المفعّلة بتشترك فى تراك واحد بس (عرض الأوضة × 1)
+          // بدل ما كل قماش ياخد تراك مستقل (عرض الأوضة × عدد الطبقات).
+          trackMeters = editingWidthM * (trackMode === 'مفرد' ? 1 : activeLayersCount);
           trackPrice = trackPricePerMeter || 0;
           installationTotal = trackMeters * trackPrice;
         } else {
@@ -454,7 +459,12 @@ export default function PricingDetailPage() {
           blackoutPrice: blackoutEnabled ? blackoutP : 0,
 
           installationCategory,
-          installationType: installationCategory === 'تراك' ? `تراك سقف (${activeLayersCount} طبقة)` : `مواسير فورجيه (${pipeTypeDescription} - ${pipeColor})`,
+          trackMode: installationCategory === 'تراك' ? trackMode : undefined,
+          installationType: installationCategory === 'تراك'
+            ? (activeLayersCount > 1
+                ? `تراك سقف (${trackMode === 'مفرد' ? 'مفرد مشترك' : `${activeLayersCount} تراك مستقل`})`
+                : `تراك سقف (${activeLayersCount} طبقة)`)
+            : `مواسير فورجيه (${pipeTypeDescription} - ${pipeColor})`,
           trackMeters,
           trackPrice,
           pipeTypeDescription,
@@ -1352,29 +1362,57 @@ export default function PricingDetailPage() {
                             </div>
 
                             {installationCategory === 'تراك' ? (
-                              <div className="bg-white p-3.5 rounded-xl border border-amber-200 flex flex-col sm:flex-row justify-between items-center gap-3">
-                                <div>
-                                  <strong className="text-slate-900 block text-xs">تراك ألومنيوم سقف / حائط:</strong>
-                                  <p className="text-[11px] text-slate-500 mt-0.5">
-                                    يحسب أوتوماتيكياً حسب عدد الطبقات المفعلة للغرفة.
-                                  </p>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                  <div className="flex items-center gap-1 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
-                                    <span className="text-slate-700 font-bold text-xs">سعر متر التراك:</span>
-                                    <input
-                                      type="number"
-                                      value={trackPricePerMeter}
-                                      disabled={!canEditPrices}
-                                      onChange={e => setTrackPricePerMeter(Number(e.target.value))}
-                                      className="w-16 border border-slate-300 rounded-lg px-2 py-0.5 text-center font-mono font-bold text-xs bg-white"
-                                    />
-                                    <span className="text-slate-600 font-bold text-xs">ج/م</span>
+                              <div className="bg-white p-3.5 rounded-xl border border-amber-200 space-y-3">
+                                <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
+                                  <div>
+                                    <strong className="text-slate-900 block text-xs">تراك ألومنيوم سقف / حائط:</strong>
+                                    <p className="text-[11px] text-slate-500 mt-0.5">
+                                      يحسب أوتوماتيكياً حسب عدد الطبقات المفعلة للغرفة.
+                                    </p>
                                   </div>
-                                  <div className="font-mono font-bold text-xs bg-amber-100 text-amber-950 px-3 py-1.5 rounded-lg border border-amber-300">
-                                    {editingWidthM.toFixed(2)}م × {(heavyEnabled ? 1 : 0) + (sheerEnabled ? 1 : 0) + (blackoutEnabled ? 1 : 0)} تراك × {trackPricePerMeter}ج = {((Number(editingWidthM) || 0) * ((heavyEnabled ? 1 : 0) + (sheerEnabled ? 1 : 0) + (blackoutEnabled ? 1 : 0)) * (Number(trackPricePerMeter) || 0)).toLocaleString()} ج
+                                  <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-1 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
+                                      <span className="text-slate-700 font-bold text-xs">سعر متر التراك:</span>
+                                      <input
+                                        type="number"
+                                        value={trackPricePerMeter}
+                                        disabled={!canEditPrices}
+                                        onChange={e => setTrackPricePerMeter(Number(e.target.value))}
+                                        className="w-16 border border-slate-300 rounded-lg px-2 py-0.5 text-center font-mono font-bold text-xs bg-white"
+                                      />
+                                      <span className="text-slate-600 font-bold text-xs">ج/م</span>
+                                    </div>
+                                    {(() => {
+                                      const layers = (heavyEnabled ? 1 : 0) + (sheerEnabled ? 1 : 0) + (blackoutEnabled ? 1 : 0);
+                                      const tracks = trackMode === 'مفرد' ? 1 : layers;
+                                      return (
+                                        <div className="font-mono font-bold text-xs bg-amber-100 text-amber-950 px-3 py-1.5 rounded-lg border border-amber-300">
+                                          {editingWidthM.toFixed(2)}م × {tracks} تراك × {trackPricePerMeter}ج = {((Number(editingWidthM) || 0) * tracks * (Number(trackPricePerMeter) || 0)).toLocaleString()} ج
+                                        </div>
+                                      );
+                                    })()}
                                   </div>
                                 </div>
+
+                                {((heavyEnabled ? 1 : 0) + (sheerEnabled ? 1 : 0) + (blackoutEnabled ? 1 : 0)) > 1 && (
+                                  <div className="flex items-center gap-2 pt-2 border-t border-amber-100">
+                                    <span className="text-slate-700 font-bold text-xs">القماش التقيل والخفيف على:</span>
+                                    <div className="flex bg-slate-100 p-1 rounded-xl gap-1 border border-slate-200 text-xs font-bold">
+                                      {(['مزدوج', 'مفرد'] as const).map(mode => (
+                                        <button
+                                          key={mode}
+                                          type="button"
+                                          onClick={() => setTrackMode(mode)}
+                                          className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                                            trackMode === mode ? 'bg-amber-600 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-200/60'
+                                          }`}
+                                        >
+                                          {mode === 'مزدوج' ? 'مزدوج (تراك لكل قماش)' : 'مفرد (تراك واحد مشترك)'}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             ) : (
                               <div className="space-y-3 bg-white p-3.5 rounded-xl border border-amber-200">

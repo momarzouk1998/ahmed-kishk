@@ -81,6 +81,9 @@ export interface RoomPricing {
 
   // Installation Category & Pipe details
   installationCategory?: 'تراك' | 'مواسير فورجيه';
+  // مفرد: القماش التقيل والخفيف (والبلاك آوت لو مفعّل) على تراك واحد مشترك.
+  // مزدوج (الافتراضي — نفس السلوك القديم): كل قماش على تراك مستقل خاص بيه.
+  trackMode?: 'مفرد' | 'مزدوج';
   trackMeters: number;
   trackPrice: number;
 

@@ -15,7 +15,7 @@ async function checkSubscription(): Promise<{ active: boolean; status?: string; 
 }
 
 export const metadata: Metadata = {
-  title: 'أحمد كشك — للأقمشة والستائر الفاخرة',
+  title: 'أحمد كشك — للأقمشة والستائر',
   description: 'نظام إداري متكامل لإدارة مقاسات الستائر، المعاينات الميدانية، والمبيعات لمؤسسة أحمد كشك',
   manifest: '/manifest.json',
   appleWebApp: {

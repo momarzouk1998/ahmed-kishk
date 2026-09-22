@@ -51,6 +51,14 @@ export async function middleware(request: NextRequest) {
   return NextResponse.next({ request: { headers: requestHeaders } });
 }
 
+// #FIX: الماتشر كان مستثني favicon.ico وlogo.png بس — أي حاجة تانية أساسية
+// للـ PWA (manifest.json، أيقونات الهاتف، service worker) كانت بتتحول لـ
+// /login لأي طلب من غير كوكي دخول (بالظبط الحالة وقت ما المتصفح/الهاتف بيجيب
+// الـ manifest عشان يحدد أيقونة التطبيق) — فبيوصله صفحة تسجيل الدخول (HTML)
+// بدل الـ JSON/الصورة الحقيقية، فأندرويد يفشل يقرأ الأيقونة ويرسم حرف "أ"
+// تلقائي من اسم النظام بدلها.
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|logo.png).*)'],
+  matcher: [
+    '/((?!_next/static|_next/image|favicon\\.ico|logo\\.png|logo-192\\.png|logo-512\\.png|icon-maskable\\.png|apple-touch-icon\\.png|manifest\\.json|sw\\.js).*)',
+  ],
 };

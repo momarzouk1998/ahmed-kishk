@@ -103,7 +103,7 @@ export default function LoginPage() {
             أحمد كشك
             <span className="w-2.5 h-2.5 rounded-full bg-brand-gold inline-block animate-pulse"></span>
           </h1>
-          <p className="text-brand-gold font-medium text-xs sm:text-sm mt-1.5 text-center">نظام إدارة الأقمشة والستائر الفاخرة — القاهرة</p>
+          <p className="text-brand-gold font-medium text-xs sm:text-sm mt-1.5 text-center">نظام إدارة الأقمشة والستائر — الإسماعيلية</p>
         </div>
 
         {/* Card */}
