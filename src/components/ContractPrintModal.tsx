@@ -35,6 +35,7 @@ export interface PrintRoomItem {
   blackoutPrice: number;
   installationCategory?: 'تراك' | 'مواسير فورجيه';
   installationType?: string;
+  trackMode?: 'مفرد' | 'مزدوج';
   trackMeters: number;
   trackPrice: number;
   pipeTypeDescription?: string;
@@ -121,7 +122,11 @@ function getHardwareDescription(room: PrintRoomItem) {
   } else {
     const trackP = room.trackPrice || 0;
     const trackM = room.trackMeters || (room.widthCm || 250) / 100;
-    parts.push(`تراك ألومنيوم (${trackM}م × ${trackP}ج)`);
+    const layersCount = [room.heavyMeters > 0, room.sheerMeters > 0, room.blackoutMeters > 0].filter(Boolean).length;
+    // لو أكتر من قماش مفعّل، نوضّح فى الورقة صراحة إنه تراك واحد مشترك (مفرد)
+    // أو تراك مستقل لكل قماش (مزدوج) — عشان الفني ميلخبطش وقت التركيب.
+    const modeNote = layersCount > 1 ? (room.trackMode === 'مفرد' ? ' — مفرد مشترك' : ' — مزدوج (تراك لكل قماش)') : '';
+    parts.push(`تراك ألومنيوم (${trackM}م × ${trackP}ج)${modeNote}`);
   }
 
   return parts.join(' + ');
