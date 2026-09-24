@@ -137,7 +137,7 @@ function getRoomBreakdown(room: PrintRoomItem) {
   const sheerFabricCost = room.sheerMeters * (room.sheerPrice || 0);
   const blackoutFabricCost = room.blackoutMeters * (room.blackoutPrice || 0);
   const liningCost = (room.sheerLiningEnabled && room.sheerLiningPricePerMeter) ? room.sheerMeters * room.sheerLiningPricePerMeter : 0;
-  const roomTotal = room.totalSellPrice;
+  const roomTotal = room.totalSellPrice || 0;
   const fittingsTotal = Math.max(0, roomTotal - heavyFabricCost - sheerFabricCost - blackoutFabricCost - liningCost);
   const heavyTapeP = room.heavyTapePrice ?? room.tapePrice ?? 0;
   const sheerTapeP = room.sheerTapePrice ?? room.tapePrice ?? 0;
