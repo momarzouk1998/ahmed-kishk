@@ -50,8 +50,6 @@ interface CustomerCollection {
   notes: string;
 }
 
-const CUSTOMERS_KEY = 'ahmed_kishk_customers_v3';
-
 export default function CustomersPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'CUSTOMERS' | 'COLLECTIONS'>('CUSTOMERS');
@@ -139,17 +137,16 @@ export default function CustomersPage() {
     loadData();
   }, []);
 
-  const saveCustomersState = async (list: Customer[]) => {
+  // ⚠️ #FIX: كانت بتبعت مصفوفة العملاء كاملة لـ /api/system-data (مسار قديم بديل)،
+  // وده كارثي لأن `customers` هنا فيها حقل `balance` هو فى الحقيقة "الرصيد الحالي
+  // المحسوب" (إجمالي المطلوب - إجمالي المدفوع) الراجع من GET /api/customers، مش
+  // الرصيد الافتتاحي الحقيقي. أي إضافة أو حذف عميل كانت بتبعت القائمة كلها فتكتب
+  // الرصيد المحسوب دا فوق عمود "الرصيد الافتتاحي" الحقيقي لكل عميل تانى فى القائمة
+  // — وهي بالظبط الشكوى "المتبقي بيتكتب رصيد افتتاحي للزبون". التحديث الحقيقي
+  // لكل عميل بيحصل فعلاً عبر /api/customers (POST/DELETE) لوحده، فمفيش داعي
+  // لإعادة بث القائمة كلها هنا خالص — بس نحدّث الحالة المحلية للواجهة.
+  const saveCustomersState = (list: Customer[]) => {
     setCustomers(list);
-    try {
-      await fetch('/api/system-data', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key: CUSTOMERS_KEY, data: list }),
-      });
-    } catch (err) {
-      console.error('Failed to sync customers with server:', err);
-    }
   };
 
   // ⚠️ كل سند تحصيل بيتحفظ الآن كصف مستقل عبر /api/customer-collections (بدل
