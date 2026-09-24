@@ -161,6 +161,25 @@ export default function NewSalesInvoicePOSPage() {
   const [splitVodafone, setSplitVodafone] = useState<number>(0);
   const [splitVisa, setSplitVisa] = useState<number>(0);
 
+  // تفاصيل الدفع بقت فى مودال منفصل (زى شاشة المشتريات) بدل ما تاخد مساحة
+  // ثابتة فى الفاتورة نفسها.
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [branchBalance, setBranchBalance] = useState<{ cash: number; instapay: number; vodafone: number; visa: number } | null>(null);
+  const [loadingBalance, setLoadingBalance] = useState(false);
+  const isMultiPayment = paymentMethod === 'دفع متعدد / مزيج';
+  const splitTotal = (Number(splitCash) || 0) + (Number(splitInstapay) || 0) + (Number(splitVodafone) || 0) + (Number(splitVisa) || 0);
+
+  useEffect(() => {
+    if (!isMultiPayment || !branch) { setBranchBalance(null); return; }
+    setLoadingBalance(true);
+    fetch(`/api/branch-balance?branch=${encodeURIComponent(branch)}`, { cache: 'no-store' })
+      .then(res => res.json())
+      .then(json => { if (json?.success) setBranchBalance(json.balance); })
+      .catch(() => {})
+      .finally(() => setLoadingBalance(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isMultiPayment, branch]);
+
   // Print Thermal / Receipt Modal State
   const [showReceiptModal, setShowReceiptModal] = useState<boolean>(false);
   const [lastSavedInvoice, setLastSavedInvoice] = useState<any>(null);
@@ -1289,69 +1308,6 @@ export default function NewSalesInvoicePOSPage() {
               {/* Bottom fixed section: Payment + Totals + Dedicated Paid Box + Buttons */}
               <div className="flex-shrink-0 px-3 pb-3 pt-2 space-y-2 border-t border-slate-100">
 
-                {/* Payment Methods */}
-                <div className="space-y-1">
-                  <span className="text-xs font-black text-slate-800 block">طريقة الدفع:</span>
-                  <div className="grid grid-cols-3 gap-1.5 text-center">
-                    {[
-                      { id: 'نقدي', label: '💵 كاش' },
-                      { id: 'فيزا / كارت', label: '💳 فيزا' },
-                      { id: 'إنستاباي', label: '⚡ إنستا' },
-                      { id: 'فودافون كاش', label: '📱 فودافون' },
-                      { id: 'بالآجل / دفعات', label: '⏳ آجل' },
-                      { id: 'دفع متعدد / مزيج', label: '🔀 متعدد' },
-                    ].map(m => (
-                      <button
-                        key={m.id}
-                        type="button"
-                        onClick={() => setPaymentMethod(m.id as any)}
-                        className={`py-1.5 px-1.5 rounded-xl text-xs sm:text-[13px] font-black transition-all border cursor-pointer ${
-                          paymentMethod === m.id
-                            ? 'bg-amber-500 text-white border-amber-600 shadow-xs ring-2 ring-amber-300'
-                            : 'bg-slate-50 hover:bg-slate-100 text-slate-800 border-slate-200'
-                        }`}
-                      >
-                        {m.label}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Split Payment inputs if selected */}
-                  {paymentMethod === 'دفع متعدد / مزيج' && (
-                    <div className="bg-amber-50 border border-amber-300 p-2 rounded-xl mt-1.5">
-                      <div className="grid grid-cols-2 gap-1.5">
-                        {[
-                          { label: '💵 كاش', val: splitCash, setter: setSplitCash },
-                          { label: '⚡ إنستا', val: splitInstapay, setter: setSplitInstapay },
-                          { label: '📱 فودافون', val: splitVodafone, setter: setSplitVodafone },
-                          { label: '💳 فيزا', val: splitVisa, setter: setSplitVisa },
-                        ].map(({ label, val, setter }) => (
-                          <div key={label}>
-                            <label className="text-[10px] font-black text-slate-700 block">{label}:</label>
-                            <input
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              value={val || ''}
-                              onChange={e => {
-                                const v = Number(e.target.value);
-                                setter(v);
-                                const sum =
-                                  (setter === setSplitCash ? v : (splitCash || 0)) +
-                                  (setter === setSplitInstapay ? v : (splitInstapay || 0)) +
-                                  (setter === setSplitVodafone ? v : (splitVodafone || 0)) +
-                                  (setter === setSplitVisa ? v : (splitVisa || 0));
-                                setPaidAmount(sum);
-                              }}
-                              className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1 font-mono font-black text-xs"
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
                 {/* Totals Summary with Integrated Value Discount */}
                 <div className="bg-slate-900 text-white p-2.5 sm:p-3 rounded-2xl space-y-1.5 shadow-md border border-slate-800">
                   <div className="flex justify-between items-center text-slate-300 text-xs font-bold">
@@ -1407,56 +1363,26 @@ export default function NewSalesInvoicePOSPage() {
                   </div>
                 </div>
 
-                {/* Dedicated Paid & Remaining Box */}
-                <div className="bg-amber-50/70 border-2 border-amber-200 p-2.5 rounded-2xl space-y-2 shadow-soft">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs sm:text-sm font-black text-amber-950 whitespace-nowrap">
-                      المبلغ المدفوع:
+                {/* Payment Summary Button — يفتح مودال بكل تفاصيل الدفع */}
+                <button
+                  type="button"
+                  onClick={() => setShowPaymentModal(true)}
+                  className="w-full bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-2xl p-2.5 text-right transition-colors cursor-pointer"
+                >
+                  <div className="flex items-center justify-between text-xs sm:text-sm">
+                    <span className="font-black text-amber-950 flex items-center gap-1">
+                      <span className="material-symbols-outlined text-base">payments</span>
+                      <span>طريقة الدفع: {paymentMethod}</span>
                     </span>
-                    <div className="flex items-center gap-1.5 flex-1 max-w-[210px]">
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={paidAmount}
-                        onChange={e => { setPaidAmount(Number(e.target.value)); setIsFullPaid(false); }}
-                        className="w-full bg-white border-2 border-amber-400 focus:border-amber-600 rounded-xl px-2.5 py-1.5 font-mono font-black text-slate-950 text-base sm:text-lg text-center focus:outline-none shadow-inner"
-                        placeholder="0"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => { setPaidAmount(totalAmount); setIsFullPaid(true); }}
-                        className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-2.5 py-2 rounded-xl font-black cursor-pointer whitespace-nowrap shadow-xs active:scale-95 transition-all"
-                        title="سداد المبلغ كاملاً"
-                      >
-                        كامل ⚡
-                      </button>
-                    </div>
+                    <span className="text-amber-700 font-bold underline text-xs">تعديل ✏️</span>
                   </div>
-
-                  {/* Remaining / Balance Status Indicator */}
-                  <div className="pt-0.5">
-                    {remainingAmount === 0 ? (
-                      <div className="bg-emerald-100/90 border border-emerald-300 text-emerald-950 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-black flex justify-between items-center shadow-3xs">
-                        <span className="flex items-center gap-1">
-                          <span className="material-symbols-outlined text-base text-emerald-700">check_circle</span>
-                          <span>الحالة: تم السداد بالكامل</span>
-                        </span>
-                        <span className="font-mono font-black text-sm text-emerald-800">0 ج.م</span>
-                      </div>
-                    ) : (
-                      <div className="bg-rose-100/90 border border-rose-300 text-rose-950 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-black flex justify-between items-center shadow-3xs">
-                        <span className="flex items-center gap-1">
-                          <span className="material-symbols-outlined text-base text-rose-700">pending</span>
-                          <span>المتبقي (آجل / دفعات):</span>
-                        </span>
-                        <span className="font-mono font-black text-sm sm:text-base text-rose-700">
-                          {remainingAmount.toLocaleString()} ج.م
-                        </span>
-                      </div>
-                    )}
+                  <div className="flex justify-between items-center pt-1.5 mt-1.5 border-t border-amber-200 font-bold text-xs sm:text-sm">
+                    <span className="text-emerald-700">مدفوع: {(Number(paidAmount) || 0).toLocaleString()} ج</span>
+                    <span className={remainingAmount === 0 ? 'text-emerald-700' : 'text-rose-700'}>
+                      متبقي: {remainingAmount.toLocaleString()} ج
+                    </span>
                   </div>
-                </div>
+                </button>
 
                 {/* 2 Save Buttons — side by side */}
                 <div className="grid grid-cols-2 gap-2 pt-0.5">
@@ -1487,6 +1413,152 @@ export default function NewSalesInvoicePOSPage() {
     
         </div>
       </div>
+
+      {/* 💳 Modal: Payment Details — طريقة الدفع، الدفع المتعدد، المدفوع/المتبقي */}
+      {showPaymentModal && (
+        <div className="modal-overlay fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-5 sm:p-6 space-y-4 shadow-2xl border border-slate-200 my-auto max-h-[92vh] overflow-y-auto">
+            <div className="flex justify-between items-center pb-3 border-b border-slate-200">
+              <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                <span className="material-symbols-outlined text-amber-600 text-xl">payments</span>
+                تفاصيل الدفع
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowPaymentModal(false)}
+                className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-xs cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3.5 text-xs">
+              {/* Payment Methods Pills */}
+              <div>
+                <label className="text-slate-700 font-bold block mb-1.5">طريقة الدفع:</label>
+                <div className="grid grid-cols-3 gap-1.5 text-center text-[11px]">
+                  {[
+                    { id: 'نقدي', label: '💵 كاش' },
+                    { id: 'فيزا / كارت', label: '💳 فيزا' },
+                    { id: 'إنستاباي', label: '⚡ إنستا' },
+                    { id: 'فودافون كاش', label: '📱 فودافون' },
+                    { id: 'بالآجل / دفعات', label: '⏳ آجل' },
+                    { id: 'دفع متعدد / مزيج', label: '🔀 متعدد' },
+                  ].map(m => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => setPaymentMethod(m.id as any)}
+                      className={`py-1.5 px-1 rounded-lg font-black transition-all border cursor-pointer ${
+                        paymentMethod === m.id
+                          ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-3xs'
+                          : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200'
+                      }`}
+                    >
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Multi-Payment Split — رصيد الفرع الحالي لكل طريقة */}
+              {isMultiPayment && (
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 space-y-2 text-[11px]">
+                  <div className="text-slate-700 font-black flex items-center gap-1.5">
+                    <span>💰</span>
+                    <span>رصيد {branch} الحالي — حدد المبلغ المدفوع من كل طريقة:</span>
+                  </div>
+                  {loadingBalance ? (
+                    <div className="text-center text-slate-400 py-2">...جاري تحميل الرصيد</div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {[
+                        { label: '💵 كاش', balance: branchBalance?.cash, val: splitCash, setter: setSplitCash },
+                        { label: '⚡ إنستا', balance: branchBalance?.instapay, val: splitInstapay, setter: setSplitInstapay },
+                        { label: '📱 فودافون', balance: branchBalance?.vodafone, val: splitVodafone, setter: setSplitVodafone },
+                        { label: '💳 فيزا', balance: branchBalance?.visa, val: splitVisa, setter: setSplitVisa },
+                      ].map(({ label, balance, val, setter }) => (
+                        <div key={label} className="bg-white border border-slate-200 rounded-lg p-1.5">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-bold text-slate-700">{label}</span>
+                            <span className="font-mono text-slate-400 text-[9px]">متاح: {(balance ?? 0).toLocaleString()}</span>
+                          </div>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={val || ''}
+                            onChange={e => {
+                              const v = Number(e.target.value);
+                              setter(v);
+                              const sum =
+                                (setter === setSplitCash ? v : (splitCash || 0)) +
+                                (setter === setSplitInstapay ? v : (splitInstapay || 0)) +
+                                (setter === setSplitVodafone ? v : (splitVodafone || 0)) +
+                                (setter === setSplitVisa ? v : (splitVisa || 0));
+                              setPaidAmount(sum);
+                            }}
+                            placeholder="0"
+                            className="w-full border border-slate-200 rounded px-1.5 py-0.5 font-mono font-black text-slate-900 text-[11px] focus:outline-none focus:border-amber-500"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className={`flex items-center justify-between px-1 font-bold ${
+                    Math.abs(splitTotal - (Number(paidAmount) || 0)) < 0.01 ? 'text-emerald-700' : 'text-rose-600'
+                  }`}>
+                    <span>الموزّع: {splitTotal.toLocaleString()} ج</span>
+                    <span>المدفوع: {(Number(paidAmount) || 0).toLocaleString()} ج</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Paid & Remaining */}
+              <div className="bg-amber-50/80 border border-amber-200 p-2.5 rounded-xl space-y-1.5 text-[11px]">
+                <div className="flex items-center justify-between gap-1.5">
+                  <span className="font-black text-amber-950 whitespace-nowrap">المدفوع:</span>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={paidAmount || ''}
+                      onChange={e => { setPaidAmount(Number(e.target.value)); setIsFullPaid(false); }}
+                      placeholder="0"
+                      className="w-28 bg-white border border-amber-400 rounded-lg px-1.5 py-1.5 font-mono font-black text-slate-950 text-xs text-center focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => { setPaidAmount(totalAmount); setIsFullPaid(true); }}
+                      className="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] px-2.5 py-1.5 rounded-lg font-black cursor-pointer"
+                    >
+                      كامل ⚡
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex justify-between items-center pt-1.5 border-t border-amber-200/80 font-bold">
+                  <span className="text-slate-600">المتبقي (آجل / دفعات):</span>
+                  <strong className={`font-mono font-black text-xs ${
+                    remainingAmount === 0 ? 'text-emerald-700' : 'text-rose-700'
+                  }`}>
+                    {remainingAmount.toLocaleString()} ج.م
+                  </strong>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowPaymentModal(false)}
+                className="w-full bg-slate-900 hover:bg-slate-800 text-white py-2.5 rounded-xl font-black cursor-pointer"
+              >
+                تم ✓
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* SHIPPING DETAILS POPUP MODAL */}
       {showShippingModal && (
