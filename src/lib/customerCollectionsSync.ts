@@ -20,8 +20,11 @@ export async function syncCustomerOrdersFromCollections(customerName: string, ph
     // ومطابقة لنفس منطق المطابقة القديم (بالاسم/الهاتف المطبَّع، لأن عروض
     // الأسعار وأوردرات خط الإنتاج بتخزن اسم/هاتف العميل كنص حر بلا customerId).
     const allCollections = await prisma.customerCollection.findMany();
-    const totalCol = allCollections
-      .filter(c => (normPhone(c.phone) || normName(c.customerName)) === key)
+    const customerCollections = allCollections.filter(c => (normPhone(c.phone) || normName(c.customerName)) === key);
+    // سندات قديمة (من قبل ما اتضاف عمود quotationId) مش مربوطة بأوردر بعينه —
+    // لسه بتتحسب على مستوى العميل ككل عشان توافق البيانات القديمة.
+    const unlinkedTotal = customerCollections
+      .filter(c => !c.quotationId)
       .reduce((s, c) => s + (Number(c.amount) || 0), 0);
 
     const allQuotations = await prisma.quotationOrder.findMany();
@@ -29,7 +32,27 @@ export async function syncCustomerOrdersFromCollections(customerName: string, ph
       const qKey = normPhone(q.phone) || normName(q.customerName);
       if (qKey !== key) continue;
       const totalAmt = Number(q.totalAmount) || 0;
-      const newDeposit = Math.min(totalAmt > 0 ? totalAmt : totalCol, totalCol);
+
+      // ⚠️ #FIX: كان بيحسب totalCol كإجمالي كل سندات تحصيل العميل (عبر كل أوردراته)
+      // ويطبّقه على كل أوردر ليها لوحده — فلو العميل عنده أكتر من أوردر، أي سند
+      // تحصيل لأوردر تاني كان بيمسح/يقلب المدفوع والمتبقي الصح المُدخل وقت التسعير
+      // لهذا الأوردر بالذات. دلوقتى: لو فيه سندات مربوطة فعليًا بالأوردر ده
+      // (quotationId) بس اللي بتتحسب. لو مفيش أي سند مربوط بيه، نسيب العربون
+      // المُدخل يدويًا فى شاشة التسعير زي ما هو من غير ما نلمسه.
+      const linkedCollections = customerCollections.filter(c => c.quotationId === q.id);
+      const hasLinked = linkedCollections.length > 0;
+      const linkedTotal = linkedCollections.reduce((s, c) => s + (Number(c.amount) || 0), 0);
+
+      let newDeposit: number;
+      if (hasLinked) {
+        newDeposit = Math.min(totalAmt > 0 ? totalAmt : linkedTotal, linkedTotal);
+      } else if (unlinkedTotal > 0) {
+        // توافق قديم فقط: مفيش سندات مربوطة بالأوردر ده تحديدًا، بس فيه سندات قديمة
+        // غير مربوطة لنفس العميل — نستخدمها لأنها كانت السلوك الوحيد المتاح وقتها.
+        newDeposit = Math.min(totalAmt > 0 ? totalAmt : unlinkedTotal, unlinkedTotal);
+      } else {
+        newDeposit = Number(q.depositPaid) || 0;
+      }
       const newRemaining = Math.max(0, totalAmt - newDeposit);
       const newStatus = (newRemaining === 0 && totalAmt > 0)
         ? (['تم التحويل للورشة', 'في الورشة', 'تم التركيب والتسليم'].includes(q.status) ? q.status : 'معتمد ومسدد بالكامل')
@@ -46,7 +69,19 @@ export async function syncCustomerOrdersFromCollections(customerName: string, ph
       const pKey = normPhone(p.phone) || normName(p.customerName);
       if (pKey !== key) continue;
       const totalAmt = Number(p.totalAmount) || 0;
-      const newDeposit = Math.min(totalAmt > 0 ? totalAmt : totalCol, totalCol);
+
+      const linkedCollections = customerCollections.filter(c => c.quotationId === p.orderId || c.quotationId === p.id);
+      const hasLinked = linkedCollections.length > 0;
+      const linkedTotal = linkedCollections.reduce((s, c) => s + (Number(c.amount) || 0), 0);
+
+      let newDeposit: number;
+      if (hasLinked) {
+        newDeposit = Math.min(totalAmt > 0 ? totalAmt : linkedTotal, linkedTotal);
+      } else if (unlinkedTotal > 0) {
+        newDeposit = Math.min(totalAmt > 0 ? totalAmt : unlinkedTotal, unlinkedTotal);
+      } else {
+        newDeposit = Number(p.depositPaid) || 0;
+      }
       const newRemaining = Math.max(0, totalAmt - newDeposit);
 
       await prisma.pipelineOrder.update({

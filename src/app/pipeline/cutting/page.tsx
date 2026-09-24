@@ -43,6 +43,19 @@ export default function PipelineCuttingPage() {
   }, [isAdmin, currentUser]);
   const [selectedOrderForPrint, setSelectedOrderForPrint] = useState<CuttingOrder | null>(null);
 
+  // اختيار الورشة عند تحويل الأوردر من القص للورشة — لازم يختار اسم حقيقي
+  // من القائمة اللي الأدمن ضافها من شاشة الفروع، مش يترك الحقل فاضي.
+  const [workshops, setWorkshops] = useState<string[]>([]);
+  const [orderPendingWorkshop, setOrderPendingWorkshop] = useState<CuttingOrder | null>(null);
+  const [selectedWorkshop, setSelectedWorkshop] = useState('');
+
+  useEffect(() => {
+    fetch('/api/curtain-workshops', { cache: 'no-store' })
+      .then(res => res.ok ? res.json() : null)
+      .then(json => { if (Array.isArray(json?.list)) setWorkshops(json.list); })
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     async function load() {
       const [storedPipeline, quotations] = await Promise.all([
@@ -483,7 +496,7 @@ export default function PipelineCuttingPage() {
 
                     <button
                       type="button"
-                      onClick={() => updateOrderStatus(order.id, 'تم القص وجاهز للخياطة')}
+                      onClick={() => { setOrderPendingWorkshop(order); setSelectedWorkshop(''); }}
                       className="w-full bg-brand-gold hover:bg-amber-400 text-slate-950 py-3 rounded-2xl text-xs font-black shadow-gold cursor-pointer transition-all flex items-center justify-center gap-2"
                     >
                       <span className="material-symbols-outlined text-[18px]">check_circle</span>
@@ -516,6 +529,49 @@ export default function PipelineCuttingPage() {
           itemName="أمر قص"
         />
       </div>
+
+      {/* اختيار الورشة قبل التحويل — إجباري */}
+      {orderPendingWorkshop && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setOrderPendingWorkshop(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-5" onClick={e => e.stopPropagation()}>
+            <h3 className="font-black text-slate-900 text-sm mb-1">اختر الورشة</h3>
+            <p className="text-[11px] text-slate-500 mb-4">لازم تحدد اسم الورشة اللي هيتحول لها أوردر {orderPendingWorkshop.customerName} قبل التأكيد.</p>
+            <select
+              value={selectedWorkshop}
+              onChange={e => setSelectedWorkshop(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 font-bold text-slate-900 text-xs focus:outline-none focus:border-brand-gold mb-4 cursor-pointer"
+            >
+              <option value="">— اختر —</option>
+              {workshops.map(w => <option key={w} value={w}>{w}</option>)}
+            </select>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setOrderPendingWorkshop(null)}
+                className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-2.5 rounded-xl text-xs font-bold cursor-pointer"
+              >إلغاء</button>
+              <button
+                type="button"
+                disabled={!selectedWorkshop}
+                onClick={async () => {
+                  const order = orderPendingWorkshop;
+                  if (!order) return;
+                  setOrders(prev => prev.map(o => (o.id === order.id ? { ...o, status: 'تم القص وجاهز للخياطة' } : o)));
+                  await updatePipelineOrderStatus(order.id, 'في الورشة', 'جاري الخياطة', { tailorName: selectedWorkshop });
+                  const [storedPipeline, quotations] = await Promise.all([fetchPipelineOrders(), fetchQuotations()]);
+                  const pipelineList = storedPipeline || [];
+                  const mappedQuotations: CuttingOrder[] = (quotations || [])
+                    .filter(q => q.status === 'في المقص' && !pipelineList.some(p => p.orderId === q.id || p.id === q.id || p.id === `ORD-${q.id}`))
+                    .map((q: any) => ({ id: `ORD-${q.id}`, orderId: q.id, customerName: q.customerName, phone: q.phone, address: q.address, branch: q.branch || 'الفرع الرئيسي', cutterName: '', rooms: [], status: 'بانتظار القص', createdAt: q.date || getTodayDateStr() }));
+                  setOrders([...pipelineList, ...mappedQuotations] as any);
+                  setOrderPendingWorkshop(null);
+                }}
+                className="flex-1 bg-brand-gold hover:bg-amber-400 disabled:opacity-40 disabled:cursor-not-allowed text-slate-950 py-2.5 rounded-xl text-xs font-black cursor-pointer"
+              >تأكيد التحويل</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 🖨️ Cutting Worksheet Printable Modal */}
       <CuttingPrintModal

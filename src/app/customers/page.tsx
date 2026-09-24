@@ -848,29 +848,33 @@ export default function CustomersPage() {
                             <td className="p-3.5 text-slate-700 font-bold">{col.treasury}</td>
                             <td className="p-3.5 text-slate-600">{col.notes || '—'}</td>
                             <td className="p-3.5 text-center">
-                              <div className="flex items-center justify-center gap-1">
-                                <button
-                                  type="button"
-                                  onClick={() => handleStartInlineEdit(col)}
-                                  className="text-amber-600 hover:text-amber-800 p-1.5 rounded-lg hover:bg-amber-50 transition-colors cursor-pointer"
-                                  title="تعديل السند مباشرة (Inline Edit)"
-                                >
-                                  <span className="material-symbols-outlined text-[18px]">edit</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={async () => {
-                                    if (confirm(`هل أنت متأكد من حذف سند التحصيل بمبلغ ${col.amount} ج للعميل "${col.customerName}"؟`)) {
-                                      await deleteOneCollection(col.id);
-                                      await loadData();
-                                    }
-                                  }}
-                                  className="text-slate-300 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
-                                  title="حذف التحصيل"
-                                >
-                                  <span className="material-symbols-outlined text-[18px]">delete</span>
-                                </button>
-                              </div>
+                              {isAdmin ? (
+                                <div className="flex items-center justify-center gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleStartInlineEdit(col)}
+                                    className="text-amber-600 hover:text-amber-800 p-1.5 rounded-lg hover:bg-amber-50 transition-colors cursor-pointer"
+                                    title="تعديل السند مباشرة (Inline Edit)"
+                                  >
+                                    <span className="material-symbols-outlined text-[18px]">edit</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={async () => {
+                                      if (confirm(`هل أنت متأكد من حذف سند التحصيل بمبلغ ${col.amount} ج للعميل "${col.customerName}"؟`)) {
+                                        await deleteOneCollection(col.id);
+                                        await loadData();
+                                      }
+                                    }}
+                                    className="text-slate-300 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
+                                    title="حذف التحصيل"
+                                  >
+                                    <span className="material-symbols-outlined text-[18px]">delete</span>
+                                  </button>
+                                </div>
+                              ) : (
+                                <span className="text-slate-300 text-[11px]" title="التعديل والحذف للمدير فقط">🔒</span>
+                              )}
                             </td>
                           </tr>
                         );

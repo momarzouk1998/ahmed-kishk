@@ -85,6 +85,10 @@ model CustomerCollection {
   method       String   @default("نقدي")
   treasury     String   @default("خزينة الفرع الرئيسي (سعد زغلول)")
   notes        String?
+  // لو السند مربوط بعقد/مقايسة معيّنة (مثلاً عربون اتسجل وقت التسعير) — بيمنع
+  // syncCustomerOrdersFromCollections من نسب إجمالي تحصيلات العميل كله (لو عنده
+  // أكتر من أوردر) على أوردر واحد بالغلط، وهي المشكلة اللي كانت بتقلب المدفوع/المتبقي.
+  quotationId  String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }

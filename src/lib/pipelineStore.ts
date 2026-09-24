@@ -141,7 +141,8 @@ export async function saveStoredPipelineOrders(orders: PipelineMasterOrder[]) {
 export async function updatePipelineOrderStatus(
   id: string,
   newStatus: GlobalMasterStage | string,
-  localStatus?: string
+  localStatus?: string,
+  extraFields?: Partial<PipelineMasterOrder>
 ) {
   const current = await fetchPipelineOrders();
   const normalized = normalizeMasterStage(newStatus);
@@ -165,6 +166,7 @@ export async function updatePipelineOrderStatus(
         ...o,
         status: normalized,
         localStatus: localStatus || o.localStatus || newStatus,
+        ...(extraFields || {}),
       };
     }
     return o;
@@ -201,6 +203,7 @@ export async function updatePipelineOrderStatus(
       depositPaid: quotMatch?.depositPaid || 0,
       remainingAmount: quotMatch?.remainingAmount || 0,
       rooms: quotMatch?.rooms || [],
+      ...(extraFields || {}),
     };
     updated.unshift(newEntry);
   }

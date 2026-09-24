@@ -3,7 +3,6 @@ import { prisma } from '@/lib/prisma';
 import { getBranchScope, branchWhere, effectiveCreateBranch } from '@/lib/branchScope';
 import { getTodayDateStr } from '@/lib/dateUtils';
 import { syncCustomerOrdersFromCollections } from '@/lib/customerCollectionsSync';
-import { assertPagePermission } from '@/lib/permissionsServer';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,8 +43,10 @@ export async function POST(request: Request) {
     }
 
     const existingById = id ? await prisma.customerCollection.findUnique({ where: { id } }) : null;
-    if (existingById && !scope.isAdmin && existingById.branch !== scope.branch) {
-      return NextResponse.json({ success: false, error: 'غير مصرح بتعديل سند فرع آخر' }, { status: 403 });
+    // تعديل سند موجود بالفعل (مش إنشاء سند جديد) — للمدير العام فقط، منعًا لتلاعب
+    // الموظفين فى أرقام سندات محصّلة قبل كده.
+    if (existingById && !scope.isAdmin) {
+      return NextResponse.json({ success: false, error: 'تعديل سند تحصيل محفوظ يحتاج صلاحية مدير' }, { status: 403 });
     }
 
     const collectionId = id || `COL-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`;
@@ -99,11 +100,9 @@ export async function DELETE(request: Request) {
     if (!existing) {
       return NextResponse.json({ success: true }); // محذوف بالفعل — لا داعى لخطأ
     }
-    if (!scope.isAdmin && existing.branch !== scope.branch) {
-      return NextResponse.json({ success: false, error: 'غير مصرح بحذف سند فرع آخر' }, { status: 403 });
+    if (!scope.isAdmin) {
+      return NextResponse.json({ success: false, error: 'حذف سند تحصيل يحتاج صلاحية مدير' }, { status: 403 });
     }
-    const perm = await assertPagePermission(request, 'p_customers', 'delete');
-    if (!perm.ok) return NextResponse.json({ success: false, error: perm.error }, { status: perm.status });
 
     await prisma.customerCollection.delete({ where: { id } });
     await syncCustomerOrdersFromCollections(existing.customerName, existing.phone);
