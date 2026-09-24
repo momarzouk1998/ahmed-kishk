@@ -31,28 +31,54 @@ export async function getBranchScope(request: Request): Promise<BranchScope | nu
 
 import { normalizeBranchName, MAIN_BRANCH_VALUE, MAIN_BRANCH_LABEL } from '@/lib/branches';
 
+export function getBranchVariants(branchOrScope: string | BranchScope | null): string[] {
+  if (!branchOrScope) return [];
+  const branchStr = typeof branchOrScope === 'string' ? branchOrScope : branchOrScope.branch;
+  if (!branchStr) return [];
+  const norm = normalizeBranchName(branchStr);
+  if (norm === 'فرع عمر أفندي') {
+    return Array.from(new Set(['فرع عمر أفندي', 'فرع عمر افندي', 'عمر أفندي', 'عمر افندي', 'عمر', branchStr]));
+  }
+  if (norm === 'فرع الثلاثيني') {
+    return Array.from(new Set(['فرع الثلاثيني', 'فرع التلاتيني', 'الثلاثيني', 'التلاتيني', branchStr]));
+  }
+  if (norm === 'فرع عرابي') {
+    return Array.from(new Set(['فرع عرابي', 'عرابي', 'عدلي', '18 ش عدلي', 'فرع عرابي (18 ش عدلي)', branchStr]));
+  }
+  if (norm === MAIN_BRANCH_VALUE) {
+    return Array.from(new Set([branchStr, norm, MAIN_BRANCH_VALUE, MAIN_BRANCH_LABEL, 'سعد زغلول', 'الرئيسي', '73 سعد زغلول', '73 ش سعد زغلول']));
+  }
+  if (norm === 'الفرع التجاري') {
+    return Array.from(new Set(['الفرع التجاري', 'تجاري', 'تجارى', 'الفرع التجارى', 'التجاري', branchStr]));
+  }
+  return Array.from(new Set([branchStr, norm]));
+}
+
 /** where-clause جاهز لإدخاله فى أى prisma.findMany: فرع المستخدم المقيّد فقط، أو بلا قيد للأدمن العام مع مراعاة كافة الصيغ الإملائية. */
 export function branchWhere(scope: BranchScope | null): { branch?: any } {
   if (!scope || scope.isAdmin) return {};
+  return { branch: { in: getBranchVariants(scope) } };
+}
+
+/** where-clause للعملاء حيث الفرع مخزن فى city */
+export function cityWhere(scope: BranchScope | null): { city?: any } {
+  if (!scope || scope.isAdmin) return {};
+  return { city: { in: getBranchVariants(scope) } };
+}
+
+/** where-clause لسندات التحصيل للفرع حسب عمود branch أو خزينة الفرع treasury */
+export function collectionBranchWhere(scope: BranchScope | null): any {
+  if (!scope || scope.isAdmin) return {};
+  const variants = getBranchVariants(scope);
   const norm = normalizeBranchName(scope.branch);
-  if (norm === 'فرع عمر أفندي') {
-    return { branch: { in: ['فرع عمر أفندي', 'فرع عمر افندي', 'عمر أفندي', 'عمر افندي', scope.branch] } };
-  }
-  if (norm === 'فرع الثلاثيني') {
-    return { branch: { in: ['فرع الثلاثيني', 'فرع التلاتيني', 'الثلاثيني', 'التلاتيني', scope.branch] } };
-  }
-  if (norm === 'فرع عرابي') {
-    return { branch: { in: ['فرع عرابي', 'عرابي', 'عدلي', scope.branch] } };
-  }
-  if (norm === MAIN_BRANCH_VALUE) {
-    return { branch: { in: [scope.branch, norm, MAIN_BRANCH_VALUE, MAIN_BRANCH_LABEL] } };
-  }
-  // #FIX (تسريب بيانات الفرع الرئيسي لموظفي الفرع التجاري): كانت الحالة
-  // الافتراضية (أي فرع مش من الـ 3 فوق) بتدمج تلقائيًا مع الفرع الرئيسي دايمًا
-  // حتى لو الموظف مش تابع له أصلاً — ده كان بيخلي مدير الفرع التجاري (وأي فرع
-  // جديد يتضاف مستقبلاً) يشوف فواتير الفرع الرئيسي كمان. أي فرع تاني غير
-  // الأربعة المعروفة دلوقتي بيتقفل على قيمته هو بس، من غير أي دمج تلقائي.
-  return { branch: { in: [scope.branch, norm] } };
+  const treasuryKeyword = norm.replace(/^فرع\s*/, '');
+  return {
+    OR: [
+      { branch: { in: variants } },
+      { treasury: { contains: treasuryKeyword } },
+      { treasury: { in: variants } },
+    ]
+  };
 }
 
 /**

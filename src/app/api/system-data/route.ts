@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getBranchScope, branchWhere } from '@/lib/branchScope';
+import { getBranchScope, branchWhere, cityWhere } from '@/lib/branchScope';
 import { getTodayDateStr } from '@/lib/dateUtils';
 import { assertPagePermission } from '@/lib/permissionsServer';
 
@@ -20,7 +20,7 @@ export async function GET(request: Request) {
     }
     const bw = branchWhere(scope);
     // Customer ليس له عمود branch — الفرع مُخزَّن فى city.
-    const customerWhere = scope && !scope.isAdmin ? { city: scope.branch } : {};
+    const customerWhere = cityWhere(scope);
 
     const { searchParams } = new URL(request.url);
     const key = searchParams.get('key');
@@ -310,8 +310,7 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ success: false, error: 'غير مصرح' }, { status: 401 });
     }
     const bw = branchWhere(scope);
-    // Customer ليس له عمود branch — الفرع مُخزَّن فى city.
-    const customerWhere = scope.isAdmin ? {} : { city: scope.branch };
+    const customerWhere = cityWhere(scope);
 
     const url = new URL(request.url);
     let key = url.searchParams.get('key') || '';

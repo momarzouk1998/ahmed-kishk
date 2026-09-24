@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getBranchScope, branchWhere, effectiveCreateBranch } from '@/lib/branchScope';
+import { getBranchScope, branchWhere, collectionBranchWhere, effectiveCreateBranch } from '@/lib/branchScope';
 import { getTodayDateStr } from '@/lib/dateUtils';
 import { syncCustomerOrdersFromCollections } from '@/lib/customerCollectionsSync';
 
@@ -21,7 +21,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const quotationId = searchParams.get('quotationId');
     const collections = await prisma.customerCollection.findMany({
-      where: { ...branchWhere(scope), ...(quotationId ? { quotationId } : {}) },
+      where: { ...collectionBranchWhere(scope), ...(quotationId ? { quotationId } : {}) },
       orderBy: { createdAt: 'desc' },
     });
     return NextResponse.json({ success: true, collections });

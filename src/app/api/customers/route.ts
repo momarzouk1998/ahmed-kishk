@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getBranchScope, effectiveCreateBranch } from '@/lib/branchScope';
+import { getBranchScope, branchWhere, cityWhere, collectionBranchWhere, getBranchVariants, effectiveCreateBranch } from '@/lib/branchScope';
 import { getTodayDateStr } from '@/lib/dateUtils';
 import { assertPagePermission } from '@/lib/permissionsServer';
 
@@ -13,6 +13,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: false, error: 'غير مصرح' }, { status: 401 });
     }
     const restricted = !scope.isAdmin;
+    const branchVariantsSet = new Set(getBranchVariants(scope));
 
     // "الفرع" للعميل مُخزَّن فعلياً فى city (لا يوجد عمود branch منفصل — راجع تعليق الـ schema).
     const [
@@ -26,12 +27,12 @@ export async function GET(request: Request) {
       pipelineStore,
       inspectionsStore
     ] = await Promise.all([
-      prisma.customer.findMany({ where: restricted ? { city: scope!.branch } : {}, orderBy: { updatedAt: 'desc' } }),
-      prisma.inspectionRequest.findMany({ where: restricted ? { branch: scope!.branch } : {}, orderBy: { createdAt: 'desc' } }),
-      prisma.quotationOrder.findMany({ where: restricted ? { branch: scope!.branch } : {}, orderBy: { createdAt: 'desc' } }),
-      prisma.pipelineOrder.findMany({ where: restricted ? { branch: scope!.branch } : {}, orderBy: { createdAt: 'desc' } }),
-      prisma.salesInvoice.findMany({ where: restricted ? { branch: scope!.branch } : {}, orderBy: { createdAt: 'desc' } }),
-      prisma.customerCollection.findMany({ where: restricted ? { branch: scope!.branch } : {}, orderBy: { createdAt: 'desc' } }),
+      prisma.customer.findMany({ where: cityWhere(scope), orderBy: { updatedAt: 'desc' } }),
+      prisma.inspectionRequest.findMany({ where: branchWhere(scope), orderBy: { createdAt: 'desc' } }),
+      prisma.quotationOrder.findMany({ where: branchWhere(scope), orderBy: { createdAt: 'desc' } }),
+      prisma.pipelineOrder.findMany({ where: branchWhere(scope), orderBy: { createdAt: 'desc' } }),
+      prisma.salesInvoice.findMany({ where: branchWhere(scope), orderBy: { createdAt: 'desc' } }),
+      prisma.customerCollection.findMany({ where: collectionBranchWhere(scope), orderBy: { createdAt: 'desc' } }),
       prisma.systemStore.findUnique({ where: { key: 'ahmed_kishk_quotations_data_v4' } }).catch(() => null),
       prisma.systemStore.findUnique({ where: { key: 'ahmed_kishk_pipeline_orders_v5' } }).catch(() => null),
       prisma.systemStore.findUnique({ where: { key: 'ahmed_kishk_inspections_data_v4' } }).catch(() => null),
@@ -48,7 +49,7 @@ export async function GET(request: Request) {
     }
     rawQuotationsFromDb.forEach(q => { if (q && q.id) qMap.set(q.id, q); });
     let rawQuotations = Array.from(qMap.values());
-    if (restricted) rawQuotations = rawQuotations.filter((q: any) => q?.branch === scope!.branch);
+    if (restricted) rawQuotations = rawQuotations.filter((q: any) => branchVariantsSet.has(q?.branch));
 
     // Merge pipeline orders from DB + SystemStore
     const pMap = new Map<string, any>();
@@ -57,7 +58,7 @@ export async function GET(request: Request) {
     }
     rawPipelineOrdersFromDb.forEach(p => { if (p && p.id) pMap.set(p.id, p); });
     let rawPipelineOrders = Array.from(pMap.values());
-    if (restricted) rawPipelineOrders = rawPipelineOrders.filter((p: any) => p?.branch === scope!.branch);
+    if (restricted) rawPipelineOrders = rawPipelineOrders.filter((p: any) => branchVariantsSet.has(p?.branch));
 
     // Merge inspections from DB + SystemStore
     const insMap = new Map<string, any>();
@@ -66,7 +67,7 @@ export async function GET(request: Request) {
     }
     rawInspectionsFromDb.forEach(i => { if (i && i.id) insMap.set(i.id, i); });
     let rawInspections = Array.from(insMap.values());
-    if (restricted) rawInspections = rawInspections.filter((i: any) => i?.branch === scope!.branch);
+    if (restricted) rawInspections = rawInspections.filter((i: any) => branchVariantsSet.has(i?.branch));
 
     // Helper to normalize phone
     const normPhone = (p: string | null | undefined) => (p || '').replace(/\D/g, '').slice(-10);
@@ -196,16 +197,28 @@ export async function GET(request: Request) {
     }
 
     // 6. Match Collections — rawCollections مفلترة بالفعل بالفرع من الاستعلام
-    // نفسه (branch column موجود على CustomerCollection)، وهنا كمان بتتأكد إن
-    // السند فعلاً بيخص عميل ظاهر فى customerMap (نفس الفرع) قبل ضمه.
     const visibleCollections: any[] = [];
     for (const col of rawCollections) {
       const key = normPhone(col.phone) || normName(col.customerName);
       if (!key) continue;
-      if (customerMap.has(key)) {
-        customerMap.get(key).collections.push(col);
-        visibleCollections.push(col);
+      if (!customerMap.has(key)) {
+        customerMap.set(key, {
+          id: col.customerId || `CUST-${Math.random().toString(36).substr(2, 6)}`,
+          name: col.customerName,
+          phone: col.phone,
+          address: '',
+          city: col.branch || scope?.branch || 'غير مسجل',
+          openingBalance: 0,
+          notes: col.notes || '',
+          createdAt: col.date || (col.createdAt ? (typeof col.createdAt === 'string' ? col.createdAt : col.createdAt.toISOString().split('T')[0]) : getTodayDateStr()),
+          inspections: [],
+          quotations: [],
+          sales: [],
+          collections: [],
+        });
       }
+      customerMap.get(key).collections.push(col);
+      visibleCollections.push(col);
     }
 
     // 7. Calculate aggregate balances and generate detailed ledger entries
