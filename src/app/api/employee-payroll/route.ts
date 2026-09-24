@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getBranchScope, branchWhere, effectiveCreateBranch } from '@/lib/branchScope';
-import { assertPagePermission } from '@/lib/permissionsServer';
 
 export const dynamic = 'force-dynamic';
 
@@ -89,21 +88,40 @@ export async function DELETE(request: Request) {
     if (!scope) {
       return NextResponse.json({ success: false, error: 'غير مصرح' }, { status: 401 });
     }
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
+    const url = new URL(request.url);
+    const id = url.searchParams.get('id');
     if (!id) {
-      return NextResponse.json({ success: false, error: 'المعرف مطلوب للحذف' }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'معرف السند مطلوب' }, { status: 400 });
     }
 
     const existing = await prisma.payrollSettlement.findUnique({ where: { id } });
     if (!existing) {
-      return NextResponse.json({ success: false, error: 'سجل التقفيل غير موجود' }, { status: 404 });
+      return NextResponse.json({ success: false, error: 'سند القبض غير موجود' }, { status: 404 });
     }
+
     if (!scope.isAdmin && existing.branch !== scope.branch) {
       return NextResponse.json({ success: false, error: 'غير مصرح بحذف تقفيل فرع آخر' }, { status: 403 });
     }
-    const perm = await assertPagePermission(request, 'p_employees', 'delete');
-    if (!perm.ok) return NextResponse.json({ success: false, error: perm.error }, { status: perm.status });
+
+    // Auto-clean corresponding expense from treasury if it exists
+    try {
+      if (existing.employeeName) {
+        const matchExpenses = await prisma.expense.findMany({
+          where: {
+            branch: existing.branch,
+            category: 'رواتب وسلف',
+            description: { contains: existing.employeeName },
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+        });
+        if (matchExpenses.length > 0) {
+          await prisma.expense.delete({ where: { id: matchExpenses[0].id } });
+        }
+      }
+    } catch (expErr) {
+      console.error('Failed to auto-clean payroll expense:', expErr);
+    }
 
     await prisma.payrollSettlement.delete({ where: { id } });
     return NextResponse.json({ success: true });
@@ -112,4 +130,3 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ success: false, error: 'حدث خطأ فى الخادم' }, { status: 500 });
   }
 }
-

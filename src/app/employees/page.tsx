@@ -113,14 +113,6 @@ export default function EmployeesManagementPage() {
   const [payrollPayMethod, setPayrollPayMethod] = useState<Record<string, string>>({});
   const [payingKey, setPayingKey] = useState<string | null>(null);
 
-  // إلغاء التقفيل والقبض / تحويل لسلفة
-  const [cancelingSettlement, setCancelingSettlement] = useState<{
-    row: any;
-    settlement: WeeklyPayrollSettlement;
-  } | null>(null);
-  const [cancelActionType, setCancelActionType] = useState<'convertToAdvance' | 'deleteExpense'>('convertToAdvance');
-  const [isCanceling, setIsCanceling] = useState(false);
-
   // Employee Add / Edit Modal State (Admin only)
   const [showEmpModal, setShowEmpModal] = useState<boolean>(false);
   const [editingEmp, setEditingEmp] = useState<Employee | null>(null);
@@ -208,15 +200,24 @@ export default function EmployeesManagementPage() {
     return map;
   }, [branchFilteredEmployees, selectedBranch]);
 
-  // ── Advances/Deductions log — بحث + تصفية + باجنيشن + تعديل ──
+  // ── Advances/Deductions/Payrolls log — بحث + تصفية + تاريخ + باجنيشن + تعديل/حذف ──
   const [advSearch, setAdvSearch] = useState<string>('');
   const [advBranchFilter, setAdvBranchFilter] = useState<string>('الكل');
   const [advTypeFilter, setAdvTypeFilter] = useState<string>('الكل');
+  const [advDateFrom, setAdvDateFrom] = useState<string>('');
+  const [advDateTo, setAdvDateTo] = useState<string>('');
+  const [advQuickDate, setAdvQuickDate] = useState<'all' | 'today' | 'yesterday' | 'week' | 'month' | 'custom'>('all');
   const [advCurrentPage, setAdvCurrentPage] = useState<number>(1);
   const advPageSize = 20;
   const [showAdvEditModal, setShowAdvEditModal] = useState<boolean>(false);
   const [editingAdv, setEditingAdv] = useState<EmployeeAdvance | null>(null);
-  const [advEditForm, setAdvEditForm] = useState<{ date: string; type: 'سلفة' | 'خصم' | 'مكافأة'; amount: string; reason: string }>({
+  const [editingPayroll, setEditingPayroll] = useState<WeeklyPayrollSettlement | null>(null);
+  const [advEditForm, setAdvEditForm] = useState<{
+    date: string;
+    type: 'سلفة' | 'خصم' | 'مكافأة' | 'قبض';
+    amount: string;
+    reason: string;
+  }>({
     date: getTodayDateStr(),
     type: 'سلفة',
     amount: '',
@@ -224,53 +225,202 @@ export default function EmployeesManagementPage() {
   });
   const [savingAdvEdit, setSavingAdvEdit] = useState<boolean>(false);
 
-  useEffect(() => { setAdvCurrentPage(1); }, [advSearch, advBranchFilter, advTypeFilter, selectedBranch]);
+  const setAdvQuickFilter = (mode: 'all' | 'today' | 'yesterday' | 'week' | 'month') => {
+    setAdvQuickDate(mode);
+    const today = getTodayDateStr();
+    if (mode === 'all') {
+      setAdvDateFrom('');
+      setAdvDateTo('');
+    } else if (mode === 'today') {
+      setAdvDateFrom(today);
+      setAdvDateTo(today);
+    } else if (mode === 'yesterday') {
+      const yesterday = getYesterdayDateStr();
+      setAdvDateFrom(yesterday);
+      setAdvDateTo(yesterday);
+    } else if (mode === 'week') {
+      const d = new Date(today);
+      d.setDate(d.getDate() - 7);
+      setAdvDateFrom(getTodayDateStr(d));
+      setAdvDateTo(today);
+    } else if (mode === 'month') {
+      const monthStart = `${today.substring(0, 7)}-01`;
+      setAdvDateFrom(monthStart);
+      setAdvDateTo(today);
+    }
+  };
+
+  useEffect(() => { setAdvCurrentPage(1); }, [advSearch, advBranchFilter, advTypeFilter, advDateFrom, advDateTo, selectedBranch]);
+
+  interface CombinedFinancialRecord {
+    id: string;
+    date: string;
+    employeeId: string;
+    employeeName: string;
+    branch: string;
+    type: 'سلفة' | 'خصم' | 'مكافأة' | 'قبض';
+    amount: number;
+    reason: string;
+    isPayroll: boolean;
+    rawAdvance?: EmployeeAdvance;
+    rawPayroll?: WeeklyPayrollSettlement;
+  }
+
+  const combinedFinancialRecords: CombinedFinancialRecord[] = useMemo(() => {
+    const advList: CombinedFinancialRecord[] = advances.map(a => ({
+      id: a.id,
+      date: a.date,
+      employeeId: a.employeeId,
+      employeeName: a.employeeName,
+      branch: a.branch,
+      type: a.type as any,
+      amount: a.amount,
+      reason: a.reason || (a.type === 'سلفة' ? 'سلفة نقدية' : 'إداري'),
+      isPayroll: false,
+      rawAdvance: a,
+    }));
+
+    const payList: CombinedFinancialRecord[] = payrolls.map(p => {
+      const payDate = p.paidAt ? getTodayDateStr(p.paidAt) : (p.settlementDate || p.weekEndDate || getTodayDateStr());
+      const periodDesc = p.payType === 'شهري'
+        ? `تقفيل راتب شهري (${p.settlementDate || 'الشهر'})`
+        : `تقفيل راتب أسبوعي (${p.weekStartDate || ''} إلى ${p.weekEndDate || ''})`;
+      return {
+        id: p.id,
+        date: payDate,
+        employeeId: p.employeeId,
+        employeeName: p.employeeName,
+        branch: p.branch,
+        type: 'قبض',
+        amount: p.netPayout,
+        reason: p.notes || periodDesc,
+        isPayroll: true,
+        rawPayroll: p,
+      };
+    });
+
+    return [...advList, ...payList];
+  }, [advances, payrolls]);
 
   const filteredAdvances = useMemo(() => {
     const activeBranch = (!isAdmin && !isSuperAdmin && user?.branch) ? user.branch : selectedBranch;
-    const branchScoped = activeBranch === 'الكل' ? advances : advances.filter(a => normalizeBranchName(a.branch) === normalizeBranchName(activeBranch));
+    const branchScoped = activeBranch === 'الكل'
+      ? combinedFinancialRecords
+      : combinedFinancialRecords.filter(a => normalizeBranchName(a.branch) === normalizeBranchName(activeBranch));
     return branchScoped
       .filter(a => advBranchFilter === 'الكل' || normalizeBranchName(a.branch) === normalizeBranchName(advBranchFilter))
-      .filter(a => advTypeFilter === 'الكل' || a.type === advTypeFilter)
+      .filter(a => {
+        if (advTypeFilter === 'الكل') return true;
+        if (advTypeFilter === 'قبض' || advTypeFilter === 'قبض راتب') return a.type === 'قبض';
+        return a.type === advTypeFilter;
+      })
+      .filter(a => {
+        if (advDateFrom && a.date < advDateFrom) return false;
+        if (advDateTo && a.date > advDateTo) return false;
+        return true;
+      })
       .filter(a => {
         if (!advSearch.trim()) return true;
         const q = advSearch.trim().toLowerCase();
-        return a.employeeName.toLowerCase().includes(q) || (a.reason || '').toLowerCase().includes(q);
+        return (a.employeeName || '').toLowerCase().includes(q) || (a.reason || '').toLowerCase().includes(q);
       })
       .sort((a, b) => b.date.localeCompare(a.date) || a.branch.localeCompare(b.branch, 'ar'));
-  }, [advances, selectedBranch, isAdmin, isSuperAdmin, user, advBranchFilter, advTypeFilter, advSearch]);
+  }, [combinedFinancialRecords, selectedBranch, isAdmin, isSuperAdmin, user, advBranchFilter, advTypeFilter, advSearch, advDateFrom, advDateTo]);
 
   const paginatedAdvances = filteredAdvances.slice((advCurrentPage - 1) * advPageSize, advCurrentPage * advPageSize);
 
-  const openEditAdv = (adv: EmployeeAdvance) => {
-    setEditingAdv(adv);
-    setAdvEditForm({ date: adv.date, type: adv.type, amount: String(adv.amount), reason: adv.reason || '' });
-    setShowAdvEditModal(true);
+  const openEditRecord = (rec: CombinedFinancialRecord) => {
+    if (rec.isPayroll && rec.rawPayroll) {
+      setEditingAdv(null);
+      setEditingPayroll(rec.rawPayroll);
+      setAdvEditForm({
+        date: rec.date,
+        type: 'قبض',
+        amount: String(rec.amount),
+        reason: rec.rawPayroll.notes || '',
+      });
+      setShowAdvEditModal(true);
+    } else if (rec.rawAdvance) {
+      setEditingPayroll(null);
+      setEditingAdv(rec.rawAdvance);
+      setAdvEditForm({
+        date: rec.rawAdvance.date,
+        type: rec.rawAdvance.type,
+        amount: String(rec.rawAdvance.amount),
+        reason: rec.rawAdvance.reason || '',
+      });
+      setShowAdvEditModal(true);
+    }
   };
 
   const handleSaveAdvEdit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingAdv) return;
     if (!advEditForm.amount || Number(advEditForm.amount) <= 0) {
       alert('من فضلك أدخل مبلغ صحيح أكبر من صفر');
       return;
     }
     setSavingAdvEdit(true);
-    const updated: EmployeeAdvance = {
-      ...editingAdv,
-      date: advEditForm.date,
-      type: advEditForm.type,
-      amount: parseFloat(advEditForm.amount),
-      reason: advEditForm.reason,
-    };
-    const ok = await saveAdvance(updated);
-    setSavingAdvEdit(false);
-    if (!ok) {
-      alert('فشل حفظ التعديل — من فضلك حاول مرة أخرى');
-      return;
+
+    if (editingPayroll) {
+      const updated: WeeklyPayrollSettlement = {
+        ...editingPayroll,
+        netPayout: parseFloat(advEditForm.amount),
+        paidAt: advEditForm.date,
+        notes: advEditForm.reason || undefined,
+      };
+      const ok = await savePayrollSettlement(updated);
+      setSavingAdvEdit(false);
+      if (!ok) {
+        alert('فشل حفظ تعديل سند القبض — من فضلك حاول مرة أخرى');
+        return;
+      }
+      setPayrolls(prev => prev.map(p => (p.id === updated.id ? updated : p)));
+      setShowAdvEditModal(false);
+      setEditingPayroll(null);
+    } else if (editingAdv) {
+      const updated: EmployeeAdvance = {
+        ...editingAdv,
+        date: advEditForm.date,
+        type: advEditForm.type === 'قبض' ? 'سلفة' : advEditForm.type,
+        amount: parseFloat(advEditForm.amount),
+        reason: advEditForm.reason,
+      };
+      const ok = await saveAdvance(updated);
+      setSavingAdvEdit(false);
+      if (!ok) {
+        alert('فشل حفظ التعديل — من فضلك حاول مرة أخرى');
+        return;
+      }
+      setAdvances(prev => prev.map(a => (a.id === updated.id ? updated : a)));
+      setShowAdvEditModal(false);
+      setEditingAdv(null);
     }
-    setAdvances(prev => prev.map(a => (a.id === updated.id ? updated : a)));
-    setShowAdvEditModal(false);
+  };
+
+  const handleDeleteRecord = async (rec: CombinedFinancialRecord) => {
+    if (rec.isPayroll && rec.rawPayroll) {
+      if (!confirm(`هل أنت متأكد من إلغاء وحذف سند قبض راتب "${rec.employeeName}" بقيمة ${rec.amount.toLocaleString()} ج؟\n\n⚠️ سيتم إلغاء التقفيل فورًا وإعادة الموظف لحالة "غير مقبوض" فى صفحة الرواتب حتى تتمكن من صرف سلفة له أو إعادة تقفيله.`)) {
+        return;
+      }
+      const prevPayrolls = payrolls;
+      setPayrolls(prev => prev.filter(p => p.id !== rec.id));
+      const ok = await deletePayrollSettlement(rec.id);
+      if (ok) {
+        alert(`✅ تم إلغاء سند القبض بنجاح، وأصبح بإمكانك الآن تسجيل سلفة للموظف ${rec.employeeName} أو تقفيل حسابه مجددًا`);
+      } else {
+        setPayrolls(prevPayrolls);
+        alert('فشل إلغاء سند القبض على السيرفر — من فضلك حاول مرة أخرى');
+      }
+    } else {
+      if (!confirm(`هل أنت متأكد من حذف هذا السجل (${rec.type} للموظف ${rec.employeeName})؟`)) return;
+      const previous = advances;
+      setAdvances(advances.filter(a => a.id !== rec.id));
+      const ok = await deleteAdvance(rec.id);
+      if (!ok) {
+        setAdvances(previous);
+        alert('فشل حذف السجل على السيرفر — من فضلك حاول مرة أخرى');
+      }
+    }
   };
 
   // Employee CRUD handlers
@@ -718,7 +868,6 @@ export default function EmployeesManagementPage() {
         alert(expData?.error || 'فشل خصم الراتب من الخزينة');
         return;
       }
-      const createdExpenseId = expData?.expense?.id;
 
       // 2. تثبيت التقفيل بشكل دائم عشان مايتقبضش مرتين لنفس الفترة
       const settlement: WeeklyPayrollSettlement = {
@@ -740,7 +889,6 @@ export default function EmployeesManagementPage() {
         paidAt: new Date().toISOString(),
         paidFromTreasury: row.employee.branch,
         payType: row.isMonthly ? 'شهري' : 'أسبوعي',
-        notes: createdExpenseId ? `[EXPENSE_ID:${createdExpenseId}]` : undefined,
       };
       const ok = await savePayrollSettlement(settlement);
       if (ok) {
@@ -755,89 +903,6 @@ export default function EmployeesManagementPage() {
       alert('خطأ فى الاتصال بالسيرفر: ' + (err?.message || ''));
     } finally {
       setPayingKey(null);
-    }
-  };
-
-  const handleConfirmCancel = async () => {
-    if (!cancelingSettlement) return;
-    const { row, settlement } = cancelingSettlement;
-    setIsCanceling(true);
-    try {
-      // 1. حذف سجل التقفيل من قاعدة البيانات
-      const delOk = await deletePayrollSettlement(settlement.id);
-      if (!delOk) {
-        alert('فشل إلغاء سجل التقفيل من السيرفر');
-        setIsCanceling(false);
-        return;
-      }
-
-      // 2. استخراج معرف المصروف من الملاحظات أو البحث عنه فى المصروفات
-      let expId: string | null = null;
-      if (settlement.notes && settlement.notes.includes('[EXPENSE_ID:')) {
-        const match = settlement.notes.match(/\[EXPENSE_ID:([^\]]+)\]/);
-        if (match && match[1]) expId = match[1];
-      }
-
-      if (!expId) {
-        try {
-          const res = await fetch('/api/expenses', { cache: 'no-store' });
-          if (res.ok) {
-            const data = await res.json();
-            if (Array.isArray(data.expenses)) {
-              const exp = data.expenses.find((e: any) =>
-                e.branch === settlement.branch &&
-                e.category === 'رواتب وسلف' &&
-                e.description?.includes(settlement.employeeName) &&
-                Math.abs(Number(e.amount) - Number(settlement.netPayout)) < 0.01
-              );
-              if (exp) expId = exp.id;
-            }
-          }
-        } catch {}
-      }
-
-      if (cancelActionType === 'convertToAdvance') {
-        // الخيار الأول: تحويل المبلغ لسلفة نقدية على الموظف
-        // حذف مصروف الراتب حتى لا يُحسب مرتين مع السلفة
-        if (expId) {
-          try {
-            await fetch(`/api/expenses?id=${encodeURIComponent(expId)}`, { method: 'DELETE' });
-          } catch {}
-        }
-
-        const advRecord: EmployeeAdvance = {
-          id: `adv_${Date.now()}_converted`,
-          date: settlement.paidAt ? settlement.paidAt.split('T')[0] : getTodayDateStr(),
-          employeeId: settlement.employeeId,
-          employeeName: settlement.employeeName,
-          branch: settlement.branch || row.employee.branch,
-          type: 'سلفة',
-          amount: Number(settlement.netPayout),
-          reason: `سلفة نقدية (محولة من دفعة راتب ${settlement.settlementDate || ''})`,
-          treasuryDeducted: true,
-          recordedBy: user?.name || 'المدير العام',
-        };
-        await saveAdvance(advRecord);
-
-        setAdvances(prev => [advRecord, ...prev]);
-        setPayrolls(prev => prev.filter(p => p.id !== settlement.id));
-        alert(`✅ تم إلغاء تقفيل الراتب بنجاح، وتحويل مبلغ ${settlement.netPayout.toLocaleString()} ج إلى سلفة نقدية على الموظف ${settlement.employeeName} لتخصم مع تقفيل نهاية الشهر.`);
-      } else {
-        // الخيار الثاني: حذف المصروف بالكامل واسترجاع المبلغ للخزينة
-        if (expId) {
-          try {
-            await fetch(`/api/expenses?id=${encodeURIComponent(expId)}`, { method: 'DELETE' });
-          } catch {}
-        }
-        setPayrolls(prev => prev.filter(p => p.id !== settlement.id));
-        alert(`✅ تم إلغاء تقفيل الراتب وحذف المصروف بالكامل للموظف ${settlement.employeeName}.`);
-      }
-
-      setCancelingSettlement(null);
-    } catch (err: any) {
-      alert('حدث خطأ أثناء الإلغاء: ' + (err?.message || ''));
-    } finally {
-      setIsCanceling(false);
     }
   };
 
@@ -864,7 +929,7 @@ export default function EmployeesManagementPage() {
               }`}
             >
               <span>💸</span>
-              <span>السلف والخصومات</span>
+              <span>السلف والخصومات وسندات القبض</span>
             </button>
             {canViewWages && (
               <>
@@ -1133,53 +1198,110 @@ export default function EmployeesManagementPage() {
               </form>
             </div>
 
-            {/* Advances Log */}
+            {/* Advances & Payrolls Log */}
             <div className="lg:col-span-2 bg-white p-5 md:p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
-              <h3 className="text-base font-black text-slate-900 flex items-center justify-between">
-                <span>📋 سجل السلف والخصومات المسجلة</span>
-                <span className="text-xs font-normal text-slate-500">إجمالي: {filteredAdvances.length} حركة</span>
-              </h3>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-2">
+                <div>
+                  <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+                    <span>📋</span>
+                    <span>سجل السلف والخصومات وسندات القبض المسجلة</span>
+                  </h3>
+                  <p className="text-[11px] text-slate-500">متابعة وإدارة السلف النقدية، الخصومات، المكافآت، وسندات تقفيل الرواتب مع إمكانية التعديل والإلغاء</p>
+                </div>
+                <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200 self-start sm:self-auto">
+                  إجمالي: {filteredAdvances.length} حركة
+                </span>
+              </div>
 
               {/* Filters */}
-              <div className="flex flex-wrap items-center gap-2">
-                <input
-                  type="text"
-                  value={advSearch}
-                  onChange={(e) => setAdvSearch(e.target.value)}
-                  placeholder="🔍 ابحث باسم الموظف أو السبب..."
-                  className="flex-1 min-w-[180px] p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold"
-                />
-                {canViewWages && (
+              <div className="flex flex-col gap-2.5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <input
+                    type="text"
+                    value={advSearch}
+                    onChange={(e) => setAdvSearch(e.target.value)}
+                    placeholder="🔍 ابحث باسم الموظف أو السبب أو نوع الراتب..."
+                    className="flex-1 min-w-[180px] p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:bg-white"
+                  />
+                  {canViewWages && (
+                    <select
+                      value={advBranchFilter}
+                      onChange={(e) => setAdvBranchFilter(e.target.value)}
+                      className="p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold cursor-pointer"
+                    >
+                      <option value="الكل">🌐 كل الفروع</option>
+                      {BRANCHES_LIST.map(b => (
+                        <option key={b.id} value={b.name}>{b.name}</option>
+                      ))}
+                    </select>
+                  )}
                   <select
-                    value={advBranchFilter}
-                    onChange={(e) => setAdvBranchFilter(e.target.value)}
-                    className="p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold"
+                    value={advTypeFilter}
+                    onChange={(e) => setAdvTypeFilter(e.target.value)}
+                    className="p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold cursor-pointer"
                   >
-                    <option value="الكل">🌐 كل الفروع</option>
-                    {BRANCHES_LIST.map(b => (
-                      <option key={b.id} value={b.name}>{b.name}</option>
-                    ))}
+                    <option value="الكل">كل الأنواع</option>
+                    <option value="سلفة">سلفة</option>
+                    <option value="خصم">خصم</option>
+                    <option value="مكافأة">مكافأة</option>
+                    <option value="قبض">💰 قبض راتب</option>
                   </select>
-                )}
-                <select
-                  value={advTypeFilter}
-                  onChange={(e) => setAdvTypeFilter(e.target.value)}
-                  className="p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold"
-                >
-                  <option value="الكل">كل الأنواع</option>
-                  <option value="سلفة">سلفة</option>
-                  <option value="خصم">خصم</option>
-                  <option value="مكافأة">مكافأة</option>
-                </select>
-                {(advSearch || advBranchFilter !== 'الكل' || advTypeFilter !== 'الكل') && (
-                  <button
-                    type="button"
-                    onClick={() => { setAdvSearch(''); setAdvBranchFilter('الكل'); setAdvTypeFilter('الكل'); }}
-                    className="px-3 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold cursor-pointer"
-                  >
-                    ✕ مسح التصفية
-                  </button>
-                )}
+                </div>
+
+                {/* Date Filter Bar */}
+                <div className="flex flex-wrap items-center justify-between gap-2 p-2 bg-slate-50 rounded-xl border border-slate-200 text-xs">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-[11px] font-bold text-slate-600">الفترة:</span>
+                    {(['all', 'today', 'yesterday', 'week', 'month'] as const).map(mode => (
+                      <button
+                        key={mode}
+                        type="button"
+                        onClick={() => setAdvQuickFilter(mode)}
+                        className={`px-2 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                          advQuickDate === mode && !advDateFrom && mode === 'all' ? 'bg-slate-900 text-white shadow-xs' :
+                          advQuickDate === mode ? 'bg-amber-600 text-white shadow-xs' :
+                          'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        {mode === 'all' ? 'الكل' : mode === 'today' ? 'اليوم' : mode === 'yesterday' ? 'أمس' : mode === 'week' ? 'آخر 7 أيام' : 'هذا الشهر'}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] font-bold text-slate-600">من:</span>
+                    <input
+                      type="date"
+                      value={advDateFrom}
+                      onChange={(e) => { setAdvDateFrom(e.target.value); setAdvQuickDate('custom'); }}
+                      className="p-1 bg-white border border-slate-300 rounded-lg text-[11px] font-mono font-bold"
+                    />
+                    <span className="text-[11px] font-bold text-slate-600">إلى:</span>
+                    <input
+                      type="date"
+                      value={advDateTo}
+                      onChange={(e) => { setAdvDateTo(e.target.value); setAdvQuickDate('custom'); }}
+                      className="p-1 bg-white border border-slate-300 rounded-lg text-[11px] font-mono font-bold"
+                    />
+                    {(advSearch || advBranchFilter !== 'الكل' || advTypeFilter !== 'الكل' || advDateFrom || advDateTo) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAdvSearch('');
+                          setAdvBranchFilter('الكل');
+                          setAdvTypeFilter('الكل');
+                          setAdvDateFrom('');
+                          setAdvDateTo('');
+                          setAdvQuickDate('all');
+                        }}
+                        className="px-2 py-1 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-[11px] font-bold cursor-pointer"
+                        title="إعادة تعيين كافة الفلاتر"
+                      >
+                        ✕ مسح
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
 
               <div className="overflow-x-auto">
@@ -1189,16 +1311,16 @@ export default function EmployeesManagementPage() {
                       <th className="p-2.5">التاريخ</th>
                       <th className="p-2.5">الموظف</th>
                       <th className="p-2.5">الفرع</th>
-                      <th className="p-2.5">النوع</th>
+                      <th className="p-2.5 text-center">النوع</th>
                       <th className="p-2.5 font-mono">المبلغ</th>
-                      <th className="p-2.5">السبب</th>
+                      <th className="p-2.5">السبب / البيان</th>
                       {canViewWages && <th className="p-2.5 text-center">إجراءات</th>}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200">
                     {paginatedAdvances.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="p-8 text-center text-slate-400">لا توجد سلف أو خصومات مطابقة</td>
+                        <td colSpan={7} className="p-8 text-center text-slate-400 font-bold">لا توجد سلف أو خصومات أو سندات قبض مطابقة</td>
                       </tr>
                     ) : (
                       paginatedAdvances.map(adv => (
@@ -1206,32 +1328,34 @@ export default function EmployeesManagementPage() {
                           <td className="p-2.5 font-mono text-slate-600">{adv.date}</td>
                           <td className="p-2.5 font-bold text-slate-900">{adv.employeeName}</td>
                           <td className="p-2.5 text-slate-600">{adv.branch}</td>
-                          <td className="p-2.5">
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                              adv.type === 'سلفة' ? 'bg-amber-100 text-amber-800' :
-                              adv.type === 'خصم' ? 'bg-rose-100 text-rose-800' :
-                              'bg-emerald-100 text-emerald-800'
+                          <td className="p-2.5 text-center">
+                            <span className={`px-2 py-0.5 rounded-lg text-[10.5px] font-black border ${
+                              adv.type === 'قبض' ? 'bg-purple-100 text-purple-900 border-purple-300' :
+                              adv.type === 'سلفة' ? 'bg-amber-100 text-amber-900 border-amber-300' :
+                              adv.type === 'خصم' ? 'bg-rose-100 text-rose-800 border-rose-300' :
+                              'bg-emerald-100 text-emerald-800 border-emerald-300'
                             }`}>
-                              {adv.type}
+                              {adv.type === 'قبض' ? '💰 قبض راتب' : adv.type}
                             </span>
                           </td>
-                          <td className="p-2.5 font-mono font-black text-slate-900">{adv.amount.toLocaleString()}</td>
-                          <td className="p-2.5 text-slate-500 text-[11px]">{adv.reason}</td>
+                          <td className="p-2.5 font-mono font-black text-slate-900">{adv.amount.toLocaleString()} ج</td>
+                          <td className="p-2.5 text-slate-600 text-[11px] font-medium">{adv.reason}</td>
                           {canViewWages && (
                             <td className="p-2.5 text-center">
                               <div className="flex items-center justify-center gap-1">
                                 <button
-                                  onClick={() => openEditAdv(adv)}
-                                  className="px-2 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-[11px] font-bold cursor-pointer"
+                                  onClick={() => openEditRecord(adv)}
+                                  className="px-2 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-[11px] font-bold cursor-pointer transition-colors"
+                                  title="تعديل السند"
                                 >
                                   ✏️ تعديل
                                 </button>
                                 <button
-                                  onClick={() => handleDeleteAdvance(adv.id)}
-                                  className="text-rose-600 hover:text-rose-800 font-bold text-xs p-1.5"
-                                  title="حذف"
+                                  onClick={() => handleDeleteRecord(adv)}
+                                  className="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-[11px] font-bold cursor-pointer transition-colors"
+                                  title={adv.isPayroll ? 'إلغاء سند القبض وإعادة الموظف لغير مقبوض' : 'حذف السجل'}
                                 >
-                                  ✕
+                                  {adv.isPayroll ? '🗑️ إلغاء القبض' : '✕ حذف'}
                                 </button>
                               </div>
                             </td>
@@ -1254,8 +1378,8 @@ export default function EmployeesManagementPage() {
           </div>
         )}
 
-        {/* Advance/Deduction Edit Modal (Admin Only) */}
-        {showAdvEditModal && editingAdv && (
+        {/* Advance / Payroll Edit Modal (Admin Only) */}
+        {showAdvEditModal && (editingAdv || editingPayroll) && (
           <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-50 flex items-center justify-center p-4">
             <form
               onSubmit={handleSaveAdvEdit}
@@ -1263,9 +1387,11 @@ export default function EmployeesManagementPage() {
             >
               <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
                 <span>✏️</span>
-                <span>تعديل سلفة / خصم</span>
+                <span>{editingPayroll ? 'تعديل سند قبض راتب' : 'تعديل سلفة / خصم'}</span>
               </h3>
-              <p className="text-[11px] text-slate-400">{editingAdv.employeeName} — {editingAdv.branch}</p>
+              <p className="text-[11px] text-slate-500 font-bold">
+                {(editingPayroll || editingAdv)?.employeeName} — {(editingPayroll || editingAdv)?.branch}
+              </p>
 
               <div>
                 <label className="text-xs font-bold text-slate-600 block mb-1">التاريخ</label>
@@ -1278,48 +1404,56 @@ export default function EmployeesManagementPage() {
                 />
               </div>
 
-              <div>
-                <label className="text-xs font-bold text-slate-600 block mb-1">نوع الحركة</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {(['سلفة', 'خصم', 'مكافأة'] as const).map(type => (
-                    <button
-                      key={type}
-                      type="button"
-                      onClick={() => setAdvEditForm({ ...advEditForm, type })}
-                      className={`py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-                        advEditForm.type === type
-                          ? type === 'سلفة' ? 'bg-amber-600 text-white border-amber-600 shadow-xs' :
-                            type === 'خصم' ? 'bg-rose-600 text-white border-rose-600 shadow-xs' :
-                            'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                      }`}
-                    >
-                      {type}
-                    </button>
-                  ))}
+              {!editingPayroll ? (
+                <div>
+                  <label className="text-xs font-bold text-slate-600 block mb-1">نوع الحركة</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {(['سلفة', 'خصم', 'مكافأة'] as const).map(type => (
+                      <button
+                        key={type}
+                        type="button"
+                        onClick={() => setAdvEditForm({ ...advEditForm, type })}
+                        className={`py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                          advEditForm.type === type
+                            ? type === 'سلفة' ? 'bg-amber-600 text-white border-amber-600 shadow-xs' :
+                              type === 'خصم' ? 'bg-rose-600 text-white border-rose-600 shadow-xs' :
+                              'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                            : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        {type}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="p-2.5 bg-purple-50 border border-purple-200 rounded-xl text-xs text-purple-900 font-bold flex items-center gap-2">
+                  <span>💰</span>
+                  <span>سند قبض وتقفيل راتب ({editingPayroll.payType || 'أسبوعي'})</span>
+                </div>
+              )}
 
               <div>
-                <label className="text-xs font-bold text-slate-600 block mb-1">المبلغ بالجنيه</label>
+                <label className="text-xs font-bold text-slate-600 block mb-1">المبلغ بالجنيه *</label>
                 <input
                   type="number"
                   min="1"
-                  step="1"
+                  step="0.01"
                   value={advEditForm.amount}
                   onChange={(e) => setAdvEditForm({ ...advEditForm, amount: e.target.value })}
                   required
-                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-mono font-bold"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-mono font-bold text-slate-900"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-600 block mb-1">السبب / البيان</label>
+                <label className="text-xs font-bold text-slate-600 block mb-1">السبب / البيان / ملاحظات</label>
                 <input
                   type="text"
                   value={advEditForm.reason}
                   onChange={(e) => setAdvEditForm({ ...advEditForm, reason: e.target.value })}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs"
+                  placeholder={editingPayroll ? 'ملاحظات سند القبض...' : 'سبب السلفة أو الخصم...'}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800"
                 />
               </div>
 
@@ -1333,7 +1467,11 @@ export default function EmployeesManagementPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setShowAdvEditModal(false)}
+                  onClick={() => {
+                    setShowAdvEditModal(false);
+                    setEditingAdv(null);
+                    setEditingPayroll(null);
+                  }}
                   className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs cursor-pointer"
                 >
                   إلغاء
@@ -1496,32 +1634,11 @@ export default function EmployeesManagementPage() {
                           </td>
                           <td className="p-3 text-center">
                             {existingSettlement ? (
-                              <div className="flex flex-col items-center gap-1">
-                                <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-lg font-black text-[11px] whitespace-nowrap">
-                                  ✅ تم القبض ({existingSettlement.netPayout.toLocaleString()} ج)
+                              <div className="flex flex-col items-center gap-0.5">
+                                <span className="px-2.5 py-1 bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-lg font-black text-[11px] whitespace-nowrap">
+                                  ✅ تم القبض
                                 </span>
                                 <span className="text-[9px] text-slate-400 font-mono">{formatDateOnly(existingSettlement.paidAt || '')}</span>
-                                <div className="flex items-center gap-1.5 mt-0.5">
-                                  <button
-                                    onClick={() => setSelectedEmpForSlip(row)}
-                                    className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md font-bold text-[10px] cursor-pointer"
-                                    title="معاينة إيصال القبض"
-                                  >
-                                    👁️ إيصال
-                                  </button>
-                                  {canViewWages && (
-                                    <button
-                                      onClick={() => {
-                                        setCancelingSettlement({ row, settlement: existingSettlement });
-                                        setCancelActionType('convertToAdvance');
-                                      }}
-                                      className="px-2 py-1 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 rounded-md font-bold text-[10px] cursor-pointer whitespace-nowrap"
-                                      title="إلغاء القبض أو تحويله لسلفة"
-                                    >
-                                      ↩️ إلغاء / سلفة
-                                    </button>
-                                  )}
-                                </div>
                               </div>
                             ) : (
                               <div className="flex flex-col items-center gap-1.5">
@@ -2226,95 +2343,6 @@ export default function EmployeesManagementPage() {
                   className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl"
                 >
                   إغلاق
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ── Cancel / Rollback Payroll Modal ── */}
-        {cancelingSettlement && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-3xl p-6 max-w-md w-full border border-slate-200 shadow-2xl space-y-4 animate-fadeIn text-right">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-200">
-                <h3 className="font-black text-slate-900 text-sm flex items-center gap-2">
-                  <span>↩️</span>
-                  <span>إلغاء تقفيل وقبض الراتب</span>
-                </h3>
-                <button
-                  onClick={() => setCancelingSettlement(null)}
-                  className="text-slate-400 hover:text-slate-600 text-lg leading-none cursor-pointer"
-                >
-                  ✕
-                </button>
-              </div>
-
-              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 text-xs space-y-1">
-                <div className="font-bold text-amber-950">
-                  الموظف: <span className="font-black text-slate-900">{cancelingSettlement.settlement.employeeName}</span> ({cancelingSettlement.settlement.branch})
-                </div>
-                <div className="text-slate-700">
-                  المبلغ المقبوض: <span className="font-mono font-black text-emerald-800">{cancelingSettlement.settlement.netPayout.toLocaleString()} ج</span>
-                </div>
-                <div className="text-slate-700">
-                  الفترة: <span className="font-bold">{cancelingSettlement.settlement.settlementDate}</span>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-700 block">اختر الإجراء المطلوب بعد إلغاء التقفيل:</label>
-                
-                <label className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition-all ${
-                  cancelActionType === 'convertToAdvance' ? 'bg-emerald-50 border-emerald-400 shadow-xs' : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
-                }`}>
-                  <input
-                    type="radio"
-                    name="cancelAction"
-                    checked={cancelActionType === 'convertToAdvance'}
-                    onChange={() => setCancelActionType('convertToAdvance')}
-                    className="mt-0.5 accent-emerald-600 cursor-pointer"
-                  />
-                  <div className="text-xs">
-                    <div className="font-black text-emerald-950">🔄 تحويل المبلغ إلى سلفة نقدية على الموظف (موصى به)</div>
-                    <div className="text-[11px] text-slate-600 mt-0.5 leading-relaxed">
-                      يتم فتح حساب الموظف ليكمل باقي أيام الشهر، مع تسجيل المبلغ ({cancelingSettlement.settlement.netPayout.toLocaleString()} ج) كسلفة تُخصم تلقائياً عند التقفيل النهائي لنهاية الشهر.
-                    </div>
-                  </div>
-                </label>
-
-                <label className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition-all ${
-                  cancelActionType === 'deleteExpense' ? 'bg-rose-50 border-rose-400 shadow-xs' : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
-                }`}>
-                  <input
-                    type="radio"
-                    name="cancelAction"
-                    checked={cancelActionType === 'deleteExpense'}
-                    onChange={() => setCancelActionType('deleteExpense')}
-                    className="mt-0.5 accent-rose-600 cursor-pointer"
-                  />
-                  <div className="text-xs">
-                    <div className="font-black text-rose-950">❌ إلغاء التقفيل وحذف المصروف بالكامل</div>
-                    <div className="text-[11px] text-slate-600 mt-0.5 leading-relaxed">
-                      إلغاء التقفيل وحذف سطر المصروف من الخزينة بالكامل واسترجاع الرصيد.
-                    </div>
-                  </div>
-                </label>
-              </div>
-
-              <div className="flex items-center gap-2 pt-2 border-t border-slate-200">
-                <button
-                  onClick={handleConfirmCancel}
-                  disabled={isCanceling}
-                  className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white rounded-xl font-black text-xs cursor-pointer shadow-md transition-all"
-                >
-                  {isCanceling ? 'جارٍ تنفيذ الإلغاء...' : 'تأكيد الإلغاء الآن'}
-                </button>
-                <button
-                  onClick={() => setCancelingSettlement(null)}
-                  disabled={isCanceling}
-                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs cursor-pointer"
-                >
-                  تراجع
                 </button>
               </div>
             </div>
