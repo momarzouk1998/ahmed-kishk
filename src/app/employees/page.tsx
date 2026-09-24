@@ -203,10 +203,12 @@ export default function EmployeesManagementPage() {
   // ── Advances/Deductions/Payrolls log — بحث + تصفية + تاريخ + باجنيشن + تعديل/حذف ──
   const [advSearch, setAdvSearch] = useState<string>('');
   const [advBranchFilter, setAdvBranchFilter] = useState<string>('الكل');
+  const [advEmployeeFilter, setAdvEmployeeFilter] = useState<string>('الكل');
   const [advTypeFilter, setAdvTypeFilter] = useState<string>('الكل');
   const [advDateFrom, setAdvDateFrom] = useState<string>('');
   const [advDateTo, setAdvDateTo] = useState<string>('');
   const [advQuickDate, setAdvQuickDate] = useState<'all' | 'today' | 'yesterday' | 'week' | 'month' | 'custom'>('all');
+  const [showAdvFilterModal, setShowAdvFilterModal] = useState<boolean>(false);
   const [advCurrentPage, setAdvCurrentPage] = useState<number>(1);
   const advPageSize = 20;
   const [showAdvEditModal, setShowAdvEditModal] = useState<boolean>(false);
@@ -224,6 +226,34 @@ export default function EmployeesManagementPage() {
     reason: '',
   });
   const [savingAdvEdit, setSavingAdvEdit] = useState<boolean>(false);
+
+  const employeeFilterOptions = useMemo(() => {
+    const activeBranch = (!isAdmin && !isSuperAdmin && user?.branch) ? user.branch : selectedBranch;
+    const filtered = activeBranch === 'الكل'
+      ? employees
+      : employees.filter(e => normalizeBranchName(e.branch) === normalizeBranchName(activeBranch));
+    return [...filtered].sort((a, b) => a.name.localeCompare(b.name, 'ar'));
+  }, [employees, selectedBranch, isAdmin, isSuperAdmin, user]);
+
+  const activeAdvFiltersCount = useMemo(() => {
+    let count = 0;
+    if (advEmployeeFilter !== 'الكل') count++;
+    if (advTypeFilter !== 'الكل') count++;
+    if (advBranchFilter !== 'الكل') count++;
+    if (advDateFrom || advDateTo || advQuickDate !== 'all') count++;
+    if (advSearch.trim()) count++;
+    return count;
+  }, [advEmployeeFilter, advTypeFilter, advBranchFilter, advDateFrom, advDateTo, advQuickDate, advSearch]);
+
+  const handleResetAdvFilters = () => {
+    setAdvEmployeeFilter('الكل');
+    setAdvTypeFilter('الكل');
+    setAdvBranchFilter('الكل');
+    setAdvDateFrom('');
+    setAdvDateTo('');
+    setAdvQuickDate('all');
+    setAdvSearch('');
+  };
 
   const setAdvQuickFilter = (mode: 'all' | 'today' | 'yesterday' | 'week' | 'month') => {
     setAdvQuickDate(mode);
@@ -250,7 +280,7 @@ export default function EmployeesManagementPage() {
     }
   };
 
-  useEffect(() => { setAdvCurrentPage(1); }, [advSearch, advBranchFilter, advTypeFilter, advDateFrom, advDateTo, selectedBranch]);
+  useEffect(() => { setAdvCurrentPage(1); }, [advSearch, advBranchFilter, advEmployeeFilter, advTypeFilter, advDateFrom, advDateTo, selectedBranch]);
 
   interface CombinedFinancialRecord {
     id: string;
@@ -310,6 +340,10 @@ export default function EmployeesManagementPage() {
     return branchScoped
       .filter(a => advBranchFilter === 'الكل' || normalizeBranchName(a.branch) === normalizeBranchName(advBranchFilter))
       .filter(a => {
+        if (advEmployeeFilter === 'الكل') return true;
+        return a.employeeId === advEmployeeFilter || a.employeeName === advEmployeeFilter;
+      })
+      .filter(a => {
         if (advTypeFilter === 'الكل') return true;
         if (advTypeFilter === 'قبض' || advTypeFilter === 'قبض راتب') return a.type === 'قبض';
         return a.type === advTypeFilter;
@@ -325,7 +359,7 @@ export default function EmployeesManagementPage() {
         return (a.employeeName || '').toLowerCase().includes(q) || (a.reason || '').toLowerCase().includes(q);
       })
       .sort((a, b) => b.date.localeCompare(a.date) || a.branch.localeCompare(b.branch, 'ar'));
-  }, [combinedFinancialRecords, selectedBranch, isAdmin, isSuperAdmin, user, advBranchFilter, advTypeFilter, advSearch, advDateFrom, advDateTo]);
+  }, [combinedFinancialRecords, selectedBranch, isAdmin, isSuperAdmin, user, advBranchFilter, advEmployeeFilter, advTypeFilter, advSearch, advDateFrom, advDateTo]);
 
   const paginatedAdvances = filteredAdvances.slice((advCurrentPage - 1) * advPageSize, advCurrentPage * advPageSize);
 
@@ -399,17 +433,17 @@ export default function EmployeesManagementPage() {
 
   const handleDeleteRecord = async (rec: CombinedFinancialRecord) => {
     if (rec.isPayroll && rec.rawPayroll) {
-      if (!confirm(`هل أنت متأكد من إلغاء وحذف سند قبض راتب "${rec.employeeName}" بقيمة ${rec.amount.toLocaleString()} ج؟\n\n⚠️ سيتم إلغاء التقفيل فورًا وإعادة الموظف لحالة "غير مقبوض" فى صفحة الرواتب حتى تتمكن من صرف سلفة له أو إعادة تقفيله.`)) {
+      if (!confirm(`هل أنت متأكد من حذف سند قبض "${rec.employeeName}" بقيمة ${rec.amount.toLocaleString()} ج؟\n\n⚠️ سيتم حذف القبض وإعادة الموظف لحالة غير مقبوض حتى تتمكن من صرف سلفة له أو إعادة تقفيله.`)) {
         return;
       }
       const prevPayrolls = payrolls;
       setPayrolls(prev => prev.filter(p => p.id !== rec.id));
       const ok = await deletePayrollSettlement(rec.id);
       if (ok) {
-        alert(`✅ تم إلغاء سند القبض بنجاح، وأصبح بإمكانك الآن تسجيل سلفة للموظف ${rec.employeeName} أو تقفيل حسابه مجددًا`);
+        alert(`✅ تم حذف سند القبض للموظف ${rec.employeeName} بنجاح`);
       } else {
         setPayrolls(prevPayrolls);
-        alert('فشل إلغاء سند القبض على السيرفر — من فضلك حاول مرة أخرى');
+        alert('فشل حذف سند القبض على السيرفر — من فضلك حاول مرة أخرى');
       }
     } else {
       if (!confirm(`هل أنت متأكد من حذف هذا السجل (${rec.type} للموظف ${rec.employeeName})؟`)) return;
@@ -1213,95 +1247,92 @@ export default function EmployeesManagementPage() {
                 </span>
               </div>
 
-              {/* Filters */}
-              <div className="flex flex-col gap-2.5">
-                <div className="flex flex-wrap items-center gap-2">
-                  <input
-                    type="text"
-                    value={advSearch}
-                    onChange={(e) => setAdvSearch(e.target.value)}
-                    placeholder="🔍 ابحث باسم الموظف أو السبب أو نوع الراتب..."
-                    className="flex-1 min-w-[180px] p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:bg-white"
-                  />
-                  {canViewWages && (
-                    <select
-                      value={advBranchFilter}
-                      onChange={(e) => setAdvBranchFilter(e.target.value)}
-                      className="p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold cursor-pointer"
-                    >
-                      <option value="الكل">🌐 كل الفروع</option>
-                      {BRANCHES_LIST.map(b => (
-                        <option key={b.id} value={b.name}>{b.name}</option>
-                      ))}
-                    </select>
-                  )}
-                  <select
-                    value={advTypeFilter}
-                    onChange={(e) => setAdvTypeFilter(e.target.value)}
-                    className="p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold cursor-pointer"
-                  >
-                    <option value="الكل">كل الأنواع</option>
-                    <option value="سلفة">سلفة</option>
-                    <option value="خصم">خصم</option>
-                    <option value="مكافأة">مكافأة</option>
-                    <option value="قبض">💰 قبض راتب</option>
-                  </select>
-                </div>
+              {/* Filter Bar */}
+              <div className="space-y-2.5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 flex-1 min-w-[240px]">
+                    <div className="relative flex-1">
+                      <input
+                        type="text"
+                        value={advSearch}
+                        onChange={(e) => setAdvSearch(e.target.value)}
+                        placeholder="🔍 ابحث بالملاحظات أو السبب أو الموظف..."
+                        className="w-full p-2.5 pr-8 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:bg-white"
+                      />
+                      {advSearch && (
+                        <button
+                          type="button"
+                          onClick={() => setAdvSearch('')}
+                          className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold cursor-pointer"
+                          title="مسح البحث"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
 
-                {/* Date Filter Bar */}
-                <div className="flex flex-wrap items-center justify-between gap-2 p-2 bg-slate-50 rounded-xl border border-slate-200 text-xs">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="text-[11px] font-bold text-slate-600">الفترة:</span>
-                    {(['all', 'today', 'yesterday', 'week', 'month'] as const).map(mode => (
-                      <button
-                        key={mode}
-                        type="button"
-                        onClick={() => setAdvQuickFilter(mode)}
-                        className={`px-2 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
-                          advQuickDate === mode && !advDateFrom && mode === 'all' ? 'bg-slate-900 text-white shadow-xs' :
-                          advQuickDate === mode ? 'bg-amber-600 text-white shadow-xs' :
-                          'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
-                        }`}
-                      >
-                        {mode === 'all' ? 'الكل' : mode === 'today' ? 'اليوم' : mode === 'yesterday' ? 'أمس' : mode === 'week' ? 'آخر 7 أيام' : 'هذا الشهر'}
-                      </button>
-                    ))}
+                    {/* Filter Modal Trigger Button */}
+                    <button
+                      type="button"
+                      onClick={() => setShowAdvFilterModal(true)}
+                      className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-black border transition-all cursor-pointer shadow-xs ${
+                        activeAdvFiltersCount > 0
+                          ? 'bg-amber-600 hover:bg-amber-700 text-white border-amber-600 shadow-amber-200'
+                          : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300'
+                      }`}
+                    >
+                      <span className="text-sm">⚡</span>
+                      <span>تصفية الفلاتر</span>
+                      {activeAdvFiltersCount > 0 && (
+                        <span className="bg-white text-amber-700 px-1.5 py-0.2 rounded-full text-[10.5px] font-black min-w-[18px] text-center">
+                          {activeAdvFiltersCount}
+                        </span>
+                      )}
+                    </button>
                   </div>
 
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[11px] font-bold text-slate-600">من:</span>
-                    <input
-                      type="date"
-                      value={advDateFrom}
-                      onChange={(e) => { setAdvDateFrom(e.target.value); setAdvQuickDate('custom'); }}
-                      className="p-1 bg-white border border-slate-300 rounded-lg text-[11px] font-mono font-bold"
-                    />
-                    <span className="text-[11px] font-bold text-slate-600">إلى:</span>
-                    <input
-                      type="date"
-                      value={advDateTo}
-                      onChange={(e) => { setAdvDateTo(e.target.value); setAdvQuickDate('custom'); }}
-                      className="p-1 bg-white border border-slate-300 rounded-lg text-[11px] font-mono font-bold"
-                    />
-                    {(advSearch || advBranchFilter !== 'الكل' || advTypeFilter !== 'الكل' || advDateFrom || advDateTo) && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setAdvSearch('');
-                          setAdvBranchFilter('الكل');
-                          setAdvTypeFilter('الكل');
-                          setAdvDateFrom('');
-                          setAdvDateTo('');
-                          setAdvQuickDate('all');
-                        }}
-                        className="px-2 py-1 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-[11px] font-bold cursor-pointer"
-                        title="إعادة تعيين كافة الفلاتر"
-                      >
-                        ✕ مسح
-                      </button>
+                  {activeAdvFiltersCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleResetAdvFilters}
+                      className="px-3 py-2 bg-slate-100 hover:bg-rose-50 hover:text-rose-700 text-slate-600 border border-slate-200 rounded-xl text-xs font-bold cursor-pointer transition-colors"
+                      title="إعادة تعيين كافة الفلاتر"
+                    >
+                      ✕ مسح الفلاتر ({activeAdvFiltersCount})
+                    </button>
+                  )}
+                </div>
+
+                {/* Active Filter Chips */}
+                {activeAdvFiltersCount > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                    <span className="text-[11px] font-bold text-slate-400">الفلاتر المفعلة:</span>
+                    {advEmployeeFilter !== 'الكل' && (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 border border-amber-200 text-amber-900 rounded-lg text-[11px] font-bold">
+                        <span>👤 الموظف: {employees.find(e => e.id === advEmployeeFilter)?.name || advEmployeeFilter}</span>
+                        <button onClick={() => setAdvEmployeeFilter('الكل')} className="text-amber-700 hover:text-amber-900 font-black cursor-pointer">✕</button>
+                      </span>
+                    )}
+                    {advTypeFilter !== 'الكل' && (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-purple-50 border border-purple-200 text-purple-900 rounded-lg text-[11px] font-bold">
+                        <span>🏷️ النوع: {advTypeFilter}</span>
+                        <button onClick={() => setAdvTypeFilter('الكل')} className="text-purple-700 hover:text-purple-900 font-black cursor-pointer">✕</button>
+                      </span>
+                    )}
+                    {advBranchFilter !== 'الكل' && (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 border border-blue-200 text-blue-900 rounded-lg text-[11px] font-bold">
+                        <span>🏢 الفرع: {advBranchFilter}</span>
+                        <button onClick={() => setAdvBranchFilter('الكل')} className="text-blue-700 hover:text-blue-900 font-black cursor-pointer">✕</button>
+                      </span>
+                    )}
+                    {(advDateFrom || advDateTo || advQuickDate !== 'all') && (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-lg text-[11px] font-bold">
+                        <span>📅 الفترة: {advQuickDate !== 'custom' && advQuickDate !== 'all' ? (advQuickDate === 'today' ? 'اليوم' : advQuickDate === 'yesterday' ? 'أمس' : advQuickDate === 'week' ? 'آخر 7 أيام' : 'هذا الشهر') : `${advDateFrom || '...'} إلى ${advDateTo || '...'}`}</span>
+                        <button onClick={() => { setAdvDateFrom(''); setAdvDateTo(''); setAdvQuickDate('all'); }} className="text-emerald-700 hover:text-emerald-900 font-black cursor-pointer">✕</button>
+                      </span>
                     )}
                   </div>
-                </div>
+                )}
               </div>
 
               <div className="overflow-x-auto">
@@ -1329,13 +1360,13 @@ export default function EmployeesManagementPage() {
                           <td className="p-2.5 font-bold text-slate-900">{adv.employeeName}</td>
                           <td className="p-2.5 text-slate-600">{adv.branch}</td>
                           <td className="p-2.5 text-center">
-                            <span className={`px-2 py-0.5 rounded-lg text-[10.5px] font-black border ${
-                              adv.type === 'قبض' ? 'bg-purple-100 text-purple-900 border-purple-300' :
+                            <span className={`px-2 py-0.5 rounded-lg text-[10.5px] font-bold border ${
+                              adv.type === 'قبض' ? 'bg-purple-100 text-purple-900 border-purple-300 font-black' :
                               adv.type === 'سلفة' ? 'bg-amber-100 text-amber-900 border-amber-300' :
                               adv.type === 'خصم' ? 'bg-rose-100 text-rose-800 border-rose-300' :
                               'bg-emerald-100 text-emerald-800 border-emerald-300'
                             }`}>
-                              {adv.type === 'قبض' ? '💰 قبض راتب' : adv.type}
+                              {adv.type}
                             </span>
                           </td>
                           <td className="p-2.5 font-mono font-black text-slate-900">{adv.amount.toLocaleString()} ج</td>
@@ -1353,9 +1384,9 @@ export default function EmployeesManagementPage() {
                                 <button
                                   onClick={() => handleDeleteRecord(adv)}
                                   className="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-[11px] font-bold cursor-pointer transition-colors"
-                                  title={adv.isPayroll ? 'إلغاء سند القبض وإعادة الموظف لغير مقبوض' : 'حذف السجل'}
+                                  title="حذف السجل"
                                 >
-                                  {adv.isPayroll ? '🗑️ إلغاء القبض' : '✕ حذف'}
+                                  ✕ حذف
                                 </button>
                               </div>
                             </td>
@@ -1387,7 +1418,7 @@ export default function EmployeesManagementPage() {
             >
               <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
                 <span>✏️</span>
-                <span>{editingPayroll ? 'تعديل سند قبض راتب' : 'تعديل سلفة / خصم'}</span>
+                <span>{editingPayroll ? 'تعديل سند قبض' : 'تعديل سلفة / خصم'}</span>
               </h3>
               <p className="text-[11px] text-slate-500 font-bold">
                 {(editingPayroll || editingAdv)?.employeeName} — {(editingPayroll || editingAdv)?.branch}
@@ -1428,8 +1459,7 @@ export default function EmployeesManagementPage() {
                 </div>
               ) : (
                 <div className="p-2.5 bg-purple-50 border border-purple-200 rounded-xl text-xs text-purple-900 font-bold flex items-center gap-2">
-                  <span>💰</span>
-                  <span>سند قبض وتقفيل راتب ({editingPayroll.payType || 'أسبوعي'})</span>
+                  <span>سند قبض ({editingPayroll.payType || 'أسبوعي'})</span>
                 </div>
               )}
 
@@ -1478,6 +1508,170 @@ export default function EmployeesManagementPage() {
                 </button>
               </div>
             </form>
+          </div>
+        )}
+
+        {/* Advances / Payrolls Filter Modal */}
+        {showAdvFilterModal && (
+          <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+            <div className="bg-white max-w-lg w-full rounded-3xl p-6 space-y-5 shadow-2xl border border-slate-200 max-h-[90vh] overflow-y-auto">
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center font-bold text-base shadow-xs">
+                    ⚡
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-slate-900">تصفية سجل الحركات المالية</h3>
+                    <p className="text-[11px] text-slate-500 font-bold">تصفية السلف والخصومات والمكافآت وسندات القبض</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowAdvFilterModal(false)}
+                  className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center font-bold cursor-pointer transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Body: Filters */}
+              <div className="space-y-4">
+                {/* 1. Employee Filter */}
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1.5 flex items-center gap-1.5">
+                    <span>👤</span>
+                    <span>تصفية بالموظف</span>
+                  </label>
+                  <select
+                    value={advEmployeeFilter}
+                    onChange={(e) => setAdvEmployeeFilter(e.target.value)}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-900 cursor-pointer focus:bg-white"
+                  >
+                    <option value="الكل">👤 جميع الموظفين ({employees.length})</option>
+                    {employeeFilterOptions.map(emp => (
+                      <option key={emp.id} value={emp.id}>
+                        {emp.name} — {emp.branch}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* 2. Type Filter */}
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1.5 flex items-center gap-1.5">
+                    <span>🏷️</span>
+                    <span>نوع الحركة</span>
+                  </label>
+                  <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
+                    {[
+                      { label: 'الكل', value: 'الكل' },
+                      { label: 'سلفة', value: 'سلفة' },
+                      { label: 'خصم', value: 'خصم' },
+                      { label: 'مكافأة', value: 'مكافأة' },
+                      { label: 'قبض', value: 'قبض' },
+                    ].map(item => (
+                      <button
+                        key={item.value}
+                        type="button"
+                        onClick={() => setAdvTypeFilter(item.value)}
+                        className={`py-2 px-2 rounded-xl text-xs font-bold border transition-all cursor-pointer text-center ${
+                          advTypeFilter === item.value
+                            ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+                            : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 3. Branch Filter (if allowed) */}
+                {canViewWages && (
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 block mb-1.5 flex items-center gap-1.5">
+                      <span>🏢</span>
+                      <span>الفرع</span>
+                    </label>
+                    <select
+                      value={advBranchFilter}
+                      onChange={(e) => setAdvBranchFilter(e.target.value)}
+                      className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-900 cursor-pointer focus:bg-white"
+                    >
+                      <option value="الكل">🌐 كل الفروع</option>
+                      {BRANCHES_LIST.map(b => (
+                        <option key={b.id} value={b.name}>{b.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* 4. Date Range & Quick Presets */}
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1.5 flex items-center gap-1.5">
+                    <span>📅</span>
+                    <span>الفترة والتاريخ</span>
+                  </label>
+                  <div className="flex flex-wrap items-center gap-1.5 mb-2.5">
+                    {(['all', 'today', 'yesterday', 'week', 'month'] as const).map(mode => (
+                      <button
+                        key={mode}
+                        type="button"
+                        onClick={() => setAdvQuickFilter(mode)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                          advQuickDate === mode && !advDateFrom && mode === 'all'
+                            ? 'bg-slate-900 text-white shadow-xs'
+                            : advQuickDate === mode
+                            ? 'bg-amber-600 text-white shadow-xs'
+                            : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                        }`}
+                      >
+                        {mode === 'all' ? 'الكل' : mode === 'today' ? 'اليوم' : mode === 'yesterday' ? 'أمس' : mode === 'week' ? 'آخر 7 أيام' : 'هذا الشهر'}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <span className="text-[11px] font-bold text-slate-500 block mb-1">من تاريخ:</span>
+                      <input
+                        type="date"
+                        value={advDateFrom}
+                        onChange={(e) => { setAdvDateFrom(e.target.value); setAdvQuickDate('custom'); }}
+                        className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold"
+                      />
+                    </div>
+                    <div>
+                      <span className="text-[11px] font-bold text-slate-500 block mb-1">إلى تاريخ:</span>
+                      <input
+                        type="date"
+                        value={advDateTo}
+                        onChange={(e) => { setAdvDateTo(e.target.value); setAdvQuickDate('custom'); }}
+                        className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="flex items-center justify-between gap-3 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={handleResetAdvFilters}
+                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold cursor-pointer transition-colors"
+                >
+                  🔄 مسح الفلاتر
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowAdvFilterModal(false)}
+                  className="px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold cursor-pointer transition-colors shadow-sm"
+                >
+                  ✅ تطبيق ({filteredAdvances.length} حركة)
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
