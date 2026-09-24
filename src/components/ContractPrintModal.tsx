@@ -384,6 +384,13 @@ export default function ContractPrintModal({ isOpen, onClose, data }: ContractPr
             border-collapse: collapse;
             margin-bottom: 10px;
           }
+          .items-table thead {
+            display: table-header-group;
+          }
+          .items-table tr {
+            page-break-inside: avoid;
+            break-inside: avoid;
+          }
           .items-table th, .items-table td {
             border: 1px solid #334155;
             padding: 5px 6px;

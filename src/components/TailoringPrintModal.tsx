@@ -232,6 +232,13 @@ export default function TailoringPrintModal({ isOpen, onClose, data }: Tailoring
             border-collapse: collapse;
             margin-bottom: 10px;
           }
+          .items-table thead {
+            display: table-header-group;
+          }
+          .items-table tr {
+            page-break-inside: avoid;
+            break-inside: avoid;
+          }
           .items-table th, .items-table td {
             border: 1px solid #334155;
             padding: 5px 6px;
@@ -244,6 +251,10 @@ export default function TailoringPrintModal({ isOpen, onClose, data }: Tailoring
             font-weight: 800;
             font-size: 8.5pt;
             text-align: center;
+          }
+          .info-table, .footer-bar, .header-row {
+            page-break-inside: avoid;
+            break-inside: avoid;
           }
           .footer-bar {
             border-top: 1px solid #cbd5e1;

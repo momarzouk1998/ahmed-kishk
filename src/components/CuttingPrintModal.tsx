@@ -234,6 +234,13 @@ export default function CuttingPrintModal({ isOpen, onClose, data }: CuttingPrin
             border-collapse: collapse;
             margin-bottom: 10px;
           }
+          .items-table thead {
+            display: table-header-group;
+          }
+          .items-table tr {
+            page-break-inside: avoid;
+            break-inside: avoid;
+          }
           .items-table th, .items-table td {
             border: 1px solid #334155;
             padding: 5px 6px;
@@ -249,6 +256,10 @@ export default function CuttingPrintModal({ isOpen, onClose, data }: CuttingPrin
           }
           .items-table tr:nth-child(even) {
             background-color: #f8fafc;
+          }
+          .info-table, .summary-card, .footer-bar, .header-row {
+            page-break-inside: avoid;
+            break-inside: avoid;
           }
           .summary-card {
             background: #f8fafc;
