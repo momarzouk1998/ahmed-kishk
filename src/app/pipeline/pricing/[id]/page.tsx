@@ -90,6 +90,14 @@ export default function PricingDetailPage() {
   const [depSplit, setDepSplit] = useState({ cash: 0, instapay: 0, vodafone: 0, visa: 0 });
   const [savingDeposit, setSavingDeposit] = useState(false);
 
+  // تعديل دفعة محفوظة بالفعل — للمدير فقط (نفس القيد على السيرفر)
+  const [editingDepositId, setEditingDepositId] = useState<string | null>(null);
+  const [editDepAmount, setEditDepAmount] = useState<number>(0);
+  const [editDepMethod, setEditDepMethod] = useState('نقدي');
+  const [editDepDate, setEditDepDate] = useState('');
+  const [editDepNotes, setEditDepNotes] = useState('');
+  const [savingEditDeposit, setSavingEditDeposit] = useState(false);
+
   useEffect(() => {
     async function load() {
       const list = await fetchQuotations();
@@ -675,6 +683,48 @@ export default function PricingDetailPage() {
       });
   };
 
+  const startEditDeposit = (col: any) => {
+    setEditingDepositId(col.id);
+    setEditDepAmount(Number(col.amount) || 0);
+    setEditDepMethod(col.method || 'نقدي');
+    setEditDepDate(col.date ? (col.date.includes('T') ? col.date.split('T')[0] : col.date) : getTodayDateStr());
+    setEditDepNotes(col.notes || '');
+  };
+
+  const handleSaveEditDeposit = async () => {
+    if (!quotation || !editingDepositId) return;
+    const original = depositCollections.find(c => c.id === editingDepositId);
+    if (!original) return;
+    setSavingEditDeposit(true);
+    try {
+      const res = await fetch('/api/customer-collections', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editingDepositId,
+          customerId: original.customerId,
+          customerName: original.customerName,
+          phone: original.phone,
+          branch: original.branch,
+          treasury: original.treasury,
+          date: editDepDate,
+          amount: editDepAmount,
+          method: editDepMethod,
+          notes: editDepNotes,
+        }),
+      });
+      const json = await res.json().catch(() => null);
+      if (json && json.success === false) {
+        alert(json.error || 'تعذر تعديل الدفعة');
+        return;
+      }
+      await Promise.all([loadDepositCollections(quotation.id), refreshQuotationFromServer()]);
+      setEditingDepositId(null);
+    } finally {
+      setSavingEditDeposit(false);
+    }
+  };
+
   const handleSendToWorkshop = () => {
     if (!quotation || quotation.totalAmount === 0) return;
     const updatedList = quotations.map(q => q.id === quotation.id ? { ...q, status: 'تم التحويل للورشة' as const } : q);
@@ -856,25 +906,91 @@ export default function PricingDetailPage() {
               <p className="text-[11px] text-slate-400 text-center py-3">لا توجد دفعات مسجلة بعد على هذا الأوردر.</p>
             ) : (
               <div className="space-y-1.5">
-                {depositCollections.map(col => (
-                  <div key={col.id} className="flex items-center justify-between bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono font-black text-emerald-700">+{(Number(col.amount) || 0).toLocaleString()} ج</span>
-                      <span className="text-slate-500 font-bold">{col.method}</span>
-                      <span className="text-slate-400 font-mono">{col.date ? formatDateOnly(col.date) : ''}</span>
+                {depositCollections.map(col => {
+                  if (editingDepositId === col.id) {
+                    return (
+                      <div key={col.id} className="bg-amber-50/70 border border-amber-300 rounded-lg p-2.5 space-y-2 text-xs">
+                        <div className="grid grid-cols-2 gap-2">
+                          <input
+                            type="number"
+                            min="0"
+                            value={editDepAmount || ''}
+                            onChange={e => setEditDepAmount(Number(e.target.value))}
+                            className="border border-slate-300 rounded-lg px-2 py-1 font-mono font-black bg-white"
+                            placeholder="المبلغ"
+                          />
+                          <input
+                            type="date"
+                            value={editDepDate}
+                            onChange={e => setEditDepDate(e.target.value)}
+                            className="border border-slate-300 rounded-lg px-2 py-1 font-mono bg-white"
+                          />
+                        </div>
+                        <select
+                          value={editDepMethod}
+                          onChange={e => setEditDepMethod(e.target.value)}
+                          className="w-full border border-slate-300 rounded-lg px-2 py-1 bg-white font-bold"
+                        >
+                          <option value="نقدي">نقدي (كاش)</option>
+                          <option value="إنستاباي">إنستاباي</option>
+                          <option value="فودافون كاش">فودافون كاش</option>
+                          <option value="فيزا">فيزا</option>
+                          <option value="تحويل بنكي">تحويل بنكي</option>
+                        </select>
+                        <input
+                          type="text"
+                          value={editDepNotes}
+                          onChange={e => setEditDepNotes(e.target.value)}
+                          placeholder="ملاحظات"
+                          className="w-full border border-slate-300 rounded-lg px-2 py-1 bg-white"
+                        />
+                        <div className="flex gap-1.5">
+                          <button
+                            type="button"
+                            onClick={handleSaveEditDeposit}
+                            disabled={savingEditDeposit}
+                            className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 rounded-lg font-black cursor-pointer disabled:opacity-50"
+                          >{savingEditDeposit ? '...' : 'حفظ'}</button>
+                          <button
+                            type="button"
+                            onClick={() => setEditingDepositId(null)}
+                            disabled={savingEditDeposit}
+                            className="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 py-1.5 rounded-lg font-bold cursor-pointer disabled:opacity-50"
+                          >إلغاء</button>
+                        </div>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div key={col.id} className="flex items-center justify-between bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-black text-emerald-700">+{(Number(col.amount) || 0).toLocaleString()} ج</span>
+                        <span className="text-slate-500 font-bold">{col.method}</span>
+                        <span className="text-slate-400 font-mono">{col.date ? formatDateOnly(col.date) : ''}</span>
+                      </div>
+                      {isAdmin && (
+                        <div className="flex items-center gap-0.5">
+                          <button
+                            type="button"
+                            onClick={() => startEditDeposit(col)}
+                            className="text-amber-600 hover:text-amber-800 p-1 rounded-lg hover:bg-amber-50 transition-colors cursor-pointer"
+                            title="تعديل الدفعة (للمدير فقط)"
+                          >
+                            <span className="material-symbols-outlined text-[16px]">edit</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteDeposit(col.id)}
+                            className="text-slate-300 hover:text-rose-600 p-1 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
+                            title="حذف الدفعة (للمدير فقط)"
+                          >
+                            <span className="material-symbols-outlined text-[16px]">delete</span>
+                          </button>
+                        </div>
+                      )}
                     </div>
-                    {isAdmin && (
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteDeposit(col.id)}
-                        className="text-slate-300 hover:text-rose-600 p-1 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
-                        title="حذف الدفعة (للمدير فقط)"
-                      >
-                        <span className="material-symbols-outlined text-[16px]">delete</span>
-                      </button>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
