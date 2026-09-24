@@ -279,7 +279,7 @@ export default function OrderDetailPage() {
             <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-center">
               <span className="text-slate-500 font-bold block">إجمالي الأوردر بالكامل</span>
               <strong className="text-xl font-mono font-black text-slate-900 mt-1 block">
-                {rooms.reduce((s, r) => s + r.totalSellPrice, 0).toLocaleString()} جنيه
+                {rooms.reduce((s, r) => s + (r.totalSellPrice || 0), 0).toLocaleString()} جنيه
               </strong>
             </div>
 
@@ -303,7 +303,7 @@ export default function OrderDetailPage() {
             <div className="bg-rose-50/60 p-4 rounded-xl border border-rose-200 text-center">
               <span className="text-rose-800 font-bold block">المتبقي للتحصيل عند التسليم</span>
               <strong className="text-xl font-mono font-black text-rose-900 mt-1 block">
-                {Math.max(0, rooms.reduce((s, r) => s + r.totalSellPrice, 0) - depositPaid).toLocaleString()} جنيه
+                {Math.max(0, rooms.reduce((s, r) => s + (r.totalSellPrice || 0), 0) - depositPaid).toLocaleString()} جنيه
               </strong>
             </div>
           </div>
@@ -330,7 +330,7 @@ export default function OrderDetailPage() {
                   </div>
                   <div className="flex items-center gap-3">
                     <strong className="font-mono font-black text-slate-900 text-sm">
-                      {rm.totalSellPrice.toLocaleString()} ج
+                      {(rm.totalSellPrice || 0).toLocaleString()} ج
                     </strong>
                     <button
                       type="button"
