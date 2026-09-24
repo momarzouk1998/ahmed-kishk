@@ -89,6 +89,9 @@ model CustomerCollection {
   // syncCustomerOrdersFromCollections من نسب إجمالي تحصيلات العميل كله (لو عنده
   // أكتر من أوردر) على أوردر واحد بالغلط، وهي المشكلة اللي كانت بتقلب المدفوع/المتبقي.
   quotationId  String?
+  // نوع السند: "عربون تسعير" لو اتسجل من مودال العربون فى شاشة التسعير مباشرة،
+  // أو null لسند تحصيل يدوي عادي من شاشة العملاء.
+  source       String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }

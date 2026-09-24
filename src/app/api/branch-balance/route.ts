@@ -55,8 +55,8 @@ export async function GET(request: Request) {
 
     const [invoices, quotations, collections, expenses, advances, purchases, transfers] = await Promise.all([
       prisma.salesInvoice.findMany({ where: {}, select: { branch: true, paidAmount: true, paymentType: true, notes: true } }),
-      prisma.quotationOrder.findMany({ where: {}, select: { branch: true, depositPaid: true, paymentMethod: true, splitPayments: true } }),
-      prisma.customerCollection.findMany({ where: {}, select: { treasury: true, amount: true, method: true } }),
+      prisma.quotationOrder.findMany({ where: {}, select: { id: true, branch: true, depositPaid: true, paymentMethod: true, splitPayments: true } }),
+      prisma.customerCollection.findMany({ where: {}, select: { treasury: true, amount: true, method: true, quotationId: true } }),
       prisma.expense.findMany({ where: {}, select: { branch: true, amount: true, paymentMethod: true } }),
       prisma.employeeAdvance.findMany({ where: {}, select: { branch: true, amount: true, treasuryDeducted: true } }),
       prisma.purchaseInvoice.findMany({ where: {}, select: { branch: true, paidAmount: true, paymentMethod: true, splitPayments: true } }),
@@ -84,8 +84,12 @@ export async function GET(request: Request) {
       }
     });
 
+    // أوردرات ليها سند تحصيل مربوط مباشرة (quotationId) — العربون بتاعها معدود
+    // بالفعل فى حلقة collections تحت، فبنستبعدها هنا عشان الرصيد ما يتضاعفش.
+    const linkedQuotationIds = new Set(collections.filter(c => c.quotationId).map(c => c.quotationId));
     quotations.forEach(q => {
       if (!matchesBranch(q.branch, branch)) return;
+      if (linkedQuotationIds.has(q.id)) return;
       const split = q.splitPayments as any;
       if (split && typeof split === 'object') {
         balance.cash += Number(split.cash || 0);

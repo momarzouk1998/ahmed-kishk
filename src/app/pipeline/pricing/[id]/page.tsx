@@ -23,7 +23,8 @@ import { getCurtainDefaults } from '@/lib/curtainDefaults';
 import { getTapeTypePrices, saveTapeTypePrices } from '@/lib/tapeTypePrices';
 import SearchableFabricSelect from '@/components/SearchableFabricSelect';
 import { useCurrentUser } from '@/lib/useCurrentUser';
-import { getTodayDateStr } from '@/lib/dateUtils';
+import { getTodayDateStr, formatDateOnly } from '@/lib/dateUtils';
+import { getBranchTreasury } from '@/lib/branches';
 
 interface InventoryFabric {
   id: string;
@@ -75,6 +76,19 @@ export default function PricingDetailPage() {
   const [quotations, setQuotations] = useState<QuotationOrder[]>(() => getStoredQuotations());
   const [inventory, setInventory] = useState<InventoryFabric[]>(mockFabricsInventory);
   const [showPrintModal, setShowPrintModal] = useState(false);
+
+  // مودال تسجيل دفعة/عربون — كل دفعة بتتسجل كسند تحصيل حقيقي مربوط بالأوردر ده
+  // بالذات (quotationId)، فتظهر فورًا فى شاشة "العملاء والتحصيلات" وفى نفس الوقت
+  // فى تفاصيل الأوردر هنا، من مكان واحد بس (بدل ما نعدّل depositPaid يدويًا).
+  const [showDepositModal, setShowDepositModal] = useState(false);
+  const [depositCollections, setDepositCollections] = useState<any[]>([]);
+  const [depAmount, setDepAmount] = useState<number>(0);
+  const [depMethod, setDepMethod] = useState('نقدي (كاش)');
+  const [depTreasury, setDepTreasury] = useState('');
+  const [depNotes, setDepNotes] = useState('');
+  const [depIsMulti, setDepIsMulti] = useState(false);
+  const [depSplit, setDepSplit] = useState({ cash: 0, instapay: 0, vodafone: 0, visa: 0 });
+  const [savingDeposit, setSavingDeposit] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -553,85 +567,112 @@ export default function PricingDetailPage() {
     saveAllQuotations(updatedList);
   };
 
-  const handleDepositChange = (amount: number, method?: string, split?: any) => {
+  // تحميل سندات التحصيل المربوطة بالأوردر ده تحديدًا (quotationId) — نفس السندات
+  // اللي بتظهر فى شاشة "العملاء والتحصيلات"، من مكان واحد بس.
+  const loadDepositCollections = async (qid: string) => {
+    try {
+      const res = await fetch(`/api/customer-collections?quotationId=${encodeURIComponent(qid)}`, { cache: 'no-store' });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && Array.isArray(json.collections)) setDepositCollections(json.collections);
+      }
+    } catch {}
+  };
+
+  useEffect(() => {
+    if (quotation?.id) {
+      loadDepositCollections(quotation.id);
+      setDepTreasury(getBranchTreasury(quotation.branch || currentUser?.branch));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quotation?.id]);
+
+  // بعد أي تسجيل/حذف دفعة، نعيد جلب الأوردر من السيرفر عشان depositPaid/remainingAmount
+  // يترفعوا زي ما السيرفر حسبهم فعليًا (مش بنحسبهم يدويًا هنا تاني).
+  const refreshQuotationFromServer = async () => {
+    const list = await fetchQuotations();
+    if (list && list.length > 0) setQuotations(list);
+  };
+
+  const handleAddDeposit = async () => {
     if (!quotation) return;
-    // #FIX: لو السعر الكلي لسه صفر (لأن تسعير الغرف لسه مش محفوظ)، أي عربون
-    // كان بيتقفل على صفر بصمت (Math.min(amount, 0) = 0) من غير أي تنبيه —
-    // بالظبط الشكوى "بيدفع عربون ومبيسجلش فى الخزنة خالص".
     if (quotation.totalAmount <= 0) {
-      alert('لازم تحفظ تسعير الغرف الأول (السعر الكلي لسه صفر) قبل ما تسجل العربون، وإلا هيتقفل على صفر.');
+      alert('لازم تحفظ تسعير الغرف الأول (السعر الكلي لسه صفر) قبل ما تسجل دفعة، وإلا هتتقفل على صفر.');
       return;
     }
-    const nowIso = new Date().toISOString();
-    const todayStr = nowIso.split('T')[0];
-    const updatedList = quotations.map(q => {
-      if (q.id !== quotation.id) return q;
-      const deposit = Math.min(amount, q.totalAmount);
-      const payMethod = method !== undefined ? method : (q.paymentMethod || 'نقدي (كاش)');
-      return {
-        ...q,
-        depositPaid: deposit,
-        remainingAmount: Math.max(0, q.totalAmount - deposit),
-        paymentMethod: payMethod,
-        splitPayments: split !== undefined ? split : q.splitPayments,
-        status: deposit > 0 ? ('معتمد ومسدد العربون' as const) : q.status,
-        date: q.date || todayStr,
-        updatedAt: nowIso,
-      };
-    });
-    setQuotations(updatedList);
-    saveAllQuotations(updatedList).then(skipped => {
-      const mine = skipped.find(s => s.id === quotation.id);
-      if (mine) alert(`تنبيه: العربون لم يُحفظ على السيرفر — ${mine.reason}`);
-    });
-  };
+    const payments = depIsMulti
+      ? (['cash', 'instapay', 'vodafone', 'visa'] as const)
+          .filter(k => (Number(depSplit[k]) || 0) > 0)
+          .map(k => ({
+            amount: Number(depSplit[k]),
+            method: k === 'cash' ? 'نقدي' : k === 'instapay' ? 'إنستاباي' : k === 'vodafone' ? 'فودافون كاش' : 'فيزا',
+          }))
+      : (depAmount > 0 ? [{ amount: depAmount, method: depMethod === 'نقدي (كاش)' ? 'نقدي' : depMethod }] : []);
 
-  const handlePaymentMethodChange = (method: string) => {
-    if (!quotation) return;
-    let initialSplit = quotation.splitPayments;
-    if (method === 'دفع متعدد / مزيج' && (!initialSplit || (Object.values(initialSplit).reduce((a: number, b: any) => a + (Number(b) || 0), 0) === 0))) {
-      initialSplit = { cash: quotation.depositPaid || 0, instapay: 0, vodafone: 0, visa: 0 };
+    if (payments.length === 0) {
+      alert('يرجى إدخال مبلغ الدفعة');
+      return;
     }
-    const nowIso = new Date().toISOString();
-    const todayStr = nowIso.split('T')[0];
-    const updatedList = quotations.map(q => {
-      if (q.id !== quotation.id) return q;
-      return {
-        ...q,
-        paymentMethod: method,
-        splitPayments: initialSplit,
-        date: q.date || todayStr,
-        updatedAt: nowIso,
-      };
-    });
-    setQuotations(updatedList);
-    saveAllQuotations(updatedList);
+
+    setSavingDeposit(true);
+    try {
+      // 1. تأكيد وجود العميل فعليًا فى جدول العملاء (بالهاتف) عشان نقدر نربط السند بيه.
+      const custRes = await fetch('/api/customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: quotation.customerName, phone: quotation.phone, city: quotation.branch }),
+      });
+      const custJson = await custRes.json().catch(() => null);
+      const customerId = custJson?.customer?.id;
+      if (!customerId) {
+        alert('تعذر ربط العميل بسند التحصيل — حاول مرة أخرى');
+        return;
+      }
+
+      // 2. سند مستقل لكل طريقة دفع فى الدفعة دي، كلهم مربوطين بنفس الأوردر.
+      for (const p of payments) {
+        await fetch('/api/customer-collections', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            date: getTodayDateStr(),
+            customerId,
+            customerName: quotation.customerName,
+            phone: quotation.phone,
+            branch: quotation.branch,
+            amount: p.amount,
+            method: p.method,
+            treasury: depTreasury || getBranchTreasury(quotation.branch),
+            notes: depNotes,
+            quotationId: quotation.id,
+            source: 'عربون تسعير',
+          }),
+        });
+      }
+
+      await Promise.all([loadDepositCollections(quotation.id), refreshQuotationFromServer()]);
+      setShowDepositModal(false);
+      setDepAmount(0);
+      setDepNotes('');
+      setDepIsMulti(false);
+      setDepSplit({ cash: 0, instapay: 0, vodafone: 0, visa: 0 });
+    } finally {
+      setSavingDeposit(false);
+    }
   };
 
-  const handleSplitPaymentChange = (field: 'cash' | 'instapay' | 'vodafone' | 'visa', val: number) => {
+  const handleDeleteDeposit = async (colId: string) => {
     if (!quotation) return;
-    const curSplit = quotation.splitPayments || { cash: 0, instapay: 0, vodafone: 0, visa: 0 };
-    const updatedSplit = { ...curSplit, [field]: Math.max(0, val) };
-    const totalDeposit = (Number(updatedSplit.cash) || 0) + (Number(updatedSplit.instapay) || 0) + (Number(updatedSplit.vodafone) || 0) + (Number(updatedSplit.visa) || 0);
-    const deposit = Math.min(totalDeposit, quotation.totalAmount);
-
-    const nowIso = new Date().toISOString();
-    const todayStr = nowIso.split('T')[0];
-    const updatedList = quotations.map(q => {
-      if (q.id !== quotation.id) return q;
-      return {
-        ...q,
-        depositPaid: deposit,
-        remainingAmount: Math.max(0, q.totalAmount - deposit),
-        paymentMethod: 'دفع متعدد / مزيج',
-        splitPayments: updatedSplit,
-        status: deposit > 0 ? ('معتمد ومسدد العربون' as const) : q.status,
-        date: q.date || todayStr,
-        updatedAt: nowIso,
-      };
-    });
-    setQuotations(updatedList);
-    saveAllQuotations(updatedList);
+    if (!confirm('هل أنت متأكد من حذف هذه الدفعة؟')) return;
+    await fetch(`/api/customer-collections?id=${encodeURIComponent(colId)}`, { method: 'DELETE' })
+      .then(async res => {
+        const json = await res.json().catch(() => null);
+        if (json && json.success === false) {
+          alert(json.error || 'تعذر حذف الدفعة');
+          return;
+        }
+        await Promise.all([loadDepositCollections(quotation.id), refreshQuotationFromServer()]);
+      });
   };
 
   const handleSendToWorkshop = () => {
@@ -764,7 +805,7 @@ export default function PricingDetailPage() {
           </div>
         </div>
 
-        {/* Section 2: Financial Summary Cards & Deposit Payment Details */}
+        {/* Section 2: Financial Summary Cards & Deposit Payments */}
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="bg-slate-50/80 p-4 rounded-2xl border border-slate-200 text-center flex flex-col justify-center">
@@ -780,18 +821,10 @@ export default function PricingDetailPage() {
             </div>
 
             <div className="bg-emerald-50/70 p-4 rounded-2xl border border-emerald-200 text-center shadow-3xs">
-              <span className="text-xs text-emerald-800 font-bold block mb-1">العربون المسدد وحجز المخزن</span>
-              <div className="flex items-center justify-center gap-1.5">
-                <input
-                  type="number"
-                  min="0"
-                  value={quotation.depositPaid || ''}
-                  onChange={(e) => handleDepositChange(Number(e.target.value))}
-                  className="w-32 bg-white border border-emerald-300 rounded-xl px-3 py-1.5 text-emerald-950 font-mono font-black text-center text-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-3xs"
-                  placeholder="0"
-                />
-                <span className="text-sm font-bold text-emerald-900">جنيه</span>
-              </div>
+              <span className="text-xs text-emerald-800 font-bold block mb-1">إجمالي المدفوع (من سندات التحصيل)</span>
+              <span className="font-mono font-black text-2xl text-emerald-900 mt-1 block">
+                {(Number(quotation.depositPaid) || 0).toLocaleString()} جنيه
+              </span>
             </div>
 
             <div className="bg-rose-50/70 p-4 rounded-2xl border border-rose-200 text-center flex flex-col justify-center">
@@ -802,108 +835,145 @@ export default function PricingDetailPage() {
             </div>
           </div>
 
-          {/* Payment Method Selector & Split Breakdown */}
-          <div className="bg-slate-50/70 p-3.5 rounded-xl border border-slate-200/80 space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
+          {/* Recorded Payments List — نفس السندات الظاهرة فى شاشة العملاء والتحصيلات */}
+          <div className="bg-slate-50/70 p-3.5 rounded-xl border border-slate-200/80 space-y-2">
+            <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-emerald-700 text-base">payments</span>
-                <span>طريقة دفع العربون (وسيلة السداد):</span>
+                <span className="material-symbols-outlined text-emerald-700 text-base">receipt_long</span>
+                <span>الدفعات المسجلة على هذا الأوردر:</span>
               </label>
-              
-              {/* Payment Methods Pills */}
-              <div className="flex flex-wrap items-center gap-1.5">
-                {[
-                  { id: 'نقدي (كاش)', label: '💵 كاش' },
-                  { id: 'إنستا باي', label: '⚡ إنستاباي' },
-                  { id: 'فودافون كاش', label: '📱 فودافون كاش' },
-                  { id: 'فيزا / كارت', label: '💳 فيزا / كارت' },
-                  { id: 'تحويل بنكي', label: '🏦 تحويل بنكي' },
-                  { id: 'دفع متعدد / مزيج', label: '🔀 دفع مقسم / متعدد' },
-                ].map(pm => {
-                  const isSelected = (quotation.paymentMethod || 'نقدي (كاش)') === pm.id;
-                  return (
-                    <button
-                      key={pm.id}
-                      type="button"
-                      onClick={() => handlePaymentMethodChange(pm.id)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-                        isSelected
-                          ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
-                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                      }`}
-                    >
-                      {pm.label}
-                    </button>
-                  );
-                })}
-              </div>
+              <button
+                type="button"
+                onClick={() => setShowDepositModal(true)}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-xl text-xs font-black shadow-xs cursor-pointer transition-colors flex items-center gap-1"
+              >
+                <span className="material-symbols-outlined text-[16px]">add_circle</span>
+                تسجيل دفعة جديدة
+              </button>
             </div>
 
-            {/* Split Payment inputs if 'دفع متعدد / مزيج' */}
-            {(quotation.paymentMethod === 'دفع متعدد / مزيج') && (
-              <div className="bg-amber-50/80 border border-amber-200 p-3 rounded-xl space-y-2 text-xs animate-in fade-in duration-200">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-amber-950 flex items-center gap-1">
-                    <span className="material-symbols-outlined text-amber-700 text-sm">call_split</span>
-                    توزيع مبالغ العربون بين طرق الدفع:
-                  </span>
-                  <span className="font-mono font-bold text-[11px] text-amber-800">
-                    الإجمالي: {((Number(quotation.splitPayments?.cash) || 0) + (Number(quotation.splitPayments?.instapay) || 0) + (Number(quotation.splitPayments?.vodafone) || 0) + (Number(quotation.splitPayments?.visa) || 0)).toLocaleString()} ج
-                  </span>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  <div className="bg-white p-2 rounded-lg border border-amber-200">
-                    <label className="font-bold text-slate-700 block mb-1 text-[11px]">💵 كاش:</label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={quotation.splitPayments?.cash || ''}
-                      onChange={(e) => handleSplitPaymentChange('cash', Number(e.target.value))}
-                      placeholder="0"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 font-mono font-black text-xs text-slate-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                    />
+            {depositCollections.length === 0 ? (
+              <p className="text-[11px] text-slate-400 text-center py-3">لا توجد دفعات مسجلة بعد على هذا الأوردر.</p>
+            ) : (
+              <div className="space-y-1.5">
+                {depositCollections.map(col => (
+                  <div key={col.id} className="flex items-center justify-between bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-black text-emerald-700">+{(Number(col.amount) || 0).toLocaleString()} ج</span>
+                      <span className="text-slate-500 font-bold">{col.method}</span>
+                      <span className="text-slate-400 font-mono">{col.date ? formatDateOnly(col.date) : ''}</span>
+                    </div>
+                    {isAdmin && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteDeposit(col.id)}
+                        className="text-slate-300 hover:text-rose-600 p-1 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
+                        title="حذف الدفعة (للمدير فقط)"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">delete</span>
+                      </button>
+                    )}
                   </div>
-
-                  <div className="bg-white p-2 rounded-lg border border-amber-200">
-                    <label className="font-bold text-slate-700 block mb-1 text-[11px]">⚡ إنستاباي:</label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={quotation.splitPayments?.instapay || ''}
-                      onChange={(e) => handleSplitPaymentChange('instapay', Number(e.target.value))}
-                      placeholder="0"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 font-mono font-black text-xs text-slate-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                    />
-                  </div>
-
-                  <div className="bg-white p-2 rounded-lg border border-amber-200">
-                    <label className="font-bold text-slate-700 block mb-1 text-[11px]">📱 فودافون كاش:</label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={quotation.splitPayments?.vodafone || ''}
-                      onChange={(e) => handleSplitPaymentChange('vodafone', Number(e.target.value))}
-                      placeholder="0"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 font-mono font-black text-xs text-slate-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                    />
-                  </div>
-
-                  <div className="bg-white p-2 rounded-lg border border-amber-200">
-                    <label className="font-bold text-slate-700 block mb-1 text-[11px]">💳 فيزا / كارت:</label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={quotation.splitPayments?.visa || ''}
-                      onChange={(e) => handleSplitPaymentChange('visa', Number(e.target.value))}
-                      placeholder="0"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 font-mono font-black text-xs text-slate-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                    />
-                  </div>
-                </div>
+                ))}
               </div>
             )}
           </div>
         </div>
+
+        {/* Deposit Modal — تسجيل دفعة جديدة */}
+        {showDepositModal && (
+          <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => !savingDeposit && setShowDepositModal(false)}>
+            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-5 space-y-4" onClick={e => e.stopPropagation()}>
+              <h3 className="font-black text-slate-900 text-sm">تسجيل دفعة / عربون جديد</h3>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDepIsMulti(false)}
+                  className={`flex-1 py-2 rounded-xl text-xs font-bold border cursor-pointer ${!depIsMulti ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-700 border-slate-200'}`}
+                >دفعة بطريقة واحدة</button>
+                <button
+                  type="button"
+                  onClick={() => setDepIsMulti(true)}
+                  className={`flex-1 py-2 rounded-xl text-xs font-bold border cursor-pointer ${depIsMulti ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-700 border-slate-200'}`}
+                >🔀 مقسّمة بين طرق دفع</button>
+              </div>
+
+              {!depIsMulti ? (
+                <>
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 block mb-1">المبلغ:</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={depAmount || ''}
+                      onChange={e => setDepAmount(Number(e.target.value))}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-mono font-black text-slate-900 text-sm focus:outline-none focus:border-emerald-500"
+                      placeholder="0"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 block mb-1">طريقة الدفع:</label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {['نقدي (كاش)', 'إنستاباي', 'فودافون كاش', 'فيزا', 'تحويل بنكي'].map(m => (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => setDepMethod(m)}
+                          className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border cursor-pointer ${depMethod === m ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-700 border-slate-200'}`}
+                        >{m}</button>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  {([['cash', '💵 كاش'], ['instapay', '⚡ إنستاباي'], ['vodafone', '📱 فودافون كاش'], ['visa', '💳 فيزا']] as const).map(([key, label]) => (
+                    <div key={key}>
+                      <label className="text-[11px] font-bold text-slate-700 block mb-1">{label}:</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={depSplit[key] || ''}
+                        onChange={e => setDepSplit({ ...depSplit, [key]: Number(e.target.value) })}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 font-mono font-black text-xs text-slate-900 focus:outline-none focus:border-emerald-500"
+                        placeholder="0"
+                      />
+                    </div>
+                  ))}
+                  <div className="col-span-2 text-[11px] font-bold text-emerald-800 text-left">
+                    الإجمالي: {(depSplit.cash + depSplit.instapay + depSplit.vodafone + depSplit.visa).toLocaleString()} ج
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">ملاحظات (اختياري):</label>
+                <input
+                  type="text"
+                  value={depNotes}
+                  onChange={e => setDepNotes(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowDepositModal(false)}
+                  disabled={savingDeposit}
+                  className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-2.5 rounded-xl text-xs font-bold cursor-pointer disabled:opacity-50"
+                >إلغاء</button>
+                <button
+                  type="button"
+                  onClick={handleAddDeposit}
+                  disabled={savingDeposit}
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-xl text-xs font-black cursor-pointer disabled:opacity-50"
+                >{savingDeposit ? 'جاري الحفظ...' : 'حفظ الدفعة'}</button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Section 3: Detailed Rooms Table & Fabric Selection */}
         <div className="space-y-4">

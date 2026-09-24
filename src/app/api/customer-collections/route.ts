@@ -18,8 +18,10 @@ export async function GET(request: Request) {
     if (!scope) {
       return NextResponse.json({ success: false, error: 'غير مصرح' }, { status: 401 });
     }
+    const { searchParams } = new URL(request.url);
+    const quotationId = searchParams.get('quotationId');
     const collections = await prisma.customerCollection.findMany({
-      where: branchWhere(scope),
+      where: { ...branchWhere(scope), ...(quotationId ? { quotationId } : {}) },
       orderBy: { createdAt: 'desc' },
     });
     return NextResponse.json({ success: true, collections });
@@ -36,7 +38,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'غير مصرح' }, { status: 401 });
     }
     const body = await request.json();
-    const { id, date, customerId, customerName, phone, branch, amount, method, treasury, notes } = body;
+    const { id, date, customerId, customerName, phone, branch, amount, method, treasury, notes, quotationId, source } = body;
 
     if (!customerId || !customerName || !amount) {
       return NextResponse.json({ success: false, error: 'العميل والمبلغ مطلوبان' }, { status: 400 });
@@ -63,6 +65,8 @@ export async function POST(request: Request) {
         method: method || 'نقدي',
         treasury: treasury || 'خزينة الفرع الرئيسي (سعد زغلول)',
         notes: notes || '',
+        quotationId: quotationId || undefined,
+        source: source || undefined,
       },
       update: {
         date: date || undefined,

@@ -489,7 +489,13 @@ export default function ReportsPage() {
         });
 
         // 3. Quotation deposits in this shift
-        quotations.filter(q => matchB(q.branch) && inPeriod(quotationDate(q))).forEach(q => {
+        // ⚠️ #FIX: كل عربون بيتسجل من مودال "تسجيل دفعة" فى شاشة التسعير بقى سند
+        // تحصيل حقيقي مربوط بالأوردر (quotationId) — وده معدود بالفعل فى القسم 2
+        // فوق (Direct collections). لو عديناه تاني هنا كمان، الفلوس هتتضاعف فى
+        // تقرير الوردية. فبنستبعد أي أوردر ليه سند تحصيل مربوط بيه مباشرة —
+        // ويفضل السلوك القديم شغال بس للعرابين القديمة اللي مالهاش سند مربوط.
+        const linkedQuotationIds = new Set(collections.filter((c: any) => c.quotationId).map((c: any) => c.quotationId));
+        quotations.filter(q => matchB(q.branch) && inPeriod(quotationDate(q)) && !linkedQuotationIds.has(q.id)).forEach(q => {
           const qTime = q.createdAt ? new Date(q.createdAt).getTime() : (q.date ? new Date(q.date).getTime() : 0);
           let belongs = false;
           if (targetShift) {

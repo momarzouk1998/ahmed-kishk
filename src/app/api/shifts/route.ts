@@ -100,8 +100,12 @@ export async function GET(request: Request) {
           }
         });
 
+        // أوردرات ليها سند تحصيل مربوط مباشرة (quotationId) — العربون بتاعها اتحسب
+        // بالفعل فى حلقة allCollections تحت، فلازم نستبعدها هنا عشان الفلوس ماتتضاعفش.
+        const linkedQuotationIds = new Set(allCollections.filter((c: any) => c.quotationId).map((c: any) => c.quotationId));
         allQuotations.forEach((q: any) => {
           if (!matchBranch(q.branch)) return;
+          if (linkedQuotationIds.has(q.id)) return;
           const qTime = q.createdAt ? new Date(q.createdAt).getTime() : (q.date ? new Date(q.date).getTime() : 0);
           if (qTime >= shiftStart - 60000 && qTime <= shiftEnd + 60000) {
             const deposit = Number(q.depositPaid || 0);
