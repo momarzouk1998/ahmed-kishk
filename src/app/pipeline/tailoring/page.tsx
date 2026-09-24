@@ -74,6 +74,32 @@ export default function PipelineTailoringPage() {
   const [selectedOrderDetails, setSelectedOrderDetails] = useState<TailoringJobOrder | null>(null);
   const [printTailoringOrder, setPrintTailoringOrder] = useState<TailoringJobOrder | null>(null);
 
+  // قائمة الورش — عشان أوردرات قديمة كانت من قبل مودال اختيار الورشة (أو اتحولت
+  // بأي طريقة تانية) تقدر تصحّح اسم الورشة بتاعها من هنا مباشرة.
+  const [workshops, setWorkshops] = useState<string[]>([]);
+  const [savingTailorName, setSavingTailorName] = useState(false);
+  useEffect(() => {
+    fetch('/api/curtain-workshops', { cache: 'no-store' })
+      .then(res => res.ok ? res.json() : null)
+      .then(json => { if (Array.isArray(json?.list)) setWorkshops(json.list); })
+      .catch(() => {});
+  }, []);
+
+  const handleChangeTailorName = async (order: TailoringJobOrder, newTailorName: string) => {
+    setSavingTailorName(true);
+    try {
+      await fetch('/api/pipeline-orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orders: [{ ...order, tailorName: newTailorName }] }),
+      });
+      setOrders(prev => prev.map(o => (o.id === order.id ? { ...o, tailorName: newTailorName } : o)));
+      setSelectedOrderDetails(prev => (prev && prev.id === order.id ? { ...prev, tailorName: newTailorName } : prev));
+    } finally {
+      setSavingTailorName(false);
+    }
+  };
+
   useEffect(() => {
     async function load() {
       const [storedPipeline, quotations] = await Promise.all([
@@ -364,7 +390,7 @@ export default function PipelineTailoringPage() {
 
                         <td className="p-3.5 text-slate-700">
                           <div className="font-bold text-slate-900">{order.branch}</div>
-                          <div className="text-slate-500 text-[11px]">الخياط: {order.tailorName || 'أبو فهد'}</div>
+                          <div className="text-slate-500 text-[11px]">الخياط: {order.tailorName || <span className="text-rose-500 font-bold">غير محدد — اضغط لتحديد الورشة</span>}</div>
                         </td>
 
                         <td className="p-3.5 font-mono font-bold text-rose-800">
@@ -532,7 +558,18 @@ export default function PipelineTailoringPage() {
               <div className="text-rose-900 font-bold"><strong>📅 موعد الاستلام:</strong> {selectedOrderDetails.deliveryDate}</div>
               <div><strong>العنوان:</strong> {selectedOrderDetails.address}</div>
               <div><strong>الفرع:</strong> {selectedOrderDetails.branch}</div>
-              <div><strong>الورشة:</strong> {selectedOrderDetails.tailorName || 'أبو فهد الخياط'}</div>
+              <div className="flex items-center gap-1.5">
+                <strong>الورشة:</strong>
+                <select
+                  value={selectedOrderDetails.tailorName || ''}
+                  onChange={e => handleChangeTailorName(selectedOrderDetails, e.target.value)}
+                  disabled={savingTailorName}
+                  className="border border-slate-300 rounded-lg px-2 py-1 font-bold text-slate-900 bg-white focus:outline-none focus:border-amber-500 cursor-pointer disabled:opacity-50"
+                >
+                  <option value="">— اختر الورشة —</option>
+                  {workshops.map(w => <option key={w} value={w}>{w}</option>)}
+                </select>
+              </div>
             </div>
 
             {/* Room-by-Room Specs with Editable Heights */}
