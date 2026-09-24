@@ -6,7 +6,7 @@ import {
   Employee, AttendanceRecord, EmployeeAdvance, WeeklyPayrollSettlement,
   getEmployees, saveEmployee, deleteEmployee, getAttendance, saveAttendanceRecord,
   deleteAttendanceRecord,
-  getAdvances, saveAdvance, deleteAdvance, getPayrolls, savePayrollSettlement, INITIAL_EMPLOYEES,
+  getAdvances, saveAdvance, deleteAdvance, getPayrolls, savePayrollSettlement, deletePayrollSettlement, INITIAL_EMPLOYEES,
   isMonthlyEmployee
 } from '@/lib/employeeStore';
 import { BRANCHES_LIST, normalizeBranchName } from '@/lib/branches';
@@ -112,6 +112,14 @@ export default function EmployeesManagementPage() {
   const [payrollAmountOverride, setPayrollAmountOverride] = useState<Record<string, string>>({});
   const [payrollPayMethod, setPayrollPayMethod] = useState<Record<string, string>>({});
   const [payingKey, setPayingKey] = useState<string | null>(null);
+
+  // إلغاء التقفيل والقبض / تحويل لسلفة
+  const [cancelingSettlement, setCancelingSettlement] = useState<{
+    row: any;
+    settlement: WeeklyPayrollSettlement;
+  } | null>(null);
+  const [cancelActionType, setCancelActionType] = useState<'convertToAdvance' | 'deleteExpense'>('convertToAdvance');
+  const [isCanceling, setIsCanceling] = useState(false);
 
   // Employee Add / Edit Modal State (Admin only)
   const [showEmpModal, setShowEmpModal] = useState<boolean>(false);
@@ -710,6 +718,7 @@ export default function EmployeesManagementPage() {
         alert(expData?.error || 'فشل خصم الراتب من الخزينة');
         return;
       }
+      const createdExpenseId = expData?.expense?.id;
 
       // 2. تثبيت التقفيل بشكل دائم عشان مايتقبضش مرتين لنفس الفترة
       const settlement: WeeklyPayrollSettlement = {
@@ -731,6 +740,7 @@ export default function EmployeesManagementPage() {
         paidAt: new Date().toISOString(),
         paidFromTreasury: row.employee.branch,
         payType: row.isMonthly ? 'شهري' : 'أسبوعي',
+        notes: createdExpenseId ? `[EXPENSE_ID:${createdExpenseId}]` : undefined,
       };
       const ok = await savePayrollSettlement(settlement);
       if (ok) {
@@ -745,6 +755,89 @@ export default function EmployeesManagementPage() {
       alert('خطأ فى الاتصال بالسيرفر: ' + (err?.message || ''));
     } finally {
       setPayingKey(null);
+    }
+  };
+
+  const handleConfirmCancel = async () => {
+    if (!cancelingSettlement) return;
+    const { row, settlement } = cancelingSettlement;
+    setIsCanceling(true);
+    try {
+      // 1. حذف سجل التقفيل من قاعدة البيانات
+      const delOk = await deletePayrollSettlement(settlement.id);
+      if (!delOk) {
+        alert('فشل إلغاء سجل التقفيل من السيرفر');
+        setIsCanceling(false);
+        return;
+      }
+
+      // 2. استخراج معرف المصروف من الملاحظات أو البحث عنه فى المصروفات
+      let expId: string | null = null;
+      if (settlement.notes && settlement.notes.includes('[EXPENSE_ID:')) {
+        const match = settlement.notes.match(/\[EXPENSE_ID:([^\]]+)\]/);
+        if (match && match[1]) expId = match[1];
+      }
+
+      if (!expId) {
+        try {
+          const res = await fetch('/api/expenses', { cache: 'no-store' });
+          if (res.ok) {
+            const data = await res.json();
+            if (Array.isArray(data.expenses)) {
+              const exp = data.expenses.find((e: any) =>
+                e.branch === settlement.branch &&
+                e.category === 'رواتب وسلف' &&
+                e.description?.includes(settlement.employeeName) &&
+                Math.abs(Number(e.amount) - Number(settlement.netPayout)) < 0.01
+              );
+              if (exp) expId = exp.id;
+            }
+          }
+        } catch {}
+      }
+
+      if (cancelActionType === 'convertToAdvance') {
+        // الخيار الأول: تحويل المبلغ لسلفة نقدية على الموظف
+        // حذف مصروف الراتب حتى لا يُحسب مرتين مع السلفة
+        if (expId) {
+          try {
+            await fetch(`/api/expenses?id=${encodeURIComponent(expId)}`, { method: 'DELETE' });
+          } catch {}
+        }
+
+        const advRecord: EmployeeAdvance = {
+          id: `adv_${Date.now()}_converted`,
+          date: settlement.paidAt ? settlement.paidAt.split('T')[0] : getTodayDateStr(),
+          employeeId: settlement.employeeId,
+          employeeName: settlement.employeeName,
+          branch: settlement.branch || row.employee.branch,
+          type: 'سلفة',
+          amount: Number(settlement.netPayout),
+          reason: `سلفة نقدية (محولة من دفعة راتب ${settlement.settlementDate || ''})`,
+          treasuryDeducted: true,
+          recordedBy: user?.name || 'المدير العام',
+        };
+        await saveAdvance(advRecord);
+
+        setAdvances(prev => [advRecord, ...prev]);
+        setPayrolls(prev => prev.filter(p => p.id !== settlement.id));
+        alert(`✅ تم إلغاء تقفيل الراتب بنجاح، وتحويل مبلغ ${settlement.netPayout.toLocaleString()} ج إلى سلفة نقدية على الموظف ${settlement.employeeName} لتخصم مع تقفيل نهاية الشهر.`);
+      } else {
+        // الخيار الثاني: حذف المصروف بالكامل واسترجاع المبلغ للخزينة
+        if (expId) {
+          try {
+            await fetch(`/api/expenses?id=${encodeURIComponent(expId)}`, { method: 'DELETE' });
+          } catch {}
+        }
+        setPayrolls(prev => prev.filter(p => p.id !== settlement.id));
+        alert(`✅ تم إلغاء تقفيل الراتب وحذف المصروف بالكامل للموظف ${settlement.employeeName}.`);
+      }
+
+      setCancelingSettlement(null);
+    } catch (err: any) {
+      alert('حدث خطأ أثناء الإلغاء: ' + (err?.message || ''));
+    } finally {
+      setIsCanceling(false);
     }
   };
 
@@ -1403,11 +1496,32 @@ export default function EmployeesManagementPage() {
                           </td>
                           <td className="p-3 text-center">
                             {existingSettlement ? (
-                              <div className="flex flex-col items-center gap-0.5">
-                                <span className="px-2.5 py-1 bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-lg font-black text-[11px] whitespace-nowrap">
-                                  ✅ تم القبض
+                              <div className="flex flex-col items-center gap-1">
+                                <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-lg font-black text-[11px] whitespace-nowrap">
+                                  ✅ تم القبض ({existingSettlement.netPayout.toLocaleString()} ج)
                                 </span>
                                 <span className="text-[9px] text-slate-400 font-mono">{formatDateOnly(existingSettlement.paidAt || '')}</span>
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                  <button
+                                    onClick={() => setSelectedEmpForSlip(row)}
+                                    className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md font-bold text-[10px] cursor-pointer"
+                                    title="معاينة إيصال القبض"
+                                  >
+                                    👁️ إيصال
+                                  </button>
+                                  {canViewWages && (
+                                    <button
+                                      onClick={() => {
+                                        setCancelingSettlement({ row, settlement: existingSettlement });
+                                        setCancelActionType('convertToAdvance');
+                                      }}
+                                      className="px-2 py-1 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 rounded-md font-bold text-[10px] cursor-pointer whitespace-nowrap"
+                                      title="إلغاء القبض أو تحويله لسلفة"
+                                    >
+                                      ↩️ إلغاء / سلفة
+                                    </button>
+                                  )}
+                                </div>
                               </div>
                             ) : (
                               <div className="flex flex-col items-center gap-1.5">
@@ -2112,6 +2226,95 @@ export default function EmployeesManagementPage() {
                   className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl"
                 >
                   إغلاق
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Cancel / Rollback Payroll Modal ── */}
+        {cancelingSettlement && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-3xl p-6 max-w-md w-full border border-slate-200 shadow-2xl space-y-4 animate-fadeIn text-right">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+                <h3 className="font-black text-slate-900 text-sm flex items-center gap-2">
+                  <span>↩️</span>
+                  <span>إلغاء تقفيل وقبض الراتب</span>
+                </h3>
+                <button
+                  onClick={() => setCancelingSettlement(null)}
+                  className="text-slate-400 hover:text-slate-600 text-lg leading-none cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 text-xs space-y-1">
+                <div className="font-bold text-amber-950">
+                  الموظف: <span className="font-black text-slate-900">{cancelingSettlement.settlement.employeeName}</span> ({cancelingSettlement.settlement.branch})
+                </div>
+                <div className="text-slate-700">
+                  المبلغ المقبوض: <span className="font-mono font-black text-emerald-800">{cancelingSettlement.settlement.netPayout.toLocaleString()} ج</span>
+                </div>
+                <div className="text-slate-700">
+                  الفترة: <span className="font-bold">{cancelingSettlement.settlement.settlementDate}</span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-700 block">اختر الإجراء المطلوب بعد إلغاء التقفيل:</label>
+                
+                <label className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition-all ${
+                  cancelActionType === 'convertToAdvance' ? 'bg-emerald-50 border-emerald-400 shadow-xs' : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
+                }`}>
+                  <input
+                    type="radio"
+                    name="cancelAction"
+                    checked={cancelActionType === 'convertToAdvance'}
+                    onChange={() => setCancelActionType('convertToAdvance')}
+                    className="mt-0.5 accent-emerald-600 cursor-pointer"
+                  />
+                  <div className="text-xs">
+                    <div className="font-black text-emerald-950">🔄 تحويل المبلغ إلى سلفة نقدية على الموظف (موصى به)</div>
+                    <div className="text-[11px] text-slate-600 mt-0.5 leading-relaxed">
+                      يتم فتح حساب الموظف ليكمل باقي أيام الشهر، مع تسجيل المبلغ ({cancelingSettlement.settlement.netPayout.toLocaleString()} ج) كسلفة تُخصم تلقائياً عند التقفيل النهائي لنهاية الشهر.
+                    </div>
+                  </div>
+                </label>
+
+                <label className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition-all ${
+                  cancelActionType === 'deleteExpense' ? 'bg-rose-50 border-rose-400 shadow-xs' : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
+                }`}>
+                  <input
+                    type="radio"
+                    name="cancelAction"
+                    checked={cancelActionType === 'deleteExpense'}
+                    onChange={() => setCancelActionType('deleteExpense')}
+                    className="mt-0.5 accent-rose-600 cursor-pointer"
+                  />
+                  <div className="text-xs">
+                    <div className="font-black text-rose-950">❌ إلغاء التقفيل وحذف المصروف بالكامل</div>
+                    <div className="text-[11px] text-slate-600 mt-0.5 leading-relaxed">
+                      إلغاء التقفيل وحذف سطر المصروف من الخزينة بالكامل واسترجاع الرصيد.
+                    </div>
+                  </div>
+                </label>
+              </div>
+
+              <div className="flex items-center gap-2 pt-2 border-t border-slate-200">
+                <button
+                  onClick={handleConfirmCancel}
+                  disabled={isCanceling}
+                  className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white rounded-xl font-black text-xs cursor-pointer shadow-md transition-all"
+                >
+                  {isCanceling ? 'جارٍ تنفيذ الإلغاء...' : 'تأكيد الإلغاء الآن'}
+                </button>
+                <button
+                  onClick={() => setCancelingSettlement(null)}
+                  disabled={isCanceling}
+                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs cursor-pointer"
+                >
+                  تراجع
                 </button>
               </div>
             </div>

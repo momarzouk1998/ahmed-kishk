@@ -243,3 +243,14 @@ export async function savePayrollSettlement(settlement: WeeklyPayrollSettlement)
     return false;
   }
 }
+
+export async function deletePayrollSettlement(id: string): Promise<boolean> {
+  try {
+    const res = await fetch(`/api/employee-payroll?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+    const json = await res.json().catch(() => null);
+    return !!json?.success;
+  } catch {
+    return false;
+  }
+}
+

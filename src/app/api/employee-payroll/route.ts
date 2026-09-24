@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getBranchScope, branchWhere, effectiveCreateBranch } from '@/lib/branchScope';
+import { assertPagePermission } from '@/lib/permissionsServer';
 
 export const dynamic = 'force-dynamic';
 
@@ -81,3 +82,34 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, error: 'حدث خطأ فى الخادم' }, { status: 500 });
   }
 }
+
+export async function DELETE(request: Request) {
+  try {
+    const scope = await getBranchScope(request);
+    if (!scope) {
+      return NextResponse.json({ success: false, error: 'غير مصرح' }, { status: 401 });
+    }
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    if (!id) {
+      return NextResponse.json({ success: false, error: 'المعرف مطلوب للحذف' }, { status: 400 });
+    }
+
+    const existing = await prisma.payrollSettlement.findUnique({ where: { id } });
+    if (!existing) {
+      return NextResponse.json({ success: false, error: 'سجل التقفيل غير موجود' }, { status: 404 });
+    }
+    if (!scope.isAdmin && existing.branch !== scope.branch) {
+      return NextResponse.json({ success: false, error: 'غير مصرح بحذف تقفيل فرع آخر' }, { status: 403 });
+    }
+    const perm = await assertPagePermission(request, 'p_employees', 'delete');
+    if (!perm.ok) return NextResponse.json({ success: false, error: perm.error }, { status: perm.status });
+
+    await prisma.payrollSettlement.delete({ where: { id } });
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error(error);
+    return NextResponse.json({ success: false, error: 'حدث خطأ فى الخادم' }, { status: 500 });
+  }
+}
+
