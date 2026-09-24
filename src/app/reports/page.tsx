@@ -78,11 +78,18 @@ interface PurchaseInvoice {
 }
 
 type ReportTab = 'sales' | 'profits' | 'inventory' | 'curtains' | 'ledgers';
-type Period = 'yesterday' | 'today' | 'thisWeek' | 'thisMonth' | 'all';
+type Period = 'yesterday' | 'today' | 'thisWeek' | 'thisMonth' | 'custom' | 'all';
 
 export default function ReportsPage() {
   const [reportType, setReportType] = useState<ReportTab>('sales');
   const [period, setPeriod] = useState<Period>('today');
+  const [customStartDate, setCustomStartDate] = useState<string>(() => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    return `${year}-${month}-01`;
+  });
+  const [customEndDate, setCustomEndDate] = useState<string>(() => getTodayDateStr());
   const [selectedBranch, setSelectedBranch] = useState<string>('ALL');
   const { user: currentUser, isAdmin } = useCurrentUser();
   useEffect(() => {
@@ -211,6 +218,11 @@ export default function ReportsPage() {
       return diffDays >= 0 && diffDays <= 7;
     }
     if (period === 'thisMonth') return d.substring(0, 7) === today.substring(0, 7);
+    if (period === 'custom') {
+      if (customStartDate && d < customStartDate) return false;
+      if (customEndDate && d > customEndDate) return false;
+      return true;
+    }
     return true;
   };
   const inBranch = (b: string | undefined): boolean => {
@@ -251,15 +263,15 @@ export default function ReportsPage() {
 
   const fInvoices = useMemo(
     () => invoices.filter(i => inBranch(i.branch) && inPeriod(invoiceDate(i))),
-    [invoices, selectedBranch, period]
+    [invoices, selectedBranch, period, customStartDate, customEndDate]
   );
   const fQuotations = useMemo(
     () => quotations.filter(q => inBranch(q.branch) && inPeriod(quotationDate(q))),
-    [quotations, selectedBranch, period]
+    [quotations, selectedBranch, period, customStartDate, customEndDate]
   );
   const fPurchases = useMemo(
     () => purchases.filter(p => inBranch(p.branch) && inPeriod(purchaseDate(p))),
-    [purchases, selectedBranch, period]
+    [purchases, selectedBranch, period, customStartDate, customEndDate]
   );
 
   const fCollections = useMemo(
@@ -278,7 +290,7 @@ export default function ReportsPage() {
       if (cust && cust.branch && inBranch(cust.branch)) return true;
       return false;
     }),
-    [collections, selectedBranch, period, customers]
+    [collections, selectedBranch, period, customStartDate, customEndDate, customers]
   );
 
   // ─── Sales KPIs & cash-drawer breakdown (Including Fabric Invoices, Curtain Deposits & Direct Collections) ───
@@ -812,7 +824,7 @@ export default function ReportsPage() {
       curtainSalesRemaining,
       branchTreasuries,
     };
-  }, [fInvoices, fQuotations, fCollections, invoices, collections, quotations, shifts, period]);
+  }, [fInvoices, fQuotations, fCollections, invoices, collections, quotations, shifts, expenses, advances, purchases, branchTransfers, period, customStartDate, customEndDate]);
 
   // ─── Profits (real cost from inventory) ──────────────────────
   const profitStats = useMemo(() => {
@@ -900,7 +912,7 @@ export default function ReportsPage() {
       totalInspections: fIns.length, totalQuotations: fQot.length,
       insByStatus, qotByStatus, quotTotal, quotDeposit, quotRemaining, techCount,
     };
-  }, [inspections, quotations, selectedBranch, period]);
+  }, [inspections, quotations, selectedBranch, period, customStartDate, customEndDate]);
 
   // ─── Ledgers (customers + suppliers) ─────────────────────────
   const ledgerStats = useMemo(() => {
@@ -929,7 +941,16 @@ export default function ReportsPage() {
     return { list, belowMin, totalCost, totalValue };
   }, [inventory, selectedBranch]);
 
-  const periodLabel = period === 'yesterday' ? 'أمس' : period === 'today' ? 'اليومى' : period === 'thisWeek' ? 'الأسبوع' : period === 'thisMonth' ? 'الشهر' : 'الكل';
+  const periodLabel =
+    period === 'yesterday' ? 'أمس' :
+    period === 'today' ? 'اليوم' :
+    period === 'thisWeek' ? 'الأسبوع' :
+    period === 'thisMonth' ? 'الشهر' :
+    period === 'custom'
+      ? (customStartDate && customEndDate
+          ? (customStartDate === customEndDate ? `يوم ${customStartDate}` : `من ${customStartDate} إلى ${customEndDate}`)
+          : (customStartDate ? `من ${customStartDate}` : (customEndDate ? `حتى ${customEndDate}` : 'مخصص')))
+      : 'الكل';
   const branchLabel = selectedBranch === 'ALL' ? 'جميع الفروع' : selectedBranch;
 
   return (
@@ -957,7 +978,7 @@ export default function ReportsPage() {
           <div className="flex flex-wrap items-center gap-2">
             <PdfPrintButton
               targetSelector="#print-area"
-              documentTitle={`تقرير-${reportType}-${periodLabel}-${branchLabel}`}
+              documentTitle={`تقرير-${reportType}-${periodLabel.replace(/[\s/]+/g, '_')}-${branchLabel}`}
               label="طباعة PDF (A4)"
               paperSize="A4"
             />
@@ -970,13 +991,50 @@ export default function ReportsPage() {
               className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800 focus:outline-none cursor-pointer"
             />
             <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200">
-              {(['yesterday', 'today', 'thisWeek', 'thisMonth', 'all'] as Period[]).map(p => (
-                <button key={p} onClick={() => setPeriod(p)}
-                  className={`px-2.5 py-1 rounded-md text-[11px] font-bold ${period === p ? 'bg-amber-500 text-white' : 'text-slate-700'}`}>
-                  {p === 'yesterday' ? 'أمس' : p === 'today' ? 'اليوم' : p === 'thisWeek' ? 'أسبوع' : p === 'thisMonth' ? 'شهر' : 'الكل'}
+              {(['yesterday', 'today', 'thisWeek', 'thisMonth', 'custom', 'all'] as Period[]).map(p => (
+                <button
+                  key={p}
+                  onClick={() => {
+                    setPeriod(p);
+                    if (p === 'custom' && !customStartDate && !customEndDate) {
+                      const today = getTodayDateStr();
+                      setCustomStartDate(today);
+                      setCustomEndDate(today);
+                    }
+                  }}
+                  className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
+                    period === p ? 'bg-amber-500 text-white shadow-xs' : 'text-slate-700 hover:text-slate-900'
+                  }`}
+                >
+                  {p === 'yesterday' ? 'أمس' : p === 'today' ? 'اليوم' : p === 'thisWeek' ? 'أسبوع' : p === 'thisMonth' ? 'شهر' : p === 'custom' ? '📅 مخصص' : 'الكل'}
                 </button>
               ))}
             </div>
+
+            {period === 'custom' && (
+              <div className="flex items-center gap-1.5 bg-amber-50 border border-amber-300 px-2 py-1 rounded-lg text-xs font-bold text-amber-950 shadow-xs">
+                <span className="text-[11px] text-amber-800 font-bold">من:</span>
+                <input
+                  type="date"
+                  value={customStartDate}
+                  onChange={e => {
+                    setCustomStartDate(e.target.value);
+                    setPeriod('custom');
+                  }}
+                  className="bg-white border border-amber-300 rounded px-1.5 py-0.5 text-xs font-bold text-slate-800 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer"
+                />
+                <span className="text-[11px] text-amber-800 font-bold">إلى:</span>
+                <input
+                  type="date"
+                  value={customEndDate}
+                  onChange={e => {
+                    setCustomEndDate(e.target.value);
+                    setPeriod('custom');
+                  }}
+                  className="bg-white border border-amber-300 rounded px-1.5 py-0.5 text-xs font-bold text-slate-800 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer"
+                />
+              </div>
+            )}
           </div>
         </div>
 
