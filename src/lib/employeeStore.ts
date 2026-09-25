@@ -63,7 +63,7 @@ export interface EmployeeAdvance {
   employeeId: string;
   employeeName: string;
   branch: string;
-  type: 'سلفة' | 'خصم' | 'مكافأة';
+  type: 'سلفة' | 'خصم' | 'مكافأة' | 'قبض';
   amount: number;
   reason: string;
   treasuryDeducted: boolean;

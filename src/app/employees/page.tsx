@@ -3,11 +3,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import PageShell from '@/components/PageShell';
 import {
-  Employee, AttendanceRecord, EmployeeAdvance, WeeklyPayrollSettlement,
-  getEmployees, saveEmployee, deleteEmployee, getAttendance, saveAttendanceRecord,
-  deleteAttendanceRecord,
-  getAdvances, saveAdvance, deleteAdvance, getPayrolls, savePayrollSettlement, deletePayrollSettlement, INITIAL_EMPLOYEES,
-  isMonthlyEmployee
+  Employee, AttendanceRecord, EmployeeAdvance,
+  getEmployees, saveEmployee, deleteEmployee,
+  getAttendance, saveAttendanceRecord, deleteAttendanceRecord,
+  getAdvances, saveAdvance, deleteAdvance,
 } from '@/lib/employeeStore';
 import { BRANCHES_LIST, normalizeBranchName } from '@/lib/branches';
 import { formatDateOnly, getTodayDateStr, getYesterdayDateStr } from '@/lib/dateUtils';
@@ -26,8 +25,17 @@ export default function EmployeesManagementPage() {
       .trim();
   };
 
-  // تحويل بين وقت 24 ساعة (قيمة <input type="time">) والصيغة العربية المخزّنة
-  // فعليًا فى السجلات (مثال: "١١:٠٠ ص") — عشان الأدمن يختار من ساعة بدل ما يكتبها بإيده.
+  const getArabicDayName = (dateStr?: string): string => {
+    if (!dateStr) return '';
+    try {
+      const d = new Date(dateStr + 'T12:00:00');
+      const days = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+      return days[d.getDay()] || '';
+    } catch {
+      return '';
+    }
+  };
+
   const arabicDigitsToEnglish = (s: string): string =>
     s.replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)));
 
@@ -56,13 +64,12 @@ export default function EmployeesManagementPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [advances, setAdvances] = useState<EmployeeAdvance[]>([]);
-  const [payrolls, setPayrolls] = useState<WeeklyPayrollSettlement[]>([]);
 
-  const [activeTab, setActiveTab] = useState<'attendance' | 'advances' | 'payroll' | 'directory' | 'log'>('attendance');
+  const [activeTab, setActiveTab] = useState<'attendance' | 'advances' | 'statement' | 'directory' | 'log'>('attendance');
   const [selectedBranch, setSelectedBranch] = useState<string>('الكل');
   const [attendanceDate, setAttendanceDate] = useState<string>(() => getTodayDateStr());
 
-  // ── Attendance Log tab (سجل الحضور) — بحث/تصفية/باجنيشن + تعديل/حذف/إضافة، أدمن فقط
+  // ── Tab 5: Attendance Log tab (سجل الحضور) ──
   const [logSearch, setLogSearch] = useState<string>('');
   const [logBranchFilter, setLogBranchFilter] = useState<string>('الكل');
   const [logStatusFilter, setLogStatusFilter] = useState<string>('الكل');
@@ -90,28 +97,15 @@ export default function EmployeesManagementPage() {
   });
   const [savingLog, setSavingLog] = useState<boolean>(false);
 
-  // Payroll classification mode: 'weekly' (Thursday) | 'monthly' (End of month) | 'all'
-  const [payrollMode, setPayrollMode] = useState<'weekly' | 'monthly' | 'all'>('weekly');
-  const [settlementMonth, setSettlementMonth] = useState<string>(() => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-  });
-
-  // Advance Form State
+  // ── Tab 2: Financial Movements Form State (سلفة / خصم / مكافأة / قبض) ──
   const [advanceEmployeeId, setAdvanceEmployeeId] = useState<string>('');
-  const [advanceType, setAdvanceType] = useState<'سلفة' | 'خصم' | 'مكافأة'>('سلفة');
+  const [advanceType, setAdvanceType] = useState<'سلفة' | 'خصم' | 'مكافأة' | 'قبض'>('سلفة');
   const [advanceAmount, setAdvanceAmount] = useState<string>('');
+  const [advanceDate, setAdvanceDate] = useState<string>(() => getTodayDateStr());
   const [advanceReason, setAdvanceReason] = useState<string>('');
 
-  // Selected Employee for Modal / Share
+  // Selected Employee for Slip Modal
   const [selectedEmpForSlip, setSelectedEmpForSlip] = useState<any | null>(null);
-
-  // #FEATURE: تقفيل وقبض الرواتب — تعديل المبلغ قبل الصرف + زرار قبض فعلي يخصم
-  // من خزينة الفرع (عبر إنشاء مصروف حقيقي فى /api/expenses) ويسجّل التقفيل
-  // بشكل دائم عشان مايتقبضش مرتين لنفس الفترة.
-  const [payrollAmountOverride, setPayrollAmountOverride] = useState<Record<string, string>>({});
-  const [payrollPayMethod, setPayrollPayMethod] = useState<Record<string, string>>({});
-  const [payingKey, setPayingKey] = useState<string | null>(null);
 
   // Employee Add / Edit Modal State (Admin only)
   const [showEmpModal, setShowEmpModal] = useState<boolean>(false);
@@ -140,21 +134,15 @@ export default function EmployeesManagementPage() {
   });
 
   useEffect(() => {
-    // ⚠️ الموظفين/الحضور/السلف/الرواتب بقوا فى جداول Prisma حقيقية (Employee،
-    // AttendanceRecord، EmployeeAdvance، PayrollSettlement) بدل localStorage +
-    // SystemStore blob — كل جلب هنا بيقرأ من قاعدة البيانات مباشرة، مفيش أي
-    // تخزين محلي وسيط ممكن يعرض بيانات قديمة/مضلِّلة.
     async function loadAll() {
-      const [emps, att, adv, pay] = await Promise.all([
+      const [emps, att, adv] = await Promise.all([
         getEmployees(),
         getAttendance(),
         getAdvances(),
-        getPayrolls(),
       ]);
       setEmployees(emps);
       setAttendance(att);
       setAdvances(adv);
-      setPayrolls(pay);
     }
 
     loadAll();
@@ -166,7 +154,7 @@ export default function EmployeesManagementPage() {
     if (!isAdmin && !isSuperAdmin && user?.branch) {
       setSelectedBranch(user.branch);
     }
-    if (!canViewWages && (activeTab === 'payroll' || activeTab === 'directory' || activeTab === 'log')) {
+    if (!canViewWages && (activeTab === 'statement' || activeTab === 'directory' || activeTab === 'log')) {
       setActiveTab('attendance');
     }
   }, [isAdmin, isSuperAdmin, user, canViewWages, activeTab]);
@@ -200,6 +188,72 @@ export default function EmployeesManagementPage() {
     return map;
   }, [branchFilteredEmployees, selectedBranch]);
 
+  // ── Employee Financial Calculation Helper (حساب مستحقات ومتبقي الموظف ببساطة) ──
+  const getEmployeeFinancialSummary = (empId: string) => {
+    const emp = employees.find(e => e.id === empId);
+    if (!emp) return null;
+
+    // 1. حساب أيام الحضور من كافة السجلات (بما فيها الجمعة)
+    const empAttendance = attendance.filter(a => a.employeeId === empId);
+    let attendedDays = 0;
+    let presentCount = 0;
+    let halfDayCount = 0;
+    let absentCount = 0;
+    let leaveCount = 0;
+
+    empAttendance.forEach(a => {
+      if (a.status === 'حاضر') {
+        attendedDays += 1;
+        presentCount += 1;
+      } else if (a.status === 'نصف يوم') {
+        attendedDays += 0.5;
+        halfDayCount += 1;
+      } else if (a.status === 'غياب') {
+        absentCount += 1;
+      } else if (a.status === 'إجازة') {
+        leaveCount += 1;
+      }
+    });
+
+    const dailyWage = Number(emp.dailyWage) || 0;
+    const earnedWages = attendedDays * dailyWage;
+
+    // 2. حساب الحركات المالية (سلف، خصومات، مكافآت، وقبض سابق)
+    const empMovements = advances.filter(a => a.employeeId === empId);
+    let totalAdvances = 0;
+    let totalDeductions = 0;
+    let totalBonuses = 0;
+    let totalPaid = 0;
+
+    empMovements.forEach(m => {
+      const amt = Number(m.amount) || 0;
+      if (m.type === 'سلفة') totalAdvances += amt;
+      else if (m.type === 'خصم') totalDeductions += amt;
+      else if (m.type === 'مكافأة') totalBonuses += amt;
+      else if (m.type === 'قبض') totalPaid += amt;
+    });
+
+    const totalDue = earnedWages + totalBonuses;
+    const netRemaining = totalDue - (totalAdvances + totalDeductions + totalPaid);
+
+    return {
+      employee: emp,
+      attendedDays,
+      presentCount,
+      halfDayCount,
+      absentCount,
+      leaveCount,
+      dailyWage,
+      earnedWages,
+      totalAdvances,
+      totalDeductions,
+      totalBonuses,
+      totalPaid,
+      totalDue,
+      netRemaining,
+    };
+  };
+
   // ── Advances/Deductions/Payrolls log — بحث + تصفية + تاريخ + باجنيشن + تعديل/حذف ──
   const [advSearch, setAdvSearch] = useState<string>('');
   const [advBranchFilter, setAdvBranchFilter] = useState<string>('الكل');
@@ -213,7 +267,6 @@ export default function EmployeesManagementPage() {
   const advPageSize = 20;
   const [showAdvEditModal, setShowAdvEditModal] = useState<boolean>(false);
   const [editingAdv, setEditingAdv] = useState<EmployeeAdvance | null>(null);
-  const [editingPayroll, setEditingPayroll] = useState<WeeklyPayrollSettlement | null>(null);
   const [advEditForm, setAdvEditForm] = useState<{
     date: string;
     type: 'سلفة' | 'خصم' | 'مكافأة' | 'قبض';
@@ -282,61 +335,11 @@ export default function EmployeesManagementPage() {
 
   useEffect(() => { setAdvCurrentPage(1); }, [advSearch, advBranchFilter, advEmployeeFilter, advTypeFilter, advDateFrom, advDateTo, selectedBranch]);
 
-  interface CombinedFinancialRecord {
-    id: string;
-    date: string;
-    employeeId: string;
-    employeeName: string;
-    branch: string;
-    type: 'سلفة' | 'خصم' | 'مكافأة' | 'قبض';
-    amount: number;
-    reason: string;
-    isPayroll: boolean;
-    rawAdvance?: EmployeeAdvance;
-    rawPayroll?: WeeklyPayrollSettlement;
-  }
-
-  const combinedFinancialRecords: CombinedFinancialRecord[] = useMemo(() => {
-    const advList: CombinedFinancialRecord[] = advances.map(a => ({
-      id: a.id,
-      date: a.date,
-      employeeId: a.employeeId,
-      employeeName: a.employeeName,
-      branch: a.branch,
-      type: a.type as any,
-      amount: a.amount,
-      reason: a.reason || (a.type === 'سلفة' ? 'سلفة نقدية' : 'إداري'),
-      isPayroll: false,
-      rawAdvance: a,
-    }));
-
-    const payList: CombinedFinancialRecord[] = payrolls.map(p => {
-      const payDate = p.paidAt ? getTodayDateStr(p.paidAt) : (p.settlementDate || p.weekEndDate || getTodayDateStr());
-      const periodDesc = p.payType === 'شهري'
-        ? `تقفيل راتب شهري (${p.settlementDate || 'الشهر'})`
-        : `تقفيل راتب أسبوعي (${p.weekStartDate || ''} إلى ${p.weekEndDate || ''})`;
-      return {
-        id: p.id,
-        date: payDate,
-        employeeId: p.employeeId,
-        employeeName: p.employeeName,
-        branch: p.branch,
-        type: 'قبض',
-        amount: p.netPayout,
-        reason: p.notes || periodDesc,
-        isPayroll: true,
-        rawPayroll: p,
-      };
-    });
-
-    return [...advList, ...payList];
-  }, [advances, payrolls]);
-
   const filteredAdvances = useMemo(() => {
     const activeBranch = (!isAdmin && !isSuperAdmin && user?.branch) ? user.branch : selectedBranch;
     const branchScoped = activeBranch === 'الكل'
-      ? combinedFinancialRecords
-      : combinedFinancialRecords.filter(a => normalizeBranchName(a.branch) === normalizeBranchName(activeBranch));
+      ? advances
+      : advances.filter(a => normalizeBranchName(a.branch) === normalizeBranchName(activeBranch));
     return branchScoped
       .filter(a => advBranchFilter === 'الكل' || normalizeBranchName(a.branch) === normalizeBranchName(advBranchFilter))
       .filter(a => {
@@ -345,7 +348,6 @@ export default function EmployeesManagementPage() {
       })
       .filter(a => {
         if (advTypeFilter === 'الكل') return true;
-        if (advTypeFilter === 'قبض' || advTypeFilter === 'قبض راتب') return a.type === 'قبض';
         return a.type === advTypeFilter;
       })
       .filter(a => {
@@ -359,32 +361,19 @@ export default function EmployeesManagementPage() {
         return (a.employeeName || '').toLowerCase().includes(q) || (a.reason || '').toLowerCase().includes(q);
       })
       .sort((a, b) => b.date.localeCompare(a.date) || a.branch.localeCompare(b.branch, 'ar'));
-  }, [combinedFinancialRecords, selectedBranch, isAdmin, isSuperAdmin, user, advBranchFilter, advEmployeeFilter, advTypeFilter, advSearch, advDateFrom, advDateTo]);
+  }, [advances, selectedBranch, isAdmin, isSuperAdmin, user, advBranchFilter, advEmployeeFilter, advTypeFilter, advSearch, advDateFrom, advDateTo]);
 
   const paginatedAdvances = filteredAdvances.slice((advCurrentPage - 1) * advPageSize, advCurrentPage * advPageSize);
 
-  const openEditRecord = (rec: CombinedFinancialRecord) => {
-    if (rec.isPayroll && rec.rawPayroll) {
-      setEditingAdv(null);
-      setEditingPayroll(rec.rawPayroll);
-      setAdvEditForm({
-        date: rec.date,
-        type: 'قبض',
-        amount: String(rec.amount),
-        reason: rec.rawPayroll.notes || '',
-      });
-      setShowAdvEditModal(true);
-    } else if (rec.rawAdvance) {
-      setEditingPayroll(null);
-      setEditingAdv(rec.rawAdvance);
-      setAdvEditForm({
-        date: rec.rawAdvance.date,
-        type: rec.rawAdvance.type,
-        amount: String(rec.rawAdvance.amount),
-        reason: rec.rawAdvance.reason || '',
-      });
-      setShowAdvEditModal(true);
-    }
+  const openEditRecord = (rec: EmployeeAdvance) => {
+    setEditingAdv(rec);
+    setAdvEditForm({
+      date: rec.date,
+      type: rec.type,
+      amount: String(rec.amount),
+      reason: rec.reason || '',
+    });
+    setShowAdvEditModal(true);
   };
 
   const handleSaveAdvEdit = async (e: React.FormEvent) => {
@@ -395,29 +384,14 @@ export default function EmployeesManagementPage() {
     }
     setSavingAdvEdit(true);
 
-    if (editingPayroll) {
-      const updated: WeeklyPayrollSettlement = {
-        ...editingPayroll,
-        netPayout: parseFloat(advEditForm.amount),
-        paidAt: advEditForm.date,
-        notes: advEditForm.reason || undefined,
-      };
-      const ok = await savePayrollSettlement(updated);
-      setSavingAdvEdit(false);
-      if (!ok) {
-        alert('فشل حفظ تعديل سند القبض — من فضلك حاول مرة أخرى');
-        return;
-      }
-      setPayrolls(prev => prev.map(p => (p.id === updated.id ? updated : p)));
-      setShowAdvEditModal(false);
-      setEditingPayroll(null);
-    } else if (editingAdv) {
+    if (editingAdv) {
       const updated: EmployeeAdvance = {
         ...editingAdv,
         date: advEditForm.date,
-        type: advEditForm.type === 'قبض' ? 'سلفة' : advEditForm.type,
+        type: advEditForm.type,
         amount: parseFloat(advEditForm.amount),
         reason: advEditForm.reason,
+        treasuryDeducted: advEditForm.type !== 'خصم',
       };
       const ok = await saveAdvance(updated);
       setSavingAdvEdit(false);
@@ -431,30 +405,46 @@ export default function EmployeesManagementPage() {
     }
   };
 
-  const handleDeleteRecord = async (rec: CombinedFinancialRecord) => {
-    if (rec.isPayroll && rec.rawPayroll) {
-      if (!confirm(`هل أنت متأكد من حذف سند قبض "${rec.employeeName}" بقيمة ${rec.amount.toLocaleString()} ج؟\n\n⚠️ سيتم حذف القبض وإعادة الموظف لحالة غير مقبوض حتى تتمكن من صرف سلفة له أو إعادة تقفيله.`)) {
-        return;
-      }
-      const prevPayrolls = payrolls;
-      setPayrolls(prev => prev.filter(p => p.id !== rec.id));
-      const ok = await deletePayrollSettlement(rec.id);
-      if (ok) {
-        alert(`✅ تم حذف سند القبض للموظف ${rec.employeeName} بنجاح`);
-      } else {
-        setPayrolls(prevPayrolls);
-        alert('فشل حذف سند القبض على السيرفر — من فضلك حاول مرة أخرى');
-      }
-    } else {
-      if (!confirm(`هل أنت متأكد من حذف هذا السجل (${rec.type} للموظف ${rec.employeeName})؟`)) return;
-      const previous = advances;
-      setAdvances(advances.filter(a => a.id !== rec.id));
-      const ok = await deleteAdvance(rec.id);
-      if (!ok) {
-        setAdvances(previous);
-        alert('فشل حذف السجل على السيرفر — من فضلك حاول مرة أخرى');
+  const handleDeleteRecord = async (rec: EmployeeAdvance) => {
+    if (!confirm(`هل أنت متأكد من حذف هذا السجل (${rec.type} للموظف ${rec.employeeName}) بقيمة ${rec.amount.toLocaleString()} ج؟`)) return;
+    const previous = advances;
+    setAdvances(advances.filter(a => a.id !== rec.id));
+    const ok = await deleteAdvance(rec.id);
+    if (!ok) {
+      setAdvances(previous);
+      alert('فشل حذف السجل على السيرفر — من فضلك حاول مرة أخرى');
+    }
+  };
+
+  // Handlers for switching employee or type in Advance Form
+  const handleSelectEmployeeForAdvance = (empId: string) => {
+    setAdvanceEmployeeId(empId);
+    if (advanceType === 'قبض' && empId) {
+      const summary = getEmployeeFinancialSummary(empId);
+      if (summary) {
+        setAdvanceAmount(summary.netRemaining > 0 ? String(summary.netRemaining) : '0');
       }
     }
+  };
+
+  const handleSelectAdvanceType = (type: 'سلفة' | 'خصم' | 'مكافأة' | 'قبض') => {
+    setAdvanceType(type);
+    if (type === 'قبض' && advanceEmployeeId) {
+      const summary = getEmployeeFinancialSummary(advanceEmployeeId);
+      if (summary) {
+        setAdvanceAmount(summary.netRemaining > 0 ? String(summary.netRemaining) : '0');
+      }
+    }
+  };
+
+  const handleQuickPayForEmployee = (empId: string) => {
+    const summary = getEmployeeFinancialSummary(empId);
+    setAdvanceEmployeeId(empId);
+    setAdvanceType('قبض');
+    setAdvanceDate(getTodayDateStr());
+    setAdvanceAmount(summary && summary.netRemaining > 0 ? String(summary.netRemaining) : '0');
+    setAdvanceReason('قبض راتب نقداً');
+    setActiveTab('advances');
   };
 
   // Employee CRUD handlers
@@ -481,7 +471,7 @@ export default function EmployeesManagementPage() {
       name: emp.name,
       branch: emp.branch,
       dailyWage: emp.dailyWage,
-      payType: emp.payType || (isMonthlyEmployee(emp) ? 'شهري' : 'أسبوعي'),
+      payType: emp.payType || 'أسبوعي',
       workStartTime: emp.workStartTime,
       workEndTime: emp.workEndTime,
       phone: emp.phone || '',
@@ -518,8 +508,6 @@ export default function EmployeesManagementPage() {
           isActive: empForm.isActive,
         };
 
-    // تحديث تفاؤلي فورى للواجهة، ثم الحفظ الحقيقى فى السيرفر — لو فشل، بنرجّع
-    // القائمة القديمة ونوضح للمستخدم إن الحفظ ماتمّش (بدل ما نخليه يفتكر إنه اتحفظ).
     const previousList = employees;
     const updatedList = editingEmp
       ? employees.map(e => (e.id === editingEmp.id ? savedEmp : e))
@@ -584,7 +572,7 @@ export default function EmployeesManagementPage() {
     return attendance.find(a => a.employeeId === empId && a.date === dateStr);
   };
 
-  // ── Attendance Log (سجل الحضور): بحث + تصفية + باجنيشن على كل سجلات الحضور ──
+  // ── Attendance Log (سجل الحضور): بحث + تصفية + باجنيشن ──
   const filteredLogRecords = useMemo(() => {
     const activeBranch = (!isAdmin && !isSuperAdmin && user?.branch) ? user.branch : logBranchFilter;
     return attendance
@@ -597,7 +585,6 @@ export default function EmployeesManagementPage() {
         const q = logSearch.trim().toLowerCase();
         return a.employeeName.toLowerCase().includes(q) || (a.recordedBy || '').toLowerCase().includes(q);
       })
-      // الترتيب: آخر التسجيلات أولاً (بالتاريخ ثم وقت الإدخال الفعلي)، وبعدها الفرع كمستوى ترتيب ثانٍ
       .sort((a, b) => {
         const dateCmp = b.date.localeCompare(a.date);
         if (dateCmp !== 0) return dateCmp;
@@ -702,18 +689,31 @@ export default function EmployeesManagementPage() {
   const handleAddAdvance = async (e: React.FormEvent) => {
     e.preventDefault();
     const emp = employees.find(e => e.id === advanceEmployeeId);
-    if (!emp || !advanceAmount) return;
+    if (!emp || !advanceAmount) {
+      alert('من فضلك اختر الموظف وأدخل المبلغ');
+      return;
+    }
+    const amtNum = parseFloat(advanceAmount);
+    if (isNaN(amtNum) || amtNum <= 0) {
+      alert('المبلغ يجب أن يكون أكبر من صفر');
+      return;
+    }
+
+    const defaultReason =
+      advanceType === 'قبض' ? 'قبض راتب نقداً' :
+      advanceType === 'سلفة' ? 'سلفة نقدية من الدرج' :
+      advanceType === 'خصم' ? 'خصم إداري' : 'مكافأة وتشجيع';
 
     const newAdv: EmployeeAdvance = {
       id: `adv_${Date.now()}`,
-      date: getTodayDateStr(),
+      date: advanceDate || getTodayDateStr(),
       employeeId: emp.id,
       employeeName: emp.name,
       branch: emp.branch,
       type: advanceType,
-      amount: parseFloat(advanceAmount),
-      reason: advanceReason || (advanceType === 'سلفة' ? 'سلفة نقدية من الدرج' : 'إداري'),
-      treasuryDeducted: true,
+      amount: amtNum,
+      reason: advanceReason.trim() || defaultReason,
+      treasuryDeducted: advanceType !== 'خصم',
       recordedBy: user?.name || 'مدير الفرع',
     };
 
@@ -724,224 +724,35 @@ export default function EmployeesManagementPage() {
 
     const ok = await saveAdvance(newAdv);
     if (ok) {
-      alert(`تم تسجيل الـ (${advanceType}) بقيمة ${newAdv.amount} ج للموظف ${emp.name} بنجاح`);
+      alert(`✅ تم تسجيل ${advanceType} بقيمة ${newAdv.amount.toLocaleString()} ج للموظف "${emp.name}" بنجاح`);
     } else {
       setAdvances(previous);
       alert('فشل حفظ السجل على السيرفر — من فضلك حاول مرة أخرى');
     }
   };
 
-  const handleDeleteAdvance = async (id: string) => {
-    if (!confirm('هل أنت متأكد من حذف هذا السجل؟')) return;
-    const previous = advances;
-    setAdvances(advances.filter(a => a.id !== id));
-    const ok = await deleteAdvance(id);
-    if (!ok) {
-      setAdvances(previous);
-      alert('فشل حذف السجل على السيرفر — من فضلك حاول مرة أخرى');
-    }
-  };
+  // WhatsApp Statement Share
+  const getWhatsAppStatementUrl = (summary: any) => {
+    if (!summary) return '#';
+    const { employee, attendedDays, dailyWage, earnedWages, totalBonuses, totalAdvances, totalDeductions, totalPaid, netRemaining } = summary;
 
-  // Payroll calculation (Weekly: Saturday to Thursday / Monthly: Month start to end)
-  const currentThursday = useMemo(() => {
-    const d = new Date();
-    const day = d.getDay(); // 0 is Sunday, 4 is Thursday, 6 is Saturday
-    const diff = (4 - day + 7) % 7;
-    const thurs = new Date(d);
-    thurs.setDate(d.getDate() + diff);
-    return thurs.toISOString().split('T')[0];
-  }, []);
-
-  const [settlementThursday, setSettlementThursday] = useState<string>(currentThursday);
-
-  const payrollSummary = useMemo(() => {
-    // Determine weekly boundaries (Sat to Thurs)
-    const thurs = new Date(settlementThursday);
-    const sat = new Date(thurs);
-    sat.setDate(thurs.getDate() - 5);
-    const satStr = sat.toISOString().split('T')[0];
-    const thursStr = settlementThursday;
-
-    // Determine monthly boundaries
-    const [mYear, mMonth] = settlementMonth.split('-').map(Number);
-    const monthStartStr = `${settlementMonth}-01`;
-    const lastDayOfMonth = (mYear && mMonth) ? new Date(mYear, mMonth, 0).getDate() : 30;
-    const monthEndStr = `${settlementMonth}-${String(lastDayOfMonth).padStart(2, '0')}`;
-
-    return branchFilteredEmployees
-      .filter(emp => {
-        const isMonthly = isMonthlyEmployee(emp);
-        if (payrollMode === 'weekly') return !isMonthly;
-        if (payrollMode === 'monthly') return isMonthly;
-        return true;
-      })
-      .map(emp => {
-        const isMonthly = isMonthlyEmployee(emp);
-        const startStr = isMonthly ? monthStartStr : satStr;
-        const endStr = isMonthly ? monthEndStr : thursStr;
-
-        const empAtt = attendance.filter(a => 
-          a.employeeId === emp.id && 
-          a.date >= startStr && 
-          a.date <= endStr
-        );
-
-        let attendedDays = 0;
-        empAtt.forEach(a => {
-          if (a.status === 'حاضر') attendedDays += 1;
-          else if (a.status === 'نصف يوم') attendedDays += 0.5;
-        });
-
-        const baseEarned = attendedDays * emp.dailyWage;
-
-        const empAdvances = advances.filter(a => 
-          a.employeeId === emp.id && 
-          a.date >= startStr && 
-          a.date <= endStr
-        );
-
-        let totalAdv = 0;
-        let totalDed = 0;
-        let totalBon = 0;
-
-        empAdvances.forEach(a => {
-          if (a.type === 'سلفة') totalAdv += a.amount;
-          else if (a.type === 'خصم') totalDed += a.amount;
-          else if (a.type === 'مكافأة') totalBon += a.amount;
-        });
-
-        const netPayout = (baseEarned + totalBon) - (totalAdv + totalDed);
-
-        return {
-          employee: emp,
-          isMonthly,
-          startStr,
-          endStr,
-          satStr,
-          thursStr,
-          monthStr: settlementMonth,
-          attendedDays,
-          baseEarned,
-          totalAdv,
-          totalDed,
-          totalBon,
-          netPayout,
-        };
-      });
-  }, [branchFilteredEmployees, attendance, advances, settlementThursday, settlementMonth, payrollMode]);
-
-  const getWhatsAppShareUrl = (row: any) => {
-    const periodText = row.isMonthly
-      ? `شهر ${row.monthStr} (من ${row.startStr} إلى ${row.endStr})`
-      : `من السبت ${row.satStr} إلى الخميس ${row.thursStr}`;
-
-    const text = `📋 *${row.isMonthly ? 'كشف حساب الراتب الشهري' : 'مستحقات أسبوعية'} - مؤسسة كشك للأقمشة والستائر*
-👤 *الموظف:* ${row.employee.name} (${row.employee.branch}) [${row.isMonthly ? 'راتب شهري' : 'راتب أسبوعي'}]
-🗓️ *الفترة:* ${periodText}
-----------------------------------------
-💵 *اليومية المقررة:* ${row.employee.dailyWage} ج
-📅 *أيام الحضور الفعلية:* ${row.attendedDays} يوم
-💰 *إجمالي الأجر المستحق:* ${row.baseEarned.toLocaleString()} ج
-🎁 *المكافآت:* +${row.totalBon.toLocaleString()} ج
-🔻 *السلف المسحوبة:* -${row.totalAdv.toLocaleString()} ج
-🔻 *الخصومات:* -${row.totalDed.toLocaleString()} ج
-----------------------------------------
-⭐ *صافي القبض المستحق:* ${row.netPayout >= 0 ? '+' : ''}${row.netPayout.toLocaleString()} ج
+    const text = `📋 *كشف حساب ومستحقات - مؤسسة كشك للأقمشة والستائر*
+👤 *الموظف:* ${employee.name} (${employee.branch})
+💵 *اليومية المقررة:* ${dailyWage} ج
+📅 *أيام الحضور الفعلية:* ${attendedDays} يوم
+💰 *إجمالي الأجر المستحق:* ${earnedWages.toLocaleString()} ج
+${totalBonuses > 0 ? `🎁 *مكافآت:* +${totalBonuses.toLocaleString()} ج\n` : ''}${totalAdvances > 0 ? `🔻 *سلف نقدية:* -${totalAdvances.toLocaleString()} ج\n` : ''}${totalDeductions > 0 ? `🔻 *خصومات:* -${totalDeductions.toLocaleString()} ج\n` : ''}${totalPaid > 0 ? `💵 *مقبوض سابقاً:* -${totalPaid.toLocaleString()} ج\n` : ''}----------------------------------------
+⭐ *صافي المتبقي لك:* ${netRemaining >= 0 ? '+' : ''}${netRemaining.toLocaleString()} ج
 ----------------------------------------
 مؤسسة كشك للأقمشة والستائر ✨`;
 
     return `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
   };
 
-  // مفتاح تقفيل فريد لكل موظف/فترة (خميس بعينه للأسبوعي، شهر بعينه للشهري) —
-  // بيه بنمنع القبض مرتين لنفس الفترة ونربط بيه سجل التقفيل المحفوظ.
-  const getSettlementKey = (row: any) => `${row.employee.id}_${row.isMonthly ? row.monthStr : row.thursStr}`;
-
-  const getExistingSettlement = (row: any) => {
-    const key = getSettlementKey(row);
-    return payrolls.find(p => {
-      const pIsMonthly = p.payType === 'شهري';
-      const pKey = `${p.employeeId}_${pIsMonthly ? p.settlementDate : p.weekEndDate}`;
-      return pKey === key && p.isPaid;
-    });
-  };
-
-  const handlePaySalary = async (row: any) => {
-    const key = getSettlementKey(row);
-    const overrideRaw = payrollAmountOverride[key];
-    const finalAmount = overrideRaw !== undefined && overrideRaw !== '' ? Number(overrideRaw) : row.netPayout;
-    if (!finalAmount || finalAmount <= 0) {
-      alert('المبلغ يجب أن يكون أكبر من صفر');
-      return;
-    }
-    const method = payrollPayMethod[key] || 'نقدي';
-    const periodLabel = row.isMonthly ? `شهر ${row.monthStr}` : `أسبوع ${row.satStr} - ${row.thursStr}`;
-
-    if (!confirm(`تأكيد قبض راتب ${row.employee.name}\nالمبلغ: ${finalAmount.toLocaleString()} ج (${method})\nالفترة: ${periodLabel}\n\nسيتم خصم المبلغ من خزينة ${row.employee.branch} فورًا.`)) {
-      return;
-    }
-
-    setPayingKey(key);
-    try {
-      // 1. خصم فعلي من خزينة الفرع — عن طريق تسجيله كمصروف حقيقي (نفس النظام
-      // اللي بيتقرأ منه رصيد الخزينة فى صفحة التقارير).
-      const expRes = await fetch('/api/expenses', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          date: getTodayDateStr(),
-          branch: row.employee.branch,
-          category: 'رواتب وسلف',
-          description: `راتب ${row.employee.name} — ${periodLabel}`,
-          amount: finalAmount,
-          paymentMethod: method,
-        }),
-      });
-      const expData = await expRes.json();
-      if (!expRes.ok || !expData.success) {
-        alert(expData?.error || 'فشل خصم الراتب من الخزينة');
-        return;
-      }
-
-      // 2. تثبيت التقفيل بشكل دائم عشان مايتقبضش مرتين لنفس الفترة
-      const settlement: WeeklyPayrollSettlement = {
-        id: `PAY-${key}-${Date.now()}`,
-        settlementDate: row.isMonthly ? row.monthStr : row.thursStr,
-        weekStartDate: row.satStr,
-        weekEndDate: row.thursStr,
-        branch: row.employee.branch,
-        employeeId: row.employee.id,
-        employeeName: row.employee.name,
-        dailyWage: row.employee.dailyWage,
-        daysAttended: row.attendedDays,
-        baseSalaryEarned: row.baseEarned,
-        totalBonuses: row.totalBon,
-        totalDeductions: row.totalDed,
-        totalAdvances: row.totalAdv,
-        netPayout: finalAmount,
-        isPaid: true,
-        paidAt: new Date().toISOString(),
-        paidFromTreasury: row.employee.branch,
-        payType: row.isMonthly ? 'شهري' : 'أسبوعي',
-      };
-      const ok = await savePayrollSettlement(settlement);
-      if (ok) {
-        setPayrolls([...payrolls.filter(p => p.id !== settlement.id), settlement]);
-        alert(`✅ تم قبض راتب ${row.employee.name} (${finalAmount.toLocaleString()} ج) وخصمه من خزينة ${row.employee.branch}`);
-      } else {
-        // ⚠️ المصروف اتخصم من الخزينة بالفعل (الخطوة اللي فاتت) لكن تسجيل التقفيل
-        // فشل — لازم تنبيه واضح بدل ما نسيب الحالة غامضة (فلوس خرجت بلا سجل تقفيل).
-        alert(`⚠️ تم خصم ${finalAmount.toLocaleString()} ج من الخزينة لكن فشل تسجيل تقفيل الراتب — راجع سجل المصروفات يدويًا وحاول تسجيل التقفيل تانى.`);
-      }
-    } catch (err: any) {
-      alert('خطأ فى الاتصال بالسيرفر: ' + (err?.message || ''));
-    } finally {
-      setPayingKey(null);
-    }
-  };
+  const currentSelectedEmpSummary = advanceEmployeeId ? getEmployeeFinancialSummary(advanceEmployeeId) : null;
 
   return (
-    <PageShell title="شؤون الموظفين والرواتب" badge="18 موظفاً">
+    <PageShell title="شؤون الموظفين والرواتب" badge={`${employees.length} موظفاً`}>
       <div className="space-y-6">
         
         {/* Top Control Bar & Tabs */}
@@ -963,18 +774,18 @@ export default function EmployeesManagementPage() {
               }`}
             >
               <span>💸</span>
-              <span>السلف والخصومات وسندات القبض</span>
+              <span>الحركات المالية (سلف، خصومات، قبض)</span>
             </button>
             {canViewWages && (
               <>
                 <button
-                  onClick={() => setActiveTab('payroll')}
+                  onClick={() => setActiveTab('statement')}
                   className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer ${
-                    activeTab === 'payroll' ? 'bg-emerald-600 text-white shadow-md' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                    activeTab === 'statement' ? 'bg-emerald-600 text-white shadow-md' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                   }`}
                 >
                   <span>💰</span>
-                  <span>تقفيل الرواتب (أسبوعي وشهري)</span>
+                  <span>كشف حساب ومستحقات الموظفين</span>
                 </button>
                 <button
                   onClick={() => setActiveTab('directory')}
@@ -1029,10 +840,10 @@ export default function EmployeesManagementPage() {
                   <span>📝</span>
                   <span>تسجيل حضور وانصراف موظفي الفروع</span>
                 </h3>
-                <p className="text-xs text-slate-500 mt-0.5">يسجل مدير كل فرع حضور موظفيه وتثبيت الحضور بضغطة زر</p>
+                <p className="text-xs text-slate-500 mt-0.5">يسجل مدير كل فرع حضور موظفيه طوال أيام الأسبوع بما فيها يوم الجمعة</p>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-xs font-bold text-slate-600">تاريخ الحضور:</span>
                 <input
                   type="date"
@@ -1040,6 +851,13 @@ export default function EmployeesManagementPage() {
                   onChange={(e) => setAttendanceDate(e.target.value)}
                   className="py-1.5 px-3 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold"
                 />
+                <span className={`px-2.5 py-1 rounded-xl text-xs font-black border ${
+                  getArabicDayName(attendanceDate) === 'الجمعة'
+                    ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                    : 'bg-slate-100 text-slate-800 border-slate-200'
+                }`}>
+                  🗓️ {getArabicDayName(attendanceDate)}
+                </span>
               </div>
             </div>
 
@@ -1057,114 +875,122 @@ export default function EmployeesManagementPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
-                  {branchFilteredEmployees.map((emp, idx) => {
-                    const record = getAttendanceForEmp(emp.id, attendanceDate);
-                    const status = record?.status;
+                  {branchFilteredEmployees.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="p-8 text-center text-slate-400 font-bold">لا يوجد موظفون في هذا الفرع</td>
+                    </tr>
+                  ) : (
+                    branchFilteredEmployees.map((emp, idx) => {
+                      const record = getAttendanceForEmp(emp.id, attendanceDate);
+                      const status = record?.status;
 
-                    return (
-                      <tr key={emp.id} className="hover:bg-slate-50 transition-colors">
-                        <td className="p-3 text-slate-400 font-bold">{idx + 1}</td>
-                        <td className="p-3 font-bold text-slate-900">
-                          <div className="font-extrabold text-sm">{emp.name}</div>
-                          <div className="text-[10px] text-slate-500">{emp.role}</div>
-                        </td>
-                        <td className="p-3">
-                          <span className="bg-slate-100 border border-slate-300 px-2 py-0.5 rounded text-[11px] font-bold text-slate-700">
-                            {emp.branch}
-                          </span>
-                        </td>
-                        {canViewWages && (
-                          <td className="p-3 font-mono font-black text-emerald-800 text-sm">
-                            {emp.dailyWage}
+                      return (
+                        <tr key={emp.id} className="hover:bg-slate-50 transition-colors">
+                          <td className="p-3 text-slate-400 font-bold">{idx + 1}</td>
+                          <td className="p-3 font-bold text-slate-900">
+                            <div className="font-extrabold text-sm">{emp.name}</div>
+                            <div className="text-[10px] text-slate-500">{emp.role}</div>
                           </td>
-                        )}
-                        <td className="p-3 font-bold text-[11px] text-slate-700" dir="rtl">
-                          <span>من </span>
-                          <span className="font-mono text-slate-900">{formatTimeAr(emp.workStartTime)}</span>
-                          <span> إلى </span>
-                          <span className="font-mono text-slate-900">{formatTimeAr(emp.workEndTime)}</span>
-                        </td>
-                        <td className="p-3">
-                          {status ? (
-                            <span className={`px-2.5 py-1 rounded-lg text-xs font-black border ${
-                              status === 'حاضر' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' :
-                              status === 'غياب' ? 'bg-rose-100 text-rose-800 border-rose-300' :
-                              status === 'إجازة' ? 'bg-blue-100 text-blue-800 border-blue-300' :
-                              'bg-amber-100 text-amber-800 border-amber-300'
-                            }`}>
-                              {status === 'حاضر' ? `✓ حاضر (${record?.checkInTime || ''})` : status}
+                          <td className="p-3">
+                            <span className="bg-slate-100 border border-slate-300 px-2 py-0.5 rounded text-[11px] font-bold text-slate-700">
+                              {emp.branch}
                             </span>
-                          ) : (
-                            <span className="text-slate-400 font-bold">لم يسجل بعد</span>
+                          </td>
+                          {canViewWages && (
+                            <td className="p-3 font-mono font-black text-emerald-800 text-sm">
+                              {emp.dailyWage} ج
+                            </td>
                           )}
-                        </td>
-                        <td className="p-3 text-center">
-                          <div className="flex items-center justify-center gap-1.5">
-                            <button
-                              onClick={() => handleMarkAttendance(emp, 'حاضر')}
-                              className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                                status === 'حاضر' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200'
-                              }`}
-                              title="تسجيل حضور كامل"
-                            >
-                              حاضر 👍
-                            </button>
-                            <button
-                              onClick={() => handleMarkAttendance(emp, 'نصف يوم')}
-                              className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                                status === 'نصف يوم' ? 'bg-amber-600 text-white shadow-xs' : 'bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200'
-                              }`}
-                              title="تسجيل نصف يوم"
-                            >
-                              نصف يوم
-                            </button>
-                            <button
-                              onClick={() => handleMarkAttendance(emp, 'غياب')}
-                              className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                                status === 'غياب' ? 'bg-rose-600 text-white shadow-xs' : 'bg-rose-50 text-rose-800 hover:bg-rose-100 border border-rose-200'
-                              }`}
-                              title="تسجيل غياب"
-                            >
-                              غياب ❌
-                            </button>
-                            <button
-                              onClick={() => handleMarkAttendance(emp, 'إجازة')}
-                              className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                                status === 'إجازة' ? 'bg-blue-600 text-white shadow-xs' : 'bg-blue-50 text-blue-800 hover:bg-blue-100 border border-blue-200'
-                              }`}
-                              title="تسجيل إجازة رسمية"
-                            >
-                              إجازة 🏖️
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                          <td className="p-3 font-bold text-[11px] text-slate-700" dir="rtl">
+                            <span>من </span>
+                            <span className="font-mono text-slate-900">{formatTimeAr(emp.workStartTime)}</span>
+                            <span> إلى </span>
+                            <span className="font-mono text-slate-900">{formatTimeAr(emp.workEndTime)}</span>
+                          </td>
+                          <td className="p-3">
+                            {status ? (
+                              <span className={`px-2.5 py-1 rounded-lg text-xs font-black border ${
+                                status === 'حاضر' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' :
+                                status === 'غياب' ? 'bg-rose-100 text-rose-800 border-rose-300' :
+                                status === 'إجازة' ? 'bg-blue-100 text-blue-800 border-blue-300' :
+                                'bg-amber-100 text-amber-800 border-amber-300'
+                              }`}>
+                                {status === 'حاضر' ? `✓ حاضر (${record?.checkInTime || ''})` : status}
+                              </span>
+                            ) : (
+                              <span className="text-slate-400 font-bold">لم يسجل بعد</span>
+                            )}
+                          </td>
+                          <td className="p-3 text-center">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                onClick={() => handleMarkAttendance(emp, 'حاضر')}
+                                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                  status === 'حاضر' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200'
+                                }`}
+                                title="تسجيل حضور كامل"
+                              >
+                                حاضر 👍
+                              </button>
+                              <button
+                                onClick={() => handleMarkAttendance(emp, 'نصف يوم')}
+                                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                  status === 'نصف يوم' ? 'bg-amber-600 text-white shadow-xs' : 'bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200'
+                                }`}
+                                title="تسجيل نصف يوم"
+                              >
+                                نصف يوم
+                              </button>
+                              <button
+                                onClick={() => handleMarkAttendance(emp, 'غياب')}
+                                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                  status === 'غياب' ? 'bg-rose-600 text-white shadow-xs' : 'bg-rose-50 text-rose-800 hover:bg-rose-100 border border-rose-200'
+                                }`}
+                                title="تسجيل غياب"
+                              >
+                                غياب ❌
+                              </button>
+                              <button
+                                onClick={() => handleMarkAttendance(emp, 'إجازة')}
+                                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                  status === 'إجازة' ? 'bg-blue-600 text-white shadow-xs' : 'bg-blue-50 text-blue-800 hover:bg-blue-100 border border-blue-200'
+                                }`}
+                                title="تسجيل إجازة رسمية"
+                              >
+                                إجازة 🏖️
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
                 </tbody>
               </table>
             </div>
           </div>
         )}
 
-        {/* ── TAB 2: ADVANCES & DEDUCTIONS ── */}
+        {/* ── TAB 2: ADVANCES, DEDUCTIONS & PAYOUTS ── */}
         {activeTab === 'advances' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* New Advance Form */}
+            {/* New Movement Form */}
             <div className="bg-white p-5 md:p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
-              <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
-                <span>💸</span>
-                <span>تسجيل سلفة / خصم / مكافأة</span>
-              </h3>
-              <p className="text-xs text-slate-500">تخصم السلفة تلقائياً من درج الفرع وتثبت على حساب الموظف لتقفيل الخميس</p>
+              <div>
+                <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+                  <span>💸</span>
+                  <span>تسجيل حركة مالية (سلفة / خصم / قبض)</span>
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">عند اختيار "قبض" يتم جلب وحساب المتبقي للموظف تلقائياً</p>
+              </div>
 
-              <form onSubmit={handleAddAdvance} className="space-y-3.5 pt-2">
+              <form onSubmit={handleAddAdvance} className="space-y-3.5 pt-1">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">الموظف *</label>
                   <select
                     required
                     value={advanceEmployeeId}
-                    onChange={(e) => setAdvanceEmployeeId(e.target.value)}
+                    onChange={(e) => handleSelectEmployeeForAdvance(e.target.value)}
                     className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-800"
                   >
                     <option value="">-- اختر الموظف --</option>
@@ -1178,47 +1004,83 @@ export default function EmployeesManagementPage() {
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">نوع الحركة *</label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {(['سلفة', 'خصم', 'مكافأة'] as const).map(type => (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                    {(['سلفة', 'خصم', 'مكافأة', 'قبض'] as const).map(type => (
                       <button
                         key={type}
                         type="button"
-                        onClick={() => setAdvanceType(type)}
-                        className={`py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                        onClick={() => handleSelectAdvanceType(type)}
+                        className={`py-2 px-1 rounded-xl text-xs font-bold border transition-all cursor-pointer text-center ${
                           advanceType === type 
-                            ? type === 'سلفة' ? 'bg-amber-600 text-white border-amber-600 shadow-xs' :
+                            ? type === 'قبض' ? 'bg-purple-700 text-white border-purple-700 shadow-xs' :
+                              type === 'سلفة' ? 'bg-amber-600 text-white border-amber-600 shadow-xs' :
                               type === 'خصم' ? 'bg-rose-600 text-white border-rose-600 shadow-xs' :
                               'bg-emerald-600 text-white border-emerald-600 shadow-xs'
                             : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                         }`}
                       >
-                        {type === 'سلفة' ? 'سلفة نقداً' : type === 'خصم' ? 'خصم إداري' : 'مكافأة +'}
+                        {type === 'قبض' ? '💰 قبض' : type === 'سلفة' ? '💵 سلفة' : type === 'خصم' ? '✂️ خصم' : '🎁 مكافأة'}
                       </button>
                     ))}
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">المبلغ بالجنيه *</label>
-                  <input
-                    type="number"
-                    required
-                    min="1"
-                    step="1"
-                    value={advanceAmount}
-                    onChange={(e) => setAdvanceAmount(e.target.value)}
-                    placeholder="مثال: 100"
-                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-mono font-bold text-slate-900"
-                  />
+                {/* Auto Financial Status Box for Selected Employee */}
+                {currentSelectedEmpSummary && (
+                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl text-[11px] space-y-1.5">
+                    <div className="flex justify-between font-bold text-slate-700 border-b border-slate-200/80 pb-1">
+                      <span>أيام الحضور: <strong className="text-slate-950 font-mono">{currentSelectedEmpSummary.attendedDays} يوم</strong></span>
+                      <span>إجمالي الأجر: <strong className="text-emerald-800 font-mono">{currentSelectedEmpSummary.earnedWages.toLocaleString()} ج</strong></span>
+                    </div>
+                    <div className="flex justify-between text-slate-600 text-[10.5px]">
+                      <span>سلف: <strong className="text-amber-800 font-mono">{currentSelectedEmpSummary.totalAdvances.toLocaleString()} ج</strong></span>
+                      <span>خصومات: <strong className="text-rose-700 font-mono">{currentSelectedEmpSummary.totalDeductions.toLocaleString()} ج</strong></span>
+                      <span>مقبوض سابقاً: <strong className="text-purple-800 font-mono">{currentSelectedEmpSummary.totalPaid.toLocaleString()} ج</strong></span>
+                    </div>
+                    <div className="flex justify-between items-center pt-1 border-t border-slate-200 font-black text-xs text-slate-900">
+                      <span>صافي المتبقي له:</span>
+                      <span className={`font-mono text-sm px-2 py-0.5 rounded-lg ${
+                        currentSelectedEmpSummary.netRemaining > 0 ? 'bg-emerald-100 text-emerald-900' : 'bg-slate-200 text-slate-700'
+                      }`}>
+                        {currentSelectedEmpSummary.netRemaining.toLocaleString()} ج
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">التاريخ *</label>
+                    <input
+                      type="date"
+                      required
+                      value={advanceDate}
+                      onChange={(e) => setAdvanceDate(e.target.value)}
+                      className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">المبلغ بالجنيه *</label>
+                    <input
+                      type="number"
+                      required
+                      min="1"
+                      step="1"
+                      value={advanceAmount}
+                      onChange={(e) => setAdvanceAmount(e.target.value)}
+                      placeholder="المبلغ..."
+                      className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-sm font-mono font-black text-slate-900"
+                    />
+                  </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">السبب / البيان</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">السبب / البيان / ملاحظات</label>
                   <input
                     type="text"
                     value={advanceReason}
                     onChange={(e) => setAdvanceReason(e.target.value)}
-                    placeholder="سبب السلفة أو الخصم..."
+                    placeholder={advanceType === 'قبض' ? 'قبض راتب نقداً...' : 'سبب السلفة أو الخصم...'}
                     className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800"
                   />
                 </div>
@@ -1232,15 +1094,15 @@ export default function EmployeesManagementPage() {
               </form>
             </div>
 
-            {/* Advances & Payrolls Log */}
+            {/* Advances & Movements Log Table */}
             <div className="lg:col-span-2 bg-white p-5 md:p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-2">
                 <div>
                   <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
                     <span>📋</span>
-                    <span>سجل السلف والخصومات وسندات القبض المسجلة</span>
+                    <span>سجل الحركات المالية المسجلة</span>
                   </h3>
-                  <p className="text-[11px] text-slate-500">متابعة وإدارة السلف النقدية، الخصومات، المكافآت، وسندات تقفيل الرواتب مع إمكانية التعديل والإلغاء</p>
+                  <p className="text-[11px] text-slate-500">متابعة وإدارة السلف النقدية، الخصومات، المكافآت، وسندات القبض مع إمكانية التعديل والحذف</p>
                 </div>
                 <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200 self-start sm:self-auto">
                   إجمالي: {filteredAdvances.length} حركة
@@ -1351,7 +1213,7 @@ export default function EmployeesManagementPage() {
                   <tbody className="divide-y divide-slate-200">
                     {paginatedAdvances.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="p-8 text-center text-slate-400 font-bold">لا توجد سلف أو خصومات أو سندات قبض مطابقة</td>
+                        <td colSpan={7} className="p-8 text-center text-slate-400 font-bold">لا توجد حركات مالية مطابقة</td>
                       </tr>
                     ) : (
                       paginatedAdvances.map(adv => (
@@ -1409,109 +1271,422 @@ export default function EmployeesManagementPage() {
           </div>
         )}
 
-        {/* Advance / Payroll Edit Modal (Admin Only) */}
-        {showAdvEditModal && (editingAdv || editingPayroll) && (
-          <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-            <form
-              onSubmit={handleSaveAdvEdit}
-              className="bg-white max-w-md w-full rounded-3xl p-6 space-y-4 shadow-2xl border border-slate-200 max-h-[90vh] overflow-y-auto"
-            >
-              <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
-                <span>✏️</span>
-                <span>{editingPayroll ? 'تعديل سند قبض' : 'تعديل سلفة / خصم'}</span>
-              </h3>
-              <p className="text-[11px] text-slate-500 font-bold">
-                {(editingPayroll || editingAdv)?.employeeName} — {(editingPayroll || editingAdv)?.branch}
-              </p>
-
+        {/* ── TAB 3: EMPLOYEE STATEMENT & DUES (كشف حساب ومستحقات الموظفين) ── */}
+        {activeTab === 'statement' && canViewWages && (
+          <div className="bg-white p-5 md:p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
               <div>
-                <label className="text-xs font-bold text-slate-600 block mb-1">التاريخ</label>
-                <input
-                  type="date"
-                  value={advEditForm.date}
-                  onChange={(e) => setAdvEditForm({ ...advEditForm, date: e.target.value })}
-                  required
-                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold"
-                />
+                <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+                  <span>💰</span>
+                  <span>كشف حساب ومستحقات الموظفين</span>
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  حساب مباشر ودقيق لجميع أيام الحضور الفعلية، الأجور المكتسبة، الخصومات، السلف، وما تم قبضه، وصافي المتبقي لكل موظف
+                </p>
               </div>
+            </div>
 
-              {!editingPayroll ? (
-                <div>
-                  <label className="text-xs font-bold text-slate-600 block mb-1">نوع الحركة</label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {(['سلفة', 'خصم', 'مكافأة'] as const).map(type => (
-                      <button
-                        key={type}
-                        type="button"
-                        onClick={() => setAdvEditForm({ ...advEditForm, type })}
-                        className={`py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-                          advEditForm.type === type
-                            ? type === 'سلفة' ? 'bg-amber-600 text-white border-amber-600 shadow-xs' :
-                              type === 'خصم' ? 'bg-rose-600 text-white border-rose-600 shadow-xs' :
-                              'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                            : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                        }`}
-                      >
-                        {type}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="p-2.5 bg-purple-50 border border-purple-200 rounded-xl text-xs text-purple-900 font-bold flex items-center gap-2">
-                  <span>سند قبض ({editingPayroll.payType || 'أسبوعي'})</span>
-                </div>
-              )}
+            <div className="overflow-x-auto">
+              <table className="w-full text-right text-xs">
+                <thead className="bg-slate-100 text-slate-700 font-bold uppercase border-b border-slate-200">
+                  <tr>
+                    <th className="p-3">الموظف والفرع</th>
+                    <th className="p-3 font-mono">اليومية</th>
+                    <th className="p-3 font-mono">أيام الحضور</th>
+                    <th className="p-3 font-mono">إجمالي الأجر</th>
+                    <th className="p-3 font-mono text-emerald-700">مكافآت</th>
+                    <th className="p-3 font-mono text-amber-800">السلف المسحوبة</th>
+                    <th className="p-3 font-mono text-rose-700">الخصومات</th>
+                    <th className="p-3 font-mono text-purple-800">مقبوض سابقاً</th>
+                    <th className="p-3 font-mono text-slate-950 font-black text-sm bg-emerald-50">صافي المتبقي له</th>
+                    <th className="p-3 text-center">إجراء سريع</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                  {branchFilteredEmployees.length === 0 ? (
+                    <tr>
+                      <td colSpan={10} className="p-8 text-center text-slate-400 font-bold">لا يوجد موظفون في هذا الفرع</td>
+                    </tr>
+                  ) : (
+                    branchFilteredEmployees.map((emp) => {
+                      const summary = getEmployeeFinancialSummary(emp.id);
+                      if (!summary) return null;
 
-              <div>
-                <label className="text-xs font-bold text-slate-600 block mb-1">المبلغ بالجنيه *</label>
-                <input
-                  type="number"
-                  min="1"
-                  step="0.01"
-                  value={advEditForm.amount}
-                  onChange={(e) => setAdvEditForm({ ...advEditForm, amount: e.target.value })}
-                  required
-                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-mono font-bold text-slate-900"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-slate-600 block mb-1">السبب / البيان / ملاحظات</label>
-                <input
-                  type="text"
-                  value={advEditForm.reason}
-                  onChange={(e) => setAdvEditForm({ ...advEditForm, reason: e.target.value })}
-                  placeholder={editingPayroll ? 'ملاحظات سند القبض...' : 'سبب السلفة أو الخصم...'}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800"
-                />
-              </div>
-
-              <div className="flex items-center gap-2 pt-2">
-                <button
-                  type="submit"
-                  disabled={savingAdvEdit}
-                  className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl font-bold text-xs cursor-pointer"
-                >
-                  {savingAdvEdit ? 'جاري الحفظ...' : 'حفظ التعديل'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowAdvEditModal(false);
-                    setEditingAdv(null);
-                    setEditingPayroll(null);
-                  }}
-                  className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs cursor-pointer"
-                >
-                  إلغاء
-                </button>
-              </div>
-            </form>
+                      return (
+                        <tr key={emp.id} className="hover:bg-slate-50">
+                          <td className="p-3">
+                            <div className="font-black text-slate-900 text-sm">{emp.name}</div>
+                            <div className="text-[10px] text-slate-500">{emp.branch}</div>
+                          </td>
+                          <td className="p-3 font-mono font-bold text-slate-700">{summary.dailyWage} ج</td>
+                          <td className="p-3 font-mono font-bold text-slate-900">
+                            {summary.attendedDays} يوم
+                          </td>
+                          <td className="p-3 font-mono font-black text-slate-900">{summary.earnedWages.toLocaleString()} ج</td>
+                          <td className="p-3 font-mono text-emerald-700 font-bold">+{summary.totalBonuses.toLocaleString()} ج</td>
+                          <td className="p-3 font-mono text-amber-800 font-bold">-{summary.totalAdvances.toLocaleString()} ج</td>
+                          <td className="p-3 font-mono text-rose-700 font-bold">-{summary.totalDeductions.toLocaleString()} ج</td>
+                          <td className="p-3 font-mono text-purple-800 font-bold">-{summary.totalPaid.toLocaleString()} ج</td>
+                          <td className="p-3 font-mono font-black text-sm bg-emerald-50/80 text-emerald-950 border-r border-l border-emerald-200">
+                            <span className={`px-2 py-0.5 rounded-lg ${
+                              summary.netRemaining > 0 ? 'text-emerald-900 font-black' : 'text-slate-600'
+                            }`}>
+                              {summary.netRemaining >= 0 ? `+${summary.netRemaining.toLocaleString()}` : summary.netRemaining.toLocaleString()} ج
+                            </span>
+                          </td>
+                          <td className="p-3 text-center">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                onClick={() => handleQuickPayForEmployee(emp.id)}
+                                className="px-3 py-1.5 bg-purple-700 hover:bg-purple-800 text-white rounded-lg font-black text-[11px] cursor-pointer whitespace-nowrap shadow-xs"
+                                title="صرف / قبض المتبقي للموظف"
+                              >
+                                💰 قبض
+                              </button>
+                              <button
+                                onClick={() => setSelectedEmpForSlip(summary)}
+                                className="px-2 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold text-[11px] cursor-pointer"
+                                title="معاينة إيصال كشف الحساب"
+                              >
+                                👁️
+                              </button>
+                              <a
+                                href={getWhatsAppStatementUrl(summary)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-2 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold text-[11px]"
+                                title="إرسال كشف الحساب للموظف على واتساب"
+                              >
+                                📱
+                              </a>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 
-        {/* Advances / Payrolls Filter Modal */}
+        {/* ── TAB 4: DIRECTORY ── */}
+        {activeTab === 'directory' && (
+          <div className="space-y-6">
+            <div className="bg-white p-5 md:p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+                  <span>👥</span>
+                  <span>دليل موظفي الفروع</span>
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">إدارة ومتابعة بيانات موظفي الفروع، المسميات الوظيفية ومواعيد العمل (مقسمة حسب الفروع)</p>
+              </div>
+
+              {canViewWages && (
+                <button
+                  type="button"
+                  onClick={handleOpenAddEmp}
+                  className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-sm cursor-pointer"
+                >
+                  <span>➕</span>
+                  <span>إضافة موظف جديد</span>
+                </button>
+              )}
+            </div>
+
+            {/* Render each branch section */}
+            {Object.entries(employeesByBranch).map(([branchName, branchEmps]) => {
+              if (selectedBranch !== 'الكل' && selectedBranch !== branchName) return null;
+              return (
+                <div key={branchName} className="bg-white p-5 md:p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+                  <div className="flex items-center justify-between border-b border-slate-150 pb-3">
+                    <div className="flex items-center gap-2.5">
+                      <span className="w-9 h-9 rounded-xl bg-amber-100 text-amber-900 flex items-center justify-center text-lg font-bold">
+                        🏪
+                      </span>
+                      <div>
+                        <h4 className="font-black text-slate-900 text-base flex items-center gap-2">
+                          <span>{branchName}</span>
+                          <span className="text-[11px] bg-amber-50 border border-amber-200 text-amber-900 px-2 py-0.5 rounded-full font-bold">
+                            {branchEmps.filter(e => e.isActive !== false).length} موظف
+                          </span>
+                        </h4>
+                        <p className="text-[11px] text-slate-400">فريق عمل {branchName}</p>
+                      </div>
+                    </div>
+
+                    {canViewWages && branchEmps.length > 0 && (
+                      <div className="text-left font-mono text-xs">
+                        <span className="text-slate-400 block text-[10px]">إجمالي اليوميات:</span>
+                        <strong className="text-emerald-800 font-black text-sm">
+                          {branchEmps.filter(e => e.isActive !== false).reduce((s, e) => s + (Number(e.dailyWage) || 0), 0).toLocaleString()} ج / يوم
+                        </strong>
+                      </div>
+                    )}
+                  </div>
+
+                  {branchEmps.length === 0 ? (
+                    <div className="py-6 text-center text-xs text-slate-400 font-bold bg-slate-50/60 rounded-2xl border border-dashed border-slate-200">
+                      لا يوجد موظفون مسجلون بهذا الفرع حالياً
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {branchEmps.map((emp) => (
+                        <div key={emp.id} className="p-4 bg-slate-50/80 hover:bg-white rounded-2xl border border-slate-200 space-y-3 hover:border-amber-300 hover:shadow-xs transition-all">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <h4 className="font-black text-slate-950 text-base">{emp.name}</h4>
+                                {emp.isActive === false && (
+                                  <span className="text-[10px] bg-rose-100 text-rose-700 px-1.5 py-0.2 rounded font-bold">متوقف</span>
+                                )}
+                              </div>
+                              <p className="text-xs text-amber-800 font-bold mt-0.5">{emp.role || 'موظف'}</p>
+                              {emp.phone && (
+                                <p className="text-[11px] font-mono text-slate-500 font-bold mt-0.5" dir="ltr">📞 {emp.phone}</p>
+                              )}
+                            </div>
+                            <span className="bg-white border border-slate-200 text-slate-700 px-2 py-0.5 rounded-lg text-[10px] font-bold">
+                              {emp.branch}
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-200/60 text-xs">
+                            <div>
+                              <span className="text-slate-500 block text-[11px]">الراتب اليومي:</span>
+                              {canViewWages ? (
+                                <span className="font-mono font-black text-emerald-800 text-sm">{emp.dailyWage} ج / يوم</span>
+                              ) : (
+                                <span className="text-[11px] font-bold text-slate-400">🔒 محمي للسرية</span>
+                              )}
+                            </div>
+                            <div>
+                              <span className="text-slate-500 block text-[11px]">مواعيد العمل:</span>
+                              <span className="text-slate-700 font-bold text-[11px]" dir="rtl">
+                                {formatTimeAr(emp.workStartTime)} - {formatTimeAr(emp.workEndTime)}
+                              </span>
+                            </div>
+                          </div>
+
+                          {canViewWages && (
+                            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200/60">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditEmp(emp)}
+                                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-xs font-bold cursor-pointer transition-colors"
+                              >
+                                ✏️ تعديل
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteEmp(emp.id, emp.name)}
+                                className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-bold border border-rose-200 cursor-pointer transition-colors"
+                                title="حذف الموظف"
+                              >
+                                🗑️
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* ── TAB 5: ATTENDANCE LOG (سجل الحضور) — أدمن فقط ── */}
+        {activeTab === 'log' && canViewWages && (
+          <div className="bg-white p-5 md:p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-slate-200">
+              <div>
+                <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+                  <span>🗂️</span>
+                  <span>سجل الحضور الكامل</span>
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">بحث وتصفية فى كل سجلات الحضور مع إمكانية التعديل والحذف والإضافة اليدوية</p>
+              </div>
+              <button
+                type="button"
+                onClick={openAddLog}
+                className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-sm cursor-pointer shrink-0"
+              >
+                <span>➕</span>
+                <span>إضافة سجل حضور</span>
+              </button>
+            </div>
+
+            {/* Quick date filters */}
+            <div className="flex bg-slate-100 p-1 rounded-xl gap-1 border border-slate-200 text-xs font-bold overflow-x-auto w-fit">
+              {([
+                { key: 'yesterday', label: 'أمس' },
+                { key: 'today', label: 'اليوم' },
+                { key: 'week', label: 'الأسبوع' },
+                { key: 'month', label: 'الشهر' },
+                { key: 'all', label: 'الكل' },
+              ] as { key: 'yesterday' | 'today' | 'week' | 'month' | 'all'; label: string }[]).map(t => (
+                <button
+                  key={t.key}
+                  type="button"
+                  onClick={() => applyLogQuickFilter(t.key)}
+                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
+                    logQuickFilter === t.key ? 'bg-purple-700 text-white font-black shadow-xs' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Filters */}
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                type="text"
+                value={logSearch}
+                onChange={(e) => setLogSearch(e.target.value)}
+                placeholder="🔍 ابحث باسم الموظف أو مسجّل الحضور..."
+                className="flex-1 min-w-[200px] p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold"
+              />
+              {canViewWages && (
+                <select
+                  value={logBranchFilter}
+                  onChange={(e) => setLogBranchFilter(e.target.value)}
+                  className="p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold"
+                >
+                  <option value="الكل">🌐 كل الفروع</option>
+                  {BRANCHES_LIST.map(b => (
+                    <option key={b.id} value={b.name}>{b.name}</option>
+                  ))}
+                </select>
+              )}
+              <select
+                value={logStatusFilter}
+                onChange={(e) => setLogStatusFilter(e.target.value)}
+                className="p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold"
+              >
+                <option value="الكل">كل الحالات</option>
+                <option value="حاضر">حاضر</option>
+                <option value="غياب">غياب</option>
+                <option value="إجازة">إجازة</option>
+                <option value="نصف يوم">نصف يوم</option>
+              </select>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] font-bold text-slate-500">من</span>
+                <input
+                  type="date"
+                  value={logDateFrom}
+                  onChange={(e) => { setLogDateFrom(e.target.value); setLogQuickFilter('custom'); }}
+                  className="p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold"
+                />
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] font-bold text-slate-500">إلى</span>
+                <input
+                  type="date"
+                  value={logDateTo}
+                  onChange={(e) => { setLogDateTo(e.target.value); setLogQuickFilter('custom'); }}
+                  className="p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold"
+                />
+              </div>
+              {(logSearch || logBranchFilter !== 'الكل' || logStatusFilter !== 'الكل' || logDateFrom || logDateTo) && (
+                <button
+                  type="button"
+                  onClick={() => { setLogSearch(''); setLogBranchFilter('الكل'); setLogStatusFilter('الكل'); setLogDateFrom(''); setLogDateTo(''); setLogQuickFilter('all'); }}
+                  className="px-3 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold cursor-pointer"
+                >
+                  ✕ مسح التصفية
+                </button>
+              )}
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-right text-xs">
+                <thead className="bg-slate-100 text-slate-700 font-bold uppercase border-b border-slate-200">
+                  <tr>
+                    <th className="p-3">التاريخ واليوم</th>
+                    <th className="p-3">اسم الموظف</th>
+                    <th className="p-3">الفرع</th>
+                    <th className="p-3">الحالة</th>
+                    <th className="p-3 font-mono">الحضور</th>
+                    <th className="p-3 font-mono">الانصراف</th>
+                    <th className="p-3">سجّله</th>
+                    <th className="p-3 text-center">إجراءات</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                  {paginatedLogRecords.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="p-6 text-center text-slate-400 font-bold">لا توجد سجلات مطابقة</td>
+                    </tr>
+                  ) : (
+                    paginatedLogRecords.map((record) => (
+                      <tr key={record.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="p-3 font-bold text-slate-800">
+                          <span className="font-mono text-slate-600">{record.date}</span>
+                          <span className="text-[11px] text-slate-500 mr-1.5">({getArabicDayName(record.date)})</span>
+                        </td>
+                        <td className="p-3 font-extrabold text-slate-900">{record.employeeName}</td>
+                        <td className="p-3">
+                          <span className="bg-slate-100 border border-slate-300 px-2 py-0.5 rounded text-[11px] font-bold text-slate-700">
+                            {record.branch}
+                          </span>
+                        </td>
+                        <td className="p-3">
+                          <span className={`px-2.5 py-1 rounded-lg text-xs font-black border ${
+                            record.status === 'حاضر' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' :
+                            record.status === 'غياب' ? 'bg-rose-100 text-rose-800 border-rose-300' :
+                            record.status === 'إجازة' ? 'bg-blue-100 text-blue-800 border-blue-300' :
+                            'bg-amber-100 text-amber-800 border-amber-300'
+                          }`}>
+                            {record.status}
+                          </span>
+                        </td>
+                        <td className="p-3 font-mono text-slate-700">{record.checkInTime || '—'}</td>
+                        <td className="p-3 font-mono text-slate-700">{record.checkOutTime || '—'}</td>
+                        <td className="p-3 text-slate-500">{record.recordedBy || '—'}</td>
+                        <td className="p-3 text-center">
+                          <div className="flex items-center justify-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => openEditLog(record)}
+                              className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer"
+                            >
+                              <span>✏️</span>
+                              <span>تعديل</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteLog(record)}
+                              className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-bold border border-rose-200 cursor-pointer"
+                              title="حذف السجل"
+                            >
+                              🗑️
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <Pagination
+              currentPage={logCurrentPage}
+              totalItems={filteredLogRecords.length}
+              pageSize={logPageSize}
+              onPageChange={setLogCurrentPage}
+              itemName="سجل"
+            />
+          </div>
+        )}
+
+        {/* ── MODALS ── */}
+
+        {/* Advances / Financial Movements Filter Modal */}
         {showAdvFilterModal && (
           <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-50 flex items-center justify-center p-4">
             <div className="bg-white max-w-lg w-full rounded-3xl p-6 space-y-5 shadow-2xl border border-slate-200 max-h-[90vh] overflow-y-auto">
@@ -1675,629 +1850,93 @@ export default function EmployeesManagementPage() {
           </div>
         )}
 
-        {/* ── TAB 3: THURSDAY PAYROLL SETTLEMENT ── */}
-        {activeTab === 'payroll' && (
-          !canViewWages ? (
-            <div className="bg-linear-to-br from-amber-50 to-orange-50 border-2 border-amber-200 rounded-3xl p-10 text-center space-y-4 shadow-sm">
-              <div className="w-16 h-16 bg-amber-100 text-amber-900 rounded-2xl flex items-center justify-center text-3xl mx-auto border border-amber-300 shadow-inner">
-                🔒
-              </div>
-              <h3 className="text-lg font-black text-slate-950">شاشة مقفلة — صلاحية خاصة بالمدير العام فقط</h3>
-              <p className="text-xs md:text-sm text-slate-600 max-w-lg mx-auto leading-relaxed font-medium">
-                حفاظاً على سرية وخصوصية رواتب ويوميات الموظفين، كشف حساب الخميس وتقفيل الرواتب متاح لمدير النظام فقط.
-                <br />
-                مديرو الفروع مخولون بتسجيل <span className="font-bold text-slate-900">الحضور والانصراف</span> و <span className="font-bold text-slate-900">السلف النقدية</span> فقط.
-              </p>
-            </div>
-          ) : (
-            <div className="bg-white p-5 md:p-6 rounded-3xl border border-slate-200 shadow-sm space-y-5">
-              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-200">
-                <div>
-                  <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
-                    <span>💰</span>
-                    <span>كشف حساب وتقفيل الرواتب</span>
-                  </h3>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    حساب دقيق ومنفصل للرواتب الأسبوعية (كل خميس) والرواتب الشهرية (الـ 5 موظفين: تقى، إسراء، محمد كشك، محمد علي، بليه)
-                  </p>
-                </div>
-
-                {/* Sub-Filters / Segmented Controls */}
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
-                    <button
-                      type="button"
-                      onClick={() => setPayrollMode('weekly')}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                        payrollMode === 'weekly' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-700 hover:bg-slate-200'
-                      }`}
-                    >
-                      📅 تقفيل الخميس (أسبوعي)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPayrollMode('monthly')}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                        payrollMode === 'monthly' ? 'bg-purple-600 text-white shadow-xs' : 'text-slate-700 hover:bg-slate-200'
-                      }`}
-                    >
-                      🗓️ رواتب شهري (5 موظفين)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPayrollMode('all')}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                        payrollMode === 'all' ? 'bg-slate-900 text-white shadow-xs' : 'text-slate-700 hover:bg-slate-200'
-                      }`}
-                    >
-                      👥 كشف شامل (الكل)
-                    </button>
-                  </div>
-
-                  {payrollMode !== 'monthly' && (
-                    <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-1">
-                      <span className="text-[11px] font-bold text-slate-600">خميس التقفيل:</span>
-                      <input
-                        type="date"
-                        value={settlementThursday}
-                        onChange={(e) => setSettlementThursday(e.target.value)}
-                        className="bg-transparent text-xs font-mono font-bold text-slate-900 focus:outline-none"
-                      />
-                    </div>
-                  )}
-
-                  {payrollMode !== 'weekly' && (
-                    <div className="flex items-center gap-1.5 bg-purple-50 border border-purple-200 rounded-xl px-2.5 py-1">
-                      <span className="text-[11px] font-bold text-purple-900">شهر التقفيل:</span>
-                      <input
-                        type="month"
-                        value={settlementMonth}
-                        onChange={(e) => setSettlementMonth(e.target.value)}
-                        className="bg-transparent text-xs font-mono font-bold text-purple-950 focus:outline-none"
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="overflow-x-auto">
-                <table className="w-full text-right text-xs">
-                  <thead className="bg-slate-100 text-slate-700 font-bold uppercase border-b border-slate-200">
-                    <tr>
-                      <th className="p-3">الموظف والفرع</th>
-                      <th className="p-3 text-center">نظام الراتب</th>
-                      <th className="p-3 font-mono">اليومية</th>
-                      <th className="p-3 font-mono">أيام الحضور</th>
-                      <th className="p-3 font-mono">إجمالي الأجر</th>
-                      <th className="p-3 font-mono text-emerald-700">مكافآت</th>
-                      <th className="p-3 font-mono text-amber-800">السلف المسحوبة</th>
-                      <th className="p-3 font-mono text-rose-700">الخصومات</th>
-                      <th className="p-3 font-mono text-slate-950 font-black text-sm bg-emerald-50">صافي المستحق</th>
-                      <th className="p-3 text-center">إجراءات</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200">
-                    {payrollSummary.length === 0 ? (
-                      <tr>
-                        <td colSpan={10} className="p-8 text-center text-slate-400 font-bold">
-                          لا يوجد موظفون مطابقون لخيارات التصفية المختارة
-                        </td>
-                      </tr>
-                    ) : (
-                      payrollSummary.map((row) => {
-                        const key = getSettlementKey(row);
-                        const existingSettlement = getExistingSettlement(row);
-                        const isPaying = payingKey === key;
-                        return (
-                        <tr key={row.employee.id} className="hover:bg-slate-50">
-                          <td className="p-3">
-                            <div className="font-black text-slate-900 text-sm">{row.employee.name}</div>
-                            <div className="text-[10px] text-slate-500">{row.employee.branch}</div>
-                          </td>
-                          <td className="p-3 text-center">
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                              row.isMonthly
-                                ? 'bg-purple-100 text-purple-800 border border-purple-200'
-                                : 'bg-sky-100 text-sky-800 border border-sky-200'
-                            }`}>
-                              {row.isMonthly ? '🗓️ شهري' : '📅 أسبوعي'}
-                            </span>
-                          </td>
-                          <td className="p-3 font-mono font-bold text-slate-700">{row.employee.dailyWage} ج</td>
-                          <td className="p-3 font-mono font-bold text-slate-900">
-                            {row.attendedDays} يوم
-                            {row.isMonthly && <span className="text-[10px] text-purple-700 block">بالشهر</span>}
-                          </td>
-                          <td className="p-3 font-mono font-black text-slate-900">{row.baseEarned.toLocaleString()} ج</td>
-                          <td className="p-3 font-mono text-emerald-700 font-bold">+{row.totalBon.toLocaleString()} ج</td>
-                          <td className="p-3 font-mono text-amber-800 font-bold">-{row.totalAdv.toLocaleString()} ج</td>
-                          <td className="p-3 font-mono text-rose-700 font-bold">-{row.totalDed.toLocaleString()} ج</td>
-                          <td className="p-3 font-mono font-black text-sm bg-emerald-50/80 text-emerald-950 border-r border-l border-emerald-200">
-                            {existingSettlement ? (
-                              <span>{existingSettlement.netPayout >= 0 ? `+${existingSettlement.netPayout.toLocaleString()}` : existingSettlement.netPayout.toLocaleString()} ج</span>
-                            ) : (
-                              <input
-                                type="number"
-                                step="0.01"
-                                value={payrollAmountOverride[key] ?? String(row.netPayout)}
-                                onChange={e => setPayrollAmountOverride(prev => ({ ...prev, [key]: e.target.value }))}
-                                className="w-24 bg-white border border-emerald-300 rounded-lg px-1.5 py-1 font-mono font-black text-emerald-950 text-center focus:outline-none"
-                                title="تقدر تعدّل المبلغ يدويًا قبل القبض"
-                              />
-                            )}
-                          </td>
-                          <td className="p-3 text-center">
-                            {existingSettlement ? (
-                              <div className="flex flex-col items-center gap-0.5">
-                                <span className="px-2.5 py-1 bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-lg font-black text-[11px] whitespace-nowrap">
-                                  ✅ تم القبض
-                                </span>
-                                <span className="text-[9px] text-slate-400 font-mono">{formatDateOnly(existingSettlement.paidAt || '')}</span>
-                              </div>
-                            ) : (
-                              <div className="flex flex-col items-center gap-1.5">
-                                <select
-                                  value={payrollPayMethod[key] || 'نقدي'}
-                                  onChange={e => setPayrollPayMethod(prev => ({ ...prev, [key]: e.target.value }))}
-                                  className="text-[10px] font-bold border border-slate-200 rounded-lg px-1 py-0.5 bg-white focus:outline-none"
-                                >
-                                  <option value="نقدي">💵 نقدي</option>
-                                  <option value="إنستاباي">⚡ إنستاباي</option>
-                                  <option value="فودافون كاش">📱 فودافون</option>
-                                  <option value="فيزا / كارت">💳 فيزا</option>
-                                </select>
-                                <div className="flex items-center justify-center gap-1.5">
-                                  <button
-                                    onClick={() => handlePaySalary(row)}
-                                    disabled={isPaying}
-                                    className="px-2.5 py-1.5 bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white rounded-lg font-black text-[11px] cursor-pointer whitespace-nowrap"
-                                    title="قبض الراتب وخصمه من خزينة الفرع"
-                                  >
-                                    {isPaying ? '...' : '💰 قبض'}
-                                  </button>
-                                  <button
-                                    onClick={() => setSelectedEmpForSlip(row)}
-                                    className="px-2 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold text-[11px] cursor-pointer"
-                                    title="معاينة إيصال القبض"
-                                  >
-                                    👁️
-                                  </button>
-                                  <a
-                                    href={getWhatsAppShareUrl(row)}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="px-2 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold text-[11px]"
-                                    title="إرسال الحساب للموظف واتساب"
-                                  >
-                                    📱
-                                  </a>
-                                </div>
-                              </div>
-                            )}
-                          </td>
-                        </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )
-        )}
-
-        {/* ── TAB 4: DIRECTORY ── */}
-        {activeTab === 'directory' && (
-          <div className="space-y-6">
-            <div className="bg-white p-5 md:p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
-                  <span>👥</span>
-                  <span>دليل موظفي الفروع</span>
-                </h3>
-                <p className="text-xs text-slate-500 mt-0.5">إدارة ومتابعة بيانات موظفي الفروع، المسميات الوظيفية ومواعيد العمل (مقسمة حسب الفروع)</p>
-              </div>
-
-              {canViewWages && (
-                <button
-                  type="button"
-                  onClick={handleOpenAddEmp}
-                  className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-sm cursor-pointer"
-                >
-                  <span>➕</span>
-                  <span>إضافة موظف جديد</span>
-                </button>
-              )}
-            </div>
-
-            {/* Render each branch section */}
-            {Object.entries(employeesByBranch).map(([branchName, branchEmps]) => {
-              if (selectedBranch !== 'الكل' && selectedBranch !== branchName) return null;
-              return (
-                <div key={branchName} className="bg-white p-5 md:p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
-                  <div className="flex items-center justify-between border-b border-slate-150 pb-3">
-                    <div className="flex items-center gap-2.5">
-                      <span className="w-9 h-9 rounded-xl bg-amber-100 text-amber-900 flex items-center justify-center text-lg font-bold">
-                        🏪
-                      </span>
-                      <div>
-                        <h4 className="font-black text-slate-900 text-base flex items-center gap-2">
-                          <span>{branchName}</span>
-                          <span className="text-[11px] bg-amber-50 border border-amber-200 text-amber-900 px-2 py-0.5 rounded-full font-bold">
-                            {branchEmps.filter(e => e.isActive !== false).length} موظف
-                          </span>
-                        </h4>
-                        <p className="text-[11px] text-slate-400">فريق عمل {branchName}</p>
-                      </div>
-                    </div>
-
-                    {canViewWages && branchEmps.length > 0 && (
-                      <div className="text-left font-mono text-xs">
-                        <span className="text-slate-400 block text-[10px]">إجمالي اليوميات:</span>
-                        <strong className="text-emerald-800 font-black text-sm">
-                          {branchEmps.filter(e => e.isActive !== false).reduce((s, e) => s + (Number(e.dailyWage) || 0), 0).toLocaleString()} ج / يوم
-                        </strong>
-                      </div>
-                    )}
-                  </div>
-
-                  {branchEmps.length === 0 ? (
-                    <div className="py-6 text-center text-xs text-slate-400 font-bold bg-slate-50/60 rounded-2xl border border-dashed border-slate-200">
-                      لا يوجد موظفون مسجلون بهذا الفرع حالياً
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {branchEmps.map((emp) => (
-                        <div key={emp.id} className="p-4 bg-slate-50/80 hover:bg-white rounded-2xl border border-slate-200 space-y-3 hover:border-amber-300 hover:shadow-xs transition-all">
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <h4 className="font-black text-slate-950 text-base">{emp.name}</h4>
-                                {emp.isActive === false && (
-                                  <span className="text-[10px] bg-rose-100 text-rose-700 px-1.5 py-0.2 rounded font-bold">متوقف</span>
-                                )}
-                              </div>
-                              <p className="text-xs text-amber-800 font-bold mt-0.5">{emp.role || 'موظف'}</p>
-                              {emp.phone && (
-                                <p className="text-[11px] font-mono text-slate-500 font-bold mt-0.5" dir="ltr">📞 {emp.phone}</p>
-                              )}
-                            </div>
-                            <span className="bg-white border border-slate-200 text-slate-700 px-2 py-0.5 rounded-lg text-[10px] font-bold">
-                              {emp.branch}
-                            </span>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-200/60 text-xs">
-                            <div>
-                              <span className="text-slate-500 block text-[11px]">الراتب اليومي:</span>
-                              {canViewWages ? (
-                                <span className="font-mono font-black text-emerald-800 text-sm">{emp.dailyWage} ج / يوم</span>
-                              ) : (
-                                <span className="text-[11px] font-bold text-slate-400">🔒 محمي للسرية</span>
-                              )}
-                            </div>
-                            <div>
-                              <span className="text-slate-500 block text-[11px]">مواعيد العمل:</span>
-                              <span className="font-bold text-slate-800 text-[11px] inline-flex items-center gap-1" dir="rtl">
-                                <span>من</span>
-                                <span className="font-mono text-slate-950 font-black">{formatTimeAr(emp.workStartTime)}</span>
-                                <span>إلى</span>
-                                <span className="font-mono text-slate-950 font-black">{formatTimeAr(emp.workEndTime)}</span>
-                              </span>
-                            </div>
-                          </div>
-
-                          {canViewWages && (
-                            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
-                              <button
-                                type="button"
-                                onClick={() => handleOpenEditEmp(emp)}
-                                className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors"
-                              >
-                                <span>✏️</span>
-                                <span>تعديل</span>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteEmp(emp.id, emp.name)}
-                                className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-bold border border-rose-200 cursor-pointer transition-colors"
-                                title="حذف الموظف"
-                              >
-                                🗑️
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* ── TAB 5: ATTENDANCE LOG (سجل الحضور) — أدمن فقط ── */}
-        {activeTab === 'log' && canViewWages && (
-          <div className="bg-white p-5 md:p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-slate-200">
-              <div>
-                <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
-                  <span>🗂️</span>
-                  <span>سجل الحضور الكامل</span>
-                </h3>
-                <p className="text-xs text-slate-500 mt-0.5">بحث وتصفية فى كل سجلات الحضور مع إمكانية التعديل والحذف والإضافة اليدوية</p>
-              </div>
-              <button
-                type="button"
-                onClick={openAddLog}
-                className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-sm cursor-pointer shrink-0"
-              >
-                <span>➕</span>
-                <span>إضافة سجل حضور</span>
-              </button>
-            </div>
-
-            {/* Quick date filters */}
-            <div className="flex bg-slate-100 p-1 rounded-xl gap-1 border border-slate-200 text-xs font-bold overflow-x-auto w-fit">
-              {([
-                { key: 'yesterday', label: 'أمس' },
-                { key: 'today', label: 'اليوم' },
-                { key: 'week', label: 'الأسبوع' },
-                { key: 'month', label: 'الشهر' },
-                { key: 'all', label: 'الكل' },
-              ] as { key: 'yesterday' | 'today' | 'week' | 'month' | 'all'; label: string }[]).map(t => (
-                <button
-                  key={t.key}
-                  type="button"
-                  onClick={() => applyLogQuickFilter(t.key)}
-                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
-                    logQuickFilter === t.key ? 'bg-purple-700 text-white font-black shadow-xs' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-                  }`}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Filters */}
-            <div className="flex flex-wrap items-center gap-2">
-              <input
-                type="text"
-                value={logSearch}
-                onChange={(e) => setLogSearch(e.target.value)}
-                placeholder="🔍 ابحث باسم الموظف أو مسجّل الحضور..."
-                className="flex-1 min-w-[200px] p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold"
-              />
-              {canViewWages && (
-                <select
-                  value={logBranchFilter}
-                  onChange={(e) => setLogBranchFilter(e.target.value)}
-                  className="p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold"
-                >
-                  <option value="الكل">🌐 كل الفروع</option>
-                  {BRANCHES_LIST.map(b => (
-                    <option key={b.id} value={b.name}>{b.name}</option>
-                  ))}
-                </select>
-              )}
-              <select
-                value={logStatusFilter}
-                onChange={(e) => setLogStatusFilter(e.target.value)}
-                className="p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold"
-              >
-                <option value="الكل">كل الحالات</option>
-                <option value="حاضر">حاضر</option>
-                <option value="غياب">غياب</option>
-                <option value="إجازة">إجازة</option>
-                <option value="نصف يوم">نصف يوم</option>
-              </select>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[11px] font-bold text-slate-500">من</span>
-                <input
-                  type="date"
-                  value={logDateFrom}
-                  onChange={(e) => { setLogDateFrom(e.target.value); setLogQuickFilter('custom'); }}
-                  className="p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold"
-                />
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[11px] font-bold text-slate-500">إلى</span>
-                <input
-                  type="date"
-                  value={logDateTo}
-                  onChange={(e) => { setLogDateTo(e.target.value); setLogQuickFilter('custom'); }}
-                  className="p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold"
-                />
-              </div>
-              {(logSearch || logBranchFilter !== 'الكل' || logStatusFilter !== 'الكل' || logDateFrom || logDateTo) && (
-                <button
-                  type="button"
-                  onClick={() => { setLogSearch(''); setLogBranchFilter('الكل'); setLogStatusFilter('الكل'); setLogDateFrom(''); setLogDateTo(''); setLogQuickFilter('all'); }}
-                  className="px-3 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold cursor-pointer"
-                >
-                  ✕ مسح التصفية
-                </button>
-              )}
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-right text-xs">
-                <thead className="bg-slate-100 text-slate-700 font-bold uppercase border-b border-slate-200">
-                  <tr>
-                    <th className="p-3">التاريخ</th>
-                    <th className="p-3">اسم الموظف</th>
-                    <th className="p-3">الفرع</th>
-                    <th className="p-3">الحالة</th>
-                    <th className="p-3 font-mono">الحضور</th>
-                    <th className="p-3 font-mono">الانصراف</th>
-                    <th className="p-3">سجّله</th>
-                    <th className="p-3 text-center">إجراءات</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200">
-                  {paginatedLogRecords.length === 0 ? (
-                    <tr>
-                      <td colSpan={8} className="p-6 text-center text-slate-400 font-bold">لا توجد سجلات مطابقة</td>
-                    </tr>
-                  ) : (
-                    paginatedLogRecords.map((record) => (
-                      <tr key={record.id} className="hover:bg-slate-50 transition-colors">
-                        <td className="p-3 font-mono font-bold text-slate-700">{record.date}</td>
-                        <td className="p-3 font-extrabold text-slate-900">{record.employeeName}</td>
-                        <td className="p-3">
-                          <span className="bg-slate-100 border border-slate-300 px-2 py-0.5 rounded text-[11px] font-bold text-slate-700">
-                            {record.branch}
-                          </span>
-                        </td>
-                        <td className="p-3">
-                          <span className={`px-2.5 py-1 rounded-lg text-xs font-black border ${
-                            record.status === 'حاضر' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' :
-                            record.status === 'غياب' ? 'bg-rose-100 text-rose-800 border-rose-300' :
-                            record.status === 'إجازة' ? 'bg-blue-100 text-blue-800 border-blue-300' :
-                            'bg-amber-100 text-amber-800 border-amber-300'
-                          }`}>
-                            {record.status}
-                          </span>
-                        </td>
-                        <td className="p-3 font-mono text-slate-700">{record.checkInTime || '—'}</td>
-                        <td className="p-3 font-mono text-slate-700">{record.checkOutTime || '—'}</td>
-                        <td className="p-3 text-slate-500">{record.recordedBy || '—'}</td>
-                        <td className="p-3 text-center">
-                          <div className="flex items-center justify-center gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => openEditLog(record)}
-                              className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer"
-                            >
-                              <span>✏️</span>
-                              <span>تعديل</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteLog(record)}
-                              className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-bold border border-rose-200 cursor-pointer"
-                              title="حذف السجل"
-                            >
-                              🗑️
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            <Pagination
-              currentPage={logCurrentPage}
-              totalItems={filteredLogRecords.length}
-              pageSize={logPageSize}
-              onPageChange={setLogCurrentPage}
-              itemName="سجل"
-            />
-          </div>
-        )}
-
-        {/* Attendance Log Add/Edit Modal (Admin Only) */}
-        {showLogModal && (
+        {/* Advance / Movement Edit Modal (Admin Only) */}
+        {showAdvEditModal && editingAdv && (
           <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-50 flex items-center justify-center p-4">
             <form
-              onSubmit={handleSaveLog}
+              onSubmit={handleSaveAdvEdit}
               className="bg-white max-w-md w-full rounded-3xl p-6 space-y-4 shadow-2xl border border-slate-200 max-h-[90vh] overflow-y-auto"
             >
               <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
-                <span>{editingLogRecord ? '✏️' : '➕'}</span>
-                <span>{editingLogRecord ? 'تعديل سجل حضور' : 'إضافة سجل حضور'}</span>
+                <span>✏️</span>
+                <span>تعديل السند المالي</span>
               </h3>
-
-              <div>
-                <label className="text-xs font-bold text-slate-600 block mb-1">الموظف</label>
-                <select
-                  value={logForm.employeeId}
-                  onChange={(e) => setLogForm({ ...logForm, employeeId: e.target.value })}
-                  disabled={!!editingLogRecord}
-                  required
-                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold disabled:opacity-60"
-                >
-                  <option value="">— اختر الموظف —</option>
-                  {employees.map(emp => (
-                    <option key={emp.id} value={emp.id}>{emp.name} ({emp.branch})</option>
-                  ))}
-                </select>
-                {editingLogRecord && (
-                  <p className="text-[10px] text-slate-400 mt-1">{editingLogRecord.employeeName} — {editingLogRecord.branch}</p>
-                )}
-              </div>
+              <p className="text-[11px] text-slate-500 font-bold">
+                {editingAdv.employeeName} — {editingAdv.branch}
+              </p>
 
               <div>
                 <label className="text-xs font-bold text-slate-600 block mb-1">التاريخ</label>
                 <input
                   type="date"
-                  value={logForm.date}
-                  onChange={(e) => setLogForm({ ...logForm, date: e.target.value })}
+                  value={advEditForm.date}
+                  onChange={(e) => setAdvEditForm({ ...advEditForm, date: e.target.value })}
                   required
                   className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-600 block mb-1">الحالة</label>
-                <select
-                  value={logForm.status}
-                  onChange={(e) => setLogForm({ ...logForm, status: e.target.value as AttendanceRecord['status'] })}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold"
-                >
-                  <option value="حاضر">حاضر</option>
-                  <option value="غياب">غياب</option>
-                  <option value="إجازة">إجازة</option>
-                  <option value="نصف يوم">نصف يوم</option>
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-bold text-slate-600 block mb-1">وقت الحضور</label>
-                  <input
-                    type="time"
-                    value={logForm.checkInTime}
-                    onChange={(e) => setLogForm({ ...logForm, checkInTime: e.target.value })}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-slate-600 block mb-1">وقت الانصراف</label>
-                  <input
-                    type="time"
-                    value={logForm.checkOutTime}
-                    onChange={(e) => setLogForm({ ...logForm, checkOutTime: e.target.value })}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono"
-                  />
+                <label className="text-xs font-bold text-slate-600 block mb-1">نوع الحركة</label>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {(['سلفة', 'خصم', 'مكافأة', 'قبض'] as const).map(type => (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => setAdvEditForm({ ...advEditForm, type })}
+                      className={`py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer text-center ${
+                        advEditForm.type === type
+                          ? type === 'قبض' ? 'bg-purple-700 text-white border-purple-700 shadow-xs' :
+                            type === 'سلفة' ? 'bg-amber-600 text-white border-amber-600 shadow-xs' :
+                            type === 'خصم' ? 'bg-rose-600 text-white border-rose-600 shadow-xs' :
+                            'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      {type}
+                    </button>
+                  ))}
                 </div>
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-600 block mb-1">ملاحظات</label>
-                <textarea
-                  value={logForm.notes}
-                  onChange={(e) => setLogForm({ ...logForm, notes: e.target.value })}
-                  rows={2}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs"
+                <label className="text-xs font-bold text-slate-600 block mb-1">المبلغ بالجنيه *</label>
+                <input
+                  type="number"
+                  min="1"
+                  step="0.01"
+                  value={advEditForm.amount}
+                  onChange={(e) => setAdvEditForm({ ...advEditForm, amount: e.target.value })}
+                  required
+                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-mono font-bold text-slate-900"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-600 block mb-1">السبب / البيان / ملاحظات</label>
+                <input
+                  type="text"
+                  value={advEditForm.reason}
+                  onChange={(e) => setAdvEditForm({ ...advEditForm, reason: e.target.value })}
+                  placeholder="سبب الحركة أو الملاحظات..."
+                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800"
                 />
               </div>
 
               <div className="flex items-center gap-2 pt-2">
                 <button
                   type="submit"
-                  disabled={savingLog}
+                  disabled={savingAdvEdit}
                   className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl font-bold text-xs cursor-pointer"
                 >
-                  {savingLog ? 'جاري الحفظ...' : (editingLogRecord ? 'حفظ التعديل' : 'إضافة السجل')}
+                  {savingAdvEdit ? 'جاري الحفظ...' : 'حفظ التعديل'}
                 </button>
                 <button
                   type="button"
-                  onClick={() => setShowLogModal(false)}
+                  onClick={() => {
+                    setShowAdvEditModal(false);
+                    setEditingAdv(null);
+                  }}
                   className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs cursor-pointer"
                 >
                   إلغاء
@@ -2315,7 +1954,7 @@ export default function EmployeesManagementPage() {
                 <h3 className="font-black text-slate-900 text-base flex items-center gap-2">
                   <span>{editingEmp ? '✏️ تعديل بيانات موظف' : '➕ إضافة موظف جديد'}</span>
                 </h3>
-                <button onClick={() => setShowEmpModal(false)} className="text-slate-400 hover:text-slate-700 font-bold">✕</button>
+                <button onClick={() => setShowEmpModal(false)} className="text-slate-400 hover:text-slate-700 font-bold cursor-pointer">✕</button>
               </div>
 
               <form onSubmit={handleSaveEmp} className="space-y-3.5 text-xs">
@@ -2366,8 +2005,8 @@ export default function EmployeesManagementPage() {
                       onChange={(e) => setEmpForm({ ...empForm, payType: e.target.value as 'شهري' | 'أسبوعي' })}
                       className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-900"
                     >
-                      <option value="أسبوعي">📅 أسبوعي (تقفيل كل خميس)</option>
-                      <option value="شهري">🗓️ شهري (تقفيل نهاية الشهر)</option>
+                      <option value="أسبوعي">📅 أسبوعي</option>
+                      <option value="شهري">🗓️ شهري</option>
                     </select>
                   </div>
                 </div>
@@ -2442,7 +2081,7 @@ export default function EmployeesManagementPage() {
                   <button
                     type="button"
                     onClick={() => setShowEmpModal(false)}
-                    className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl"
+                    className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl cursor-pointer"
                   >
                     إلغاء
                   </button>
@@ -2464,22 +2103,13 @@ export default function EmployeesManagementPage() {
             <div className="bg-white max-w-md w-full rounded-3xl p-6 space-y-4 shadow-2xl border border-slate-200">
               <div className="flex justify-between items-center border-b pb-2">
                 <h3 className="font-black text-slate-900 text-base">إيصال كشف حساب الموظف</h3>
-                <button onClick={() => setSelectedEmpForSlip(null)} className="text-slate-400 hover:text-slate-700 font-bold">✕</button>
+                <button onClick={() => setSelectedEmpForSlip(null)} className="text-slate-400 hover:text-slate-700 font-bold cursor-pointer">✕</button>
               </div>
 
               <div className="p-4 bg-slate-50 rounded-2xl border border-dashed border-slate-300 space-y-3 text-xs">
                 <div className="text-center border-b pb-2">
                   <p className="font-black text-base text-slate-900">مؤسسة كشك للأقمشة والستائر</p>
-                  <p className="text-xs text-amber-800 font-bold">
-                    {selectedEmpForSlip.isMonthly 
-                      ? `كشف حساب الراتب الشهري: ${selectedEmpForSlip.monthStr}`
-                      : `كشف حساب الأسبوع المنتهي: ${selectedEmpForSlip.thursStr}`}
-                  </p>
-                  <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                    selectedEmpForSlip.isMonthly ? 'bg-purple-100 text-purple-900 border border-purple-200' : 'bg-sky-100 text-sky-900 border border-sky-200'
-                  }`}>
-                    {selectedEmpForSlip.isMonthly ? '🗓️ نظام تقفيل شهري' : '📅 نظام تقفيل أسبوعي (الخميس)'}
-                  </span>
+                  <p className="text-xs text-amber-800 font-bold">كشف حساب ومستحقات الموظف</p>
                 </div>
 
                 <div className="flex justify-between font-bold text-slate-900">
@@ -2490,41 +2120,47 @@ export default function EmployeesManagementPage() {
                 <div className="space-y-1.5 border-t border-b py-2 text-slate-700">
                   <div className="flex justify-between">
                     <span>أيام الحضور الفعلية:</span>
-                    <span className="font-mono font-bold">{selectedEmpForSlip.attendedDays} يوم × {selectedEmpForSlip.employee.dailyWage}ج</span>
+                    <span className="font-mono font-bold">{selectedEmpForSlip.attendedDays} يوم × {selectedEmpForSlip.dailyWage}ج</span>
                   </div>
                   <div className="flex justify-between font-bold text-slate-900">
                     <span>إجمالي الأجر المكتسب:</span>
-                    <span className="font-mono">{selectedEmpForSlip.baseEarned.toLocaleString()} ج</span>
+                    <span className="font-mono">{selectedEmpForSlip.earnedWages.toLocaleString()} ج</span>
                   </div>
-                  {selectedEmpForSlip.totalBon > 0 && (
+                  {selectedEmpForSlip.totalBonuses > 0 && (
                     <div className="flex justify-between text-emerald-700 font-bold">
                       <span>مكافآت إضافية:</span>
-                      <span className="font-mono">+{selectedEmpForSlip.totalBon.toLocaleString()} ج</span>
+                      <span className="font-mono">+{selectedEmpForSlip.totalBonuses.toLocaleString()} ج</span>
                     </div>
                   )}
-                  {selectedEmpForSlip.totalAdv > 0 && (
+                  {selectedEmpForSlip.totalAdvances > 0 && (
                     <div className="flex justify-between text-amber-800 font-bold">
-                      <span>سلف مسحوبة (مخصومة):</span>
-                      <span className="font-mono">-{selectedEmpForSlip.totalAdv.toLocaleString()} ج</span>
+                      <span>سلف نقدية (مسحوبة):</span>
+                      <span className="font-mono">-{selectedEmpForSlip.totalAdvances.toLocaleString()} ج</span>
                     </div>
                   )}
-                  {selectedEmpForSlip.totalDed > 0 && (
+                  {selectedEmpForSlip.totalDeductions > 0 && (
                     <div className="flex justify-between text-rose-700 font-bold">
                       <span>خصومات إدارية:</span>
-                      <span className="font-mono">-{selectedEmpForSlip.totalDed.toLocaleString()} ج</span>
+                      <span className="font-mono">-{selectedEmpForSlip.totalDeductions.toLocaleString()} ج</span>
+                    </div>
+                  )}
+                  {selectedEmpForSlip.totalPaid > 0 && (
+                    <div className="flex justify-between text-purple-800 font-bold">
+                      <span>مقبوض سابقاً:</span>
+                      <span className="font-mono">-{selectedEmpForSlip.totalPaid.toLocaleString()} ج</span>
                     </div>
                   )}
                 </div>
 
                 <div className="flex justify-between items-center p-3 bg-emerald-50 rounded-xl border border-emerald-300 font-black text-emerald-950 text-sm">
-                  <span>صافي المستحق للقبض:</span>
-                  <span className="font-mono text-base">{selectedEmpForSlip.netPayout.toLocaleString()} ج.م</span>
+                  <span>صافي المتبقي للموظف:</span>
+                  <span className="font-mono text-base">{selectedEmpForSlip.netRemaining.toLocaleString()} ج.م</span>
                 </div>
               </div>
 
               <div className="flex gap-2">
                 <a
-                  href={getWhatsAppShareUrl(selectedEmpForSlip)}
+                  href={getWhatsAppStatementUrl(selectedEmpForSlip)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-xl flex items-center justify-center gap-1.5"
@@ -2534,7 +2170,7 @@ export default function EmployeesManagementPage() {
                 <button
                   type="button"
                   onClick={() => setSelectedEmpForSlip(null)}
-                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl"
+                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl cursor-pointer"
                 >
                   إغلاق
                 </button>
