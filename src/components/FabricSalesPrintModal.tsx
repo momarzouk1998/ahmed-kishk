@@ -95,15 +95,15 @@ export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricS
     const rows = (data.items || []).map((it, i) => `
       <tr style="border-bottom: 1px solid #000;">
         <td style="padding: 1.5mm 1mm; text-align:right;">
-          <div style="font-weight:900; font-size:8.5pt; line-height:1.2;">${it.name}</div>
+          <div style="font-weight:900; font-size:11pt; line-height:1.2;">${it.name}</div>
         </td>
-        <td style="text-align:center; font-family:monospace; font-weight:900; font-size:8.5pt; padding: 1.5mm 0.5mm; border-right: 1px solid #000; border-left: 1px solid #000;">
+        <td style="text-align:center; font-family:monospace; font-weight:900; font-size:11pt; padding: 1.5mm 0.5mm; border-right: 1px solid #000; border-left: 1px solid #000;">
           ${it.meters}م
         </td>
-        <td style="text-align:center; font-family:monospace; font-weight:bold; font-size:8pt; padding: 1.5mm 0.5mm; border-left: 1px solid #000;">
+        <td style="text-align:center; font-family:monospace; font-weight:bold; font-size:10.5pt; padding: 1.5mm 0.5mm; border-left: 1px solid #000;">
           ${it.pricePerMeter}
         </td>
-        <td style="text-align:left; font-family:monospace; font-weight:900; font-size:8.5pt; padding: 1.5mm 1mm; white-space:nowrap;">
+        <td style="text-align:left; font-family:monospace; font-weight:900; font-size:11pt; padding: 1.5mm 1mm; white-space:nowrap;">
           ${it.totalPrice.toLocaleString()}
         </td>
       </tr>
@@ -112,8 +112,8 @@ export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricS
     const activePayments = getActivePaymentLines();
     const paymentRowsHtml = activePayments.map(p => `
       <tr>
-        <td class="lbl" style="font-size:8pt; padding-right:1mm;">${p.icon} مسدد ${p.label}:</td>
-        <td class="v" style="font-size:8.5pt;">${p.amount.toLocaleString()}</td>
+        <td class="lbl" style="font-size:10.5pt; padding-right:1mm;">${p.icon} مسدد ${p.label}:</td>
+        <td class="v" style="font-size:11pt;">${p.amount.toLocaleString()}</td>
       </tr>
     `).join('');
 
@@ -126,23 +126,23 @@ export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricS
       <style>
         @page { size: 80mm 297mm; margin: 0; }
         * { box-sizing:border-box; margin:0; padding:0; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
-        body { font-family: 'Cairo', system-ui, -apple-system, sans-serif; direction:rtl; color:#000; font-size:8.5pt; width:68mm; max-width:68mm; margin:0 auto; padding: 2mm 1.5mm; font-weight:700; }
+        body { font-family: 'Cairo', system-ui, -apple-system, sans-serif; direction:rtl; color:#000; font-size:11pt; width:68mm; max-width:68mm; margin:0 auto; padding: 2mm 1.5mm; font-weight:700; }
         .center { text-align:center; }
-        .brand { font-weight:900; font-size:11pt; letter-spacing:-0.2px; color:#000; }
-        .branch-title { font-weight:900; font-size:9.5pt; margin-top:0.5mm; color:#000; }
-        .address-line { font-size:8.5pt; color:#000; font-weight:900; margin-top:0.8mm; line-height:1.25; }
-        .phones-line { font-size:8.5pt; color:#000; font-weight:900; margin-top:0.8mm; line-height:1.25; font-family:monospace, sans-serif; }
+        .brand { font-weight:900; font-size:14pt; letter-spacing:-0.2px; color:#000; }
+        .branch-title { font-weight:900; font-size:12.5pt; margin-top:0.5mm; color:#000; }
+        .address-line { font-size:11pt; color:#000; font-weight:900; margin-top:0.8mm; line-height:1.25; }
+        .phones-line { font-size:11pt; color:#000; font-weight:900; margin-top:0.8mm; line-height:1.25; font-family:monospace, sans-serif; }
         .divider { border-top:1.5px dashed #000; margin:1.5mm 0; }
         .items-table { width:100%; border-collapse:collapse; border:1.5px solid #000; margin:1.5mm 0; }
         .items-table th, .items-table td { vertical-align:middle; color:#000; }
-        .items-table thead th { background:#f0f0f0 !important; font-size:8pt; font-weight:900; padding:1.2mm 0.5mm; border-bottom:1.5px solid #000; }
+        .items-table thead th { background:#f0f0f0 !important; font-size:10.5pt; font-weight:900; padding:1.2mm 0.5mm; border-bottom:1.5px solid #000; }
         .totals { width:100%; border-collapse:collapse; margin-top:1mm; }
-        .totals td { padding: 0.8mm 0.5mm; font-size:8.5pt; color:#000; }
+        .totals td { padding: 0.8mm 0.5mm; font-size:11pt; color:#000; }
         .totals .lbl { color:#000; font-weight:800; }
         .totals .v { text-align:left; font-family:monospace; font-weight:900; white-space:nowrap; padding-left:1mm; color:#000; }
-        .total-row td { font-size:10pt; font-weight:900; border-top:1.5px solid #000; border-bottom:1.5px solid #000; padding:1.5mm 0.5mm; color:#000; }
+        .total-row td { font-size:13pt; font-weight:900; border-top:1.5px solid #000; border-bottom:1.5px solid #000; padding:1.5mm 0.5mm; color:#000; }
         .foot { text-align:center; color:#000; margin-top:2.5mm; line-height:1.3; }
-        .policy-box { border:1.5px solid #000; border-radius:1.5mm; padding:1.5mm 1mm; font-weight:900; font-size:8.5pt; color:#000; margin-top:1.5mm; line-height:1.25; background:#fff; }
+        .policy-box { border:1.5px solid #000; border-radius:1.5mm; padding:1.5mm 1mm; font-weight:900; font-size:11pt; color:#000; margin-top:1.5mm; line-height:1.25; background:#fff; }
       </style></head><body>
         <div class="center">
           <div class="brand">${brand.storeName || 'مؤسسة كشك للأقمشة والستائر'}</div>
@@ -151,13 +151,13 @@ export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricS
           ${branchPhones ? `<div class="phones-line">📞 ${branchPhones}</div>` : ''}
         </div>
         <div class="divider"></div>
-        <div style="display:flex; justify-content:space-between; font-size:8.5pt; font-weight:900; color:#000;">
+        <div style="display:flex; justify-content:space-between; font-size:11pt; font-weight:900; color:#000;">
           <span>رقم: <b style="font-family:monospace;">${data.invoiceNumber}</b></span>
-          <span style="font-size:8pt;">${formattedDateTime}</span>
+          <span style="font-size:10.5pt;">${formattedDateTime}</span>
         </div>
-        <div style="font-size:8.5pt; margin-top:1mm; display:flex; justify-content:space-between; font-weight:900; color:#000;">
+        <div style="font-size:11pt; margin-top:1mm; display:flex; justify-content:space-between; font-weight:900; color:#000;">
           <span>العميل: <b>${data.customerName || 'عميل نقدي'}</b></span>
-          ${(data.phone || data.customerPhone) ? `<span style="font-family:monospace; direction:ltr; font-weight:900; font-size:8.5pt;">${data.phone || data.customerPhone}</span>` : ''}
+          ${(data.phone || data.customerPhone) ? `<span style="font-family:monospace; direction:ltr; font-weight:900; font-size:11pt;">${data.phone || data.customerPhone}</span>` : ''}
         </div>
         <div class="divider"></div>
         <table class="items-table">
@@ -183,7 +183,7 @@ export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricS
         </table>
         <div class="divider"></div>
         <div class="foot">
-          <div style="font-weight:900; font-size:8.5pt; color:#000;">شكراً لتعاملكم مع مؤسسة كشك للأقمشة والستائر ✨</div>
+          <div style="font-weight:900; font-size:11pt; color:#000;">شكراً لتعاملكم مع مؤسسة كشك للأقمشة والستائر ✨</div>
           <div class="policy-box">⚠️ البضاعة المباعة لا ترد ولا تستبدل بعد القص</div>
         </div>
       </body></html>`);
