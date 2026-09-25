@@ -1,9 +1,8 @@
 'use client';
 
 import React from 'react';
-import Sidebar from '@/components/Sidebar';
 import Header from '@/components/Header';
-import { SidebarProvider, useSidebar } from '@/components/SidebarContext';
+import { useSidebar } from '@/components/SidebarContext';
 import { initCentralSync, onSyncReady } from '@/lib/syncService';
 
 interface PageShellProps {
@@ -15,8 +14,8 @@ interface PageShellProps {
   noHeader?: boolean;
 }
 
-function ShellContent({ title, badge, action, children, fullWidth, noHeader }: PageShellProps) {
-  const { isCollapsed, hideBottomNav } = useSidebar();
+export default function PageShell({ title, badge, action, children, fullWidth, noHeader }: PageShellProps) {
+  const { isCollapsed, hideBottomNav, setHideBottomNav } = useSidebar();
 
   // Track whether the first server→localStorage sync has completed
   const [syncReady, setSyncReady] = React.useState(false);
@@ -30,9 +29,16 @@ function ShellContent({ title, badge, action, children, fullWidth, noHeader }: P
     onSyncReady(() => setSyncReady(true));
   }, []);
 
+  // القائمة الجانبية والـ provider بقوا ثابتين لكل التطبيق (AppShell)، فكل
+  // صفحة بتحدّث hideBottomNav بنفسها وقت ما تُعرَض — وترجّعه false تانى وقت ما
+  // تُغلق، عشان صفحة عادية بعدها ماتفضلش وارثة إخفاء الشريط من صفحة ملء الشاشة.
+  React.useEffect(() => {
+    setHideBottomNav(!!noHeader);
+    return () => setHideBottomNav(false);
+  }, [noHeader, setHideBottomNav]);
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
-      <Sidebar />
       {!noHeader && <Header title={title} badge={badge} action={action} />}
       <div className={`${noHeader ? 'pt-1' : 'pt-[calc(4rem+env(safe-area-inset-top))]'} transition-all duration-300 ${isCollapsed ? 'lg:pr-20' : 'lg:pr-64'}`}>
         {/* pb الإضافي هنا (موبايل بس) عشان يعوّض ارتفاع شريط التنقل السريع الثابت
@@ -47,13 +53,5 @@ function ShellContent({ title, badge, action, children, fullWidth, noHeader }: P
         </main>
       </div>
     </div>
-  );
-}
-
-export default function PageShell({ title, badge, action, children, fullWidth, noHeader }: PageShellProps) {
-  return (
-    <SidebarProvider hideBottomNav={!!noHeader}>
-      <ShellContent title={title} badge={badge} action={action} fullWidth={fullWidth} noHeader={noHeader}>{children}</ShellContent>
-    </SidebarProvider>
   );
 }

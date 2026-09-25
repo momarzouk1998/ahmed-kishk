@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
+import AppShell from '@/components/AppShell';
 
 async function checkSubscription(): Promise<{ active: boolean; status?: string; message?: string }> {
   try {
@@ -75,7 +76,7 @@ export default async function RootLayout({
             {subStatus.message}
           </div>
         )}
-        {children}
+        <AppShell>{children}</AppShell>
         <script
           dangerouslySetInnerHTML={{
             __html: `

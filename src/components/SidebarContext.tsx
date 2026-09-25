@@ -14,7 +14,12 @@ interface SidebarContextType {
   toggleSection: (key: string) => void;
   // صفحات بملء الشاشة بدون هيدر (زي نقطة البيع) بتحجب شريط التنقل السريع
   // أسفل الشاشة عشان مايتغطاش زرار إتمام البيع أو أي عنصر تحت فى الشاشة.
+  // #FIX: كان بيتحدد مرة واحدة بس عند تركيب SidebarProvider (prop ثابت)، وده
+  // كان شغال لما كل صفحة كانت بتركّب SidebarProvider من جديد بنفسها. دلوقتى
+  // الـ provider واحد ثابت لكل التطبيق (فى AppShell)، فكل صفحة لازم تقدر
+  // تحدّث القيمة دي بنفسها وقت ما تُعرَض (عبر setHideBottomNav).
   hideBottomNav: boolean;
+  setHideBottomNav: (v: boolean) => void;
 }
 
 const SidebarContext = createContext<SidebarContextType | null>(null);
@@ -27,9 +32,10 @@ const defaultSections: Record<string, boolean> = {
   admin: false,
 };
 
-export function SidebarProvider({ children, hideBottomNav = false }: { children: React.ReactNode; hideBottomNav?: boolean }) {
+export function SidebarProvider({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [hideBottomNav, setHideBottomNav] = useState(false);
 
   // ── Accordion state lives in context so Sidebar remounts never reset it ──
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>(defaultSections);
@@ -106,7 +112,7 @@ export function SidebarProvider({ children, hideBottomNav = false }: { children:
       isOpen, open, close, toggle,
       isCollapsed, toggleCollapse,
       expandedSections, toggleSection,
-      hideBottomNav,
+      hideBottomNav, setHideBottomNav,
     }}>
       {children}
     </SidebarContext.Provider>
