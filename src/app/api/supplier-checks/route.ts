@@ -60,11 +60,13 @@ export async function POST(request: Request) {
           dueDate: c.dueDate || '',
           status: c.status || 'قيد الانتظار',
           notes: c.notes || '',
+          branch: c.branch || undefined,
         },
         update: {
           status: c.status || undefined,
           amount: c.amount !== undefined ? Number(c.amount) : undefined,
           notes: c.notes !== undefined ? c.notes : undefined,
+          branch: c.branch !== undefined ? c.branch : undefined,
         },
       });
       results.push(check);

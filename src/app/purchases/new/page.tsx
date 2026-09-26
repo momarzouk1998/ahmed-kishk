@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import SearchableSelect, { SearchOption } from '@/components/SearchableSelect';
 import { normalizeBranchName } from '@/lib/branches';
 import { getTodayDateStr } from '@/lib/dateUtils';
+import { DEFAULT_INVENTORY_CATEGORIES, getBranchCustomCategories, saveBranchCustomCategory } from '@/lib/categories';
 
 interface PurchaseLineItem {
   id: string;
@@ -87,6 +88,7 @@ export default function NewPurchaseInvoicePage() {
   const [showAddProductModal, setShowAddProductModal] = useState(false);
   const [newProdName, setNewProdName] = useState('');
   const [newProdCategory, setNewProdCategory] = useState('ستائر');
+  const [newCatInput, setNewCatInput] = useState('');
   const [newProdUnit, setNewProdUnit] = useState('متر');
   const [newProdCostPrice, setNewProdCostPrice] = useState<number>(0);
   const [newProdSellPrice, setNewProdSellPrice] = useState<number>(0);
@@ -277,16 +279,26 @@ export default function NewPurchaseInvoicePage() {
     // كود بيتبعت من هنا خالص.
     const cost = Number(newProdCostPrice) || 0;
     const sell = Number(newProdSellPrice) || Math.round(cost * 1.35);
+    const categoryToUse = newProdCategory === 'NEW' ? newCatInput.trim() : newProdCategory;
+    if (!categoryToUse) {
+      alert('من فضلك اكتب اسم التصنيف الجديد');
+      setIsSavingProd(false);
+      return;
+    }
 
     const newProdData: Partial<InventoryProduct> = {
       name: newProdName.trim(),
-      category: newProdCategory,
+      category: categoryToUse,
       unit: newProdUnit,
       totalQuantity: 0,
       costPrice: cost,
       sellPrice: sell,
       branch,
     };
+
+    if (newProdCategory === 'NEW') {
+      await saveBranchCustomCategory(branch, categoryToUse);
+    }
 
     try {
       const res = await fetch('/api/inventory', {
@@ -307,6 +319,7 @@ export default function NewPurchaseInvoicePage() {
         setNewProdName('');
         setNewProdCostPrice(0);
         setNewProdSellPrice(0);
+        setNewCatInput('');
       } else {
         const json = await res.json();
         alert(json.error || 'فشل في حفظ الصنف الجديد');
@@ -352,6 +365,14 @@ export default function NewPurchaseInvoicePage() {
     );
     return uniqueCats;
   }, [products, branch]);
+
+  // كل تصنيفات الفرع الحقيقية لمودال "إضافة صنف جديد" — نفس مصادر شاشة المخزون
+  // (تصنيفات المخزون الافتراضية + تصنيفات مضافة يدويًا للفرع + تصنيفات الأصناف
+  // الموجودة بالفعل)، مش الأربعة تصنيفات المكتوبة فى الكود بس.
+  const modalCategories = useMemo(() => {
+    const custom = getBranchCustomCategories(branch);
+    return Array.from(new Set([...DEFAULT_INVENTORY_CATEGORIES, ...custom, ...dynamicCategories]));
+  }, [branch, dynamicCategories]);
 
   // Filtered Products for Catalog Search
   const filteredProducts = useMemo(() => {
@@ -452,6 +473,7 @@ export default function NewPurchaseInvoicePage() {
             dueDate: c.dueDate,
             notes: c.notes || `شيك فاتورة شراء ${invoiceNumber}`,
             status: 'قيد الانتظار',
+            branch,
           }));
           await fetch('/api/supplier-checks', {
             method: 'POST',
@@ -1196,11 +1218,21 @@ export default function NewPurchaseInvoicePage() {
                     onChange={e => setNewProdCategory(e.target.value)}
                     className="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900 focus:outline-none"
                   >
-                    <option value="ستائر">ستائر 🪟</option>
-                    <option value="سواريه">سواريه ✨</option>
-                    <option value="تراكات ومواسير">تراكات ومواسير 🛠️</option>
-                    <option value="أشرطة وإكسسوارات">أشرطة وإكسسوارات 🎀</option>
+                    {modalCategories.map(c => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                    <option value="NEW">+ إضافة تصنيف جديد...</option>
                   </select>
+                  {newProdCategory === 'NEW' && (
+                    <input
+                      type="text"
+                      value={newCatInput}
+                      onChange={e => setNewCatInput(e.target.value)}
+                      placeholder="اكتب اسم التصنيف الجديد..."
+                      className="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900 mt-1.5 focus:outline-none focus:border-amber-500"
+                      autoFocus
+                    />
+                  )}
                 </div>
               </div>
 

@@ -229,6 +229,9 @@ model SupplierCheck {
   dueDate      String
   status       String   @default("قيد الانتظار")
   notes        String?
+  // الفرع اللي هيتخصم منه الشيك ده لما يتأكد صرفه — فاضي لشيكات قديمة اتسجلت
+  // قبل إضافة العمود ده (مش هتتخصم من أي فرع لحد ما تتحدّث يدويًا).
+  branch       String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }

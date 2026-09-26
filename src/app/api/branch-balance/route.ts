@@ -32,7 +32,7 @@ function bucketFor(method: string | undefined | null): 'cash' | 'instapay' | 'vo
 function isImmediateTreasuryMethod(method: string | undefined | null): boolean {
   const m = (method || '').trim();
   if (!m) return false;
-  if (m.includes('شيكات') || m.includes('آجل') || m.includes('دفعات')) return false;
+  if (m.includes('شيك') || m.includes('آجل') || m.includes('دفعات')) return false;
   return true;
 }
 
@@ -53,7 +53,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: false, error: 'الفرع مطلوب' }, { status: 400 });
     }
 
-    const [invoices, quotations, collections, expenses, advances, purchases, transfers] = await Promise.all([
+    const [invoices, quotations, collections, expenses, advances, purchases, transfers, supplierPayments, supplierChecks] = await Promise.all([
       prisma.salesInvoice.findMany({ where: {}, select: { branch: true, paidAmount: true, paymentType: true, notes: true } }),
       prisma.quotationOrder.findMany({ where: {}, select: { id: true, branch: true, depositPaid: true, paymentMethod: true, splitPayments: true } }),
       prisma.customerCollection.findMany({ where: {}, select: { treasury: true, amount: true, method: true, quotationId: true } }),
@@ -61,6 +61,8 @@ export async function GET(request: Request) {
       prisma.employeeAdvance.findMany({ where: {}, select: { branch: true, amount: true, treasuryDeducted: true } }),
       prisma.purchaseInvoice.findMany({ where: {}, select: { branch: true, paidAmount: true, paymentMethod: true, splitPayments: true } }),
       prisma.branchTransfer.findMany({ where: { kind: 'تسوية نقدية' }, select: { fromBranch: true, toBranch: true, splitPayments: true } }),
+      prisma.supplierPayment.findMany({ where: {}, select: { treasury: true, amount: true, method: true } }),
+      prisma.supplierCheck.findMany({ where: { status: 'تم الصرف' }, select: { branch: true, amount: true } }),
     ]);
 
     const balance = { cash: 0, instapay: 0, vodafone: 0, visa: 0 };
@@ -133,6 +135,26 @@ export async function GET(request: Request) {
       }
       // شيكات بنكية/آجل: المبلغ المدفوع فوري مش موجود أصلاً غالبًا، ولو موجود
       // (دفعة مقدمة) بيتسجل بطريقة دفع فعلية مش "شيكات"، فمش هيتفوّت هنا.
+    });
+
+    // ⚠️ #FIX: سندات سداد الموردين (SupplierPayment) ما كانتش بتتخصم من رصيد
+    // الفرع خالص فى أي مكان فى النظام — يعني دفع مورد نقدي أو إنستاباي كان
+    // بيتسجل فى كشف حساب المورد بس، ورصيد الخزينة الظاهر للأدمن مايعرفش إن
+    // الفلوس دي خرجت فعلاً. الشيك المؤجل (isImmediateTreasuryMethod ترجع false
+    // له) مستبعد عمدًا هنا لحد ما يتأكد صرفه — نفس منطق شيكات فواتير الشراء.
+    supplierPayments.forEach(sp => {
+      if (!matchesBranch(sp.treasury, branch)) return;
+      if (!isImmediateTreasuryMethod(sp.method)) return;
+      balance[bucketFor(sp.method)] -= Number(sp.amount || 0);
+    });
+
+    // ⚠️ #FIX: تأكيد صرف شيك مورد (SupplierCheck.status = 'تم الصرف') كان بيغيّر
+    // الحالة المعروضة بس من غير أي أثر على رصيد الخزينة — يعني الفلوس متتخصمش
+    // لا وقت تسجيل الشيك (صح، لسه مؤجل) ولا وقت تأكيد صرفه فعليًا (غلط). دلوقتى
+    // بتتخصم من الفرع بس لما تتأكد فعليًا، ودايمًا كاش (شيك متحصّل = فلوس فعلية).
+    supplierChecks.forEach(chk => {
+      if (!matchesBranch(chk.branch, branch)) return;
+      balance.cash -= Number(chk.amount || 0);
     });
 
     // تسويات نقدية بين الفروع — الفرع الدافع (fromBranch) بتتخصم منه الفلوس

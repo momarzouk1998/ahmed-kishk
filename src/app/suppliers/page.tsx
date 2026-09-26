@@ -64,6 +64,7 @@ interface SupplierCheck {
   dueDate: string;
   status: 'قيد الانتظار' | 'تم الصرف' | 'مرتد / ملغي';
   notes: string;
+  branch?: string;
 }
 
 interface SupplierLedgerEntry {
@@ -119,6 +120,7 @@ export default function SuppliersPage() {
     if (!isAdmin && currentUser?.branch) {
       setSupBranch(currentUser.branch);
       setPayTreasury(getBranchTreasury(currentUser.branch));
+      setBatchBranch(currentUser.branch);
     }
   }, [isAdmin, currentUser]);
 
@@ -131,6 +133,9 @@ export default function SuppliersPage() {
 
   // Batch / Multiple Checks Entry State
   const [batchSupplierId, setBatchSupplierId] = useState('');
+  // الموردون مش مربوطين بفرع معيّن (بيوردوا لأكتر من فرع)، فلازم نحدد إحنا
+  // فرع مين اللي هيتخصم منه الشيك ده لما يتأكد صرفه لاحقًا.
+  const [batchBranch, setBatchBranch] = useState('الفرع الرئيسي');
   const [batchCheckRows, setBatchCheckRows] = useState<{
     checkNumber: string;
     bankName: string;
@@ -373,6 +378,7 @@ export default function SuppliersPage() {
       dueDate: r.dueDate,
       status: 'قيد الانتظار',
       notes: r.notes.trim() || 'شيك متعدد مجمع',
+      branch: batchBranch,
     }));
 
     setChecksLocal([...createdChecks, ...checks]);
@@ -1158,6 +1164,23 @@ export default function SuppliersPage() {
                 </select>
               </div>
 
+              <div>
+                <label className="text-slate-700 font-bold block mb-1">هيتخصم من فرع:</label>
+                <select
+                  value={batchBranch}
+                  onChange={e => setBatchBranch(e.target.value)}
+                  disabled={!isAdmin}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900 focus:outline-none disabled:bg-slate-100 disabled:cursor-not-allowed"
+                >
+                  {BRANCH_TREASURIES.map(bt => (
+                    <option key={bt.branch} value={bt.branch}>{bt.branch}</option>
+                  ))}
+                </select>
+                <p className="text-[10.5px] text-slate-500 mt-1">
+                  الشيكات دي هتتخصم من رصيد الفرع ده فور ما تدوس "تأكيد الصرف" عليها لاحقًا.
+                </p>
+              </div>
+
               {/* Dynamic Check Rows */}
               <div className="space-y-3">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 bg-purple-50/70 p-3 rounded-2xl border border-purple-200">
@@ -1555,8 +1578,10 @@ export default function SuppliersPage() {
                   <option value="تحويل بنكي">تحويل بنكي</option>
                   <option value="إنستاباي">إنستاباي</option>
                   <option value="فودافون كاش">فودافون كاش</option>
-                  <option value="شيك">شيك مؤجل</option>
                 </select>
+                <p className="text-[10.5px] text-slate-500 mt-1">
+                  لو السداد بشيك مؤجل، استخدم "دفعة شيكات متعددة" تحت — بتتبع تاريخ الاستحقاق وتتخصم من رصيد الفرع فور تأكيد الصرف بس.
+                </p>
               </div>
 
               <div>
