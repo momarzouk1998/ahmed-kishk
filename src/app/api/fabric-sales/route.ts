@@ -105,10 +105,23 @@ export async function POST(request: Request) {
         },
       });
     } else {
-      // New invoice creation — مبدأ عدم تطابق الأكواد: لو رقم الفاتورة المقترح من
-      // الواجهة (أو الفاضي) مكرر بالفعل، ولّد رقم بديل متحقق فعليًا من قاعدة
-      // البيانات (retry loop) بدل محاولة واحدة بس.
-      if (!invNum || (await prisma.salesInvoice.findUnique({ where: { invoiceNumber: invNum } }))) {
+      // New invoice creation — حماية ضد التكرار (Double Tap / Double Submit):
+      // لو رقم الفاتورة موجود بالفعل وتم إنشاؤه خلال آخر 60 ثانية لنفس الفرع، نرجع الفاتورة الموجودة فوراً
+      // لمنع تسجيل الفاتورة مرتين وخصم المخزون مرتين عند الضغط السريع على شاشات اللمس.
+      if (invNum) {
+        const recentDuplicate = await prisma.salesInvoice.findUnique({
+          where: { invoiceNumber: invNum },
+        });
+        if (recentDuplicate) {
+          const isRecent = recentDuplicate.createdAt && (Date.now() - new Date(recentDuplicate.createdAt).getTime() < 60000);
+          const isSameBranch = !scope.isAdmin ? recentDuplicate.branch === scope.branch : true;
+          if (isRecent && isSameBranch) {
+            return NextResponse.json({ success: true, invoice: recentDuplicate, duplicatePrevented: true });
+          }
+          // إذا كان الرقم قديماً ومستخدماً سابقاً، نولّد رقماً فريداً جديداً
+          invNum = await generateUniqueSalesInvoiceNumber();
+        }
+      } else {
         invNum = await generateUniqueSalesInvoiceNumber();
       }
 

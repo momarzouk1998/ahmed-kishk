@@ -291,10 +291,35 @@ export async function POST(request: Request) {
       } catch {}
     }
 
-    // Auto-close any previous OPEN shift for this branch
+    // حماية ضد الضغط المزدوج على شاشات اللمس (Double Tap / Double Submit):
+    // إذا تم فتح وردية بالفعل لنفس الفرع خلال آخر 60 ثانية، نرجع الوردية المفتوحة فوراً
+    // دون إغلاقها أو فتح وردية مكررة.
+    if (!id && (status === 'OPEN' || !status)) {
+      try {
+        const sixtySecondsAgo = new Date(Date.now() - 60 * 1000).toISOString();
+        const recentOpenShift = await (prisma as any).shift.findFirst({
+          where: {
+            branch,
+            status: 'OPEN',
+            startTime: { gte: sixtySecondsAgo },
+          },
+          orderBy: { startTime: 'desc' },
+        });
+        if (recentOpenShift) {
+          return NextResponse.json({ success: true, shift: recentOpenShift, duplicatePrevented: true });
+        }
+      } catch (e) {}
+    }
+
+    // Auto-close any previous OPEN shift for this branch (مع استثناء الورديات المنشأة حديثاً جداً)
     try {
+      const thirtySecondsAgo = new Date(Date.now() - 30 * 1000).toISOString();
       await (prisma as any).shift.updateMany({
-        where: { branch, status: 'OPEN' },
+        where: {
+          branch,
+          status: 'OPEN',
+          startTime: { lt: thirtySecondsAgo },
+        },
         data: { status: 'CLOSED', endTime: nowIso },
       });
     } catch (e) {}

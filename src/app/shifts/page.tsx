@@ -30,6 +30,12 @@ export default function ShiftsAndDrawerPage() {
   const [discrepancyReason, setDiscrepancyReason] = useState<string>('');
   const [closingNotes, setClosingNotes] = useState<string>('');
 
+  // Submit / Touch Guard States
+  const [isSubmittingShift, setIsSubmittingShift] = useState<boolean>(false);
+  const isSubmittingShiftRef = React.useRef<boolean>(false);
+  const [isClosingShift, setIsClosingShift] = useState<boolean>(false);
+  const isClosingShiftRef = React.useRef<boolean>(false);
+
   // Shift Details / Edit / Print Modal State
   const [selectedShiftForDetails, setSelectedShiftForDetails] = useState<ShiftSession | null>(null);
   const [isEditingShift, setIsEditingShift] = useState<boolean>(false);
@@ -246,27 +252,41 @@ export default function ShiftsAndDrawerPage() {
 
   const handleStart = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmittingShiftRef.current || isSubmittingShift) return;
+
     const emp = employees.find(e => e.id === newShiftEmployeeId);
     if (!emp) {
       alert('برجاء اختيار الموظف / الكاشير المسؤول عن الوردية');
       return;
     }
 
-    const created = await startNewShift({
-      branch: selectedBranch,
-      shiftType: newShiftType,
-      employeeId: emp.id,
-      employeeName: emp.name,
-      openingDrawerBalance: parseFloat(openingBalance) || 0,
-    });
+    isSubmittingShiftRef.current = true;
+    setIsSubmittingShift(true);
 
-    await loadData();
-    alert(`تم فتح الوردية الـ (${newShiftType}) بنجاح للموظف ${emp.name} بعهدة ${created.openingDrawerBalance} ج وحفظها بقاعدة البيانات`);
+    try {
+      const created = await startNewShift({
+        branch: selectedBranch,
+        shiftType: newShiftType,
+        employeeId: emp.id,
+        employeeName: emp.name,
+        openingDrawerBalance: parseFloat(openingBalance) || 0,
+      });
+
+      await loadData();
+      alert(`تم فتح الوردية الـ (${newShiftType}) بنجاح للموظف ${emp.name} بعهدة ${created.openingDrawerBalance} ج وحفظها بقاعدة البيانات`);
+    } catch (err: any) {
+      console.error('Failed to start shift:', err);
+      alert('حدث خطأ أثناء فتح الوردية: ' + (err.message || ''));
+    } finally {
+      isSubmittingShiftRef.current = false;
+      setIsSubmittingShift(false);
+    }
   };
 
   const handleClose = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeShift) return;
+    if (isClosingShiftRef.current || isClosingShift) return;
 
     const actual = parseFloat(actualClosingCash);
     if (isNaN(actual)) {
@@ -274,21 +294,32 @@ export default function ShiftsAndDrawerPage() {
       return;
     }
 
-    const closePayload = {
-      shiftId: activeShift.id,
-      actualClosingCash: actual,
-      discrepancyReason,
-      handoverDestination,
-      handoverReceiverName: handoverReceiver,
-      closingNotes,
-    };
+    isClosingShiftRef.current = true;
+    setIsClosingShift(true);
 
-    const closed = await closeActiveShift(closePayload);
-    await loadData();
-    setActualClosingCash('');
-    setDiscrepancyReason('');
-    setClosingNotes('');
-    if (closed) setSelectedShiftForDetails(closed);
+    try {
+      const closePayload = {
+        shiftId: activeShift.id,
+        actualClosingCash: actual,
+        discrepancyReason,
+        handoverDestination,
+        handoverReceiverName: handoverReceiver,
+        closingNotes,
+      };
+
+      const closed = await closeActiveShift(closePayload);
+      await loadData();
+      setActualClosingCash('');
+      setDiscrepancyReason('');
+      setClosingNotes('');
+      if (closed) setSelectedShiftForDetails(closed);
+    } catch (err: any) {
+      console.error('Failed to close shift:', err);
+      alert('حدث خطأ أثناء إغلاق الوردية: ' + (err.message || ''));
+    } finally {
+      isClosingShiftRef.current = false;
+      setIsClosingShift(false);
+    }
   };
 
   const handleOpenEdit = (s: ShiftSession) => {
@@ -624,9 +655,17 @@ export default function ShiftsAndDrawerPage() {
 
                 <button
                   type="submit"
-                  className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-xl shadow-md transition-all cursor-pointer"
+                  disabled={isSubmittingShift}
+                  className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-black text-xs rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-2"
                 >
-                  بدء الوردية واستلام الدرج ▶️
+                  {isSubmittingShift ? (
+                    <>
+                      <span className="inline-block animate-spin">⏳</span>
+                      <span>جاري فتح وبدء الوردية...</span>
+                    </>
+                  ) : (
+                    <span>بدء الوردية واستلام الدرج ▶️</span>
+                  )}
                 </button>
               </form>
             )}
@@ -724,9 +763,17 @@ export default function ShiftsAndDrawerPage() {
 
                 <button
                   type="submit"
-                  className="w-full py-3.5 bg-rose-600 hover:bg-rose-500 text-white font-black text-xs rounded-xl shadow-md transition-all cursor-pointer"
+                  disabled={isClosingShift}
+                  className="w-full py-3.5 bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white font-black text-xs rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-2"
                 >
-                  إغلاق الوردية وتوليد تقرير Z-Report 🔒
+                  {isClosingShift ? (
+                    <>
+                      <span className="inline-block animate-spin">⏳</span>
+                      <span>جاري إغلاق الوردية وتوليد التقرير...</span>
+                    </>
+                  ) : (
+                    <span>إغلاق الوردية وتوليد تقرير Z-Report 🔒</span>
+                  )}
                 </button>
               </form>
             ) : (

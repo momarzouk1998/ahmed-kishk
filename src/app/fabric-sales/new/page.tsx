@@ -253,6 +253,8 @@ export default function NewSalesInvoicePOSPage() {
   const isCommercialBranch = normalizeBranchName(branch) === 'الفرع التجاري';
   const [showOfflineConfirmModal, setShowOfflineConfirmModal] = useState<boolean>(false);
   const [pendingSaveAndPrint, setPendingSaveAndPrint] = useState<boolean>(false);
+  const [isSaving, setIsSaving] = useState<boolean>(false);
+  const isSavingRef = React.useRef<boolean>(false);
 
   // Auto-toggle online mode if branch is الفرع التجاري, otherwise disable it
   useEffect(() => {
@@ -413,6 +415,8 @@ export default function NewSalesInvoicePOSPage() {
 
   // Save invoice handler with offline confirmation for commercial branch
   const handleSaveInvoice = async (andPrint: boolean = false) => {
+    if (isSavingRef.current || isSaving) return;
+
     if (items.length === 0) {
       alert('يرجى إضافة صنف واحد على الأقل للفاتورة!');
       return;
@@ -443,6 +447,10 @@ export default function NewSalesInvoicePOSPage() {
   };
 
   const executeSaveInvoice = async (andPrint: boolean = false) => {
+    if (isSavingRef.current || isSaving) return;
+    isSavingRef.current = true;
+    setIsSaving(true);
+
     const finalCustName = custName.trim() || (customerType === 'WALK_IN' ? 'عميل نقدي' : 'عميل غير مسجل');
     const statusLabel = remainingAmount === 0 ? 'تم السداد بالكامل' : (paidAmount || 0) > 0 ? 'مسدد جزئياً' : 'آجل / غير مسدد';
 
@@ -482,11 +490,14 @@ export default function NewSalesInvoicePOSPage() {
     };
 
     try {
-      await fetch('/api/fabric-sales', {
+      const res = await fetch('/api/fabric-sales', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(invoicePayload),
-      }).catch(err => console.error('DB Sync Error:', err));
+      });
+      if (!res.ok) {
+        throw new Error('فشل حفظ الفاتورة على السيرفر');
+      }
 
       // إعادة قفل صلاحية المدير فوراً بعد انتهاء الفاتورة لطلب الباسورد في الفاتورة القادمة
       clearManagerUnlock();
@@ -496,13 +507,18 @@ export default function NewSalesInvoicePOSPage() {
 
       if (andPrint) {
         setShowReceiptModal(true);
+        // عند فتح مودال الطباعة، نسمح بإعادة تفعيل الأزرار لو حب يطبع تاني
+        isSavingRef.current = false;
+        setIsSaving(false);
       } else {
         alert('✅ تم حفظ فاتورة المبيعات بنجاح!');
         router.push('/fabric-sales');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert('حدث خطأ أثناء حفظ الفاتورة.');
+      alert('حدث خطأ أثناء حفظ الفاتورة: ' + (err.message || ''));
+      isSavingRef.current = false;
+      setIsSaving(false);
     }
   };
 
@@ -1388,22 +1404,22 @@ export default function NewSalesInvoicePOSPage() {
                 <div className="grid grid-cols-2 gap-2 pt-0.5">
                   <button
                     type="button"
-                    disabled={items.length === 0}
+                    disabled={isSaving || items.length === 0}
                     onClick={() => handleSaveInvoice(true)}
                     className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-black shadow-md flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-[0.98]"
                   >
-                    <span className="material-symbols-outlined text-base sm:text-lg">print</span>
-                    <span>حفظ وطباعة 🖨️</span>
+                    <span className="material-symbols-outlined text-base sm:text-lg">{isSaving ? 'sync' : 'print'}</span>
+                    <span>{isSaving ? 'جاري الحفظ...' : 'حفظ وطباعة 🖨️'}</span>
                   </button>
 
                   <button
                     type="button"
-                    disabled={items.length === 0}
+                    disabled={isSaving || items.length === 0}
                     onClick={() => handleSaveInvoice(false)}
                     className="bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-md active:scale-[0.98]"
                   >
-                    <span className="material-symbols-outlined text-base sm:text-lg">save</span>
-                    <span>حفظ فقط</span>
+                    <span className="material-symbols-outlined text-base sm:text-lg">{isSaving ? 'sync' : 'save'}</span>
+                    <span>{isSaving ? 'جاري الحفظ...' : 'حفظ فقط'}</span>
                   </button>
                 </div>
 
@@ -1900,14 +1916,15 @@ export default function NewSalesInvoicePOSPage() {
 
               <button
                 type="button"
+                disabled={isSaving}
                 onClick={() => {
                   setShowOfflineConfirmModal(false);
                   executeSaveInvoice(pendingSaveAndPrint);
                 }}
-                className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-black text-xs rounded-2xl transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-slate-800 font-black text-xs rounded-2xl transition-colors flex items-center justify-center gap-2 cursor-pointer"
               >
                 <span>🏪</span>
-                <span>نعم متأكد، حفظ كبيع مباشر داخل المحل</span>
+                <span>{isSaving ? 'جاري الحفظ...' : 'نعم متأكد، حفظ كبيع مباشر داخل المحل'}</span>
               </button>
 
               <button
