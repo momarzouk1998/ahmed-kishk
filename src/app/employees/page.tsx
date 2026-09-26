@@ -749,6 +749,25 @@ ${totalBonuses > 0 ? `🎁 *مكافآت:* +${totalBonuses.toLocaleString()} ج\
     return `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
   };
 
+  const handleResetTargetedEmployeesAttendance = async () => {
+    if (!confirm('⚠️ هل أنت متأكد من تصفير الحضور السابق للموظفين (محمود حبيب، يوسف، سليمان، أشرف، كوكو، صبحي، سمير) للبدء من جديد معهم؟\n\n✅ سيتم الإبقاء على شفت اليوم بالكامل ولن يُمس.')) {
+      return;
+    }
+    try {
+      const res = await fetch('/api/admin/clear-past-attendance', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        alert(`✅ ${data.message}\nتم حذف: ${data.deletedCount} سجل سابق.\nتم الإبقاء على: ${data.keptTodayCount} سجل لليوم.`);
+        const freshAtt = await getAttendance();
+        setAttendance(freshAtt);
+      } else {
+        alert(data.error || 'فشل تنفيذ التصفير');
+      }
+    } catch (err: any) {
+      alert('حدث خطأ: ' + err.message);
+    }
+  };
+
   const currentSelectedEmpSummary = advanceEmployeeId ? getEmployeeFinancialSummary(advanceEmployeeId) : null;
 
   return (
@@ -1509,14 +1528,25 @@ ${totalBonuses > 0 ? `🎁 *مكافآت:* +${totalBonuses.toLocaleString()} ج\
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">بحث وتصفية فى كل سجلات الحضور مع إمكانية التعديل والحذف والإضافة اليدوية</p>
               </div>
-              <button
-                type="button"
-                onClick={openAddLog}
-                className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-sm cursor-pointer shrink-0"
-              >
-                <span>➕</span>
-                <span>إضافة سجل حضور</span>
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleResetTargetedEmployeesAttendance}
+                  className="px-3.5 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 rounded-xl font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs"
+                  title="تصفير حضور الموظفين الـ 7 السابق مع بقاء شفت اليوم"
+                >
+                  <span>🔄</span>
+                  <span>تصفير حضور الموظفين السابق (مع بقاء شفت اليوم)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={openAddLog}
+                  className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-sm cursor-pointer shrink-0"
+                >
+                  <span>➕</span>
+                  <span>إضافة سجل حضور</span>
+                </button>
+              </div>
             </div>
 
             {/* Quick date filters */}
