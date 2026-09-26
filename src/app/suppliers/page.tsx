@@ -810,36 +810,56 @@ export default function SuppliersPage() {
                               🖨️
                             </button>
 
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const newAmountStr = prompt(`تعديل مبلغ السداد للمورد "${pay.supplierName}":`, pay.amount.toString());
-                                if (newAmountStr !== null) {
+                            {isAdmin && (
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  const newAmountStr = prompt(`تعديل مبلغ السداد للمورد "${pay.supplierName}":`, pay.amount.toString());
+                                  if (newAmountStr === null) return;
                                   const newAmount = Number(newAmountStr);
-                                  if (newAmount > 0) {
-                                    const updated = payments.map(p => p.id === pay.id ? { ...p, amount: newAmount } : p);
-                                    setPaymentsLocal(updated);
+                                  if (!(newAmount > 0)) return;
+                                  try {
+                                    const res = await fetch('/api/supplier-payments', {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ ...pay, amount: newAmount }),
+                                    });
+                                    const json = await res.json().catch(() => null);
+                                    if (!json?.success) { alert(json?.error || 'فشل تعديل السداد'); return; }
+                                    setPaymentsLocal(payments.map(p => p.id === pay.id ? { ...p, amount: newAmount } : p));
+                                    await fetchAndSetSuppliers();
+                                  } catch {
+                                    alert('فشل الاتصال بالخادم');
                                   }
-                                }
-                              }}
-                              className="bg-amber-100 text-amber-950 px-2 py-1 rounded-lg text-xs font-bold cursor-pointer"
-                              title="تعديل السداد"
-                            >
-                              ✏️
-                            </button>
+                                }}
+                                className="bg-amber-100 text-amber-950 px-2 py-1 rounded-lg text-xs font-bold cursor-pointer"
+                                title="تعديل السداد (للمدير فقط)"
+                              >
+                                ✏️
+                              </button>
+                            )}
 
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (confirm(`هل أنت أسر بالتأكيد من حذف إذن سداد بمبلغ ${pay.amount} ج للمورد "${pay.supplierName}"؟`)) {
-                                  setPaymentsLocal(payments.filter(p => p.id !== pay.id));
-                                }
-                              }}
-                              className="bg-rose-100 text-rose-800 px-2 py-1 rounded-lg text-xs font-bold cursor-pointer"
-                              title="حذف السداد"
-                            >
-                              🗑️
-                            </button>
+                            {isAdmin && (
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  if (!confirm(`هل أنت متأكد من حذف إذن سداد بمبلغ ${pay.amount} ج للمورد "${pay.supplierName}"؟ الرصيد المستحق للمورد هيرجع زي قبل السند ده.`)) return;
+                                  try {
+                                    const res = await fetch(`/api/supplier-payments?id=${encodeURIComponent(pay.id)}`, { method: 'DELETE' });
+                                    const json = await res.json().catch(() => null);
+                                    if (!json?.success) { alert(json?.error || 'فشل حذف السداد'); return; }
+                                    setPaymentsLocal(payments.filter(p => p.id !== pay.id));
+                                    await fetchAndSetSuppliers();
+                                  } catch {
+                                    alert('فشل الاتصال بالخادم');
+                                  }
+                                }}
+                                className="bg-rose-100 text-rose-800 px-2 py-1 rounded-lg text-xs font-bold cursor-pointer"
+                                title="حذف السداد (للمدير فقط)"
+                              >
+                                🗑️
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -952,33 +972,52 @@ export default function SuppliersPage() {
                                 {chk.status === 'تم الصرف' ? 'إعادة لقيد الانتظار ↩' : 'تأكيد الصرف ✓'}
                               </button>
 
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const newNum = prompt(`تعديل رقم الشيك للمورد "${chk.supplierName}":`, chk.checkNumber);
-                                  if (newNum !== null && newNum.trim()) {
-                                    const updated = checks.map(c => c.id === chk.id ? { ...c, checkNumber: newNum.trim() } : c);
-                                    setChecksLocal(updated);
-                                  }
-                                }}
-                                className="bg-amber-100 text-amber-950 px-2 py-1 rounded-lg text-xs font-bold cursor-pointer"
-                                title="تعديل الشيك"
-                              >
-                                ✏️
-                              </button>
+                              {isAdmin && (
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    const newNum = prompt(`تعديل رقم الشيك للمورد "${chk.supplierName}":`, chk.checkNumber);
+                                    if (newNum === null || !newNum.trim()) return;
+                                    try {
+                                      const res = await fetch('/api/supplier-checks', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ ...chk, checkNumber: newNum.trim() }),
+                                      });
+                                      const json = await res.json().catch(() => null);
+                                      if (!json?.success) { alert(json?.error || 'فشل تعديل الشيك'); return; }
+                                      setChecksLocal(checks.map(c => c.id === chk.id ? { ...c, checkNumber: newNum.trim() } : c));
+                                    } catch {
+                                      alert('فشل الاتصال بالخادم');
+                                    }
+                                  }}
+                                  className="bg-amber-100 text-amber-950 px-2 py-1 rounded-lg text-xs font-bold cursor-pointer"
+                                  title="تعديل الشيك (للمدير فقط)"
+                                >
+                                  ✏️
+                                </button>
+                              )}
 
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  if (confirm(`هل أنت أسر بالتأكيد من حذف الشيك رقم #${chk.checkNumber} للمورد "${chk.supplierName}"؟`)) {
-                                    setChecksLocal(checks.filter(c => c.id !== chk.id));
-                                  }
-                                }}
-                                className="bg-rose-100 text-rose-800 px-2 py-1 rounded-lg text-xs font-bold cursor-pointer"
-                                title="حذف الشيك"
-                              >
-                                🗑️
-                              </button>
+                              {isAdmin && (
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    if (!confirm(`هل أنت متأكد من حذف الشيك رقم #${chk.checkNumber} للمورد "${chk.supplierName}"؟`)) return;
+                                    try {
+                                      const res = await fetch(`/api/supplier-checks?id=${encodeURIComponent(chk.id)}`, { method: 'DELETE' });
+                                      const json = await res.json().catch(() => null);
+                                      if (!json?.success) { alert(json?.error || 'فشل حذف الشيك'); return; }
+                                      setChecksLocal(checks.filter(c => c.id !== chk.id));
+                                    } catch {
+                                      alert('فشل الاتصال بالخادم');
+                                    }
+                                  }}
+                                  className="bg-rose-100 text-rose-800 px-2 py-1 rounded-lg text-xs font-bold cursor-pointer"
+                                  title="حذف الشيك (للمدير فقط)"
+                                >
+                                  🗑️
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -1087,6 +1126,7 @@ export default function SuppliersPage() {
                     <th className="p-2 border border-slate-300 text-center font-mono text-emerald-900">مدين (-مسدد للمورد)</th>
                     <th className="p-2 border border-slate-300 text-center font-mono text-rose-900">دائن (+مستحق للمورد)</th>
                     <th className="p-2 border border-slate-300 text-center font-mono">الرصيد المستحق</th>
+                    {isAdmin && <th className="p-2 border border-slate-300 text-center">حذف</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -1104,6 +1144,43 @@ export default function SuppliersPage() {
                       <td className="p-2 border border-slate-300 text-center font-mono font-black text-slate-950">
                         {(Number(entry.balanceAfter) || 0).toLocaleString()} ج
                       </td>
+                      {isAdmin && (
+                        <td className="p-2 border border-slate-300 text-center">
+                          {entry.type === 'سداد للمورد' && (
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                if (!confirm(`حذف سند سداد بمبلغ ${entry.credit || entry.debit} ج؟`)) return;
+                                const res = await fetch(`/api/supplier-payments?id=${encodeURIComponent(entry.id)}`, { method: 'DELETE' });
+                                const json = await res.json().catch(() => null);
+                                if (!json?.success) { alert(json?.error || 'فشل الحذف'); return; }
+                                setPaymentsLocal(payments.filter(p => p.id !== entry.id));
+                                const refreshed = await fetchAndSetSuppliers();
+                                const updatedSelected = refreshed?.find(s => s.id === selectedSupplier.id);
+                                if (updatedSelected) setSelectedSupplier(updatedSelected);
+                              }}
+                              className="bg-rose-100 text-rose-800 px-2 py-1 rounded-lg text-xs font-bold cursor-pointer"
+                            >
+                              🗑️
+                            </button>
+                          )}
+                          {entry.type === 'شيك بنكي' && (
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                if (!confirm('حذف الشيك ده؟')) return;
+                                const res = await fetch(`/api/supplier-checks?id=${encodeURIComponent(entry.id)}`, { method: 'DELETE' });
+                                const json = await res.json().catch(() => null);
+                                if (!json?.success) { alert(json?.error || 'فشل الحذف'); return; }
+                                setChecksLocal(checks.filter(c => c.id !== entry.id));
+                              }}
+                              className="bg-rose-100 text-rose-800 px-2 py-1 rounded-lg text-xs font-bold cursor-pointer"
+                            >
+                              🗑️
+                            </button>
+                          )}
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>

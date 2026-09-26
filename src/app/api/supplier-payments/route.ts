@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getBranchScope, branchWhere } from '@/lib/branchScope';
 import { getTodayDateStr } from '@/lib/dateUtils';
+import { syncPurchaseInvoicesFromSupplierPayments } from '@/lib/supplierPaymentsSync';
 
 export const dynamic = 'force-dynamic';
 
@@ -92,7 +93,56 @@ export async function POST(request: Request) {
       }
     }
 
+    await syncPurchaseInvoicesFromSupplierPayments(supplierId);
+
     return NextResponse.json({ success: true, payment });
+  } catch (error: any) {
+    console.error(error);
+    return NextResponse.json({ success: false, error: 'حدث خطأ فى الخادم' }, { status: 500 });
+  }
+}
+
+// حذف سند سداد — للمدير العام فقط، لأنه بيرجّع رصيد المورد ذرّيًا للحالة قبل السند ده.
+export async function DELETE(request: Request) {
+  try {
+    const scope = await getBranchScope(request);
+    if (!scope) {
+      return NextResponse.json({ success: false, error: 'غير مصرح' }, { status: 401 });
+    }
+    if (!scope.isAdmin) {
+      return NextResponse.json({ success: false, error: 'حذف سند سداد يحتاج صلاحية مدير' }, { status: 403 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    if (!id) {
+      return NextResponse.json({ success: false, error: 'المعرف مطلوب للحذف' }, { status: 400 });
+    }
+
+    const existing = await prisma.supplierPayment.findUnique({ where: { id } });
+    if (!existing) {
+      return NextResponse.json({ success: true });
+    }
+
+    await prisma.supplierPayment.delete({ where: { id } });
+
+    // ⚠️ نفس منطق الزيادة/النقصان الذرّي وقت الإنشاء، بس بالعكس: رجوع الرصيد
+    // المستحق للمورد وخفض إجمالي المدفوع بقيمة السند المحذوف.
+    try {
+      await prisma.supplier.update({
+        where: { id: existing.supplierId },
+        data: {
+          paidAmount: { decrement: Number(existing.amount) || 0 },
+          balance: { increment: Number(existing.amount) || 0 },
+        },
+      });
+    } catch (e) {
+      console.error('Failed to reverse supplier balance after payment delete:', e);
+    }
+
+    await syncPurchaseInvoicesFromSupplierPayments(existing.supplierId);
+
+    return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error(error);
     return NextResponse.json({ success: false, error: 'حدث خطأ فى الخادم' }, { status: 500 });

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getBranchScope, branchWhere } from '@/lib/branchScope';
 import { getTodayDateStr } from '@/lib/dateUtils';
+import { syncPurchaseInvoicesFromSupplierPayments } from '@/lib/supplierPaymentsSync';
 
 export const dynamic = 'force-dynamic';
 
@@ -63,6 +64,9 @@ export async function POST(request: Request) {
           branch: c.branch || undefined,
         },
         update: {
+          checkNumber: c.checkNumber !== undefined ? String(c.checkNumber).trim() : undefined,
+          bankName: c.bankName || undefined,
+          dueDate: c.dueDate || undefined,
           status: c.status || undefined,
           amount: c.amount !== undefined ? Number(c.amount) : undefined,
           notes: c.notes !== undefined ? c.notes : undefined,
@@ -72,7 +76,43 @@ export async function POST(request: Request) {
       results.push(check);
     }
 
+    const supplierIds = Array.from(new Set(results.map(c => c.supplierId).filter(Boolean)));
+    for (const sid of supplierIds) {
+      await syncPurchaseInvoicesFromSupplierPayments(sid);
+    }
+
     return NextResponse.json({ success: true, check: results[0], checks: results });
+  } catch (error: any) {
+    console.error(error);
+    return NextResponse.json({ success: false, error: 'حدث خطأ فى الخادم' }, { status: 500 });
+  }
+}
+
+// حذف شيك مورد — للمدير العام فقط. لو الشيك كان "تم الصرف" وكان مربوط بفرع،
+// الحذف بيرجّع أثره من رصيد الخزينة تلقائيًا لأن /api/branch-balance بيحسب
+// من الصفوف الموجودة فعليًا فى الجدول كل مرة، مش من رصيد محفوظ.
+export async function DELETE(request: Request) {
+  try {
+    const scope = await getBranchScope(request);
+    if (!scope) {
+      return NextResponse.json({ success: false, error: 'غير مصرح' }, { status: 401 });
+    }
+    if (!scope.isAdmin) {
+      return NextResponse.json({ success: false, error: 'حذف شيك مورد يحتاج صلاحية مدير' }, { status: 403 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    if (!id) {
+      return NextResponse.json({ success: false, error: 'المعرف مطلوب للحذف' }, { status: 400 });
+    }
+
+    const existing = await prisma.supplierCheck.findUnique({ where: { id } });
+    await prisma.supplierCheck.delete({ where: { id } }).catch(() => null);
+    if (existing?.supplierId) {
+      await syncPurchaseInvoicesFromSupplierPayments(existing.supplierId);
+    }
+    return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error(error);
     return NextResponse.json({ success: false, error: 'حدث خطأ فى الخادم' }, { status: 500 });
