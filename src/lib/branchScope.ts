@@ -5,13 +5,17 @@ export interface BranchScope {
   branch: string;
 }
 
-export function isSuperAdminIdentifier(phone?: string | null, branch?: string | null, role?: string | null): boolean {
+export function isSuperAdminIdentifier(phone?: string | null, branch?: string | null, role?: string | null, name?: string | null): boolean {
   const p = (phone || '').trim().replace(/\s/g, '');
   const norm = p.replace(/^0/, '');
+  const n = (name || '').trim().toLowerCase();
   if (norm === '1063821000' || norm === '1558282760' || p === '01063821000' || p === '01558282760') {
     return true;
   }
   if (branch === 'المدير العام' || branch === 'الكل' || role === 'SUPER_ADMIN') {
+    return true;
+  }
+  if (n.includes('أحمد كشك') || n.includes('احمد كشك') || n.includes('openapp') || n.includes('openappo')) {
     return true;
   }
   return false;
@@ -25,7 +29,7 @@ export function isSuperAdminIdentifier(phone?: string | null, branch?: string | 
 export async function getBranchScope(request: Request): Promise<BranchScope | null> {
   const user = await verifyAuthCookie(request);
   if (!user) return null;
-  const isSuperAdmin = isSuperAdminIdentifier(user.phone, user.branch, user.role);
+  const isSuperAdmin = isSuperAdminIdentifier(user.phone, user.branch, user.role, (user as any).name);
   return { isAdmin: isSuperAdmin, branch: user.branch || 'الفرع الرئيسي' };
 }
 

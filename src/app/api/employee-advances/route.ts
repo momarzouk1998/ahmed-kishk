@@ -35,9 +35,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'الموظف والمبلغ مطلوبان' }, { status: 400 });
     }
 
+    // قصر خاصية "قبض" على المدير العام (أحمد كشك) ومطور النظام openappo فقط
+    if (type === 'قبض' && !scope.isAdmin) {
+      return NextResponse.json({ success: false, error: 'خاصية القبض مخصصة للمدير العام (أحمد كشك) و إدارة openappo فقط' }, { status: 403 });
+    }
+
     const existingById = id ? await prisma.employeeAdvance.findUnique({ where: { id } }) : null;
     if (existingById && !scope.isAdmin && existingById.branch !== scope.branch) {
       return NextResponse.json({ success: false, error: 'غير مصرح بتعديل سجل فرع آخر' }, { status: 403 });
+    }
+    if (existingById && existingById.type === 'قبض' && !scope.isAdmin) {
+      return NextResponse.json({ success: false, error: 'غير مصرح بتعديل سند قبض' }, { status: 403 });
     }
 
     const advanceId = id || `adv-${Date.now()}`;

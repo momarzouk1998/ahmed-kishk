@@ -16,6 +16,7 @@ import Pagination from '@/components/Pagination';
 export default function EmployeesManagementPage() {
   const { user, isAdmin, isSuperAdmin } = useCurrentUser();
   const canViewWages = isAdmin || isSuperAdmin;
+  const canPerformPayout = isSuperAdmin; // مخصص للمدير العام (أحمد كشك) وإدارة openappo فقط
 
   const formatTimeAr = (timeStr?: string): string => {
     if (!timeStr) return '—';
@@ -382,6 +383,10 @@ export default function EmployeesManagementPage() {
       alert('من فضلك أدخل مبلغ صحيح أكبر من صفر');
       return;
     }
+    if (advEditForm.type === 'قبض' && !canPerformPayout) {
+      alert('⚠️ خاصية القبض مخصصة للمدير العام (أحمد كشك) و إدارة openappo فقط.');
+      return;
+    }
     setSavingAdvEdit(true);
 
     if (editingAdv) {
@@ -419,7 +424,7 @@ export default function EmployeesManagementPage() {
   // Handlers for switching employee or type in Advance Form
   const handleSelectEmployeeForAdvance = (empId: string) => {
     setAdvanceEmployeeId(empId);
-    if (advanceType === 'قبض' && empId) {
+    if (advanceType === 'قبض' && empId && canPerformPayout) {
       const summary = getEmployeeFinancialSummary(empId);
       if (summary) {
         setAdvanceAmount(summary.netRemaining > 0 ? String(summary.netRemaining) : '0');
@@ -428,6 +433,10 @@ export default function EmployeesManagementPage() {
   };
 
   const handleSelectAdvanceType = (type: 'سلفة' | 'خصم' | 'مكافأة' | 'قبض') => {
+    if (type === 'قبض' && !canPerformPayout) {
+      alert('⚠️ خاصية القبض مخصصة للمدير العام (أحمد كشك) و إدارة openappo فقط.');
+      return;
+    }
     setAdvanceType(type);
     if (type === 'قبض' && advanceEmployeeId) {
       const summary = getEmployeeFinancialSummary(advanceEmployeeId);
@@ -438,6 +447,10 @@ export default function EmployeesManagementPage() {
   };
 
   const handleQuickPayForEmployee = (empId: string) => {
+    if (!canPerformPayout) {
+      alert('⚠️ خاصية القبض مخصصة للمدير العام (أحمد كشك) و إدارة openappo فقط.');
+      return;
+    }
     const summary = getEmployeeFinancialSummary(empId);
     setAdvanceEmployeeId(empId);
     setAdvanceType('قبض');
@@ -688,6 +701,10 @@ export default function EmployeesManagementPage() {
   // Advance submission
   const handleAddAdvance = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (advanceType === 'قبض' && !canPerformPayout) {
+      alert('⚠️ خاصية القبض مخصصة للمدير العام (أحمد كشك) و إدارة openappo فقط.');
+      return;
+    }
     const emp = employees.find(e => e.id === advanceEmployeeId);
     if (!emp || !advanceAmount) {
       alert('من فضلك اختر الموظف وأدخل المبلغ');
@@ -1023,12 +1040,12 @@ ${totalBonuses > 0 ? `🎁 *مكافآت:* +${totalBonuses.toLocaleString()} ج\
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">نوع الحركة *</label>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-                    {(['سلفة', 'خصم', 'مكافأة', 'قبض'] as const).map(type => (
+                  <div className={`grid ${canPerformPayout ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-3'} gap-1.5`}>
+                    {(['سلفة', 'خصم', 'مكافأة', ...(canPerformPayout ? ['قبض'] : [])] as const).map(type => (
                       <button
                         key={type}
                         type="button"
-                        onClick={() => handleSelectAdvanceType(type)}
+                        onClick={() => handleSelectAdvanceType(type as any)}
                         className={`py-2 px-1 rounded-xl text-xs font-bold border transition-all cursor-pointer text-center ${
                           advanceType === type 
                             ? type === 'قبض' ? 'bg-purple-700 text-white border-purple-700 shadow-xs' :
@@ -1355,13 +1372,15 @@ ${totalBonuses > 0 ? `🎁 *مكافآت:* +${totalBonuses.toLocaleString()} ج\
                           </td>
                           <td className="p-3 text-center">
                             <div className="flex items-center justify-center gap-1.5">
-                              <button
-                                onClick={() => handleQuickPayForEmployee(emp.id)}
-                                className="px-3 py-1.5 bg-purple-700 hover:bg-purple-800 text-white rounded-lg font-black text-[11px] cursor-pointer whitespace-nowrap shadow-xs"
-                                title="صرف / قبض المتبقي للموظف"
-                              >
-                                💰 قبض
-                              </button>
+                              {canPerformPayout && (
+                                <button
+                                  onClick={() => handleQuickPayForEmployee(emp.id)}
+                                  className="px-3 py-1.5 bg-purple-700 hover:bg-purple-800 text-white rounded-lg font-black text-[11px] cursor-pointer whitespace-nowrap shadow-xs"
+                                  title="صرف / قبض المتبقي للموظف (المدير العام فقط)"
+                                >
+                                  💰 قبض
+                                </button>
+                              )}
                               <button
                                 onClick={() => setSelectedEmpForSlip(summary)}
                                 className="px-2 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold text-[11px] cursor-pointer"
@@ -1908,12 +1927,12 @@ ${totalBonuses > 0 ? `🎁 *مكافآت:* +${totalBonuses.toLocaleString()} ج\
 
               <div>
                 <label className="text-xs font-bold text-slate-600 block mb-1">نوع الحركة</label>
-                <div className="grid grid-cols-4 gap-1.5">
-                  {(['سلفة', 'خصم', 'مكافأة', 'قبض'] as const).map(type => (
+                <div className={`grid ${canPerformPayout ? 'grid-cols-4' : 'grid-cols-3'} gap-1.5`}>
+                  {(['سلفة', 'خصم', 'مكافأة', ...(canPerformPayout ? ['قبض'] : [])] as const).map(type => (
                     <button
                       key={type}
                       type="button"
-                      onClick={() => setAdvEditForm({ ...advEditForm, type })}
+                      onClick={() => setAdvEditForm({ ...advEditForm, type: type as any })}
                       className={`py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer text-center ${
                         advEditForm.type === type
                           ? type === 'قبض' ? 'bg-purple-700 text-white border-purple-700 shadow-xs' :
