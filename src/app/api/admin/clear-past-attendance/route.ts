@@ -1,23 +1,44 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getTodayDateStr } from '@/lib/dateUtils';
+import { getBranchScope } from '@/lib/branchScope';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
-  return handleClear();
+  return handleClear(request);
 }
 
 export async function POST(request: Request) {
-  return handleClear();
+  return handleClear(request);
 }
 
-async function handleClear() {
+async function handleClear(request: Request) {
   try {
+    const scope = await getBranchScope(request);
+    if (!scope || !scope.isAdmin) {
+      return NextResponse.json({ success: false, error: 'غير مصرح — خاص بالمدير العام' }, { status: 403 });
+    }
+
     const today = getTodayDateStr();
 
-    // أسماء الموظفين المستهدفين للتصفير (مع كل أشكال الهمزات والياء/الألف اللينة)
-    const targetNameKeywords = [
+    let customEmployeeIds: string[] = [];
+    let customEmployeeNames: string[] = [];
+
+    if (request.method === 'POST') {
+      try {
+        const body = await request.json();
+        if (Array.isArray(body?.employeeIds)) {
+          customEmployeeIds = body.employeeIds.filter(Boolean);
+        }
+        if (Array.isArray(body?.employeeNames)) {
+          customEmployeeNames = body.employeeNames.filter(Boolean);
+        }
+      } catch {}
+    }
+
+    // أسماء الموظفين الافتراضيين للتصفير إذا لم يُرسل اختيار مخصص
+    const defaultTargetNames = [
       'محمود حبيب',
       'محمود',
       'يوسف',
@@ -39,14 +60,31 @@ async function handleClear() {
       },
     });
 
-    // فلترة السجلات التي تخص الموظفين السبعة المستهدفين
+    // فلترة السجلات التي تخص الموظفين المحددين
     const recordsToDelete = allPastRecords.filter(record => {
-      const recName = (record.employeeName || '').trim();
-      return targetNameKeywords.some(keyword =>
-        recName === keyword ||
-        recName.includes(keyword) ||
-        keyword.includes(recName)
-      );
+      // 1. إذا تم تحديد معرفات الموظفين صراحة
+      if (customEmployeeIds.length > 0 && record.employeeId && customEmployeeIds.includes(record.employeeId)) {
+        return true;
+      }
+
+      // 2. إذا تم تحديد أسماء الموظفين
+      const recName = (record.employeeName || '').trim().toLowerCase();
+      if (customEmployeeNames.length > 0) {
+        return customEmployeeNames.some(cName => {
+          const target = cName.trim().toLowerCase();
+          return recName === target || recName.includes(target) || target.includes(recName);
+        });
+      }
+
+      // 3. Fallback للأسماء الافتراضية إذا لم يُحدد شيء
+      if (customEmployeeIds.length === 0 && customEmployeeNames.length === 0) {
+        return defaultTargetNames.some(keyword => {
+          const target = keyword.toLowerCase();
+          return recName === target || recName.includes(target) || target.includes(recName);
+        });
+      }
+
+      return false;
     });
 
     const idsToDelete = recordsToDelete.map(r => r.id);
@@ -72,35 +110,32 @@ async function handleClear() {
     });
 
     const keptTodayRecords = allTodayRecords.filter(record => {
-      const recName = (record.employeeName || '').trim();
-      return targetNameKeywords.some(keyword =>
-        recName === keyword ||
-        recName.includes(keyword) ||
-        keyword.includes(recName)
-      );
+      if (customEmployeeIds.length > 0 && record.employeeId && customEmployeeIds.includes(record.employeeId)) {
+        return true;
+      }
+      const recName = (record.employeeName || '').trim().toLowerCase();
+      if (customEmployeeNames.length > 0) {
+        return customEmployeeNames.some(cName => {
+          const target = cName.trim().toLowerCase();
+          return recName === target || recName.includes(target) || target.includes(recName);
+        });
+      }
+      if (customEmployeeIds.length === 0 && customEmployeeNames.length === 0) {
+        return defaultTargetNames.some(keyword => {
+          const target = keyword.toLowerCase();
+          return recName === target || recName.includes(target) || target.includes(recName);
+        });
+      }
+      return false;
     });
 
     return NextResponse.json({
       success: true,
-      message: `تم تصفير حضور الموظفين المستهدفين بنجاح مع الاحتفاظ بشفت اليوم (${today})`,
+      message: `تم تصفير الحضور السابق للموظفين المحددين بنجاح مع الاحتفاظ بشفت اليوم (${today})`,
       todayDate: today,
-      targetEmployees: targetNameKeywords,
       deletedCount,
-      deletedRecordsSummary: recordsToDelete.map(r => ({
-        id: r.id,
-        date: r.date,
-        employeeName: r.employeeName,
-        branch: r.branch,
-        status: r.status,
-      })),
       keptTodayCount: keptTodayRecords.length,
-      keptTodayRecords: keptTodayRecords.map(r => ({
-        id: r.id,
-        date: r.date,
-        employeeName: r.employeeName,
-        branch: r.branch,
-        status: r.status,
-      })),
+      targetedCount: recordsToDelete.length,
     });
   } catch (error: any) {
     console.error('Error clearing past attendance:', error);

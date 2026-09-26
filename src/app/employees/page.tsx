@@ -98,6 +98,13 @@ export default function EmployeesManagementPage() {
   });
   const [savingLog, setSavingLog] = useState<boolean>(false);
 
+  // ── Reset Attendance Modal State ──
+  const [showResetAttendanceModal, setShowResetAttendanceModal] = useState<boolean>(false);
+  const [selectedEmpIdsToReset, setSelectedEmpIdsToReset] = useState<string[]>([]);
+  const [resetSearch, setResetSearch] = useState<string>('');
+  const [resetBranchFilter, setResetBranchFilter] = useState<string>('الكل');
+  const [isResettingAttendance, setIsResettingAttendance] = useState<boolean>(false);
+
   // ── Tab 2: Financial Movements Form State (سلفة / خصم / مكافأة / قبض) ──
   const [advanceEmployeeId, setAdvanceEmployeeId] = useState<string>('');
   const [advanceType, setAdvanceType] = useState<'سلفة' | 'خصم' | 'مكافأة' | 'قبض'>('سلفة');
@@ -766,22 +773,83 @@ ${totalBonuses > 0 ? `🎁 *مكافآت:* +${totalBonuses.toLocaleString()} ج\
     return `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
   };
 
-  const handleResetTargetedEmployeesAttendance = async () => {
-    if (!confirm('⚠️ هل أنت متأكد من تصفير الحضور السابق للموظفين (محمود حبيب، يوسف، سليمان، أشرف، كوكو، صبحي، سمير) للبدء من جديد معهم؟\n\n✅ سيتم الإبقاء على شفت اليوم بالكامل ولن يُمس.')) {
+  const openResetAttendanceModal = () => {
+    const defaultKeywords = ['محمود حبيب', 'محمود', 'يوسف', 'سليمان', 'اشرف', 'أشرف', 'كوكو', 'صبحى', 'صبحي', 'سمير'];
+    const defaultSelected = employees
+      .filter(e => defaultKeywords.some(k => e.name.toLowerCase().includes(k.toLowerCase())))
+      .map(e => e.id);
+    setSelectedEmpIdsToReset(defaultSelected.length > 0 ? defaultSelected : employees.map(e => e.id));
+    setResetSearch('');
+    setResetBranchFilter('الكل');
+    setShowResetAttendanceModal(true);
+  };
+
+  const handleToggleSelectEmployeeForReset = (id: string) => {
+    setSelectedEmpIdsToReset(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
+  const handleSelectAllReset = () => {
+    setSelectedEmpIdsToReset(filteredEmployeesForReset.map(e => e.id));
+  };
+
+  const handleDeselectAllReset = () => {
+    setSelectedEmpIdsToReset([]);
+  };
+
+  const handleSelectDefault7Reset = () => {
+    const defaultKeywords = ['محمود حبيب', 'محمود', 'يوسف', 'سليمان', 'اشرف', 'أشرف', 'كوكو', 'صبحى', 'صبحي', 'سمير'];
+    const defaultSelected = employees
+      .filter(e => defaultKeywords.some(k => e.name.toLowerCase().includes(k.toLowerCase())))
+      .map(e => e.id);
+    setSelectedEmpIdsToReset(defaultSelected);
+  };
+
+  const filteredEmployeesForReset = useMemo(() => {
+    return employees
+      .filter(e => resetBranchFilter === 'الكل' || normalizeBranchName(e.branch) === normalizeBranchName(resetBranchFilter))
+      .filter(e => {
+        if (!resetSearch.trim()) return true;
+        const q = resetSearch.trim().toLowerCase();
+        return e.name.toLowerCase().includes(q) || (e.role || '').toLowerCase().includes(q) || (e.branch || '').toLowerCase().includes(q);
+      })
+      .sort((a, b) => a.name.localeCompare(b.name, 'ar'));
+  }, [employees, resetBranchFilter, resetSearch]);
+
+  const handleExecuteResetAttendance = async () => {
+    if (selectedEmpIdsToReset.length === 0) {
+      alert('من فضلك اختر موظفاً واحداً على الأقل للتصفير.');
       return;
     }
+    const selectedNames = employees.filter(e => selectedEmpIdsToReset.includes(e.id)).map(e => e.name);
+    if (!confirm(`⚠️ تأكيد تصفير الحضور السابق لـ (${selectedNames.length}) موظف:\n${selectedNames.join('، ')}\n\n✅ سيتم حذف سجلات الحضور السابقة لتاريخ اليوم فقط، وشفت اليوم سيبقى كما هو دون أي مساس.`)) {
+      return;
+    }
+
+    setIsResettingAttendance(true);
     try {
-      const res = await fetch('/api/admin/clear-past-attendance', { method: 'POST' });
+      const res = await fetch('/api/admin/clear-past-attendance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          employeeIds: selectedEmpIdsToReset,
+          employeeNames: selectedNames,
+        }),
+      });
       const data = await res.json();
       if (data.success) {
         alert(`✅ ${data.message}\nتم حذف: ${data.deletedCount} سجل سابق.\nتم الإبقاء على: ${data.keptTodayCount} سجل لليوم.`);
         const freshAtt = await getAttendance();
         setAttendance(freshAtt);
+        setShowResetAttendanceModal(false);
       } else {
         alert(data.error || 'فشل تنفيذ التصفير');
       }
     } catch (err: any) {
-      alert('حدث خطأ: ' + err.message);
+      alert('حدث خطأ: ' + (err.message || ''));
+    } finally {
+      setIsResettingAttendance(false);
     }
   };
 
@@ -1550,12 +1618,12 @@ ${totalBonuses > 0 ? `🎁 *مكافآت:* +${totalBonuses.toLocaleString()} ج\
               <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
-                  onClick={handleResetTargetedEmployeesAttendance}
+                  onClick={openResetAttendanceModal}
                   className="px-3.5 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 rounded-xl font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs"
-                  title="تصفير حضور الموظفين الـ 7 السابق مع بقاء شفت اليوم"
+                  title="تصفير حضور موظفين محددين مع بقاء شفت اليوم"
                 >
                   <span>🔄</span>
-                  <span>تصفير حضور الموظفين السابق (مع بقاء شفت اليوم)</span>
+                  <span>تصفير حضور موظفين محددين (مع بقاء شفت اليوم)</span>
                 </button>
                 <button
                   type="button"
@@ -2222,6 +2290,172 @@ ${totalBonuses > 0 ? `🎁 *مكافآت:* +${totalBonuses.toLocaleString()} ج\
                   className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl cursor-pointer"
                 >
                   إغلاق
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── RESET ATTENDANCE MODAL (تصفير حضور موظفين محددين مع بقاء شفت اليوم) ── */}
+        {showResetAttendanceModal && (
+          <div className="fixed inset-0 bg-slate-950/75 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+            <div className="bg-white max-w-xl w-full rounded-3xl p-5 sm:p-6 space-y-4 shadow-2xl border border-slate-200 max-h-[92vh] flex flex-col">
+              {/* Header */}
+              <div className="flex justify-between items-start border-b border-slate-100 pb-3">
+                <div>
+                  <h3 className="font-black text-slate-900 text-base sm:text-lg flex items-center gap-2">
+                    <span className="w-8 h-8 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center text-base">🔄</span>
+                    <span>تصفير سجلات الحضور السابقة</span>
+                  </h3>
+                  <p className="text-xs text-slate-500 font-bold mt-0.5">
+                    حدد الموظفين المراد تصفير حضورهم السابق للبدء معهم من جديد
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowResetAttendanceModal(false)}
+                  className="text-slate-400 hover:text-slate-700 font-bold text-base cursor-pointer p-1 rounded-lg"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Safety Notice Callout */}
+              <div className="p-3 bg-amber-50/80 border border-amber-200 rounded-2xl text-xs space-y-1">
+                <div className="flex items-center gap-1.5 font-black text-amber-950">
+                  <span>🛡️</span>
+                  <span>حماية وتأمين شفت اليوم:</span>
+                </div>
+                <p className="text-[11px] text-amber-900 font-bold leading-relaxed">
+                  التصفير يحذف فقط أيام الحضور المسجلة <b>قبل تاريخ اليوم</b> للموظفين المحددين. أي شفت أو حضور مسجل <b>اليوم</b> سيبقى ثابتاً ولن يُمس نهائياً.
+                </p>
+              </div>
+
+              {/* Quick Select & Filter Bar */}
+              <div className="space-y-2">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <input
+                    type="text"
+                    value={resetSearch}
+                    onChange={(e) => setResetSearch(e.target.value)}
+                    placeholder="🔍 بحث باسم الموظف أو الفرع..."
+                    className="flex-1 min-w-[160px] p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:bg-white focus:outline-none focus:border-rose-400"
+                  />
+                  <select
+                    value={resetBranchFilter}
+                    onChange={(e) => setResetBranchFilter(e.target.value)}
+                    className="p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
+                  >
+                    <option value="الكل">🌐 كل الفروع</option>
+                    {BRANCHES_LIST.map(b => (
+                      <option key={b.id} value={b.name}>{b.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Quick action buttons */}
+                <div className="flex items-center justify-between text-xs pt-1">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={handleSelectDefault7Reset}
+                      className="px-2.5 py-1 bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 rounded-lg font-bold text-[11px] cursor-pointer"
+                    >
+                      ⭐ الـ 7 موظفين الافتراضيين
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSelectAllReset}
+                      className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-bold text-[11px] cursor-pointer"
+                    >
+                      ✓ تحديد الكل ({filteredEmployeesForReset.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDeselectAllReset}
+                      className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg font-bold text-[11px] cursor-pointer"
+                    >
+                      ✕ إلغاء التحديد
+                    </button>
+                  </div>
+                  <span className="font-bold text-slate-500 text-[11px]">
+                    المحدد: <strong className="text-rose-700 font-mono text-xs">{selectedEmpIdsToReset.length}</strong> من {employees.length}
+                  </span>
+                </div>
+              </div>
+
+              {/* Employees Checklist Scroll Area */}
+              <div className="flex-1 min-h-[200px] max-h-[300px] overflow-y-auto space-y-1.5 pr-1 border border-slate-200/80 rounded-2xl p-2 bg-slate-50/50">
+                {filteredEmployeesForReset.length === 0 ? (
+                  <div className="py-8 text-center text-xs text-slate-400 font-bold">
+                    لا يوجد موظفون مطابقون للبحث
+                  </div>
+                ) : (
+                  filteredEmployeesForReset.map((emp) => {
+                    const isChecked = selectedEmpIdsToReset.includes(emp.id);
+                    const empAttCount = attendance.filter(a => a.employeeId === emp.id).length;
+                    return (
+                      <label
+                        key={emp.id}
+                        onClick={() => handleToggleSelectEmployeeForReset(emp.id)}
+                        className={`flex items-center justify-between p-2.5 rounded-xl border transition-all cursor-pointer select-none ${
+                          isChecked
+                            ? 'bg-rose-50/90 border-rose-300 shadow-3xs'
+                            : 'bg-white border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => {}} // handled by label onClick
+                            className="w-4 h-4 rounded text-rose-600 accent-rose-600 cursor-pointer"
+                          />
+                          <div>
+                            <span className="font-black text-xs text-slate-900 block">{emp.name}</span>
+                            <span className="text-[10px] text-slate-500 font-bold">{emp.role || 'موظف'} — {emp.branch}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] font-mono font-bold bg-white border border-slate-200 text-slate-600 px-2 py-0.5 rounded-md">
+                            {empAttCount} سجل حضور
+                          </span>
+                          {isChecked && (
+                            <span className="text-rose-600 text-xs font-black">● سيتم تصفيره</span>
+                          )}
+                        </div>
+                      </label>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Modal Actions */}
+              <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  disabled={selectedEmpIdsToReset.length === 0 || isResettingAttendance}
+                  onClick={handleExecuteResetAttendance}
+                  className="flex-1 py-3 bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white rounded-xl font-black text-xs cursor-pointer shadow-md flex items-center justify-center gap-2 transition-all"
+                >
+                  {isResettingAttendance ? (
+                    <>
+                      <span className="inline-block animate-spin">⏳</span>
+                      <span>جاري تصفير الحضور...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>🔄</span>
+                      <span>تأكيد تصفير الحضور لـ ({selectedEmpIdsToReset.length}) موظف</span>
+                    </>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowResetAttendanceModal(false)}
+                  className="px-5 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs cursor-pointer"
+                >
+                  إلغاء
                 </button>
               </div>
             </div>
