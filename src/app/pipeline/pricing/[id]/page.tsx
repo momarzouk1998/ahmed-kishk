@@ -25,6 +25,7 @@ import SearchableFabricSelect from '@/components/SearchableFabricSelect';
 import { useCurrentUser } from '@/lib/useCurrentUser';
 import { getTodayDateStr, formatDateOnly } from '@/lib/dateUtils';
 import { getBranchTreasury } from '@/lib/branches';
+import { printCollectionReceipt } from '@/lib/printCollectionReceipt';
 
 interface InventoryFabric {
   id: string;
@@ -639,7 +640,7 @@ export default function PricingDetailPage() {
 
       // 2. سند مستقل لكل طريقة دفع فى الدفعة دي، كلهم مربوطين بنفس الأوردر.
       for (const p of payments) {
-        await fetch('/api/customer-collections', {
+        const res = await fetch('/api/customer-collections', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -656,6 +657,21 @@ export default function PricingDetailPage() {
             source: 'عربون تسعير',
           }),
         });
+        const json = await res.json().catch(() => null);
+        if (json?.success && json?.collection?.id) {
+          printCollectionReceipt({
+            id: json.collection.id,
+            date: getTodayDateStr(),
+            customerName: quotation.customerName,
+            phone: quotation.phone,
+            amount: p.amount,
+            method: p.method,
+            treasury: depTreasury || getBranchTreasury(quotation.branch),
+            notes: depNotes,
+            branch: quotation.branch,
+            remainingAfter: Math.max(0, (Number(quotation.totalAmount) || 0) - (Number(quotation.depositPaid) || 0) - p.amount),
+          });
+        }
       }
 
       await Promise.all([loadDepositCollections(quotation.id), refreshQuotationFromServer()]);

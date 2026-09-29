@@ -6,6 +6,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { formatDateOnly, getTodayDateStr } from '@/lib/dateUtils';
 import { BRANCHES_LIST, getBranchTreasury, BRANCH_TREASURIES } from '@/lib/branches';
 import { useCurrentUser } from '@/lib/useCurrentUser';
+import { printCollectionReceipt } from '@/lib/printCollectionReceipt';
 
 interface CustomerLedgerEntry {
   id: string;
@@ -210,6 +211,18 @@ export default function CustomerDetailsPage() {
       const json = await res.json().catch(() => null);
 
       if (json?.success) {
+        printCollectionReceipt({
+          id: newCol.id,
+          date: newCol.date,
+          customerName: newCol.customerName,
+          phone: newCol.phone,
+          amount: newCol.amount,
+          method: newCol.method,
+          treasury: newCol.treasury,
+          notes: newCol.notes,
+          branch: customer.city || customer.branch,
+          remainingAfter: Math.max(0, (Number(customer.balance) || 0) - colAmount),
+        });
         setShowAddCollectionModal(false);
         setColNotes('');
         setColAmount(1000);

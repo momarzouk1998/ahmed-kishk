@@ -9,6 +9,7 @@ import { useCurrentUser } from '@/lib/useCurrentUser';
 import Pagination from '@/components/Pagination';
 import BranchSelect from '@/components/BranchSelect';
 import { BRANCHES_LIST, BRANCH_TREASURIES, getBranchTreasury, normalizeBranchName } from '@/lib/branches';
+import { printCollectionReceipt } from '@/lib/printCollectionReceipt';
 
 interface CustomerLedgerEntry {
   id: string;
@@ -48,6 +49,7 @@ interface CustomerCollection {
   method: 'نقدي' | 'إنستاباي' | 'فيزا' | 'فودافون كاش' | 'تحويل بنكي' | 'شيك';
   treasury: string;
   notes: string;
+  branch?: string;
 }
 
 export default function CustomersPage() {
@@ -845,6 +847,30 @@ export default function CustomersPage() {
                             <td className="p-3.5 text-slate-700 font-bold">{col.treasury}</td>
                             <td className="p-3.5 text-slate-600">{col.notes || '—'}</td>
                             <td className="p-3.5 text-center">
+                              <div className="flex items-center justify-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const cust = customers.find(c => c.id === col.customerId || c.phone === col.phone);
+                                    printCollectionReceipt({
+                                      id: col.id,
+                                      date: col.date,
+                                      customerName: col.customerName,
+                                      phone: col.phone,
+                                      amount: col.amount,
+                                      method: col.method,
+                                      treasury: col.treasury,
+                                      notes: col.notes,
+                                      branch: col.branch,
+                                      remainingAfter: cust ? Number(cust.balance) || 0 : undefined,
+                                    });
+                                  }}
+                                  className="text-slate-500 hover:text-slate-900 p-1.5 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                                  title="طباعة إيصال تحصيل"
+                                >
+                                  <span className="material-symbols-outlined text-[18px]">print</span>
+                                </button>
+                              </div>
                               {isAdmin ? (
                                 <div className="flex items-center justify-center gap-1">
                                   <button
