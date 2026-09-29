@@ -774,11 +774,7 @@ ${totalBonuses > 0 ? `🎁 *مكافآت:* +${totalBonuses.toLocaleString()} ج\
   };
 
   const openResetAttendanceModal = () => {
-    const defaultKeywords = ['محمود حبيب', 'محمود', 'يوسف', 'سليمان', 'اشرف', 'أشرف', 'كوكو', 'صبحى', 'صبحي', 'سمير'];
-    const defaultSelected = employees
-      .filter(e => defaultKeywords.some(k => e.name.toLowerCase().includes(k.toLowerCase())))
-      .map(e => e.id);
-    setSelectedEmpIdsToReset(defaultSelected.length > 0 ? defaultSelected : employees.map(e => e.id));
+    setSelectedEmpIdsToReset([]); // بدون تعليم مسبق افتراضي - يحدد المدير من يشاء
     setResetSearch('');
     setResetBranchFilter('الكل');
     setShowResetAttendanceModal(true);
@@ -798,14 +794,6 @@ ${totalBonuses > 0 ? `🎁 *مكافآت:* +${totalBonuses.toLocaleString()} ج\
     setSelectedEmpIdsToReset([]);
   };
 
-  const handleSelectDefault7Reset = () => {
-    const defaultKeywords = ['محمود حبيب', 'محمود', 'يوسف', 'سليمان', 'اشرف', 'أشرف', 'كوكو', 'صبحى', 'صبحي', 'سمير'];
-    const defaultSelected = employees
-      .filter(e => defaultKeywords.some(k => e.name.toLowerCase().includes(k.toLowerCase())))
-      .map(e => e.id);
-    setSelectedEmpIdsToReset(defaultSelected);
-  };
-
   const filteredEmployeesForReset = useMemo(() => {
     return employees
       .filter(e => resetBranchFilter === 'الكل' || normalizeBranchName(e.branch) === normalizeBranchName(resetBranchFilter))
@@ -823,7 +811,7 @@ ${totalBonuses > 0 ? `🎁 *مكافآت:* +${totalBonuses.toLocaleString()} ج\
       return;
     }
     const selectedNames = employees.filter(e => selectedEmpIdsToReset.includes(e.id)).map(e => e.name);
-    if (!confirm(`⚠️ تأكيد تصفير الحضور السابق لـ (${selectedNames.length}) موظف:\n${selectedNames.join('، ')}\n\n✅ سيتم حذف سجلات الحضور السابقة لتاريخ اليوم فقط، وشفت اليوم سيبقى كما هو دون أي مساس.`)) {
+    if (!confirm(`⚠️ تأكيد تصفير الحضور والسلف والقبض السابق لـ (${selectedNames.length}) موظف:\n${selectedNames.join('، ')}\n\n✅ سيتم حذف سجلات الحضور والسلف والقبض السابقة لتاريخ اليوم (${getTodayDateStr()})، وشفت وسجلات اليوم ستبقى كما هي دون أي مساس ليبدأ الموظف من جديد من اليوم.`)) {
       return;
     }
 
@@ -839,9 +827,13 @@ ${totalBonuses > 0 ? `🎁 *مكافآت:* +${totalBonuses.toLocaleString()} ج\
       });
       const data = await res.json();
       if (data.success) {
-        alert(`✅ ${data.message}\nتم حذف: ${data.deletedCount} سجل سابق.\nتم الإبقاء على: ${data.keptTodayCount} سجل لليوم.`);
-        const freshAtt = await getAttendance();
+        alert(`✅ ${data.message}\nتم حذف: ${data.deletedCount} سجل حضور سابق، و ${data.deletedAdvancesCount || 0} حركة مالية (سلف/قبض) سابقة.\nتم الإبقاء على سجلات اليوم.`);
+        const [freshAtt, freshAdv] = await Promise.all([
+          getAttendance(),
+          getAdvances(),
+        ]);
         setAttendance(freshAtt);
+        setAdvances(freshAdv);
         setShowResetAttendanceModal(false);
       } else {
         alert(data.error || 'فشل تنفيذ التصفير');
@@ -2296,7 +2288,7 @@ ${totalBonuses > 0 ? `🎁 *مكافآت:* +${totalBonuses.toLocaleString()} ج\
           </div>
         )}
 
-        {/* ── RESET ATTENDANCE MODAL (تصفير حضور موظفين محددين مع بقاء شفت اليوم) ── */}
+        {/* ── RESET ATTENDANCE & ADVANCES MODAL (تصفير حضور وسلف وقبض موظفين محددين مع بقاء شفت وسجلات اليوم) ── */}
         {showResetAttendanceModal && (
           <div className="fixed inset-0 bg-slate-950/75 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
             <div className="bg-white max-w-xl w-full rounded-3xl p-5 sm:p-6 space-y-4 shadow-2xl border border-slate-200 max-h-[92vh] flex flex-col">
@@ -2305,10 +2297,10 @@ ${totalBonuses > 0 ? `🎁 *مكافآت:* +${totalBonuses.toLocaleString()} ج\
                 <div>
                   <h3 className="font-black text-slate-900 text-base sm:text-lg flex items-center gap-2">
                     <span className="w-8 h-8 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center text-base">🔄</span>
-                    <span>تصفير سجلات الحضور السابقة</span>
+                    <span>تصفير الحسابات والحضور السابق (بدء من اليوم)</span>
                   </h3>
                   <p className="text-xs text-slate-500 font-bold mt-0.5">
-                    حدد الموظفين المراد تصفير حضورهم السابق للبدء معهم من جديد
+                    حدد الموظفين المراد تصفير حضورهم وسلفهم السابقة للبدء معهم بصافي 0 من اليوم
                   </p>
                 </div>
                 <button
@@ -2324,10 +2316,10 @@ ${totalBonuses > 0 ? `🎁 *مكافآت:* +${totalBonuses.toLocaleString()} ج\
               <div className="p-3 bg-amber-50/80 border border-amber-200 rounded-2xl text-xs space-y-1">
                 <div className="flex items-center gap-1.5 font-black text-amber-950">
                   <span>🛡️</span>
-                  <span>حماية وتأمين شفت اليوم:</span>
+                  <span>حماية وتأمين شفت وسجلات اليوم:</span>
                 </div>
                 <p className="text-[11px] text-amber-900 font-bold leading-relaxed">
-                  التصفير يحذف فقط أيام الحضور المسجلة <b>قبل تاريخ اليوم</b> للموظفين المحددين. أي شفت أو حضور مسجل <b>اليوم</b> سيبقى ثابتاً ولن يُمس نهائياً.
+                  التصفير يحذف فقط أيام الحضور والسلف والقبض المسجلة <b>قبل تاريخ اليوم</b> للموظفين المحددين. أي شفت أو حركة مسجلة <b>اليوم</b> ستبقى كما هي تماماً.
                 </p>
               </div>
 
@@ -2358,13 +2350,6 @@ ${totalBonuses > 0 ? `🎁 *مكافآت:* +${totalBonuses.toLocaleString()} ج\
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <button
                       type="button"
-                      onClick={handleSelectDefault7Reset}
-                      className="px-2.5 py-1 bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 rounded-lg font-bold text-[11px] cursor-pointer"
-                    >
-                      ⭐ الـ 7 موظفين الافتراضيين
-                    </button>
-                    <button
-                      type="button"
                       onClick={handleSelectAllReset}
                       className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-bold text-[11px] cursor-pointer"
                     >
@@ -2379,7 +2364,7 @@ ${totalBonuses > 0 ? `🎁 *مكافآت:* +${totalBonuses.toLocaleString()} ج\
                     </button>
                   </div>
                   <span className="font-bold text-slate-500 text-[11px]">
-                    المحدد: <strong className="text-rose-700 font-mono text-xs">{selectedEmpIdsToReset.length}</strong> من {employees.length}
+                    المحدد للتصفير: <strong className="text-rose-700 font-mono text-xs">{selectedEmpIdsToReset.length}</strong> من {employees.length}
                   </span>
                 </div>
               </div>
@@ -2394,6 +2379,7 @@ ${totalBonuses > 0 ? `🎁 *مكافآت:* +${totalBonuses.toLocaleString()} ج\
                   filteredEmployeesForReset.map((emp) => {
                     const isChecked = selectedEmpIdsToReset.includes(emp.id);
                     const empAttCount = attendance.filter(a => a.employeeId === emp.id).length;
+                    const empAdvCount = advances.filter(a => a.employeeId === emp.id).length;
                     return (
                       <label
                         key={emp.id}
@@ -2418,7 +2404,7 @@ ${totalBonuses > 0 ? `🎁 *مكافآت:* +${totalBonuses.toLocaleString()} ج\
                         </div>
                         <div className="flex items-center gap-1.5">
                           <span className="text-[10px] font-mono font-bold bg-white border border-slate-200 text-slate-600 px-2 py-0.5 rounded-md">
-                            {empAttCount} سجل حضور
+                            {empAttCount} حضور | {empAdvCount} سلف/قبض
                           </span>
                           {isChecked && (
                             <span className="text-rose-600 text-xs font-black">● سيتم تصفيره</span>
@@ -2441,12 +2427,12 @@ ${totalBonuses > 0 ? `🎁 *مكافآت:* +${totalBonuses.toLocaleString()} ج\
                   {isResettingAttendance ? (
                     <>
                       <span className="inline-block animate-spin">⏳</span>
-                      <span>جاري تصفير الحضور...</span>
+                      <span>جاري التصفير والبدء من اليوم...</span>
                     </>
                   ) : (
                     <>
                       <span>🔄</span>
-                      <span>تأكيد تصفير الحضور لـ ({selectedEmpIdsToReset.length}) موظف</span>
+                      <span>تأكيد تصفير الحساب والبدء من اليوم لـ ({selectedEmpIdsToReset.length}) موظف</span>
                     </>
                   )}
                 </button>

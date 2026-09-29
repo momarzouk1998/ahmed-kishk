@@ -60,7 +60,7 @@ async function handleClear(request: Request) {
       },
     });
 
-    // فلترة السجلات التي تخص الموظفين المحددين
+    // فلترة سجلات الحضور التي تخص الموظفين المحددين
     const recordsToDelete = allPastRecords.filter(record => {
       // 1. إذا تم تحديد معرفات الموظفين صراحة
       if (customEmployeeIds.length > 0 && record.employeeId && customEmployeeIds.includes(record.employeeId)) {
@@ -89,7 +89,7 @@ async function handleClear(request: Request) {
 
     const idsToDelete = recordsToDelete.map(r => r.id);
 
-    // تنفيذ الحذف لسجلات الحضور السابقة فقط
+    // تنفيذ الحذف لسجلات الحضور السابقة
     let deletedCount = 0;
     if (idsToDelete.length > 0) {
       const res = await prisma.attendanceRecord.deleteMany({
@@ -100,7 +100,50 @@ async function handleClear(request: Request) {
       deletedCount = res.count;
     }
 
-    // فحص السجلات المحتفظ بها لليوم الحالي (شفت اليوم إن وجد)
+    // جلب وحذف سجلات السلف/القبض/الخصومات السابقة لتاريخ اليوم للموظفين المحددين
+    const allPastAdvances = await prisma.employeeAdvance.findMany({
+      where: {
+        date: {
+          lt: today,
+        },
+      },
+    });
+
+    const advancesToDelete = allPastAdvances.filter(adv => {
+      if (customEmployeeIds.length > 0 && adv.employeeId && customEmployeeIds.includes(adv.employeeId)) {
+        return true;
+      }
+
+      const advName = (adv.employeeName || '').trim().toLowerCase();
+      if (customEmployeeNames.length > 0) {
+        return customEmployeeNames.some(cName => {
+          const target = cName.trim().toLowerCase();
+          return advName === target || advName.includes(target) || target.includes(advName);
+        });
+      }
+
+      if (customEmployeeIds.length === 0 && customEmployeeNames.length === 0) {
+        return defaultTargetNames.some(keyword => {
+          const target = keyword.toLowerCase();
+          return advName === target || advName.includes(target) || target.includes(advName);
+        });
+      }
+
+      return false;
+    });
+
+    const advanceIdsToDelete = advancesToDelete.map(a => a.id);
+    let deletedAdvancesCount = 0;
+    if (advanceIdsToDelete.length > 0) {
+      const resAdv = await prisma.employeeAdvance.deleteMany({
+        where: {
+          id: { in: advanceIdsToDelete },
+        },
+      });
+      deletedAdvancesCount = resAdv.count;
+    }
+
+    // فحص السجلات المحتفظ بها لليوم الحالي (شفت وسجلات اليوم إن وجدت)
     const allTodayRecords = await prisma.attendanceRecord.findMany({
       where: {
         date: {
@@ -131,17 +174,19 @@ async function handleClear(request: Request) {
 
     return NextResponse.json({
       success: true,
-      message: `تم تصفير الحضور السابق للموظفين المحددين بنجاح مع الاحتفاظ بشفت اليوم (${today})`,
+      message: `تم تصفير الحضور والسلف والقبض السابق للموظفين المحددين بنجاح مع الاحتفاظ بسجلات وشفت اليوم (${today})`,
       todayDate: today,
       deletedCount,
+      deletedAdvancesCount,
       keptTodayCount: keptTodayRecords.length,
       targetedCount: recordsToDelete.length,
     });
   } catch (error: any) {
-    console.error('Error clearing past attendance:', error);
+    console.error('Error clearing past attendance & advances:', error);
     return NextResponse.json(
       { success: false, error: error?.message || 'Server error' },
       { status: 500 }
     );
   }
 }
+
