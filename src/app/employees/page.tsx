@@ -57,9 +57,13 @@ export default function EmployeesManagementPage() {
     if (!t) return '';
     const [hStr, mStr] = t.split(':');
     if (hStr === undefined || mStr === undefined) return '';
-    const d = new Date();
-    d.setHours(parseInt(hStr, 10), parseInt(mStr, 10), 0, 0);
-    return d.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+    let h = parseInt(hStr, 10);
+    const m = parseInt(mStr, 10);
+    if (isNaN(h) || isNaN(m)) return '';
+    const period = h >= 12 ? 'م' : 'ص';
+    if (h > 12) h -= 12;
+    if (h === 0) h = 12;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')} ${period}`;
   };
 
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -653,7 +657,7 @@ export default function EmployeesManagementPage() {
     setLogForm({
       employeeId: record.employeeId,
       date: record.date,
-      status: record.status,
+      status: record.status as AttendanceRecord['status'],
       checkInTime: arabicTimeTo24h(record.checkInTime),
       checkOutTime: arabicTimeTo24h(record.checkOutTime),
       notes: record.notes || '',
@@ -663,23 +667,23 @@ export default function EmployeesManagementPage() {
 
   const handleSaveLog = async (e: React.FormEvent) => {
     e.preventDefault();
-    const emp = employees.find(x => x.id === logForm.employeeId);
+    const emp = employees.find(x => x.id === logForm.employeeId) || (editingLogRecord ? employees.find(x => x.name === editingLogRecord.employeeName) : undefined);
     if (!emp && !editingLogRecord) {
       alert('من فضلك اختر الموظف');
       return;
     }
     setSavingLog(true);
     const record: AttendanceRecord = {
-      id: editingLogRecord?.id || `att-${Date.now()}-${logForm.employeeId}`,
+      id: editingLogRecord?.id || `att-${Date.now()}-${logForm.employeeId || 'manual'}`,
       date: logForm.date,
       employeeId: logForm.employeeId || editingLogRecord!.employeeId,
       employeeName: emp?.name || editingLogRecord!.employeeName,
       branch: emp?.branch || editingLogRecord!.branch,
       status: logForm.status,
-      checkInTime: time24hToArabic(logForm.checkInTime) || undefined,
-      checkOutTime: time24hToArabic(logForm.checkOutTime) || undefined,
+      checkInTime: logForm.checkInTime ? (time24hToArabic(logForm.checkInTime) || logForm.checkInTime) : undefined,
+      checkOutTime: logForm.checkOutTime ? (time24hToArabic(logForm.checkOutTime) || logForm.checkOutTime) : undefined,
       notes: logForm.notes || undefined,
-      recordedBy: user?.name || 'أدمن',
+      recordedBy: user?.name || editingLogRecord?.recordedBy || 'أدمن',
     };
     const ok = await saveAttendanceRecord(record);
     setSavingLog(false);
@@ -692,6 +696,7 @@ export default function EmployeesManagementPage() {
       return exists ? prev.map(a => (a.id === record.id ? record : a)) : [...prev, record];
     });
     setShowLogModal(false);
+    setEditingLogRecord(null);
   };
 
   const handleDeleteLog = async (record: AttendanceRecord) => {
@@ -1956,6 +1961,147 @@ ${totalBonuses > 0 ? `🎁 *مكافآت:* +${totalBonuses.toLocaleString()} ج\
                 </button>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Attendance Record Edit / Add Modal (سجل الحضور) */}
+        {showLogModal && (
+          <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+            <form
+              onSubmit={handleSaveLog}
+              className="bg-white max-w-md w-full rounded-3xl p-6 space-y-4 shadow-2xl border border-slate-200 max-h-[90vh] overflow-y-auto"
+            >
+              <div className="flex justify-between items-center border-b pb-3">
+                <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+                  <span>{editingLogRecord ? '✏️ تعديل سجل الحضور' : '➕ إضافة سجل حضور يدوي'}</span>
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => { setShowLogModal(false); setEditingLogRecord(null); }}
+                  className="text-slate-400 hover:text-slate-700 font-bold cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Employee Selection */}
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">الموظف *</label>
+                {editingLogRecord ? (
+                  <div className="p-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 flex items-center justify-between">
+                    <span>{editingLogRecord.employeeName}</span>
+                    <span className="text-[10px] text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200 font-bold">
+                      {editingLogRecord.branch}
+                    </span>
+                  </div>
+                ) : (
+                  <select
+                    required
+                    value={logForm.employeeId}
+                    onChange={(e) => setLogForm({ ...logForm, employeeId: e.target.value })}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-900"
+                  >
+                    <option value="">-- اختر الموظف --</option>
+                    {employees.map(emp => (
+                      <option key={emp.id} value={emp.id}>
+                        {emp.name} — {emp.branch}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              {/* Date */}
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">التاريخ *</label>
+                <input
+                  type="date"
+                  required
+                  value={logForm.date}
+                  onChange={(e) => setLogForm({ ...logForm, date: e.target.value })}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold"
+                />
+              </div>
+
+              {/* Status */}
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">حالة الحضور *</label>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {(['حاضر', 'غياب', 'إجازة', 'نصف يوم'] as const).map(st => (
+                    <button
+                      key={st}
+                      type="button"
+                      onClick={() => setLogForm({ ...logForm, status: st })}
+                      className={`py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer text-center ${
+                        logForm.status === st
+                          ? st === 'حاضر' ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs' :
+                            st === 'غياب' ? 'bg-rose-600 text-white border-rose-600 shadow-xs' :
+                            st === 'إجازة' ? 'bg-blue-600 text-white border-blue-600 shadow-xs' :
+                            'bg-amber-600 text-white border-amber-600 shadow-xs'
+                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      {st}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Check-In / Check-Out Times */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">وقت الحضور</label>
+                  <input
+                    type="time"
+                    value={logForm.checkInTime}
+                    onChange={(e) => setLogForm({ ...logForm, checkInTime: e.target.value })}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">وقت الانصراف</label>
+                  <input
+                    type="time"
+                    value={logForm.checkOutTime}
+                    onChange={(e) => setLogForm({ ...logForm, checkOutTime: e.target.value })}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold"
+                  />
+                </div>
+              </div>
+
+              {/* Notes */}
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">ملاحظات</label>
+                <input
+                  type="text"
+                  value={logForm.notes}
+                  onChange={(e) => setLogForm({ ...logForm, notes: e.target.value })}
+                  placeholder="أي ملاحظات حول الحضور أو التأخير..."
+                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800"
+                />
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center gap-2 pt-2 border-t">
+                <button
+                  type="submit"
+                  disabled={savingLog}
+                  className="flex-1 py-2.5 bg-slate-950 hover:bg-slate-800 disabled:opacity-50 text-white rounded-xl font-black text-xs cursor-pointer shadow-md"
+                >
+                  {savingLog ? 'جاري الحفظ...' : (editingLogRecord ? 'حفظ التعديل 💾' : 'حفظ السجل ✨')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowLogModal(false);
+                    setEditingLogRecord(null);
+                  }}
+                  className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs cursor-pointer"
+                >
+                  إلغاء
+                </button>
+              </div>
+            </form>
           </div>
         )}
 
