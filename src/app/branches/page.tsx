@@ -281,6 +281,23 @@ export default function BranchesAndPermissionsPage() {
       </PageShell>
     );
   }
+  const handleResetPassword = async (emp: Employee) => {
+    if (!confirm(`هل تريد إعادة تعيين كلمة سر "${emp.name}" إلى 123456؟`)) return;
+    try {
+      const res = await fetch('/api/admin/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: emp.phone }),
+      });
+      const json = await res.json().catch(() => null);
+      if (json?.success) alert(`✅ تم — كلمة سر ${json.name} بقت: ${json.newPassword}
+يغيّرها بنفسه بعد أول دخول.`);
+      else alert(json?.error || 'فشلت إعادة التعيين');
+    } catch {
+      alert('فشل الاتصال بالخادم');
+    }
+  };
+
   if (!isAdmin) {
     return (
       <PageShell title="الفروع وصلاحيات الموظفين وعزل البيانات">
@@ -514,6 +531,14 @@ export default function BranchesAndPermissionsPage() {
                         })()}
                       </td>
                       <td className="p-3.5 text-center">
+                        <button
+                          onClick={() => handleResetPassword(emp)}
+                          className="bg-slate-100 hover:bg-rose-100 text-slate-800 hover:text-rose-900 border border-slate-300 hover:border-rose-300 px-2.5 py-1.5 rounded-xl font-bold transition-all inline-flex items-center gap-1 cursor-pointer text-xs ml-1.5"
+                          title="إعادة تعيين كلمة السر إلى 123456"
+                        >
+                          <span className="material-symbols-outlined text-[15px]">lock_reset</span>
+                          <span>ريست الباسورد</span>
+                        </button>
                         <button
                           onClick={() => openPermsModal(emp)}
                           className="bg-brand-gold hover:bg-brand-gold-hover text-slate-950 px-2.5 py-1.5 rounded-xl font-bold shadow-xs transition-all inline-flex items-center gap-1 cursor-pointer text-xs"
