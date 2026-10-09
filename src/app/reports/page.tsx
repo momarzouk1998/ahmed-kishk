@@ -8,6 +8,7 @@ import { useCurrentUser } from '@/lib/useCurrentUser';
 import BranchSelect from '@/components/BranchSelect';
 import { normalizeBranchName } from '@/lib/branches';
 import Pagination from '@/components/Pagination';
+import MovementReport from './MovementReport';
 
 interface SalesInvoice {
   id: string;
@@ -77,7 +78,7 @@ interface PurchaseInvoice {
   items?: any[];
 }
 
-type ReportTab = 'sales' | 'profits' | 'inventory' | 'curtains' | 'ledgers';
+type ReportTab = 'sales' | 'profits' | 'inventory' | 'movement' | 'curtains' | 'ledgers';
 type Period = 'yesterday' | 'today' | 'thisWeek' | 'thisMonth' | 'custom' | 'all';
 
 export default function ReportsPage() {
@@ -261,6 +262,10 @@ export default function ReportsPage() {
     return 'cash';
   };
 
+  const branchInvoices = useMemo(
+    () => invoices.filter(i => inBranch(i.branch)),
+    [invoices, selectedBranch]
+  );
   const fInvoices = useMemo(
     () => invoices.filter(i => inBranch(i.branch) && inPeriod(invoiceDate(i))),
     [invoices, selectedBranch, period, customStartDate, customEndDate]
@@ -1044,6 +1049,7 @@ export default function ReportsPage() {
             { id: 'sales', label: 'المبيعات والدرج', icon: 'payments' },
             ...(isAdmin ? [{ id: 'profits', label: 'الأرباح والتكلفة', icon: 'trending_up' }] : []),
             { id: 'inventory', label: 'المخزون', icon: 'inventory_2' },
+            { id: 'movement', label: 'حركة الأصناف', icon: 'swap_vert' },
             { id: 'curtains', label: 'الستائر والفنيين', icon: 'square_foot' },
             { id: 'ledgers', label: 'ديون العملاء والموردين', icon: 'account_balance_wallet' },
           ].map(t => (
@@ -1061,7 +1067,7 @@ export default function ReportsPage() {
         <div id="print-area" className="flex flex-col gap-4">
           {/* Print Header */}
           <div className="hidden print:flex print:flex-col print:pb-3 print:mb-3 print:border-b-2 print:border-slate-900">
-            <h1 className="text-lg font-black">مؤسسة أحمد كشك — تقرير {reportType === 'sales' ? 'المبيعات والدرج' : reportType === 'profits' ? 'الأرباح والتكلفة' : reportType === 'inventory' ? 'المخزون' : reportType === 'curtains' ? 'الستائر والفنيين' : 'ديون العملاء والموردين'}</h1>
+            <h1 className="text-lg font-black">مؤسسة أحمد كشك — تقرير {reportType === 'sales' ? 'المبيعات والدرج' : reportType === 'profits' ? 'الأرباح والتكلفة' : reportType === 'inventory' ? 'المخزون' : reportType === 'movement' ? 'حركة الأصناف' : reportType === 'curtains' ? 'الستائر والفنيين' : 'ديون العملاء والموردين'}</h1>
             <div className="text-xs text-slate-700 flex justify-between mt-1">
               <span>الفترة: {periodLabel} • الفرع: {branchLabel}</span>
               <span>تاريخ الطباعة: {formatDateOnly(new Date().toISOString())}</span>
@@ -1089,6 +1095,17 @@ export default function ReportsPage() {
                 <ProfitsReport stats={profitStats} topItems={topItems} branchLabel={branchLabel} periodLabel={periodLabel} />
               )}
               {reportType === 'inventory' && <InventoryReport alerts={invAlerts} branchLabel={branchLabel} />}
+              {reportType === 'movement' && (
+                <MovementReport
+                  invoices={branchInvoices}
+                  inventory={invAlerts.list}
+                  period={period}
+                  customStartDate={customStartDate}
+                  customEndDate={customEndDate}
+                  branchLabel={branchLabel}
+                  periodLabel={periodLabel}
+                />
+              )}
               {reportType === 'curtains' && <CurtainsReport stats={curtainStats} branchLabel={branchLabel} periodLabel={periodLabel} />}
               {reportType === 'ledgers' && <LedgersReport stats={ledgerStats} branchLabel={branchLabel} />}
             </>

@@ -23,6 +23,7 @@ interface InventoryItem {
   branch: string;
   minAlert: number;
   supplier: string;
+  season?: string;
 }
 
 interface AdjustmentLog {
@@ -52,6 +53,7 @@ export default function InventoryPage() {
   const [categories, setCategories] = useState<string[]>(['الكل']);
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState('الكل');
+  const [activeSeason, setActiveSeason] = useState('الكل');
   const [selectedBranch, setSelectedBranch] = useState('الكل');
   const [search, setSearch] = useState('');
   const [lowStockOnly, setLowStockOnly] = useState(false);
@@ -81,6 +83,7 @@ export default function InventoryPage() {
   const [minAlert, setMinAlert] = useState<number>(20);
   const [branch, setBranch] = useState('الفرع الرئيسي');
   const [supplier, setSupplier] = useState('');
+  const [season, setSeason] = useState('كل السنة');
 
   // User & Permissions
   const { user: currentUser, isAdmin } = useCurrentUser();
@@ -267,6 +270,7 @@ export default function InventoryPage() {
 
   const filteredItems = items.filter((item) => {
     const matchesCat = activeCategory === 'الكل' || item.category === activeCategory;
+    const matchesSeason = activeSeason === 'الكل' || (activeSeason === 'كل السنة' ? (!item.season || item.season === 'كل السنة') : item.season === activeSeason);
     const matchesBranch = selectedBranch === 'الكل' || normalizeBranchName(item.branch) === normalizeBranchName(selectedBranch);
     const matchesSearch =
       !search.trim() ||
@@ -278,7 +282,7 @@ export default function InventoryPage() {
     const isLow = available <= (item.minAlert || 20);
     const matchesLow = !lowStockOnly || isLow;
 
-    return matchesCat && matchesBranch && matchesSearch && matchesLow;
+    return matchesCat && matchesSeason && matchesBranch && matchesSearch && matchesLow;
   });
 
   // Start Inline Edit
@@ -393,6 +397,7 @@ export default function InventoryPage() {
       branch,
       minAlert,
       supplier: supplier || 'مورد عام',
+      season,
     };
 
     const updated = [newItem, ...items];
@@ -400,6 +405,7 @@ export default function InventoryPage() {
     setShowAddModal(false);
     setName('');
     setNewCatInput('');
+    setSeason('كل السنة');
     setCategory('ستائر');
     setTotalQuantity(100);
     setCostPrice(100);
@@ -505,7 +511,7 @@ export default function InventoryPage() {
 
   useEffect(() => {
     setStockPage(1);
-  }, [activeCategory, selectedBranch, search, lowStockOnly]);
+  }, [activeCategory, activeSeason, selectedBranch, search, lowStockOnly]);
 
   useEffect(() => {
     setAdjPage(1);
@@ -600,21 +606,45 @@ export default function InventoryPage() {
 
             {/* Filters Bar */}
             <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-soft flex flex-wrap items-center justify-between gap-4">
-              <div className="flex gap-2 flex-wrap items-center">
-                <span className="text-xs font-bold text-slate-400">التصنيف:</span>
-                {dynamicCategories.map((cat) => (
-                  <button
-                    key={cat}
-                    onClick={() => setActiveCategory(cat)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors ${
-                      activeCategory === cat
-                        ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
-                        : 'bg-white border-slate-200 text-slate-600 hover:border-slate-400'
-                    }`}
-                  >
-                    {cat}
-                  </button>
-                ))}
+              <div className="flex gap-4 flex-wrap items-center">
+                <div className="flex gap-1.5 flex-wrap items-center">
+                  <span className="text-xs font-bold text-slate-400">التصنيف:</span>
+                  {dynamicCategories.map((cat) => (
+                    <button
+                      key={cat}
+                      onClick={() => setActiveCategory(cat)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors ${
+                        activeCategory === cat
+                          ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+                          : 'bg-white border-slate-200 text-slate-600 hover:border-slate-400'
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex gap-1 flex-wrap items-center border-r border-slate-200 pr-3">
+                  <span className="text-xs font-bold text-slate-400">الموسم:</span>
+                  {[
+                    { key: 'الكل', label: 'الكل' },
+                    { key: 'صيفي', label: '☀️ صيفي' },
+                    { key: 'شتوي', label: '❄️ شتوي' },
+                    { key: 'كل السنة', label: '🗓️ كل السنة' },
+                  ].map((s) => (
+                    <button
+                      key={s.key}
+                      onClick={() => setActiveSeason(s.key)}
+                      className={`px-2.5 py-1 rounded-xl text-xs font-bold border transition-colors ${
+                        activeSeason === s.key
+                          ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
+                          : 'bg-white border-slate-200 text-slate-600 hover:border-slate-400'
+                      }`}
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div className="flex items-center gap-3 flex-wrap">
@@ -676,6 +706,31 @@ export default function InventoryPage() {
                           onChange={e => setInlineForm({ ...inlineForm, name: e.target.value })}
                           className="w-full bg-white border border-slate-300 rounded-xl p-2 text-xs font-bold text-slate-900"
                         />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[11px] font-bold text-slate-700 block mb-1">التصنيف</label>
+                          <select
+                            value={inlineForm.category}
+                            onChange={e => setInlineForm({ ...inlineForm, category: e.target.value })}
+                            className="w-full bg-white border border-slate-300 rounded-xl p-2 text-xs font-bold text-slate-900"
+                          >
+                            {categories.filter(c => c !== 'الكل').map(c => <option key={c} value={c}>{c}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-[11px] font-bold text-slate-700 block mb-1">الموسم</label>
+                          <select
+                            value={inlineForm.season || 'كل السنة'}
+                            onChange={e => setInlineForm({ ...inlineForm, season: e.target.value })}
+                            className="w-full bg-white border border-slate-300 rounded-xl p-2 text-xs font-bold text-slate-900"
+                          >
+                            <option value="كل السنة">كل السنة</option>
+                            <option value="صيفي">صيفي</option>
+                            <option value="شتوي">شتوي</option>
+                          </select>
+                        </div>
                       </div>
 
                       <div className="grid grid-cols-2 gap-2">
@@ -755,7 +810,12 @@ export default function InventoryPage() {
                     <div className="flex items-start justify-between">
                       <div>
                         <div className="font-bold text-sm text-slate-900">{item.name}</div>
-                        <div className="text-xs text-slate-400 font-mono mt-0.5">{item.supplier} • {item.category}</div>
+                        <div className="text-xs text-slate-400 font-mono mt-0.5">
+                          {item.supplier} • {item.category}
+                          {item.season && item.season !== 'كل السنة' && (
+                            <span className={`mr-1.5 text-[10px] px-1.5 py-0.5 rounded-md font-black ${item.season === 'صيفي' ? 'bg-amber-100 text-amber-800' : 'bg-sky-100 text-sky-800'}`}>{item.season}</span>
+                          )}
+                        </div>
                       </div>
                       <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${isLow ? 'bg-rose-100 text-rose-800' : 'bg-emerald-100 text-emerald-800'}`}>
                         {isLow ? 'مخزون منخفض' : 'متوفر'}
@@ -850,6 +910,16 @@ export default function InventoryPage() {
                                 className="w-full bg-white border border-slate-300 rounded-lg p-1 text-xs font-bold text-slate-900"
                               >
                                 {categories.filter(c => c !== 'الكل').map(c => <option key={c} value={c}>{c}</option>)}
+                              </select>
+                              <select
+                                value={inlineForm.season || 'كل السنة'}
+                                onChange={e => setInlineForm({ ...inlineForm, season: e.target.value })}
+                                className="w-full mt-1 bg-white border border-slate-300 rounded-lg p-1 text-xs font-bold text-slate-900"
+                                title="الموسم"
+                              >
+                                <option value="كل السنة">كل السنة</option>
+                                <option value="صيفي">صيفي</option>
+                                <option value="شتوي">شتوي</option>
                               </select>
                             </td>
                             <td className="p-1.5 text-center">
@@ -949,6 +1019,9 @@ export default function InventoryPage() {
                           </td>
                           <td className="py-2.5 px-3 text-xs font-bold text-slate-700 whitespace-nowrap">
                             {item.category}
+                            {item.season && item.season !== 'كل السنة' && (
+                              <span className={`mr-1.5 text-[10px] px-1.5 py-0.5 rounded-md font-black ${item.season === 'صيفي' ? 'bg-amber-100 text-amber-800' : 'bg-sky-100 text-sky-800'}`}>{item.season}</span>
+                            )}
                           </td>
                           <td className="py-2.5 px-3 text-center whitespace-nowrap">
                             <span className="inline-block text-[11px] bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-lg font-bold text-slate-700">
@@ -1552,7 +1625,7 @@ export default function InventoryPage() {
                 <input value={name} onChange={e => setName(e.target.value)} className="border border-slate-200 rounded-xl p-2 text-sm text-slate-900" placeholder="مثال: ستان إيطالي" required />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-bold text-slate-700">التصنيف</label>
                   <select value={category} onChange={e => setCategory(e.target.value)} className="border border-slate-200 rounded-xl p-2 text-sm text-slate-900">
@@ -1568,6 +1641,15 @@ export default function InventoryPage() {
                       className="border border-slate-200 rounded-xl p-2 text-sm mt-1 text-slate-900"
                     />
                   )}
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-bold text-slate-700">الموسم</label>
+                  <select value={season} onChange={e => setSeason(e.target.value)} className="border border-slate-200 rounded-xl p-2 text-sm text-slate-900">
+                    <option value="كل السنة">كل السنة</option>
+                    <option value="صيفي">صيفي</option>
+                    <option value="شتوي">شتوي</option>
+                  </select>
                 </div>
 
                 <div className="flex flex-col gap-1">
