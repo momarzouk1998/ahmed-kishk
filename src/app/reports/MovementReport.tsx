@@ -24,6 +24,7 @@ interface Props {
   customEndDate: string;
   branchLabel: string;
   periodLabel: string;
+  onUpdateInventory?: React.Dispatch<React.SetStateAction<any[]>>;
 }
 
 const DAY = 86400000;
@@ -40,7 +41,16 @@ const norm = (s: any) => String(s || '').trim().toLowerCase();
 
 interface Agg { qty: number; revenue: number; invoices: Set<string>; byBranch: Map<string, number>; lastDay: string; }
 
-export default function MovementReport({ invoices, inventory, period, customStartDate, customEndDate, branchLabel, periodLabel }: Props) {
+export default function MovementReport({
+  invoices,
+  inventory,
+  period,
+  customStartDate,
+  customEndDate,
+  branchLabel,
+  periodLabel,
+  onUpdateInventory,
+}: Props) {
   const [season, setSeason] = useState<'ALL' | typeof SEASONS[number]>('ALL');
   const [statusFilter, setStatusFilter] = useState<'ALL' | Status>('ALL');
   const [sortDir, setSortDir] = useState<'most' | 'least'>('most');
@@ -48,6 +58,55 @@ export default function MovementReport({ invoices, inventory, period, customStar
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [openKey, setOpenKey] = useState<string | null>(null);
+
+  // تعديل الموسم المباشر (Inline Editing)
+  const [seasonMap, setSeasonMap] = useState<Record<string, string>>({});
+  const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [toastMsg, setToastMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [showGuide, setShowGuide] = useState(false);
+
+  const handleSeasonChange = async (r: any, newSeason: string) => {
+    setSavingKey(r.key);
+    setSeasonMap(prev => ({ ...prev, [r.key]: newSeason }));
+
+    try {
+      if (r.itemIds && r.itemIds.length > 0) {
+        await Promise.all(
+          r.itemIds.map((id: string) =>
+            fetch('/api/inventory', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ id, name: r.name, season: newSeason }),
+            })
+          )
+        );
+      } else {
+        await fetch('/api/inventory', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: r.name, season: newSeason, category: r.category !== '—' ? r.category : 'عام' }),
+        });
+      }
+
+      if (onUpdateInventory) {
+        onUpdateInventory(prev =>
+          prev.map(it => {
+            const match = r.itemIds?.includes(it.id) || String(it.name || '').trim().toLowerCase() === r.key;
+            return match ? { ...it, season: newSeason } : it;
+          })
+        );
+      }
+
+      setToastMsg({ text: `✓ تم حفظ موسم "${r.name}" كـ (${newSeason})`, type: 'success' });
+      setTimeout(() => setToastMsg(null), 3000);
+    } catch (err) {
+      console.error('Failed to update season:', err);
+      setToastMsg({ text: `❌ فشل تعديل موسم "${r.name}"`, type: 'error' });
+      setTimeout(() => setToastMsg(null), 3000);
+    } finally {
+      setSavingKey(null);
+    }
+  };
 
   const data = useMemo(() => {
     const today = getTodayDateStr();
@@ -115,14 +174,28 @@ export default function MovementReport({ invoices, inventory, period, customStar
     const rows = new Map<string, any>();
     inventory.forEach(i => {
       const key = norm(i.name);
-      const r = rows.get(key) || { key, name: String(i.name).trim(), category: i.category, unit: i.unit, season: 'كل السنة', stock: 0, costValue: 0 };
+      const r = rows.get(key) || {
+        key,
+        name: String(i.name).trim(),
+        category: i.category,
+        unit: i.unit,
+        season: 'كل السنة',
+        stock: 0,
+        costValue: 0,
+        itemIds: [] as string[],
+      };
       r.stock += num(i.totalQuantity);
       r.costValue += num(i.totalQuantity) * num(i.costPrice);
       if (i.season && i.season !== 'كل السنة') r.season = i.season;
+      if (seasonMap[key]) r.season = seasonMap[key];
+      if (i.id && !r.itemIds.includes(i.id)) r.itemIds.push(i.id);
       rows.set(key, r);
     });
     cur.forEach((a: any, key) => {
-      if (!rows.has(key)) rows.set(key, { key, name: a.name, category: '—', unit: 'متر', season: 'كل السنة', stock: 0, costValue: 0 });
+      if (!rows.has(key)) {
+        const s = seasonMap[key] || 'كل السنة';
+        rows.set(key, { key, name: a.name, category: '—', unit: 'متر', season: s, stock: 0, costValue: 0, itemIds: [] });
+      }
     });
 
     const list = Array.from(rows.values()).map(r => {
@@ -160,7 +233,7 @@ export default function MovementReport({ invoices, inventory, period, customStar
     });
 
     return { list, bySeason, start, end, days, hasPrev };
-  }, [invoices, inventory, period, customStartDate, customEndDate]);
+  }, [invoices, inventory, period, customStartDate, customEndDate, seasonMap]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -176,29 +249,133 @@ export default function MovementReport({ invoices, inventory, period, customStar
   const resetPage = () => setPage(1);
 
   const statusBadge = (s: Status) =>
-    s === 'fast' ? <span className="px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-black">🟢 سريع</span>
-    : s === 'slow' ? <span className="px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-800 font-black">🟡 بطيء</span>
-    : <span className="px-1.5 py-0.5 rounded-md bg-rose-100 text-rose-800 font-black">🔴 راكد</span>;
+    s === 'fast' ? (
+      <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-black text-[10px] inline-flex items-center gap-1">
+        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+        سريع
+      </span>
+    ) : s === 'slow' ? (
+      <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-black text-[10px] inline-flex items-center gap-1">
+        <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+        بطيء
+      </span>
+    ) : (
+      <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 font-black text-[10px] inline-flex items-center gap-1">
+        <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+        راكد
+      </span>
+    );
 
   const trendCell = (t: number | null) => {
-    if (t === null) return <span className="text-slate-400">—</span>;
-    if (t === Infinity) return <span className="text-emerald-700 font-black">جديد</span>;
+    if (t === null) return <span className="text-slate-400 font-mono">—</span>;
+    if (t === Infinity) return <span className="text-emerald-700 font-black text-[10px] bg-emerald-50 px-1.5 py-0.5 rounded-md border border-emerald-200">✨ جديد</span>;
     const up = t >= 0;
-    return <span className={`font-mono font-black ${up ? 'text-emerald-700' : 'text-rose-700'}`} dir="ltr">{up ? '▲' : '▼'} {Math.abs(Math.round(t * 100))}%</span>;
+    const pct = Math.abs(Math.round(t * 100));
+    return (
+      <span
+        className={`font-mono font-black text-xs inline-flex items-center gap-0.5 ${up ? 'text-emerald-700' : 'text-rose-700'}`}
+        dir="ltr"
+        title={up ? `ارتفاع في المبيعات بنسبة +${pct}% مقارنة بالفترة السابقة` : `انخفاض في المبيعات بنسبة -${pct}% مقارنة بالفترة السابقة`}
+      >
+        <span>{up ? '▲' : '▼'}</span>
+        <span>{pct}%</span>
+      </span>
+    );
   };
 
   return (
     <>
-      <div className="text-[11px] text-slate-600 font-bold">
-        الفترة: {periodLabel} ({data.start} ← {data.end}، {data.days} يوم) • الفرع: {branchLabel}
-        {data.hasPrev ? ' • الاتجاه = مقارنة بالفترة السابقة بنفس الطول' : ''}
+      {/* Toast Notification */}
+      {toastMsg && (
+        <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-xl text-xs font-bold shadow-lg transition-all animate-bounce ${
+          toastMsg.type === 'success' ? 'bg-slate-900 text-emerald-400 border border-emerald-500' : 'bg-rose-900 text-rose-200 border border-rose-500'
+        }`}>
+          {toastMsg.text}
+        </div>
+      )}
+
+      {/* شريط رأس التقرير وزر دليل الشرح */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="text-[11px] text-slate-600 font-bold">
+          الفترة: <span className="text-slate-900 font-black">{periodLabel}</span> ({data.start} ← {data.end}، {data.days} يوم) • الفرع: <span className="text-slate-900 font-black">{branchLabel}</span>
+          {data.hasPrev ? ' • الاتجاه = مقارنة بالفترة السابقة بنفس الطول' : ''}
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setShowGuide(!showGuide)}
+          className="no-print inline-flex items-center gap-1 px-3 py-1 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-xl text-xs font-bold transition-colors shadow-2xs"
+        >
+          <span>💡 دليل فهم التقرير (الحالة والاتجاه)</span>
+          <span className="text-[10px]">{showGuide ? '▲ إخفاء' : '▼ إظهار'}</span>
+        </button>
       </div>
+
+      {/* صندوق الشرح التفاعلي للأعمدة وقرارات الإدارة */}
+      {showGuide && (
+        <div className="card bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-2xl p-4 border border-slate-700 shadow-md">
+          <div className="font-black text-sm text-amber-400 mb-2.5 flex items-center gap-2">
+            <span>💡 دليل مؤشرات حركة الأصناف لاتخاذ قرارات البيع والشراء والمواسم:</span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+            {/* شرح عمود الحالة */}
+            <div className="bg-slate-800/80 p-3 rounded-xl border border-slate-700">
+              <div className="font-black text-amber-300 mb-2 flex items-center gap-1.5 text-sm">
+                <span>🏷️ عمود (الحالة) — قرار المخزون:</span>
+              </div>
+              <ul className="space-y-2 text-slate-200 leading-relaxed text-[11px]">
+                <li className="flex items-start gap-1.5">
+                  <span className="font-black text-emerald-400 min-w-[55px]">🟢 سريع:</span>
+                  <span>صنف عليه سحب مستمر ومخزونه متوازن يكفي أقل من 26 أسبوعاً (6 شهور). <b className="text-white">القرار:</b> استمر في عرضه وجدد مخزونه فوراً.</span>
+                </li>
+                <li className="flex items-start gap-1.5">
+                  <span className="font-black text-amber-400 min-w-[55px]">🟡 بطيء:</span>
+                  <span>صنف بيتباع ولكن رصيده الحالي كبير جداً ويكفي لأكثر من 26 أسبوعاً بمعدل البيع الحالي. <b className="text-white">القرار:</b> لا تطلب منه كميات جديدة واعمل عليه عروض.</span>
+                </li>
+                <li className="flex items-start gap-1.5">
+                  <span className="font-black text-rose-400 min-w-[55px]">🔴 راكد:</span>
+                  <span>صنف له رصيد وتكلفة متجمدة بالمخزن ولكن <b className="text-rose-300">لم يُباع منه أي متر</b> في الفترة المختارة. <b className="text-white">القرار:</b> صَفِّه أو استبدله بصنف الموسم الحالي.</span>
+                </li>
+              </ul>
+            </div>
+
+            {/* شرح عمود الاتجاه والأسابيع */}
+            <div className="bg-slate-800/80 p-3 rounded-xl border border-slate-700">
+              <div className="font-black text-amber-300 mb-2 flex items-center gap-1.5 text-sm">
+                <span>📈 عمود (الاتجاه) و (يكفي أسبوع):</span>
+              </div>
+              <ul className="space-y-2 text-slate-200 leading-relaxed text-[11px]">
+                <li className="flex items-start gap-1.5">
+                  <span className="font-black text-emerald-400 min-w-[55px]">▲ +X%:</span>
+                  <span>المبيعات بتزيد مقارنة بالفترة السابقة لها مباشرة (طلب صاعد وإقبال متزايد).</span>
+                </li>
+                <li className="flex items-start gap-1.5">
+                  <span className="font-black text-rose-400 min-w-[55px]">▼ -X%:</span>
+                  <span>المبيعات بتقل مقارنة بالفترة السابقة (إشارة مبكرة لانتهاء موسم الصنف أو تراجع الإقبال).</span>
+                </li>
+                <li className="flex items-start gap-1.5">
+                  <span className="font-black text-sky-400 min-w-[55px]">يكفي:</span>
+                  <span><b className="text-white">(الرصيد الحالي ÷ متوسط السحب الأسبوعي)</b> = عدد الأسابيع المتبقية حتى نفاد المخزون تماماً.</span>
+                </li>
+                <li className="flex items-start gap-1.5">
+                  <span className="font-black text-amber-300 min-w-[55px]">⚡ تعديل:</span>
+                  <span>يمكنك تغيير موسم الصنف (صيفي / شتوي / كل السنة) مباشرة من الجدول وسيحفظ فوراً.</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ملخص بالموسم */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         {data.bySeason.map(s => (
           <div key={s.season} className={`card p-3 rounded-xl border ${s.season === 'صيفي' ? 'bg-amber-50 border-amber-300' : s.season === 'شتوي' ? 'bg-sky-50 border-sky-300' : 'bg-slate-50 border-slate-200'}`}>
-            <div className="font-black text-xs text-slate-900 mb-1.5">{s.season === 'صيفي' ? '☀️' : s.season === 'شتوي' ? '❄️' : '🗓️'} {s.season}</div>
+            <div className="font-black text-xs text-slate-900 mb-1.5 flex items-center justify-between">
+              <span>{s.season === 'صيفي' ? '☀️' : s.season === 'شتوي' ? '❄️' : '🗓️'} {s.season}</span>
+              <span className="text-[10px] text-slate-500 font-bold font-mono">{s.items} صنف</span>
+            </div>
             <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] text-slate-700">
               <span>الأصناف: <b className="font-mono">{s.items}</b></span>
               <span>اتباع منها: <b className="font-mono">{s.active}</b></span>
@@ -241,14 +418,14 @@ export default function MovementReport({ invoices, inventory, period, customStar
             <thead className="bg-slate-100 text-slate-700 border-b border-slate-300">
               <tr>
                 <th className="p-2">الصنف</th>
-                <th className="p-2">الموسم</th>
+                <th className="p-2 text-center" title="اضغط على خيار الموسم لتعديله وحفظه فوراً">الموسم ⚡</th>
                 <th className="p-2 text-center">المباع</th>
                 <th className="p-2 text-center">فواتير</th>
                 <th className="p-2 text-center">الرصيد</th>
                 <th className="p-2 text-center">المباع/أسبوع</th>
-                <th className="p-2 text-center">يكفي (أسبوع)</th>
-                <th className="p-2 text-center">الاتجاه</th>
-                <th className="p-2 text-center">الحالة</th>
+                <th className="p-2 text-center" title="الرصيد الحالي ÷ معدل البيع الأسبوعي">يكفي (أسبوع) ℹ️</th>
+                <th className="p-2 text-center" title="مقارنة مبيعات الفترة الحالية بالفترة السابقة">الاتجاه ℹ️</th>
+                <th className="p-2 text-center" title="🟢 سريع • 🟡 بطيء • 🔴 راكد">الحالة ℹ️</th>
               </tr>
             </thead>
             <tbody>
@@ -257,9 +434,38 @@ export default function MovementReport({ invoices, inventory, period, customStar
               )}
               {paged.map(r => (
                 <React.Fragment key={r.key}>
-                  <tr onClick={() => setOpenKey(openKey === r.key ? null : r.key)} className="border-b border-slate-100 hover:bg-slate-50 cursor-pointer">
-                    <td className="p-2 font-bold text-slate-900">{r.name}<div className="text-[10px] text-slate-400 font-normal">{r.category}</div></td>
-                    <td className="p-2">{r.season === 'كل السنة' ? <span className="text-slate-400">—</span> : r.season}</td>
+                  <tr onClick={() => setOpenKey(openKey === r.key ? null : r.key)} className="border-b border-slate-100 hover:bg-slate-50 cursor-pointer transition-colors">
+                    <td className="p-2 font-bold text-slate-900">
+                      {r.name}
+                      <div className="text-[10px] text-slate-400 font-normal">{r.category}</div>
+                    </td>
+
+                    {/* تعديل الموسم المباشر Inline */}
+                    <td className="p-2 text-center" onClick={e => e.stopPropagation()}>
+                      <div className="inline-flex items-center gap-1">
+                        <select
+                          value={r.season || 'كل السنة'}
+                          disabled={savingKey === r.key}
+                          onChange={e => handleSeasonChange(r, e.target.value)}
+                          className={`text-[11px] font-bold py-1 px-2 rounded-lg border transition-all cursor-pointer shadow-2xs focus:ring-2 focus:ring-amber-500 focus:outline-hidden ${
+                            r.season === 'صيفي'
+                              ? 'bg-amber-100 text-amber-900 border-amber-300 hover:bg-amber-200'
+                              : r.season === 'شتوي'
+                              ? 'bg-sky-100 text-sky-900 border-sky-300 hover:bg-sky-200'
+                              : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100 hover:border-slate-300'
+                          }`}
+                          title="اضغط لتغيير موسم الصنف مباشرة"
+                        >
+                          <option value="كل السنة">🗓️ كل السنة</option>
+                          <option value="صيفي">☀️ صيفي</option>
+                          <option value="شتوي">❄️ شتوي</option>
+                        </select>
+                        {savingKey === r.key && (
+                          <span className="inline-block text-[10px] animate-spin text-amber-600">⏳</span>
+                        )}
+                      </div>
+                    </td>
+
                     <td className="p-2 text-center font-mono font-black">{fmt(r.sold)} {r.unit}</td>
                     <td className="p-2 text-center font-mono">{r.invoiceCount}</td>
                     <td className="p-2 text-center font-mono">{fmt(r.stock)}</td>
@@ -311,9 +517,8 @@ export default function MovementReport({ invoices, inventory, period, customStar
           </div>
         )}
 
-        <div className="mt-3 text-[10px] text-slate-500 leading-relaxed">
-          🟢 سريع: اتباع والرصيد يكفي {SLOW_WEEKS} أسبوع أو أقل • 🟡 بطيء: الرصيد يكفي أكتر من {SLOW_WEEKS} أسبوع • 🔴 راكد: ما اتباعش فى الفترة وعليه رصيد.
-          المرتجعات غير محسوبة، والتحويلات بين الفروع ليست مبيعات.
+        <div className="mt-3 text-[10px] text-slate-500 leading-relaxed bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+          <span className="font-bold text-slate-700">📌 ملخص المؤشرات:</span> 🟢 سريع (المخزون يكفي أقل من {SLOW_WEEKS} أسبوع) • 🟡 بطيء (المخزون يكفي أكثر من {SLOW_WEEKS} أسبوع) • 🔴 راكد (صنف عليه رصيد ولم يُباع في الفترة) • ⚡ يمكنك تعديل موسم أي صنف مباشرة من عمود الموسم بالجدول.
         </div>
       </div>
     </>

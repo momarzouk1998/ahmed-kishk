@@ -1104,6 +1104,7 @@ export default function ReportsPage() {
                   customEndDate={customEndDate}
                   branchLabel={branchLabel}
                   periodLabel={periodLabel}
+                  onUpdateInventory={setInventory}
                 />
               )}
               {reportType === 'curtains' && <CurtainsReport stats={curtainStats} branchLabel={branchLabel} periodLabel={periodLabel} />}
