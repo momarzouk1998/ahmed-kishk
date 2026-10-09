@@ -37,19 +37,8 @@ async function handleClear(request: Request) {
       } catch {}
     }
 
-    // أسماء الموظفين الافتراضيين للتصفير إذا لم يُرسل اختيار مخصص
-    const defaultTargetNames = [
-      'محمود حبيب',
-      'محمود',
-      'يوسف',
-      'سليمان',
-      'اشرف',
-      'أشرف',
-      'كوكو',
-      'صبحى',
-      'صبحي',
-      'سمير',
-    ];
+    // مفيش أسماء افتراضية — بيمسح بس اللي الأدمن يحدده صراحة.
+    const defaultTargetNames: string[] = [];
 
     // جلب كل سجلات الحضور السابقة لتاريخ اليوم
     const allPastRecords = await prisma.attendanceRecord.findMany({

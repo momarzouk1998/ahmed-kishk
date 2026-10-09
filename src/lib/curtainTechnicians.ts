@@ -1,30 +1,21 @@
 import { prisma } from '@/lib/prisma';
-import { CURTAIN_TECHNICIANS as SEED_TECHNICIANS } from '@/lib/technicians';
 
 const STORE_KEY = 'curtain_technicians_v1';
 
 /**
  * قائمة الفنيين المسؤولين عن رفع المقاسات — مُخزّنة فعليًا فى قاعدة البيانات
  * (SystemStore) عشان الأدمن يقدر يضيف/يشيل فنى من غير ما يحتاج تعديل كود.
- * أول مرة (لو مفيش سجل محفوظ) بترجع القائمة الافتراضية من technicians.ts.
+ * لو مفيش سجل محفوظ بترجع قائمة فاضية — مفيش أي أسماء مكتوبة فى الكود.
  */
 export async function getCurtainTechnicians(): Promise<string[]> {
   const rec = await prisma.systemStore.findUnique({ where: { key: STORE_KEY } });
   const raw = rec?.data as any;
-  if (raw && Array.isArray(raw?.list) && raw.list.length) {
-    const cleaned = raw.list
-      .map(String)
-      .filter((n: string) => n !== 'محمد كشك' && n !== 'عبد الله كشك' && n !== 'عبدالله كشك');
-    if (!cleaned.includes('محمد نصار')) cleaned.push('محمد نصار');
-    if (!cleaned.includes('أمين')) cleaned.push('أمين');
-    return cleaned;
-  }
-  return SEED_TECHNICIANS;
+  if (raw && Array.isArray(raw?.list)) return raw.list.map(String);
+  return [];
 }
 
 export async function setCurtainTechnicians(list: string[]): Promise<string[]> {
-  const cleaned = Array.from(new Set(list.map(s => String(s).trim()).filter(Boolean)))
-    .filter(n => n !== 'محمد كشك' && n !== 'عبد الله كشك' && n !== 'عبدالله كشك');
+  const cleaned = Array.from(new Set(list.map(s => String(s).trim()).filter(Boolean)));
   await prisma.systemStore.upsert({
     where: { key: STORE_KEY },
     update: { data: { list: cleaned } as any },

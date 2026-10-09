@@ -65,30 +65,11 @@ const EGYPT_GOVERNORATES = [
   'مطروح',
 ];
 
-// Default fabric catalog for quick fallback & rich product catalog
-const DEFAULT_CATALOG: InventoryProduct[] = [
-  { id: '1', code: 'SAT-01', name: 'ستان سواريه تركي لامع', category: 'سواريه', unit: 'متر', totalQuantity: 120, sellPrice: 450, branch: 'الفرع الرئيسي' },
-  { id: '2', code: 'SLK-01', name: 'حرير طبيعي فاخر مطرز', category: 'سواريه', unit: 'متر', totalQuantity: 45, sellPrice: 900, branch: 'الفرع الرئيسي' },
-  { id: '3', code: 'CRP-01', name: 'كريب كوري سواريه مزدوج', category: 'سواريه', unit: 'متر', totalQuantity: 200, sellPrice: 300, branch: 'الفرع الرئيسي' },
-  { id: '4', code: 'CHF-01', name: 'شيفون ناعم سواريه سادة', category: 'سواريه', unit: 'متر', totalQuantity: 180, sellPrice: 250, branch: 'الفرع الرئيسي' },
-  { id: '5', code: 'TUL-SW', name: 'تُل سواريه فرنسي مذهب', category: 'سواريه', unit: 'متر', totalQuantity: 90, sellPrice: 380, branch: 'الفرع الرئيسي' },
-  { id: '6', code: 'VLV-01', name: 'قطيفة جاجوار تركي ثقيل', category: 'ستائر', unit: 'متر', totalQuantity: 95, sellPrice: 380, branch: 'الفرع الرئيسي' },
-  { id: '7', code: 'LNN-01', name: 'كتان بلجيكي معالج فاخر', category: 'ستائر', unit: 'متر', totalQuantity: 110, sellPrice: 320, branch: 'الفرع الرئيسي' },
-  { id: '8', code: 'TUL-01', name: 'تول ناعم حريري سادة', category: 'ستائر', unit: 'متر', totalQuantity: 350, sellPrice: 120, branch: 'الفرع الرئيسي' },
-  { id: '9', code: 'BLK-01', name: 'بلاك آوت عازل حراري ثلاثي', category: 'ستائر', unit: 'متر', totalQuantity: 160, sellPrice: 280, branch: 'الفرع الرئيسي' },
-  { id: '10', code: 'CHF-ST', name: 'شيفون حرير ويفي للستائر', category: 'ستائر', unit: 'متر', totalQuantity: 240, sellPrice: 160, branch: 'الفرع الرئيسي' },
-  { id: '11', code: 'TRK-AL', name: 'تراك سقف ألومنيوم ثقيل', category: 'تراكات ومواسير', unit: 'متر', totalQuantity: 150, sellPrice: 100, branch: 'الفرع الرئيسي' },
-  { id: '12', code: 'PIP-FR', name: 'ماسورة فورجيه إيطالي سادة', category: 'تراكات ومواسير', unit: 'متر', totalQuantity: 80, sellPrice: 65, branch: 'الفرع الرئيسي' },
-  { id: '13', code: 'TP-WAV', name: 'شريط ستائر ويفي شفاف تركي', category: 'أشرطة وإكسسوارات', unit: 'متر', totalQuantity: 500, sellPrice: 50, branch: 'الفرع الرئيسي' },
-  { id: '14', code: 'TP-3FT', name: 'شريط ستائر ٣ فتلة قطن أصلي', category: 'أشرطة وإكسسوارات', unit: 'متر', totalQuantity: 400, sellPrice: 40, branch: 'الفرع الرئيسي' },
-  { id: '15', code: 'ACC-CAP', name: 'طقم كابات وطبات فورجيه مذهبة', category: 'أشرطة وإكسسوارات', unit: 'طقم', totalQuantity: 60, sellPrice: 120, branch: 'الفرع الرئيسي' },
-];
-
 export default function NewSalesInvoicePOSPage() {
   const router = useRouter();
 
   // Products and Categories
-  const [products, setProducts] = useState<InventoryProduct[]>(DEFAULT_CATALOG);
+  const [products, setProducts] = useState<InventoryProduct[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('الكل');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
@@ -194,7 +175,7 @@ export default function NewSalesInvoicePOSPage() {
         const res = await fetch('/api/inventory', { cache: 'no-store' });
         if (res.ok) {
           const json = await res.json();
-          if (json.success && Array.isArray(json.items) && json.items.length > 0) {
+          if (json.success && Array.isArray(json.items)) {
             setProducts(json.items);
           }
         }

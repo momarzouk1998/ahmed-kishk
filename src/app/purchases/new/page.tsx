@@ -8,7 +8,7 @@ import { useRouter } from 'next/navigation';
 import SearchableSelect, { SearchOption } from '@/components/SearchableSelect';
 import { normalizeBranchName } from '@/lib/branches';
 import { getTodayDateStr } from '@/lib/dateUtils';
-import { DEFAULT_INVENTORY_CATEGORIES, getBranchCustomCategories, saveBranchCustomCategory } from '@/lib/categories';
+import { getBranchCustomCategories, saveBranchCustomCategory } from '@/lib/categories';
 
 interface PurchaseLineItem {
   id: string;
@@ -371,7 +371,7 @@ export default function NewPurchaseInvoicePage() {
   // الموجودة بالفعل)، مش الأربعة تصنيفات المكتوبة فى الكود بس.
   const modalCategories = useMemo(() => {
     const custom = getBranchCustomCategories(branch);
-    return Array.from(new Set([...DEFAULT_INVENTORY_CATEGORIES, ...custom, ...dynamicCategories]));
+    return Array.from(new Set([...custom, ...dynamicCategories]));
   }, [branch, dynamicCategories]);
 
   // Filtered Products for Catalog Search

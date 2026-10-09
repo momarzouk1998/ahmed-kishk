@@ -19,109 +19,10 @@ interface Employee {
   allowedPageIds: string[];
 }
 
-const initialEmployees: Employee[] = [
-  {
-    id: 'EMP-01',
-    name: 'openappo',
-    phone: '01558282760',
-    role: 'مطور النظام',
-    branch: 'الفرع الرئيسي',
-    restrictToBranch: false,
-    allowedPageIds: ALL_SYSTEM_PAGES.map(p => p.id),
-  },
-  {
-    id: 'EMP-02',
-    name: 'أحمد كشك',
-    phone: '01063821000',
-    role: 'المدير العام للمؤسسة',
-    branch: 'الفرع الرئيسي',
-    restrictToBranch: false,
-    allowedPageIds: ALL_SYSTEM_PAGES.map(p => p.id),
-  },
-  // ═════════ الفرع الرئيسي (سعد زغلول) ═════════
-  {
-    id: 'EMP-03',
-    name: 'يوسف ياسر',
-    phone: '01279549182',
-    role: 'مدير فرع سعد زغلول (الرئيسي)',
-    branch: 'الفرع الرئيسي',
-    restrictToBranch: true,
-    allowedPageIds: ALL_SYSTEM_PAGES.map(p => p.id),
-  },
-  // ═════════ فرع عرابي ═════════
-  {
-    id: 'EMP-04',
-    name: 'أحمد عبدالله',
-    phone: '01023232370',
-    role: 'مدير فرع عرابي',
-    branch: 'فرع عرابي',
-    restrictToBranch: true,
-    allowedPageIds: ALL_SYSTEM_PAGES.filter(p => p.id !== 'p_dashboard').map(p => p.id),
-  },
-  {
-    id: 'EMP-05',
-    name: 'محمد نصار',
-    phone: '01055288214',
-    role: 'كاشير فرع عرابي',
-    branch: 'فرع عرابي',
-    restrictToBranch: true,
-    // كاشير: بدون صلاحية تعديل الأسعار — يحتاج باسورد المدير
-    allowedPageIds: ['p_inspections', 'p_pricing', 'p_fabric_sales', 'p_customers', 'p_inventory', 'p_dashboard'],
-  },
-  // ═════════ فرع عمر أفندي (فرع أقمشة فقط — بدون مراحل الستائر) ═════════
-  {
-    id: 'EMP-06',
-    name: 'محمد كشك',
-    phone: '01018728640',
-    role: 'مدير فرع عمر أفندي',
-    branch: 'فرع عمر أفندي',
-    restrictToBranch: true,
-    allowedPageIds: ['p_fabric_sales', 'p_purchases', 'p_customers', 'p_suppliers', 'p_inventory', 'p_dashboard'],
-  },
-  {
-    id: 'EMP-07',
-    name: 'أحمد عبدالعال',
-    phone: '01275763008',
-    role: 'كاشير فرع عمر أفندي',
-    branch: 'فرع عمر أفندي',
-    restrictToBranch: true,
-    allowedPageIds: ['p_fabric_sales', 'p_customers', 'p_inventory', 'p_dashboard'],
-  },
-  // ═════════ فرع الثلاثيني (فرع أقمشة فقط — بدون مراحل الستائر) ═════════
-  {
-    id: 'EMP-08',
-    name: 'عبدالله كشك',
-    phone: '01033447262',
-    role: 'مدير فرع الثلاثيني',
-    branch: 'فرع الثلاثيني',
-    restrictToBranch: true,
-    allowedPageIds: ['p_fabric_sales', 'p_purchases', 'p_customers', 'p_suppliers', 'p_inventory', 'p_dashboard'],
-  },
-  // ═════════ الفرع التجاري (أقمشة وشحن أونلاين) ═════════
-  {
-    id: 'EMP-09',
-    name: 'عبدالرحمن كشك',
-    phone: '01280042900',
-    role: 'مدير الفرع التجاري',
-    branch: 'الفرع التجاري',
-    restrictToBranch: true,
-    allowedPageIds: ['p_fabric_sales', 'p_purchases', 'p_customers', 'p_suppliers', 'p_inventory', 'p_reports', 'p_shifts', 'p_dashboard'],
-  },
-  {
-    id: 'EMP-10',
-    name: 'محمد على',
-    phone: '01220999355',
-    role: 'كاشير الفرع التجاري',
-    branch: 'الفرع التجاري',
-    restrictToBranch: true,
-    allowedPageIds: ['p_fabric_sales', 'p_customers', 'p_inventory', 'p_shifts', 'p_dashboard'],
-  },
-];
-
 export default function BranchesAndPermissionsPage() {
   const { isAdmin, loading: userLoading } = useCurrentUser();
   const [branches] = useState<BranchConfig[]>(BRANCHES_LIST);
-  const [employees, setEmployees] = useState<Employee[]>(initialEmployees);
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const [selectedEmp, setSelectedEmp] = useState<Employee | null>(null);
   const [showPermsModal, setShowPermsModal] = useState(false);
 
@@ -133,7 +34,15 @@ export default function BranchesAndPermissionsPage() {
   useEffect(() => {
     // اقرأ الصلاحيات من السيرفر (persistent per-user)
     (async () => {
-      const withServerPerms = await Promise.all(initialEmployees.map(async emp => {
+      let dbUsers: Array<{ id: string; name: string; phone: string; role: string; branch: string }> = [];
+      try {
+        const ures = await fetch('/api/admin/users', { cache: 'no-store' });
+        const ujson = await ures.json().catch(() => null);
+        if (ujson?.success && Array.isArray(ujson.users)) dbUsers = ujson.users;
+      } catch {}
+      const roleLabel = (r: string) => r === 'ADMIN' ? 'Admin' : r === 'TECHNICIAN' ? 'فني معاينات' : r === 'WORKSHOP' ? 'مسؤول ورشة' : 'موظف فرع';
+      const withServerPerms: Employee[] = await Promise.all(dbUsers.map(async u => {
+        const emp: Employee = { id: u.id, name: u.name, phone: u.phone, role: roleLabel(u.role), branch: u.branch, restrictToBranch: u.role !== 'ADMIN', allowedPageIds: [] };
         try {
           const res = await fetch(`/api/user-permissions?phone=${encodeURIComponent(emp.phone)}`, { cache: 'no-store' });
           if (res.ok) {

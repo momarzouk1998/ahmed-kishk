@@ -60,7 +60,7 @@ export default function PipelineInspectionsPage() {
       try {
         const res = await fetch('/api/curtain-technicians', { cache: 'no-store' });
         const d = await res.json();
-        if (Array.isArray(d?.list) && d.list.length) setTechniciansList(d.list);
+        if (Array.isArray(d?.list)) { setTechniciansList(d.list); setTech(prev => prev || d.list[0] || ''); }
       } catch {}
     })();
   }, []);

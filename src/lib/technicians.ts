@@ -1,14 +1,7 @@
 /**
- * القائمة الافتراضية للفنيين المسؤولين عن رفع المقاسات — تُستخدم كقيمة مبدئية فقط
- * أول مرة (seed)، والقائمة الفعلية دلوقتي مُدارة من قسم "الفنيون المسؤولون عن
- * المعاينات" فى صفحة /branches وبتتخزن فى قاعدة البيانات (لاحظ /api/curtain-technicians).
+ * الفنيين المسؤولين عن رفع المقاسات بيتدارو من صفحة /branches وبيتخزنوا فى قاعدة
+ * البيانات فقط (/api/curtain-technicians) — مفيش أي أسماء مكتوبة فى الكود.
  */
-export const CURTAIN_TECHNICIANS: string[] = [
-  'أحمد كشك',
-  'يوسف ياسر',
-  'أحمد عبدالله',
-  'محمد نصار',
-  'أمين',
-];
+export const CURTAIN_TECHNICIANS: string[] = [];
 
-export const DEFAULT_TECHNICIAN = 'أحمد كشك';
+export const DEFAULT_TECHNICIAN = '';

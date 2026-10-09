@@ -93,35 +93,6 @@ export interface WeeklyPayrollSettlement {
   payType?: 'شهري' | 'أسبوعي';
 }
 
-export const INITIAL_EMPLOYEES: Employee[] = [
-  // الفرع الرئيسي (3)
-  { id: 'emp_1', name: 'محمود', branch: 'الفرع الرئيسي', dailyWage: 350, payType: 'أسبوعي', workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'مسؤول الفرع الرئيسي', isActive: true },
-  { id: 'emp_2', name: 'يوسف', branch: 'الفرع الرئيسي', dailyWage: 250, payType: 'أسبوعي', workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'مبيعات أقمشة', isActive: true },
-  { id: 'emp_3', name: 'سليمان', branch: 'الفرع الرئيسي', dailyWage: 150, payType: 'أسبوعي', workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'مساعد مبيعات', isActive: true },
-
-  // فرع عرابي (6)
-  { id: 'emp_4', name: 'ابراهيم', branch: 'فرع عرابي', dailyWage: 300, payType: 'أسبوعي', workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'مسؤول فرع عرابي', isActive: true },
-  { id: 'emp_5', name: 'نصار', branch: 'فرع عرابي', dailyWage: 270, payType: 'أسبوعي', workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'مبيعات', isActive: true },
-  { id: 'emp_6', name: 'امين', branch: 'فرع عرابي', dailyWage: 200, payType: 'أسبوعي', workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'فني تركيبات', isActive: true },
-  { id: 'emp_7', name: 'محمد', branch: 'فرع عرابي', dailyWage: 250, payType: 'أسبوعي', workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'سائق ومندوب توصيل', isActive: true },
-  { id: 'emp_8', name: 'اسراء', branch: 'فرع عرابي', dailyWage: 130, payType: 'شهري', workStartTime: '12:00 PM', workEndTime: '08:00 PM', role: 'مبيعات وسيدات (شهري)', isActive: true },
-  { id: 'emp_17', name: 'تقى', branch: 'فرع عرابي', dailyWage: 130, payType: 'شهري', workStartTime: '12:00 PM', workEndTime: '08:00 PM', role: 'مبيعات وسيدات (شهري)', isActive: true },
-
-  // فرع عمر أفندي (5)
-  { id: 'emp_10', name: 'محمد كشك', branch: 'فرع عمر أفندي', dailyWage: 350, payType: 'شهري', workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'مدير فرع عمر أفندي (شهري)', isActive: true },
-  { id: 'emp_9', name: 'بليه (شبلية)', branch: 'فرع عمر أفندي', dailyWage: 400, payType: 'شهري', workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'إدارة ومبيعات (شهري)', isActive: true },
-  { id: 'emp_11', name: 'صبحى', branch: 'فرع عمر أفندي', dailyWage: 350, payType: 'أسبوعي', workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'مسؤول وردية وكاشير', isActive: true },
-  { id: 'emp_12', name: 'سيد', branch: 'فرع عمر أفندي', dailyWage: 350, payType: 'أسبوعي', workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'مبيعات', isActive: true },
-  { id: 'emp_13', name: 'احمد', branch: 'فرع عمر أفندي', dailyWage: 150, payType: 'أسبوعي', workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'مساعد', isActive: true },
-
-  // فرع الثلاثيني (1)
-  { id: 'emp_14', name: 'كوكو', branch: 'فرع الثلاثيني', dailyWage: 200, payType: 'أسبوعي', workStartTime: '11:00 AM', workEndTime: '11:30 PM', role: 'مسؤول فرع الثلاثيني', isActive: true },
-
-  // الفرع التجاري (2)
-  { id: 'emp_15', name: 'عبدالرحمن كشك', phone: '01280042900', branch: 'الفرع التجاري', dailyWage: 400, payType: 'أسبوعي', workStartTime: '12:00 PM', workEndTime: '11:30 PM', role: 'مدير الفرع التجاري', isActive: true },
-  { id: 'emp_16', name: 'محمد على', phone: '01220999355', branch: 'الفرع التجاري', dailyWage: 250, payType: 'شهري', workStartTime: '12:00 PM', workEndTime: '11:30 PM', role: 'كاشير الفرع التجاري (شهري)', isActive: true },
-];
-
 async function safeFetchJson(url: string): Promise<any> {
   try {
     const res = await fetch(url, { cache: 'no-store' });
@@ -132,13 +103,13 @@ async function safeFetchJson(url: string): Promise<any> {
   }
 }
 
-/** يجيب الموظفين من قاعدة البيانات. لو الجدول لسه فاضي (تشغيل أول مرة)، يرجّع الروستر الافتراضي كعرض أولي فقط (بلا حفظ تلقائي). */
+/** يجيب الموظفين من قاعدة البيانات فقط — لو فاضي أو فشل الطلب بيرجّع قائمة فاضية. */
 export async function getEmployees(): Promise<Employee[]> {
   const json = await safeFetchJson('/api/employees');
   if (json?.success && Array.isArray(json.employees) && json.employees.length > 0) {
     return json.employees;
   }
-  return INITIAL_EMPLOYEES;
+  return [];
 }
 
 /** يحفظ موظف واحد (إضافة أو تعديل) — مش المصفوفة كاملة. يرجّع true لو نجح الحفظ فعليًا. */

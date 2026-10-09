@@ -1,12 +1,5 @@
 import { prisma } from '@/lib/prisma';
 
-export const SEED_WORKSHOPS: string[] = [
-  'ورشة أبو فهد الخياط',
-  'الورشة المركزية',
-  'ورشة السلام للتفصيل',
-  'ورشة الأمل',
-];
-
 const STORE_KEY = 'curtain_workshops_v1';
 
 /**
@@ -16,10 +9,8 @@ const STORE_KEY = 'curtain_workshops_v1';
 export async function getCurtainWorkshops(): Promise<string[]> {
   const rec = await prisma.systemStore.findUnique({ where: { key: STORE_KEY } });
   const raw = rec?.data as any;
-  if (raw && Array.isArray(raw?.list) && raw.list.length) {
-    return raw.list.map(String);
-  }
-  return SEED_WORKSHOPS;
+  if (raw && Array.isArray(raw?.list)) return raw.list.map(String);
+  return [];
 }
 
 export async function setCurtainWorkshops(list: string[]): Promise<string[]> {
