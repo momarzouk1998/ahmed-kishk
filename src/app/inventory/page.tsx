@@ -23,6 +23,7 @@ interface InventoryItem {
   branch: string;
   minAlert: number;
   supplier: string;
+  season?: string;
 }
 
 interface AdjustmentLog {
@@ -81,6 +82,7 @@ export default function InventoryPage() {
   const [minAlert, setMinAlert] = useState<number>(20);
   const [branch, setBranch] = useState('الفرع الرئيسي');
   const [supplier, setSupplier] = useState('');
+  const [season, setSeason] = useState('كل السنة');
 
   // User & Permissions
   const { user: currentUser, isAdmin } = useCurrentUser();
@@ -393,6 +395,7 @@ export default function InventoryPage() {
       branch,
       minAlert,
       supplier: supplier || 'مورد عام',
+      season,
     };
 
     const updated = [newItem, ...items];
@@ -400,6 +403,7 @@ export default function InventoryPage() {
     setShowAddModal(false);
     setName('');
     setNewCatInput('');
+    setSeason('كل السنة');
     setCategory('ستائر');
     setTotalQuantity(100);
     setCostPrice(100);
@@ -851,6 +855,16 @@ export default function InventoryPage() {
                               >
                                 {categories.filter(c => c !== 'الكل').map(c => <option key={c} value={c}>{c}</option>)}
                               </select>
+                              <select
+                                value={inlineForm.season || 'كل السنة'}
+                                onChange={e => setInlineForm({ ...inlineForm, season: e.target.value })}
+                                className="w-full mt-1 bg-white border border-slate-300 rounded-lg p-1 text-xs font-bold text-slate-900"
+                                title="الموسم"
+                              >
+                                <option value="كل السنة">كل السنة</option>
+                                <option value="صيفي">صيفي</option>
+                                <option value="شتوي">شتوي</option>
+                              </select>
                             </td>
                             <td className="p-1.5 text-center">
                               <select
@@ -949,6 +963,9 @@ export default function InventoryPage() {
                           </td>
                           <td className="py-2.5 px-3 text-xs font-bold text-slate-700 whitespace-nowrap">
                             {item.category}
+                            {item.season && item.season !== 'كل السنة' && (
+                              <span className={`mr-1.5 text-[10px] px-1.5 py-0.5 rounded-md font-black ${item.season === 'صيفي' ? 'bg-amber-100 text-amber-800' : 'bg-sky-100 text-sky-800'}`}>{item.season}</span>
+                            )}
                           </td>
                           <td className="py-2.5 px-3 text-center whitespace-nowrap">
                             <span className="inline-block text-[11px] bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-lg font-bold text-slate-700">
@@ -1568,6 +1585,15 @@ export default function InventoryPage() {
                       className="border border-slate-200 rounded-xl p-2 text-sm mt-1 text-slate-900"
                     />
                   )}
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-bold text-slate-700">الموسم</label>
+                  <select value={season} onChange={e => setSeason(e.target.value)} className="border border-slate-200 rounded-xl p-2 text-sm text-slate-900">
+                    <option value="كل السنة">كل السنة</option>
+                    <option value="صيفي">صيفي</option>
+                    <option value="شتوي">شتوي</option>
+                  </select>
                 </div>
 
                 <div className="flex flex-col gap-1">

@@ -30,7 +30,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'غير مصرح' }, { status: 401 });
     }
     const body = await request.json();
-    const { id, name, category, unit, totalQuantity, quantityDelta, reservedQuantity, costPrice, sellPrice, branch, minAlert, supplier } = body;
+    const { id, name, category, unit, totalQuantity, quantityDelta, reservedQuantity, costPrice, sellPrice, branch, minAlert, supplier, season } = body;
 
     if (!name) {
       return NextResponse.json({ success: false, error: 'اسم الصنف مطلوب' }, { status: 400 });
@@ -87,6 +87,7 @@ export async function POST(request: Request) {
           branch: !scope.isAdmin ? scope.branch : (branch || undefined),
           minAlert: minAlert !== undefined ? Number(minAlert) : undefined,
           supplier: supplier || undefined,
+          season: season || undefined,
         },
       });
     } else {
@@ -124,6 +125,7 @@ export async function POST(request: Request) {
             branch: effBranch,
             minAlert: Number(minAlert) || 20,
             supplier: supplier || 'شركة النيل',
+            season: season || 'كل السنة',
           },
         });
       }
