@@ -4,7 +4,6 @@ import { getBranchScope, branchWhere, effectiveCreateBranch } from '@/lib/branch
 import { assertPagePermission } from '@/lib/permissionsServer';
 import { generateUniqueInventoryCode } from '@/lib/uniqueCode';
 
-import initialInventory from '@/data/initialInventory.json';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,43 +11,15 @@ export async function GET(request: Request) {
   try {
     const scope = await getBranchScope(request);
 
-    // التأكد من وجود أصناف الفرع التجاري وكافة الأصناف في قاعدة البيانات
-    try {
-      const commCount = await prisma.inventoryItem.count({
-        where: {
-          OR: [
-            { branch: 'الفرع التجاري' },
-            { branch: { contains: 'تجاري' } },
-            { branch: { contains: 'تجارى' } },
-          ],
-        },
-      });
-      if (commCount === 0) {
-        await prisma.inventoryItem.createMany({
-          data: initialInventory as any,
-          skipDuplicates: true,
-        });
-      }
-    } catch (e) {
-      console.error('Error auto-populating inventory in GET:', e);
-    }
-
     let items = await prisma.inventoryItem.findMany({
       where: branchWhere(scope),
       orderBy: { updatedAt: 'desc' },
     });
 
-    if (items.length === 0) {
-      let rawList = initialInventory as any[];
-      if (scope && !scope.isAdmin && scope.branch) {
-        rawList = rawList.filter(i => i.branch === scope.branch || i.branch === 'الكل');
-      }
-      return NextResponse.json({ success: true, items: rawList });
-    }
-
     return NextResponse.json({ success: true, items });
   } catch (error: any) {
-    return NextResponse.json({ success: true, items: initialInventory });
+    console.error('Failed to get inventory:', error);
+    return NextResponse.json({ success: false, items: [], error: 'حدث خطأ فى الخادم' }, { status: 500 });
   }
 }
 

@@ -89,16 +89,6 @@ jobs:
               exit 1
             fi
 
-            echo "🌱 Seeding and syncing 326 official inventory items into production PostgreSQL database..."
-            docker exec -e SEED_SECRET="${{ secrets.SEED_SECRET }}" ahmed-kishk node -e "
-              const http = require('http');
-              http.get('http://127.0.0.1:3009/api/seed-inventory', { headers: { 'x-seed-secret': process.env.SEED_SECRET } }, (res) => {
-                let data = '';
-                res.on('data', chunk => data += chunk);
-                res.on('end', () => console.log('Seed response:', data));
-              }).on('error', err => console.log('Seed request err:', err.message));
-            " || true
-
             echo "🧹 Cleaning up unused docker images..."
             docker image prune -f
 

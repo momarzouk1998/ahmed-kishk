@@ -7,7 +7,6 @@ import { useManagerGate, isManagerUnlocked } from '@/components/ManagerUnlockGat
 import { useCurrentUser } from '@/lib/useCurrentUser';
 import BranchSelect from '@/components/BranchSelect';
 import { BRANCHES_LIST, normalizeBranchName, branchLabel } from '@/lib/branches';
-import initialInventory from '@/data/initialInventory.json';
 import Pagination from '@/components/Pagination';
 import { getBranchCustomCategories, saveBranchCustomCategory, deleteBranchCategory, getPersistentCategories, saveCustomCategory, deleteCategory, renameCategory } from '@/lib/categories';
 

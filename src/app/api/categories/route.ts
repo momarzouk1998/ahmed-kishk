@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getBranchScope } from '@/lib/branchScope';
 import { assertPagePermission } from '@/lib/permissionsServer';
-import initialInventory from '@/data/initialInventory.json';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,32 +25,6 @@ export async function GET(request: Request) {
       });
     } catch (e) {
       console.error('Error querying branchCategory, will check fallback:', e);
-    }
-
-    // Auto-seed missing categories from initialInventory.json
-    const distinctMap = new Map<string, { name: string; branch: string }>();
-    (initialInventory as any[]).forEach(item => {
-      if (item.category && item.branch) {
-        const key = item.category.trim() + '__' + item.branch.trim();
-        distinctMap.set(key, { name: item.category.trim(), branch: item.branch.trim() });
-      }
-    });
-
-    const existingKeys = new Set(dbCats.map((c: any) => c.name?.trim() + '__' + c.branch?.trim()));
-    const missing = Array.from(distinctMap.values()).filter(d => !existingKeys.has(d.name + '__' + d.branch));
-
-    if (missing.length > 0) {
-      try {
-        await (prisma as any).branchCategory.createMany({
-          data: missing,
-          skipDuplicates: true,
-        });
-        dbCats = await (prisma as any).branchCategory.findMany({
-          orderBy: [{ branch: 'asc' }, { name: 'asc' }],
-        });
-      } catch (e) {
-        console.error('Error auto-seeding missing categories:', e);
-      }
     }
 
     let filtered = dbCats;
