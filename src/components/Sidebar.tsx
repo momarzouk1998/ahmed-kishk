@@ -26,6 +26,8 @@ export default function Sidebar() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isStandalone, setIsStandalone] = useState<boolean>(false);
   const [isIos, setIsIos] = useState<boolean>(false);
+  // 'updating' = السيرفر بيتحدث دلوقتى (مش بيرد) — 'updated' = اتحدث وفيه نسخة أحدث من اللى مفتوحة
+  const [appUpdate, setAppUpdate] = useState<null | 'updating' | 'updated'>(null);
   const [showIosModal, setShowIosModal] = useState<boolean>(false);
 
   // Accordion state now lives in SidebarContext — removed from local state
@@ -57,8 +59,18 @@ export default function Sidebar() {
 
     async function doLoadUserAndPermissions() {
       try {
-        const r = await fetch('/api/auth/profile');
+        const r = await fetch('/api/auth/profile', { cache: 'no-store' });
+        // 502/503/504 من nginx أو 520–524 من Cloudflare = السيرفر مش بيرد (بيتحدث)
+        if ([502, 503, 504, 520, 521, 522, 523, 524].includes(r.status)) {
+          if (!cancelled) setAppUpdate((prev) => (prev === 'updated' ? prev : 'updating'));
+          return;
+        }
         const d = await r.json();
+        const clientBuild = process.env.APP_BUILD_ID;
+        if (!cancelled) {
+          if (d.buildId && clientBuild && d.buildId !== clientBuild) setAppUpdate('updated');
+          else setAppUpdate((prev) => (prev === 'updating' ? null : prev));
+        }
         if (cancelled || !d.user) return;
         setUser(d.user);
         try {
@@ -506,6 +518,25 @@ export default function Sidebar() {
 
   return (
     <>
+      {appUpdate && (
+        <div dir="rtl" className={`fixed top-0 inset-x-0 z-[100] flex flex-wrap items-center justify-center gap-3 px-4 py-2.5 text-sm font-bold shadow-lg ${
+          appUpdate === 'updated' ? 'bg-emerald-600 text-white' : 'bg-amber-500 text-slate-900'
+        }`}>
+          {appUpdate === 'updated' ? (
+            <>
+              <span>✅ تم تحديث النظام — اضغط تحديث الصفحة عشان تشتغل على النسخة الجديدة</span>
+              <button
+                onClick={() => window.location.reload()}
+                className="px-3 py-1 rounded-lg bg-white text-emerald-700 font-black hover:bg-emerald-50"
+              >
+                تحديث الصفحة
+              </button>
+            </>
+          ) : (
+            <span>⏳ جارى تحديث النظام… استنى ثوانى وماتدوسش حفظ دلوقتى</span>
+          )}
+        </div>
+      )}
       <aside className={`hidden lg:flex fixed right-0 top-0 h-full transition-all duration-300 bg-[#0f172a] text-slate-100 border-l border-slate-800/80 z-50 flex-col shadow-2xl ${
         isCollapsed ? 'w-20' : 'w-64'
       }`}>

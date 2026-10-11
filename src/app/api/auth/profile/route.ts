@@ -11,7 +11,7 @@ export async function GET() {
     if (!token) return NextResponse.json({ user: null });
     const payload = await verifyToken(token);
     if (!payload) return NextResponse.json({ user: null });
-    return NextResponse.json({ user: { name: payload.name, phone: payload.phone, role: payload.role, branch: payload.branch } });
+    return NextResponse.json({ user: { name: payload.name, phone: payload.phone, role: payload.role, branch: payload.branch }, buildId: process.env.APP_BUILD_ID || null });
   } catch {
     return NextResponse.json({ user: null });
   }
