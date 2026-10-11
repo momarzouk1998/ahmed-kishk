@@ -246,7 +246,14 @@ export default function ReportsPage() {
   const purchaseDate = (p: any): string | undefined => p?.date;
   const transferDate = (t: any): string | undefined => t?.date || t?.createdAt;
   const shiftDate = (s: any): string | undefined => s?.startTime || s?.createdAt || s?.endTime;
-  const expenseDate = (e: any): string | undefined => e?.date || e?.createdAt;
+  // عملية بتاريخ قديم (date أقدم من يوم التسجيل) تتحسب فى وردية يوم تاريخها (الساعة 12 ظهرًا) مش وقت التسجيل.
+const recTimeMs = (r: any): number => {
+  const day = r?.date ? getTodayDateStr(String(r.date)) : '';
+  const created = r?.createdAt ? getTodayDateStr(new Date(r.createdAt)) : '';
+  if (day && created && day < created) return new Date(`${day}T09:00:00Z`).getTime();
+  return r?.createdAt ? new Date(r.createdAt).getTime() : (r?.date ? new Date(r.date).getTime() : 0);
+};
+const expenseDate = (e: any): string | undefined => e?.date || e?.createdAt;
   const advanceDate = (a: any): string | undefined => a?.date || a?.createdAt;
   // شيكات بنكية وآجل/دفعات مش فلوس خرجت من الخزينة فعليًا وقت فاتورة الشراء.
   const isImmediateTreasuryMethod = (m: any): boolean => {
@@ -445,7 +452,7 @@ export default function ReportsPage() {
 
         // 1. Invoices for Omar Effendi strictly inside this shift's timeframe
         invoices.filter(i => matchB(i.branch) && inPeriod(invoiceDate(i))).forEach(inv => {
-          const invTime = inv.createdAt ? new Date(inv.createdAt).getTime() : (inv.date ? new Date(inv.date).getTime() : 0);
+          const invTime = recTimeMs(inv);
           
           let belongs = false;
           if (targetShift) {
@@ -486,7 +493,7 @@ export default function ReportsPage() {
 
         // 2. Direct collections in this shift
         collections.filter(c => matchB(c.treasury || '') && inPeriod(collectionDate(c))).forEach(col => {
-          const colTime = col.createdAt ? new Date(col.createdAt).getTime() : (col.date ? new Date(col.date).getTime() : 0);
+          const colTime = recTimeMs(col);
           let belongs = false;
           if (targetShift) {
             belongs = b.shiftType === 'مسائي' ? (colTime >= shiftStartMs - 60000) : (targetShift.endTime ? colTime <= shiftEndMs + 60000 : true);
@@ -513,7 +520,7 @@ export default function ReportsPage() {
         // ويفضل السلوك القديم شغال بس للعرابين القديمة اللي مالهاش سند مربوط.
         const linkedQuotationIds = new Set(collections.filter((c: any) => c.quotationId).map((c: any) => c.quotationId));
         quotations.filter(q => matchB(q.branch) && inPeriod(quotationDate(q)) && !linkedQuotationIds.has(q.id)).forEach(q => {
-          const qTime = q.createdAt ? new Date(q.createdAt).getTime() : (q.date ? new Date(q.date).getTime() : 0);
+          const qTime = recTimeMs(q);
           let belongs = false;
           if (targetShift) {
             belongs = b.shiftType === 'مسائي' ? (qTime >= shiftStartMs - 60000) : (targetShift.endTime ? qTime <= shiftEndMs + 60000 : true);
@@ -545,7 +552,7 @@ export default function ReportsPage() {
         // 4. مصروفات فرع عمر أفندي فى نفس الوردية — بتتخصم حسب طريقة دفعها زي باقي الفروع
         let bExpensesTotal = 0;
         expenses.filter((e: any) => matchB(e.branch) && inPeriod(expenseDate(e))).forEach((exp: any) => {
-          const expTime = exp.createdAt ? new Date(exp.createdAt).getTime() : (exp.date ? new Date(exp.date).getTime() : 0);
+          const expTime = recTimeMs(exp);
           let belongs = false;
           if (targetShift) {
             belongs = b.shiftType === 'مسائي' ? (expTime >= shiftStartMs - 60000) : (targetShift.endTime ? expTime <= shiftEndMs + 60000 : true);
@@ -567,7 +574,7 @@ export default function ReportsPage() {
         // 5. سلف/مكافآت الموظفين النقدية فى نفس الوردية — بتتخصم كاش من الدرج
         let bAdvancesTotal = 0;
         advances.filter((a: any) => matchB(a.branch) && a.treasuryDeducted !== false && inPeriod(advanceDate(a))).forEach((adv: any) => {
-          const advTime = adv.createdAt ? new Date(adv.createdAt).getTime() : (adv.date ? new Date(adv.date).getTime() : 0);
+          const advTime = recTimeMs(adv);
           let belongs = false;
           if (targetShift) {
             belongs = b.shiftType === 'مسائي' ? (advTime >= shiftStartMs - 60000) : (targetShift.endTime ? advTime <= shiftEndMs + 60000 : true);
@@ -589,7 +596,8 @@ export default function ReportsPage() {
         purchases.filter((p: any) => matchB(p.branch) && inPeriod(purchaseDate(p))).forEach((p: any) => {
           const paid = Number(p.paidAmount) || 0;
           if (paid <= 0) return;
-          const pTime = p.createdAt ? new Date(p.createdAt).getTime() : (p.date ? new Date(p.date).getTime() : 0);
+          if (p.fundSource === 'treasury') return; // الخصم من الخزنة مباشرة مش من درج الوردية
+          const pTime = recTimeMs(p);
           let belongs = false;
           if (targetShift) {
             belongs = b.shiftType === 'مسائي' ? (pTime >= shiftStartMs - 60000) : (targetShift.endTime ? pTime <= shiftEndMs + 60000 : true);
@@ -620,7 +628,7 @@ export default function ReportsPage() {
         branchTransfers.filter((t: any) => t.kind === 'تسوية نقدية' && (matchB(t.fromBranch) || matchB(t.toBranch))).forEach((t: any) => {
           const split = t.splitPayments;
           if (!split || typeof split !== 'object') return;
-          const tTime = t.createdAt ? new Date(t.createdAt).getTime() : (t.date ? new Date(t.date).getTime() : 0);
+          const tTime = recTimeMs(t);
           let belongs = false;
           if (targetShift) {
             belongs = b.shiftType === 'مسائي' ? (tTime >= shiftStartMs - 60000) : (targetShift.endTime ? tTime <= shiftEndMs + 60000 : true);

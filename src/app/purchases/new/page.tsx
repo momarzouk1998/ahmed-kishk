@@ -104,6 +104,7 @@ export default function NewPurchaseInvoicePage() {
   // Payment Method & Settlement
   const [paymentMethod, setPaymentMethod] = useState<'نقدي (كاش)' | 'شيكات بنكية' | 'على دفعات / آجل' | 'إنستاباي' | 'فودافون كاش' | 'فيزا / كارت' | 'متعدد / مزيج'>('نقدي (كاش)');
   const [paidAmount, setPaidAmount] = useState<number>(0);
+  const [fundSource, setFundSource] = useState<'treasury' | 'drawer'>('treasury');
   const [purNotes, setPurNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -451,6 +452,7 @@ export default function NewPurchaseInvoicePage() {
           vodafone: Number(splitVodafone) || 0,
           visa: Number(splitVisa) || 0,
         } : undefined,
+        fundSource,
         status: statusLabel,
         notes: purNotes.trim(),
         checks: attachedChecks,
@@ -1128,6 +1130,31 @@ export default function NewPurchaseInvoicePage() {
                   }`}>
                     <span>الموزّع: {splitTotal.toLocaleString()} ج</span>
                     <span>المدفوع: {(Number(paidAmount) || 0).toLocaleString()} ج</span>
+                  </div>
+                </div>
+              )}
+
+              {/* مصدر الخصم — الخزنة مباشرة (افتراضي) أو درج الوردية */}
+              {(paymentMethod === 'نقدي (كاش)' || isMultiPayment) && (
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 space-y-1.5 text-[11px]">
+                  <div className="font-black text-slate-800">الفلوس هتتخصم من فين؟</div>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {[
+                      { id: 'treasury', label: '🏦 الخزنة مباشرة', hint: 'من رصيد الفرع، من غير ما تأثر على درج الوردية' },
+                      { id: 'drawer', label: '🗄️ درج الوردية', hint: 'تتخصم من كاش الدرج وتظهر في عجز/زيادة التقفيل' },
+                    ].map(o => (
+                      <button
+                        key={o.id}
+                        type="button"
+                        onClick={() => setFundSource(o.id as 'treasury' | 'drawer')}
+                        className={`p-2 rounded-lg border text-right cursor-pointer transition-all ${
+                          fundSource === o.id ? 'bg-amber-500 text-slate-950 border-amber-600' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        <div className="font-black">{o.label}</div>
+                        <div className="text-[9px] leading-tight mt-0.5 opacity-80">{o.hint}</div>
+                      </button>
+                    ))}
                   </div>
                 </div>
               )}

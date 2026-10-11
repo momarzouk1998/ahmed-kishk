@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getBranchScope, branchWhere, effectiveCreateBranch } from '@/lib/branchScope';
 import { assertPagePermission } from '@/lib/permissionsServer';
+import { getTodayDateStr } from '@/lib/dateUtils';
 
 export const dynamic = 'force-dynamic';
 
@@ -65,6 +66,32 @@ export async function GET(request: Request) {
           return iB.includes(sB) || sB.includes(iB) || (sB.includes('عمر') && iB.includes('عمر'));
         };
 
+
+        // عملية متسجلة بتاريخ قديم (date أقدم من يوم التسجيل الفعلي) لازم تتحسب فى
+        // وردية اليوم اللي فى تاريخها (أول وردية للفرع فى اليوم ده)، مش فى الوردية
+        // المفتوحة دلوقتي. غير كده بنحسب بوقت التسجيل زي الأول.
+        const shiftDay = getTodayDateStr(new Date(s.startTime));
+        const isFirstShiftOfDay = (recBranch?: string) => {
+          const mine = new Date(s.startTime).getTime();
+          return !shifts.some((o: any) => {
+            if (o === s || !o.startTime) return false;
+            if (getTodayDateStr(new Date(o.startTime)) !== shiftDay) return false;
+            const oB = String(o.branch || '').trim().toLowerCase();
+            const sB = String(s.branch || '').trim().toLowerCase();
+            if (!(oB === sB || oB.includes(sB) || sB.includes(oB))) return false;
+            return new Date(o.startTime).getTime() < mine;
+          });
+        };
+        const inWindow = (rec: any, recBranch?: string): boolean => {
+          const recDay = rec.date ? getTodayDateStr(String(rec.date)) : '';
+          const createdDay = rec.createdAt ? getTodayDateStr(new Date(rec.createdAt)) : '';
+          if (recDay && createdDay && recDay < createdDay) {
+            return recDay === shiftDay && isFirstShiftOfDay(recBranch);
+          }
+          const t = rec.createdAt ? new Date(rec.createdAt).getTime() : (rec.date ? new Date(rec.date).getTime() : 0);
+          return t >= shiftStart - 60000 && t <= shiftEnd + 60000;
+        };
+
         let calculatedCash = 0;
         let calculatedInstapay = 0;
         let calculatedVodafone = 0;
@@ -73,8 +100,7 @@ export async function GET(request: Request) {
 
         allInvoices.forEach((inv: any) => {
           if (!matchBranch(inv.branch)) return;
-          const invTime = inv.createdAt ? new Date(inv.createdAt).getTime() : (inv.date ? new Date(inv.date).getTime() : 0);
-          if (invTime >= shiftStart - 60000 && invTime <= shiftEnd + 60000) {
+          if (inWindow(inv, inv.branch)) {
             let split = inv.splitPayments;
             if (!split && inv.notes && inv.notes.includes('[SPLIT:')) {
               try {
@@ -106,8 +132,7 @@ export async function GET(request: Request) {
         allQuotations.forEach((q: any) => {
           if (!matchBranch(q.branch)) return;
           if (linkedQuotationIds.has(q.id)) return;
-          const qTime = q.createdAt ? new Date(q.createdAt).getTime() : (q.date ? new Date(q.date).getTime() : 0);
-          if (qTime >= shiftStart - 60000 && qTime <= shiftEnd + 60000) {
+          if (inWindow(q, q.branch)) {
             const deposit = Number(q.depositPaid || 0);
             let split = q.splitPayments;
             if (split) {
@@ -133,8 +158,7 @@ export async function GET(request: Request) {
         // لنفس الفلوس بالظبط.
         allCollections.forEach((col: any) => {
           if (!matchBranch(col.treasury)) return;
-          const colTime = col.createdAt ? new Date(col.createdAt).getTime() : (col.date ? new Date(col.date).getTime() : 0);
-          if (colTime < shiftStart - 60000 || colTime > shiftEnd + 60000) return;
+          if (!inWindow(col, col.treasury)) return;
           const amt = Number(col.amount) || 0;
           const m = (col.method || '').trim();
           if (m.includes('فودافون')) calculatedVodafone += amt;
@@ -152,8 +176,7 @@ export async function GET(request: Request) {
           const isFrom = matchBranch(t.fromBranch);
           const isTo = matchBranch(t.toBranch);
           if (!isFrom && !isTo) return;
-          const tTime = t.createdAt ? new Date(t.createdAt).getTime() : (t.date ? new Date(t.date).getTime() : 0);
-          if (tTime < shiftStart - 60000 || tTime > shiftEnd + 60000) return;
+          if (!inWindow(t, isFrom ? t.fromBranch : t.toBranch)) return;
           const sign = isFrom ? -1 : 1;
           calculatedCash += sign * (Number(split.cash) || 0);
           calculatedInstapay += sign * (Number(split.instapay) || 0);
@@ -171,8 +194,7 @@ export async function GET(request: Request) {
         let calculatedExpenses = 0;
         allExpenses.forEach((exp: any) => {
           if (!matchBranch(exp.branch)) return;
-          const expTime = exp.createdAt ? new Date(exp.createdAt).getTime() : (exp.date ? new Date(exp.date).getTime() : 0);
-          if (expTime < shiftStart - 60000 || expTime > shiftEnd + 60000) return;
+          if (!inWindow(exp, exp.branch)) return;
           const m = (exp.paymentMethod || '').trim();
           if (!m || m.includes('نقد')) calculatedExpenses += Number(exp.amount) || 0;
         });
@@ -181,8 +203,7 @@ export async function GET(request: Request) {
         allAdvances.forEach((adv: any) => {
           if (!matchBranch(adv.branch)) return;
           if (adv.treasuryDeducted === false) return;
-          const advTime = adv.createdAt ? new Date(adv.createdAt).getTime() : (adv.date ? new Date(adv.date).getTime() : 0);
-          if (advTime < shiftStart - 60000 || advTime > shiftEnd + 60000) return;
+          if (!inWindow(adv, adv.branch)) return;
           calculatedAdvances += Number(adv.amount) || 0;
         });
 
@@ -193,8 +214,10 @@ export async function GET(request: Request) {
           if (!matchBranch(p.branch)) return;
           const paid = Number(p.paidAmount) || 0;
           if (paid <= 0) return;
-          const pTime = p.createdAt ? new Date(p.createdAt).getTime() : (p.date ? new Date(p.date).getTime() : 0);
-          if (pTime < shiftStart - 60000 || pTime > shiftEnd + 60000) return;
+          // الشراء بيتخصم من الدرج بس لو اتحدد صراحة "من الدرج" (أو فاتورة قديمة
+          // قبل ما الخيار يتضاف). الافتراضي الجديد: مباشرة من الخزنة.
+          if (p.fundSource === 'treasury') return;
+          if (!inWindow(p, p.branch)) return;
           const split = p.splitPayments;
           if (split && typeof split === 'object') {
             calculatedPurchases += Number(split.cash || 0);

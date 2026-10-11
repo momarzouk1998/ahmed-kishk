@@ -277,6 +277,7 @@ model PurchaseInvoice {
   remainingAmount Float    @default(0)
   paymentMethod   String   @default("نقدي (كاش)")
   splitPayments   Json?
+  fundSource      String?
   status          String   @default("آجل / غير مسدد")
   date            String
   items           Json     @default("[]")
