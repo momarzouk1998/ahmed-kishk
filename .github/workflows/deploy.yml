@@ -67,6 +67,9 @@ jobs:
               --name ahmed-kishk \
               --restart unless-stopped \
               --network host \
+              --memory 900m \
+              --memory-swap 1200m \
+              -e NODE_OPTIONS="--max-old-space-size=512" \
               -e PORT=3009 \
               -e DATABASE_URL="${{ secrets.DATABASE_URL }}" \
               -e AUTH_SECRET="${{ secrets.AUTH_SECRET }}" \

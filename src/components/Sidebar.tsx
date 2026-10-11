@@ -41,8 +41,21 @@ export default function Sidebar() {
 
   useEffect(() => {
     let cancelled = false;
+    // #PERF: طلب واحد فى نفس الوقت. لما السيرفر كان يبطّأ، الطلبات كانت بتتراكم فوق
+    // بعض كل 3 ثوانى (حادثة 11-10-2026: الرام خلصت والسيرفر كله وقع).
+    let inFlight = false;
 
     async function loadUserAndPermissions() {
+      if (inFlight) return;
+      inFlight = true;
+      try {
+        await doLoadUserAndPermissions();
+      } finally {
+        inFlight = false;
+      }
+    }
+
+    async function doLoadUserAndPermissions() {
       try {
         const r = await fetch('/api/auth/profile');
         const d = await r.json();
@@ -91,7 +104,11 @@ export default function Sidebar() {
     }
 
     loadUserAndPermissions();
-    const interval = setInterval(loadUserAndPermissions, 3_000);
+    // كل 30 ثانية وبس لما الشاشة ظاهرة. تغيير الصلاحيات بيوصل فورًا برضه لما الموظف
+    // يرجع للشاشة (visibilitychange / focus) أو من تاب تانى (storage).
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') loadUserAndPermissions();
+    }, 30_000);
     const onVisible = () => { if (document.visibilityState === 'visible') loadUserAndPermissions(); };
     const onStorage = () => { loadUserAndPermissions(); };
     document.addEventListener('visibilitychange', onVisible);
