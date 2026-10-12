@@ -55,6 +55,45 @@ export async function GET(request: Request) {
         (prisma as any).branchTransfer.findMany({ where: { kind: 'تسوية نقدية' } }).catch(() => []),
       ]);
 
+      // #PERF: كان كل عملية (≈3,000) بتتحسب أيامها من جديد لكل وردية (≈56) — حوالى
+      // 176 ألف عملية تاريخ فى كل فتحة لصفحة الورديات، والذاكرة كانت بتوصل 900MB+.
+      // دلوقتى كل عملية بتتحسب مرة واحدة، وكل وردية بيتحسب يومها ولو هى أول وردية فى اليوم مرة واحدة.
+      const recCache = new WeakMap<object, { recDay: string; createdDay: string; t: number }>();
+      const recInfo = (rec: any) => {
+        let info = recCache.get(rec);
+        if (!info) {
+          info = {
+            recDay: rec.date ? getTodayDateStr(String(rec.date)) : '',
+            createdDay: rec.createdAt ? getTodayDateStr(new Date(rec.createdAt)) : '',
+            t: rec.createdAt ? new Date(rec.createdAt).getTime() : (rec.date ? new Date(rec.date).getTime() : 0),
+          };
+          recCache.set(rec, info);
+        }
+        return info;
+      };
+      const shiftDayCache = new Map<any, string>();
+      const shiftDayOf = (sh: any) => {
+        let d = shiftDayCache.get(sh);
+        if (d === undefined) {
+          d = sh.startTime ? getTodayDateStr(new Date(sh.startTime)) : '';
+          shiftDayCache.set(sh, d);
+        }
+        return d;
+      };
+      // نفس شرط isFirstShiftOfDay القديم: مفيش وردية تانية لنفس الفرع فى نفس اليوم بدأت قبلها
+      const isFirstOfDay = (s: any) => {
+        const day = shiftDayOf(s);
+        const mine = new Date(s.startTime).getTime();
+        const sB = String(s.branch || '').trim().toLowerCase();
+        return !shifts.some((o: any) => {
+          if (o === s || !o.startTime) return false;
+          if (shiftDayOf(o) !== day) return false;
+          const oB = String(o.branch || '').trim().toLowerCase();
+          if (!(oB === sB || oB.includes(sB) || sB.includes(oB))) return false;
+          return new Date(o.startTime).getTime() < mine;
+        });
+      };
+
       shifts = shifts.map((s: any) => {
         const shiftStart = new Date(s.startTime).getTime();
         const shiftEnd = s.endTime ? new Date(s.endTime).getTime() : Date.now();
@@ -70,25 +109,15 @@ export async function GET(request: Request) {
         // عملية متسجلة بتاريخ قديم (date أقدم من يوم التسجيل الفعلي) لازم تتحسب فى
         // وردية اليوم اللي فى تاريخها (أول وردية للفرع فى اليوم ده)، مش فى الوردية
         // المفتوحة دلوقتي. غير كده بنحسب بوقت التسجيل زي الأول.
-        const shiftDay = getTodayDateStr(new Date(s.startTime));
-        const isFirstShiftOfDay = (recBranch?: string) => {
-          const mine = new Date(s.startTime).getTime();
-          return !shifts.some((o: any) => {
-            if (o === s || !o.startTime) return false;
-            if (getTodayDateStr(new Date(o.startTime)) !== shiftDay) return false;
-            const oB = String(o.branch || '').trim().toLowerCase();
-            const sB = String(s.branch || '').trim().toLowerCase();
-            if (!(oB === sB || oB.includes(sB) || sB.includes(oB))) return false;
-            return new Date(o.startTime).getTime() < mine;
-          });
-        };
-        const inWindow = (rec: any, recBranch?: string): boolean => {
-          const recDay = rec.date ? getTodayDateStr(String(rec.date)) : '';
-          const createdDay = rec.createdAt ? getTodayDateStr(new Date(rec.createdAt)) : '';
+        // #PERF (حادثة 11–12 أكتوبر): نفس المنطق بالظبط، بس الأيام بتتحسب مرة واحدة
+        // (shiftDayOf / isFirstOfDay / recInfo فوق اللوب) بدل ما تتحسب لكل عملية × كل وردية.
+        const shiftDay = shiftDayOf(s);
+        const firstOfDay = isFirstOfDay(s);
+        const inWindow = (rec: any, _recBranch?: string): boolean => {
+          const { recDay, createdDay, t } = recInfo(rec);
           if (recDay && createdDay && recDay < createdDay) {
-            return recDay === shiftDay && isFirstShiftOfDay(recBranch);
+            return recDay === shiftDay && firstOfDay;
           }
-          const t = rec.createdAt ? new Date(rec.createdAt).getTime() : (rec.date ? new Date(rec.date).getTime() : 0);
           return t >= shiftStart - 60000 && t <= shiftEnd + 60000;
         };
 

@@ -60,16 +60,26 @@ export function formatTimeOnly(dateString: string | Date): string {
   return `${formattedHours}:${minutes} ${ampm}`;
 }
 
+// #PERF: فورماتر واحد بيتعاد استخدامه. إنشاء Intl.DateTimeFormat جديد فى كل نداء كان
+// بيحجز ذاكرة برا الـ JS heap — مع مئات آلاف النداءات (صفحة الورديات) وصلت 900MB+.
+let cairoYmdFormatter: Intl.DateTimeFormat | null = null;
+function cairoYmd(): Intl.DateTimeFormat {
+  if (!cairoYmdFormatter) {
+    cairoYmdFormatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Africa/Cairo',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+  }
+  return cairoYmdFormatter;
+}
+
 export function getTodayDateStr(inputDate?: string | Date): string {
   if (!inputDate) {
     const date = new Date();
     try {
-      return new Intl.DateTimeFormat('en-CA', {
-        timeZone: 'Africa/Cairo',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-      }).format(date);
+      return cairoYmd().format(date);
     } catch {
       const year = date.getFullYear();
       const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -104,13 +114,7 @@ export function getTodayDateStr(inputDate?: string | Date): string {
   const date = typeof inputDate === 'string' ? new Date(inputDate) : inputDate;
   if (!isNaN(date.getTime())) {
     try {
-      const formatter = new Intl.DateTimeFormat('en-CA', {
-        timeZone: 'Africa/Cairo',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-      });
-      return formatter.format(date); // YYYY-MM-DD
+      return cairoYmd().format(date); // YYYY-MM-DD
     } catch {
       const year = date.getFullYear();
       const month = String(date.getMonth() + 1).padStart(2, '0');
