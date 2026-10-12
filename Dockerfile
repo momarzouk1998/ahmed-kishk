@@ -19,6 +19,9 @@ ENV NODE_ENV=production
 
 # Generate Prisma client and build Next.js app
 RUN npx prisma generate
+# رقم نسخة ثابت لكل build (نفس القيمة للسيرفر والمتصفح) عشان شريط "تم تحديث النظام" مايفضلش ظاهر
+ARG BUILD_ID=dev
+ENV BUILD_ID=$BUILD_ID
 RUN npm run build
 
 # Production image, copy all the files and run next

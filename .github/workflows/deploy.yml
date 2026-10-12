@@ -38,6 +38,8 @@ jobs:
           context: .
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          build-args: |
+            BUILD_ID=${{ github.sha }}
 
   deploy:
     name: 🚀 Deploy to DigitalOcean Droplet
