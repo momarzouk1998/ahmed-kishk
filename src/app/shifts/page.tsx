@@ -17,6 +17,7 @@ export default function ShiftsAndDrawerPage() {
   const [shifts, setShifts] = useState<ShiftSession[]>([]);
   const [selectedBranch, setSelectedBranch] = useState<string>('الفرع الرئيسي');
   const [employees, setEmployees] = useState<any[]>([]);
+  const [empLoadError, setEmpLoadError] = useState<string>('');
 
   // Start Shift Form State
   const [newShiftType, setNewShiftType] = useState<'صباحي' | 'مسائي'>('صباحي');
@@ -70,9 +71,17 @@ export default function ShiftsAndDrawerPage() {
 
   const loadData = async () => {
     try {
+      // الموظفين بيتحملوا مستقل عن الورديات عشان فشل أحدهم ميخفيش التاني، ولو فشل نعرض السبب.
+      fetch('/api/employees', { cache: 'no-store' })
+        .then(async (res) => {
+          if (!res.ok) { setEmpLoadError(res.status === 401 ? 'الجلسة منتهية — سجّل خروج ثم دخول' : `تعذر تحميل الموظفين (خطأ ${res.status})`); return; }
+          const json = await res.json().catch(() => null);
+          if (json?.success && Array.isArray(json.employees)) { setEmployees(json.employees); setEmpLoadError(''); }
+          else setEmpLoadError('تعذر تحميل الموظفين (رد غير متوقع من السيرفر)');
+        })
+        .catch(() => setEmpLoadError('تعذر الاتصال بالسيرفر لتحميل الموظفين'));
       const serverShifts = await fetchShiftsFromServer();
       setShifts(serverShifts);
-      setEmployees(await getEmployees());
     } catch (e) {
       console.error('Error loading shifts from DB:', e);
     }
@@ -626,6 +635,13 @@ export default function ShiftsAndDrawerPage() {
                       <option key={e.id} value={e.id}>{e.name} ({e.role})</option>
                     ))}
                   </select>
+                  {empLoadError ? (
+                    <p className="mt-1 text-[11px] font-bold text-rose-600">⚠️ {empLoadError}</p>
+                  ) : branchEmployees.length === 0 ? (
+                    <p className="mt-1 text-[11px] font-bold text-amber-700">
+                      ⚠️ مفيش موظفين مسجلين لفرع {selectedBranch} (المحمّل: {employees.length} موظف). أضفهم من صفحة الفروع/الموظفين.
+                    </p>
+                  ) : null}
                 </div>
 
                 <div>
