@@ -420,9 +420,9 @@ export default function PricingDetailPage() {
         let trackPrice = 0;
 
         if (installationCategory === 'تراك') {
-          // مفرد: كل الأقمشة المفعّلة بتشترك فى تراك واحد بس (عرض الأوضة × 1)
-          // بدل ما كل قماش ياخد تراك مستقل (عرض الأوضة × عدد الطبقات).
-          trackMeters = editingWidthM * (trackMode === 'مفرد' ? 1 : activeLayersCount);
+          // مفرد: التقيل والخفيف بيشتركوا فى تراك واحد، والبلاك آوت ليه تراك لوحده
+          // (يعني تقيل+خفيف+بلاك آوت = 2 تراك). مزدوج: كل قماش ياخد تراك مستقل.
+          trackMeters = editingWidthM * (trackMode === 'مفرد' ? (((heavyEnabled || sheerEnabled) ? 1 : 0) + (blackoutEnabled ? 1 : 0)) : activeLayersCount);
           trackPrice = trackPricePerMeter || 0;
           installationTotal = trackMeters * trackPrice;
         } else {
@@ -485,7 +485,7 @@ export default function PricingDetailPage() {
           trackMode: installationCategory === 'تراك' ? trackMode : undefined,
           installationType: installationCategory === 'تراك'
             ? (activeLayersCount > 1
-                ? `تراك سقف (${trackMode === 'مفرد' ? 'مفرد مشترك' : `${activeLayersCount} تراك مستقل`})`
+                ? `تراك سقف (${trackMode === 'مفرد' ? (blackoutEnabled && (heavyEnabled || sheerEnabled) ? 'مفرد مشترك + تراك للبلاك آوت' : 'مفرد مشترك') : `${activeLayersCount} تراك مستقل`})`
                 : `تراك سقف (${activeLayersCount} طبقة)`)
             : `مواسير فورجيه (${pipeTypeDescription} - ${pipeColor})`,
           trackMeters,
@@ -1586,7 +1586,7 @@ export default function PricingDetailPage() {
                                     </div>
                                     {(() => {
                                       const layers = (heavyEnabled ? 1 : 0) + (sheerEnabled ? 1 : 0) + (blackoutEnabled ? 1 : 0);
-                                      const tracks = trackMode === 'مفرد' ? 1 : layers;
+                                      const tracks = trackMode === 'مفرد' ? (((heavyEnabled || sheerEnabled) ? 1 : 0) + (blackoutEnabled ? 1 : 0)) : layers;
                                       return (
                                         <div className="font-mono font-bold text-xs bg-amber-100 text-amber-950 px-3 py-1.5 rounded-lg border border-amber-300">
                                           {editingWidthM.toFixed(2)}م × {tracks} تراك × {trackPricePerMeter}ج = {((Number(editingWidthM) || 0) * tracks * (Number(trackPricePerMeter) || 0)).toLocaleString()} ج
@@ -1609,7 +1609,7 @@ export default function PricingDetailPage() {
                                             trackMode === mode ? 'bg-amber-600 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-200/60'
                                           }`}
                                         >
-                                          {mode === 'مزدوج' ? 'مزدوج (تراك لكل قماش)' : 'مفرد (تراك واحد مشترك)'}
+                                          {mode === 'مزدوج' ? 'مزدوج (تراك لكل قماش)' : 'مفرد (التقيل والخفيف مشتركين، والبلاك آوت لوحده)'}
                                         </button>
                                       ))}
                                     </div>
