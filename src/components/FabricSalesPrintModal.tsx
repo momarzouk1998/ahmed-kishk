@@ -5,6 +5,7 @@ import { formatDateOnly, getTodayDateStr } from '@/lib/dateUtils';
 import Logo from '@/components/Logo';
 import { getBrandSettings } from '@/lib/brandSettings';
 import { getBranchConfig } from '@/lib/branches';
+import WhatsAppShareButton from '@/components/WhatsAppShareButton';
 
 export interface SalesInvoiceItem {
   code: string;
@@ -426,6 +427,18 @@ export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricS
             </h2>
           </div>
           <div className="flex items-center gap-2">
+            <WhatsAppShareButton
+              title="فاتورة المبيعات"
+              customerName={data.customerName}
+              phone={data.phone || data.customerPhone}
+              detailsText={`فاتورة رقم: ${data.invoiceNumber}
+العميل: ${data.customerName}
+الإجمالي: ${Number(data.totalAmount || 0).toLocaleString()} ج.م
+المدفوع: ${Number(data.paidAmount || 0).toLocaleString()} ج.م
+المتبقي: ${Number(data.remainingAmount || 0).toLocaleString()} ج.م`}
+              targetElementId="printable-fabric-sales-sheet"
+              className="!px-3 !py-2"
+            />
             <button
               type="button"
               onClick={handlePrintCashier}
@@ -461,7 +474,7 @@ export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricS
         </div>
 
         {/* Live Preview Matching Print Layout */}
-        <div className="border-2 border-slate-900 rounded-xl p-5 bg-white text-slate-900 space-y-3 font-sans">
+        <div id="printable-fabric-sales-sheet" className="border-2 border-slate-900 rounded-xl p-5 bg-white text-slate-900 space-y-3 font-sans">
           {/* Header Branding */}
           <div className="flex justify-between items-center pb-3 border-b-2 border-slate-900">
             <div className="flex items-center gap-3">
