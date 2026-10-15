@@ -3,6 +3,15 @@ import { prisma } from '@/lib/prisma';
 import { getBranchScope, branchWhere, collectionBranchWhere, effectiveCreateBranch } from '@/lib/branchScope';
 import { getTodayDateStr } from '@/lib/dateUtils';
 import { syncCustomerOrdersFromCollections } from '@/lib/customerCollectionsSync';
+import { normalizeBranchName, BRANCHES_LIST } from '@/lib/branches';
+
+/** فرع السند بيتحدد من الخزنة اللي الفلوس دخلتها (مش من فرع الموظف اللي سجّله)،
+ *  عشان تحصيل لعميل فرع تاني ميتحسبش على فرع الموظف فى التقارير. */
+function branchFromTreasury(treasury?: string | null): string | null {
+  if (!treasury) return null;
+  const norm = normalizeBranchName(treasury);
+  return BRANCHES_LIST.some(b => b.name === norm) ? norm : null;
+}
 
 export const dynamic = 'force-dynamic';
 
@@ -60,7 +69,7 @@ export async function POST(request: Request) {
         customerId,
         customerName,
         phone: phone || '',
-        branch: effectiveCreateBranch(scope, branch),
+        branch: branchFromTreasury(treasury) || effectiveCreateBranch(scope, branch),
         amount: Number(amount) || 0,
         method: method || 'نقدي',
         treasury: treasury || 'خزينة الفرع الرئيسي (سعد زغلول)',
@@ -73,6 +82,7 @@ export async function POST(request: Request) {
         amount: amount !== undefined ? Number(amount) : undefined,
         method: method || undefined,
         treasury: treasury || undefined,
+        branch: branchFromTreasury(treasury) || undefined,
         notes: notes !== undefined ? notes : undefined,
       },
     });
