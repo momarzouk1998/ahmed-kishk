@@ -116,6 +116,12 @@ export default function EmployeesManagementPage() {
   const [advanceDate, setAdvanceDate] = useState<string>(() => getTodayDateStr());
   const [advanceReason, setAdvanceReason] = useState<string>('');
 
+  // ── Tab 3: Statement State (كشف الحساب - أسبوعي جمعة←خميس / شهري / تراكمي) ──
+  const [statementPeriodMode, setStatementPeriodMode] = useState<'weekly' | 'monthly' | 'all'>('weekly');
+  const [statementPayTypeFilter, setStatementPayTypeFilter] = useState<'الكل' | 'أسبوعي' | 'شهري'>('الكل');
+  const [statementWeekOffset, setStatementWeekOffset] = useState<number>(0);
+  const [statementSelectedMonth, setStatementSelectedMonth] = useState<string>(() => getTodayDateStr().slice(0, 7));
+
   // Selected Employee for Slip Modal
   const [selectedEmpForSlip, setSelectedEmpForSlip] = useState<any | null>(null);
 
@@ -200,18 +206,127 @@ export default function EmployeesManagementPage() {
     return map;
   }, [branchFilteredEmployees, selectedBranch]);
 
-  // ── Employee Financial Calculation Helper (حساب مستحقات ومتبقي الموظف ببساطة) ──
-  const getEmployeeFinancialSummary = (empId: string) => {
+  // ── حساب وتوليد نطاق الأسبوع من الجمعة إلى الخميس ──
+  const getFridayToThursdayWeekRange = (offsetWeeks: number = 0, referenceDateStr?: string) => {
+    const todayStr = referenceDateStr || getTodayDateStr();
+    const [y, m, d] = todayStr.split('-').map(Number);
+    const dateObj = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+    
+    // يوم الأسبوع: 0 للأحد، 5 للجمعة
+    const dayOfWeek = dateObj.getUTCDay();
+    const diffToFriday = (dayOfWeek + 7 - 5) % 7;
+    
+    const friday = new Date(dateObj);
+    friday.setUTCDate(dateObj.getUTCDate() - diffToFriday + (offsetWeeks * 7));
+    
+    const thursday = new Date(friday);
+    thursday.setUTCDate(friday.getUTCDate() + 6);
+    
+    const startStr = friday.toISOString().slice(0, 10);
+    const endStr = thursday.toISOString().slice(0, 10);
+    
+    return {
+      startStr,
+      endStr,
+      label: `من الجمعة ${formatDateOnly(startStr)} إلى الخميس ${formatDateOnly(endStr)}`,
+      shortLabel: `${startStr.slice(5)} ← ${endStr.slice(5)}`,
+      isCurrentWeek: offsetWeeks === 0,
+    };
+  };
+
+  const getMonthRange = (monthStr?: string) => {
+    const today = getTodayDateStr();
+    const ym = monthStr || today.slice(0, 7);
+    const [year, month] = ym.split('-').map(Number);
+    const startStr = `${ym}-01`;
+    const lastDay = new Date(year, month, 0).getDate();
+    const endStr = `${ym}-${String(lastDay).padStart(2, '0')}`;
+    const arabicMonths = [
+      'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
+      'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'
+    ];
+    const monthName = arabicMonths[month - 1] || ym;
+    return {
+      startStr,
+      endStr,
+      label: `شهر ${monthName} ${year}`,
+      shortLabel: ym,
+    };
+  };
+
+  const currentWeekRange = useMemo(() => getFridayToThursdayWeekRange(statementWeekOffset), [statementWeekOffset]);
+  const currentMonthRange = useMemo(() => getMonthRange(statementSelectedMonth), [statementSelectedMonth]);
+
+  const recentWeeksList = useMemo(() => {
+    const list = [];
+    for (let i = 1; i >= -12; i--) {
+      const range = getFridayToThursdayWeekRange(i);
+      list.push({
+        offset: i,
+        ...range,
+        title: i === 0 ? `⭐ الأسبوع الحالي (${range.shortLabel})` : i === -1 ? `⏮️ الأسبوع السابق (${range.shortLabel})` : i === 1 ? `⏭️ الأسبوع القادم (${range.shortLabel})` : `أسبوع (${range.shortLabel})`,
+      });
+    }
+    return list;
+  }, []);
+
+  const recentMonthsList = useMemo(() => {
+    const list = [];
+    const today = new Date();
+    for (let i = 0; i < 6; i++) {
+      const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+      const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const range = getMonthRange(ym);
+      list.push({ ym, label: range.label });
+    }
+    return list;
+  }, []);
+
+  // فهرسة سريعة للـ Attendance والـ Advances لرفع الأداء وتخفيف الحمل على المتصفح
+  const attendanceByEmp = useMemo(() => {
+    const map = new Map<string, AttendanceRecord[]>();
+    attendance.forEach(a => {
+      const arr = map.get(a.employeeId);
+      if (arr) arr.push(a);
+      else map.set(a.employeeId, [a]);
+    });
+    return map;
+  }, [attendance]);
+
+  const advancesByEmp = useMemo(() => {
+    const map = new Map<string, EmployeeAdvance[]>();
+    advances.forEach(a => {
+      const arr = map.get(a.employeeId);
+      if (arr) arr.push(a);
+      else map.set(a.employeeId, [a]);
+    });
+    return map;
+  }, [advances]);
+
+  // ── Employee Financial Calculation Helper (حساب مستحقات ومتبقي الموظف ببساطة وسرعة فائقة) ──
+  const getEmployeeFinancialSummary = (
+    empId: string,
+    filter?: {
+      startDate?: string;
+      endDate?: string;
+      label?: string;
+    }
+  ) => {
     const emp = employees.find(e => e.id === empId);
     if (!emp) return null;
 
-    // 1. حساب أيام الحضور من كافة السجلات (بما فيها الجمعة)
-    const empAttendance = attendance.filter(a => a.employeeId === empId);
+    // 1. حساب أيام الحضور من الـ Map المفهرسة
+    const empAtt = attendanceByEmp.get(empId) || [];
+    const empAttendance = (filter?.startDate || filter?.endDate)
+      ? empAtt.filter(a => (!filter.startDate || a.date >= filter.startDate) && (!filter.endDate || a.date <= filter.endDate))
+      : empAtt;
+
     let attendedDays = 0;
     let presentCount = 0;
     let halfDayCount = 0;
     let absentCount = 0;
     let leaveCount = 0;
+    let paidLeaveCount = 0;
 
     empAttendance.forEach(a => {
       if (a.status === 'حاضر') {
@@ -224,14 +339,23 @@ export default function EmployeesManagementPage() {
         absentCount += 1;
       } else if (a.status === 'إجازة') {
         leaveCount += 1;
+        // قاعدة الموظف الشهري: الإجازات المعتمدة (يومين بالشهر) مدفوعة الأجر
+        if (emp.payType === 'شهري') {
+          attendedDays += 1;
+          paidLeaveCount += 1;
+        }
       }
     });
 
     const dailyWage = Number(emp.dailyWage) || 0;
     const earnedWages = attendedDays * dailyWage;
 
-    // 2. حساب الحركات المالية (سلف، خصومات، مكافآت، وقبض سابق)
-    const empMovements = advances.filter(a => a.employeeId === empId);
+    // 2. حساب الحركات المالية من الـ Map المفهرسة
+    const empAdv = advancesByEmp.get(empId) || [];
+    const empMovements = (filter?.startDate || filter?.endDate)
+      ? empAdv.filter(a => (!filter.startDate || a.date >= filter.startDate) && (!filter.endDate || a.date <= filter.endDate))
+      : empAdv;
+
     let totalAdvances = 0;
     let totalDeductions = 0;
     let totalBonuses = 0;
@@ -250,11 +374,15 @@ export default function EmployeesManagementPage() {
 
     return {
       employee: emp,
+      periodLabel: filter?.label,
+      periodStart: filter?.startDate,
+      periodEnd: filter?.endDate,
       attendedDays,
       presentCount,
       halfDayCount,
       absentCount,
       leaveCount,
+      paidLeaveCount,
       dailyWage,
       earnedWages,
       totalAdvances,
@@ -436,7 +564,11 @@ export default function EmployeesManagementPage() {
   const handleSelectEmployeeForAdvance = (empId: string) => {
     setAdvanceEmployeeId(empId);
     if (advanceType === 'قبض' && empId && canPerformPayout) {
-      const summary = getEmployeeFinancialSummary(empId);
+      const emp = employees.find(e => e.id === empId);
+      const activeFilter = emp?.payType === 'شهري'
+        ? { startDate: currentMonthRange.startStr, endDate: currentMonthRange.endStr, label: currentMonthRange.label }
+        : { startDate: currentWeekRange.startStr, endDate: currentWeekRange.endStr, label: currentWeekRange.label };
+      const summary = getEmployeeFinancialSummary(empId, activeFilter);
       if (summary) {
         setAdvanceAmount(summary.netRemaining > 0 ? String(summary.netRemaining) : '0');
       }
@@ -450,24 +582,42 @@ export default function EmployeesManagementPage() {
     }
     setAdvanceType(type);
     if (type === 'قبض' && advanceEmployeeId) {
-      const summary = getEmployeeFinancialSummary(advanceEmployeeId);
+      const emp = employees.find(e => e.id === advanceEmployeeId);
+      const activeFilter = emp?.payType === 'شهري'
+        ? { startDate: currentMonthRange.startStr, endDate: currentMonthRange.endStr, label: currentMonthRange.label }
+        : { startDate: currentWeekRange.startStr, endDate: currentWeekRange.endStr, label: currentWeekRange.label };
+      const summary = getEmployeeFinancialSummary(advanceEmployeeId, activeFilter);
       if (summary) {
         setAdvanceAmount(summary.netRemaining > 0 ? String(summary.netRemaining) : '0');
       }
     }
   };
 
-  const handleQuickPayForEmployee = (empId: string) => {
+  const handleQuickPayForEmployee = (empId: string, customSummary?: any) => {
     if (!canPerformPayout) {
       alert('⚠️ خاصية القبض مخصصة للمدير العام (أحمد كشك) و إدارة openappo فقط.');
       return;
     }
-    const summary = getEmployeeFinancialSummary(empId);
+    const emp = employees.find(e => e.id === empId);
+    if (!emp) return;
+
+    const defaultFilter = emp?.payType === 'شهري'
+      ? { startDate: currentMonthRange.startStr, endDate: currentMonthRange.endStr, label: currentMonthRange.label }
+      : { startDate: currentWeekRange.startStr, endDate: currentWeekRange.endStr, label: currentWeekRange.label };
+
+    const summary = customSummary || getEmployeeFinancialSummary(empId, defaultFilter);
     setAdvanceEmployeeId(empId);
     setAdvanceType('قبض');
-    setAdvanceDate(getTodayDateStr());
+    
+    // إذا كان الموظف يُصرف له عن فترة سابقة انتهت، يُسجل السند بتاريخ نهاية تلك الفترة لتقفيلها داخل أسبوعها/شهرها
+    const targetDate = (summary?.periodEnd && summary.periodEnd < getTodayDateStr())
+      ? summary.periodEnd
+      : getTodayDateStr();
+    setAdvanceDate(targetDate);
+
     setAdvanceAmount(summary && summary.netRemaining > 0 ? String(summary.netRemaining) : '0');
-    setAdvanceReason('قبض راتب نقداً');
+    const periodNote = summary?.periodLabel ? ` [عن ${summary.periodLabel}]` : '';
+    setAdvanceReason(`قبض راتب نقداً${periodNote}`);
     setActiveTab('advances');
   };
 
@@ -763,14 +913,17 @@ export default function EmployeesManagementPage() {
   // WhatsApp Statement Share
   const getWhatsAppStatementUrl = (summary: any) => {
     if (!summary) return '#';
-    const { employee, attendedDays, dailyWage, earnedWages, totalBonuses, totalAdvances, totalDeductions, totalPaid, netRemaining } = summary;
+    const { employee, attendedDays, dailyWage, earnedWages, totalBonuses, totalAdvances, totalDeductions, totalPaid, netRemaining, periodLabel, paidLeaveCount } = summary;
+
+    const periodText = periodLabel ? `\n🗓️ *الفترة:* ${periodLabel}` : '';
+    const paidLeaveText = paidLeaveCount > 0 ? ` (منها ${paidLeaveCount} يوم إجازة مدفوعة)` : '';
 
     const text = `📋 *كشف حساب ومستحقات - مؤسسة كشك للأقمشة والستائر*
-👤 *الموظف:* ${employee.name} (${employee.branch})
+👤 *الموظف:* ${employee.name} (${employee.branch})${periodText}
 💵 *اليومية المقررة:* ${dailyWage} ج
-📅 *أيام الحضور الفعلية:* ${attendedDays} يوم
+📅 *أيام الحضور المحتسبة:* ${attendedDays} يوم${paidLeaveText}
 💰 *إجمالي الأجر المستحق:* ${earnedWages.toLocaleString()} ج
-${totalBonuses > 0 ? `🎁 *مكافآت:* +${totalBonuses.toLocaleString()} ج\n` : ''}${totalAdvances > 0 ? `🔻 *سلف نقدية:* -${totalAdvances.toLocaleString()} ج\n` : ''}${totalDeductions > 0 ? `🔻 *خصومات:* -${totalDeductions.toLocaleString()} ج\n` : ''}${totalPaid > 0 ? `💵 *مقبوض سابقاً:* -${totalPaid.toLocaleString()} ج\n` : ''}----------------------------------------
+${totalBonuses > 0 ? `🎁 *مكافآت:* +${totalBonuses.toLocaleString()} ج\n` : ''}${totalAdvances > 0 ? `🔻 *سلف نقدية:* -${totalAdvances.toLocaleString()} ج\n` : ''}${totalDeductions > 0 ? `🔻 *خصومات:* -${totalDeductions.toLocaleString()} ج\n` : ''}${totalPaid > 0 ? `💵 *مقبوض:* -${totalPaid.toLocaleString()} ج\n` : ''}----------------------------------------
 ⭐ *صافي المتبقي لك:* ${netRemaining >= 0 ? '+' : ''}${netRemaining.toLocaleString()} ج
 ----------------------------------------
 مؤسسة كشك للأقمشة والستائر ✨`;
@@ -850,7 +1003,75 @@ ${totalBonuses > 0 ? `🎁 *مكافآت:* +${totalBonuses.toLocaleString()} ج\
     }
   };
 
-  const currentSelectedEmpSummary = advanceEmployeeId ? getEmployeeFinancialSummary(advanceEmployeeId) : null;
+  const currentSelectedEmp = advanceEmployeeId ? employees.find(e => e.id === advanceEmployeeId) : null;
+  const currentSelectedEmpSummary = advanceEmployeeId ? getEmployeeFinancialSummary(
+    advanceEmployeeId,
+    currentSelectedEmp?.payType === 'شهري'
+      ? { startDate: currentMonthRange.startStr, endDate: currentMonthRange.endStr, label: currentMonthRange.label }
+      : { startDate: currentWeekRange.startStr, endDate: currentWeekRange.endStr, label: currentWeekRange.label }
+  ) : null;
+  const filteredStatementEmployees = useMemo(() => {
+    return branchFilteredEmployees.filter(emp => {
+      if (statementPayTypeFilter === 'أسبوعي' && emp.payType !== 'أسبوعي') return false;
+      if (statementPayTypeFilter === 'شهري' && emp.payType !== 'شهري') return false;
+      return true;
+    });
+  }, [branchFilteredEmployees, statementPayTypeFilter]);
+
+  const statementSummaries = useMemo(() => {
+    return filteredStatementEmployees.map(emp => {
+      let filter;
+      if (statementPeriodMode === 'weekly') {
+        filter = {
+          startDate: currentWeekRange.startStr,
+          endDate: currentWeekRange.endStr,
+          label: currentWeekRange.label,
+        };
+      } else if (statementPeriodMode === 'monthly') {
+        filter = {
+          startDate: currentMonthRange.startStr,
+          endDate: currentMonthRange.endStr,
+          label: currentMonthRange.label,
+        };
+      } else {
+        filter = {
+          label: 'إجمالي تراكمي شامل',
+        };
+      }
+      return getEmployeeFinancialSummary(emp.id, filter);
+    }).filter(Boolean);
+  }, [filteredStatementEmployees, statementPeriodMode, currentWeekRange, currentMonthRange, attendanceByEmp, advancesByEmp, employees]);
+
+  const statementKpis = useMemo(() => {
+    let totalEarned = 0;
+    let totalBonuses = 0;
+    let totalAdvances = 0;
+    let totalDeductions = 0;
+    let totalPaid = 0;
+    let totalNetRemaining = 0;
+    let settledCount = 0;
+
+    statementSummaries.forEach((s: any) => {
+      totalEarned += s.earnedWages || 0;
+      totalBonuses += s.totalBonuses || 0;
+      totalAdvances += s.totalAdvances || 0;
+      totalDeductions += s.totalDeductions || 0;
+      totalPaid += s.totalPaid || 0;
+      totalNetRemaining += s.netRemaining || 0;
+      if (s.netRemaining <= 0 && (s.earnedWages > 0 || s.totalPaid > 0)) settledCount++;
+    });
+
+    return {
+      totalEarned,
+      totalBonuses,
+      totalAdvances,
+      totalDeductions,
+      totalPaid,
+      totalNetRemaining,
+      settledCount,
+      totalEmployees: statementSummaries.length,
+    };
+  }, [statementSummaries]);
 
   return (
     <PageShell title="شؤون الموظفين والرواتب" badge={`${employees.length} موظفاً`}>
@@ -1382,8 +1603,187 @@ ${totalBonuses > 0 ? `🎁 *مكافآت:* +${totalBonuses.toLocaleString()} ج\
                   <span>كشف حساب ومستحقات الموظفين</span>
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  حساب مباشر ودقيق لجميع أيام الحضور الفعلية، الأجور المكتسبة، الخصومات، السلف، وما تم قبضه، وصافي المتبقي لكل موظف
+                  حساب دقيق ومنفصل لكل أسبوع (من الجمعة إلى الخميس) أو بالشهر، مع إمكانية التنقل وتقفيل أي أسبوع سابق دون خلط الحسابات
                 </p>
+              </div>
+
+              {statementPeriodMode === 'weekly' && (
+                <div className="text-xs font-bold text-slate-600 bg-amber-50 border border-amber-200 px-3 py-1 rounded-xl">
+                  {statementWeekOffset === 0 ? '✨ أسبوع العمل الحالي' : `⏮️ أسبوع سابق (${statementWeekOffset * -1})`}
+                </div>
+              )}
+            </div>
+
+            {/* أدوات التحكم بالفترة ونوع الراتب */}
+            <div className="bg-slate-50 p-3.5 sm:p-4 rounded-2xl border border-slate-200 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                
+                {/* 1. Mode selector */}
+                <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200 shadow-2xs">
+                  <button
+                    type="button"
+                    onClick={() => setStatementPeriodMode('weekly')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1 ${
+                      statementPeriodMode === 'weekly' ? 'bg-amber-600 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    <span>🗓️</span>
+                    <span>أسبوعي (جمعة ← خميس)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setStatementPeriodMode('monthly')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1 ${
+                      statementPeriodMode === 'monthly' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    <span>📅</span>
+                    <span>شهري</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setStatementPeriodMode('all')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1 ${
+                      statementPeriodMode === 'all' ? 'bg-slate-900 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    <span>♾️</span>
+                    <span>تراكمي شامل</span>
+                  </button>
+                </div>
+
+                {/* 2. Pay type filter */}
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-bold text-slate-500">نوع الراتب:</span>
+                  {(['الكل', 'أسبوعي', 'شهري'] as const).map(pt => (
+                    <button
+                      key={pt}
+                      type="button"
+                      onClick={() => setStatementPayTypeFilter(pt)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition-colors cursor-pointer ${
+                        statementPayTypeFilter === pt
+                          ? 'bg-slate-900 text-white border-slate-900 shadow-2xs'
+                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      {pt === 'الكل' ? 'الكل' : pt === 'أسبوعي' ? '🗓️ أسبوعي' : '📅 شهري'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 3. Sub-controls for Weekly / Monthly */}
+              {statementPeriodMode === 'weekly' && (
+                <div className="flex flex-wrap items-center justify-between gap-3 pt-2.5 border-t border-slate-200/80">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => setStatementWeekOffset(prev => prev - 1)}
+                      className="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 rounded-xl text-xs font-black flex items-center gap-1 shadow-2xs cursor-pointer"
+                      title="الرجوع للأسبوع السابق لتقفيل حساباته"
+                    >
+                      <span>▶</span>
+                      <span>الأسبوع السابق</span>
+                    </button>
+
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-100/70 border border-amber-300 rounded-xl text-xs font-black text-amber-950">
+                      <span>🗓️</span>
+                      <span>{currentWeekRange.label}</span>
+                      {statementWeekOffset === 0 && (
+                        <span className="bg-emerald-600 text-white text-[10px] px-1.5 py-0.2 rounded-md font-bold">الحالي</span>
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setStatementWeekOffset(prev => prev + 1)}
+                      className="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 rounded-xl text-xs font-black flex items-center gap-1 shadow-2xs cursor-pointer"
+                    >
+                      <span>الأسبوع التالي</span>
+                      <span>◀</span>
+                    </button>
+
+                    {statementWeekOffset !== 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setStatementWeekOffset(0)}
+                        className="px-2.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-black flex items-center gap-1 shadow-2xs cursor-pointer"
+                      >
+                        <span>🔄</span>
+                        <span>العودة للأسبوع الحالي</span>
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-slate-500">اختر أسبوعاً:</span>
+                    <select
+                      value={statementWeekOffset}
+                      onChange={(e) => setStatementWeekOffset(Number(e.target.value))}
+                      className="py-1 px-2.5 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-800 shadow-2xs"
+                    >
+                      {recentWeeksList.map(w => (
+                        <option key={w.offset} value={w.offset}>{w.title}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              {statementPeriodMode === 'monthly' && (
+                <div className="flex flex-wrap items-center justify-between gap-3 pt-2.5 border-t border-slate-200/80">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-slate-600">اختر الشهر:</span>
+                    <select
+                      value={statementSelectedMonth}
+                      onChange={(e) => setStatementSelectedMonth(e.target.value)}
+                      className="py-1.5 px-3 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-900 shadow-2xs"
+                    >
+                      {recentMonthsList.map(m => (
+                        <option key={m.ym} value={m.ym}>{m.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <span className="text-xs font-bold text-slate-500">
+                    💡 موظفو الشهر تُحسب لهم إجازاتهم الشهرية المعتمدة (يومين) كأيام عمل مدفوعة الأجر تلقائياً.
+                  </span>
+                </div>
+              )}
+
+              {statementPeriodMode === 'all' && (
+                <div className="pt-2 text-xs font-bold text-slate-500 border-t border-slate-200/80">
+                  ♾️ عرض تراكمي شامل لكافة سجلات الحضور والسلف من بداية النظام وحتى تاريخ اليوم.
+                </div>
+              )}
+            </div>
+
+            {/* KPI Cards Strip */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl">
+                <div className="text-[10px] font-bold text-slate-500">أجور الفترة المستحقة</div>
+                <div className="text-sm font-black font-mono text-slate-900 mt-0.5">{statementKpis.totalEarned.toLocaleString()} ج</div>
+              </div>
+              <div className="p-3 bg-emerald-50/60 border border-emerald-200 rounded-2xl">
+                <div className="text-[10px] font-bold text-emerald-800">مكافآت الفترة</div>
+                <div className="text-sm font-black font-mono text-emerald-900 mt-0.5">+{statementKpis.totalBonuses.toLocaleString()} ج</div>
+              </div>
+              <div className="p-3 bg-amber-50/60 border border-amber-200 rounded-2xl">
+                <div className="text-[10px] font-bold text-amber-800">سلف الفترة المسحوبة</div>
+                <div className="text-sm font-black font-mono text-amber-900 mt-0.5">-{statementKpis.totalAdvances.toLocaleString()} ج</div>
+              </div>
+              <div className="p-3 bg-rose-50/60 border border-rose-200 rounded-2xl">
+                <div className="text-[10px] font-bold text-rose-800">خصومات الفترة</div>
+                <div className="text-sm font-black font-mono text-rose-900 mt-0.5">-{statementKpis.totalDeductions.toLocaleString()} ج</div>
+              </div>
+              <div className="p-3 bg-purple-50/60 border border-purple-200 rounded-2xl">
+                <div className="text-[10px] font-bold text-purple-800">مقبوض في الفترة</div>
+                <div className="text-sm font-black font-mono text-purple-900 mt-0.5">-{statementKpis.totalPaid.toLocaleString()} ج</div>
+              </div>
+              <div className="p-3 bg-emerald-100/70 border border-emerald-300 rounded-2xl">
+                <div className="text-[10px] font-black text-emerald-900">صافي المتبقي للموظفين</div>
+                <div className="text-base font-black font-mono text-emerald-950 mt-0.5">
+                  {statementKpis.totalNetRemaining >= 0 ? `+${statementKpis.totalNetRemaining.toLocaleString()}` : statementKpis.totalNetRemaining.toLocaleString()} ج
+                </div>
               </div>
             </div>
 
@@ -1398,30 +1798,48 @@ ${totalBonuses > 0 ? `🎁 *مكافآت:* +${totalBonuses.toLocaleString()} ج\
                     <th className="p-3 font-mono text-emerald-700">مكافآت</th>
                     <th className="p-3 font-mono text-amber-800">السلف المسحوبة</th>
                     <th className="p-3 font-mono text-rose-700">الخصومات</th>
-                    <th className="p-3 font-mono text-purple-800">مقبوض سابقاً</th>
-                    <th className="p-3 font-mono text-slate-950 font-black text-sm bg-emerald-50">صافي المتبقي له</th>
+                    <th className="p-3 font-mono text-purple-800">مقبوض في الفترة</th>
+                    <th className="p-3 font-mono text-slate-950 font-black text-sm bg-emerald-50">صافي متبقي الفترة</th>
                     <th className="p-3 text-center">إجراء سريع</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
-                  {branchFilteredEmployees.length === 0 ? (
+                  {statementSummaries.length === 0 ? (
                     <tr>
-                      <td colSpan={10} className="p-8 text-center text-slate-400 font-bold">لا يوجد موظفون في هذا الفرع</td>
+                      <td colSpan={10} className="p-8 text-center text-slate-400 font-bold">لا يوجد موظفون مطابقون للشروط في هذا الفرع</td>
                     </tr>
                   ) : (
-                    branchFilteredEmployees.map((emp) => {
-                      const summary = getEmployeeFinancialSummary(emp.id);
-                      if (!summary) return null;
+                    statementSummaries.map((summary: any) => {
+                      const emp = summary.employee;
 
                       return (
-                        <tr key={emp.id} className="hover:bg-slate-50">
+                        <tr key={emp.id} className="hover:bg-slate-50 transition-colors">
                           <td className="p-3">
-                            <div className="font-black text-slate-900 text-sm">{emp.name}</div>
-                            <div className="text-[10px] text-slate-500">{emp.branch}</div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-black text-slate-900 text-sm">{emp.name}</span>
+                              <span className={`text-[10px] px-1.5 py-0.2 rounded font-bold ${
+                                emp.payType === 'شهري' ? 'bg-indigo-100 text-indigo-800' : 'bg-amber-100 text-amber-900'
+                              }`}>
+                                {emp.payType === 'شهري' ? '📅 شهري' : '🗓️ أسبوعي'}
+                              </span>
+                            </div>
+                            <div className="text-[10px] text-slate-500">{emp.branch} • {emp.role || 'موظف'}</div>
                           </td>
                           <td className="p-3 font-mono font-bold text-slate-700">{summary.dailyWage} ج</td>
-                          <td className="p-3 font-mono font-bold text-slate-900">
-                            {summary.attendedDays} يوم
+                          <td className="p-3">
+                            <div className="font-mono font-bold text-slate-900">
+                              {summary.attendedDays} يوم
+                            </div>
+                            {summary.paidLeaveCount > 0 && (
+                              <div className="text-[9.5px] text-blue-700 font-bold">
+                                منها {summary.paidLeaveCount} إجازة مدفوعة
+                              </div>
+                            )}
+                            {summary.halfDayCount > 0 && (
+                              <div className="text-[9.5px] text-amber-700 font-bold">
+                                منها {summary.halfDayCount} نصف يوم
+                              </div>
+                            )}
                           </td>
                           <td className="p-3 font-mono font-black text-slate-900">{summary.earnedWages.toLocaleString()} ج</td>
                           <td className="p-3 font-mono text-emerald-700 font-bold">+{summary.totalBonuses.toLocaleString()} ج</td>
@@ -1430,26 +1848,40 @@ ${totalBonuses > 0 ? `🎁 *مكافآت:* +${totalBonuses.toLocaleString()} ج\
                           <td className="p-3 font-mono text-purple-800 font-bold">-{summary.totalPaid.toLocaleString()} ج</td>
                           <td className="p-3 font-mono font-black text-sm bg-emerald-50/80 text-emerald-950 border-r border-l border-emerald-200">
                             <span className={`px-2 py-0.5 rounded-lg ${
-                              summary.netRemaining > 0 ? 'text-emerald-900 font-black' : 'text-slate-600'
+                              summary.netRemaining > 0 
+                                ? 'text-emerald-900 font-black' 
+                                : summary.netRemaining === 0 && (summary.earnedWages > 0 || summary.totalPaid > 0)
+                                ? 'text-slate-600 bg-slate-100 font-bold'
+                                : 'text-slate-600'
                             }`}>
-                              {summary.netRemaining >= 0 ? `+${summary.netRemaining.toLocaleString()}` : summary.netRemaining.toLocaleString()} ج
+                              {summary.netRemaining > 0 
+                                ? `+${summary.netRemaining.toLocaleString()} ج` 
+                                : summary.netRemaining === 0 && (summary.earnedWages > 0 || summary.totalPaid > 0)
+                                ? '0 ج (خالص ✓)'
+                                : `${summary.netRemaining.toLocaleString()} ج`}
                             </span>
                           </td>
                           <td className="p-3 text-center">
                             <div className="flex items-center justify-center gap-1.5">
                               {canPerformPayout && (
-                                <button
-                                  onClick={() => handleQuickPayForEmployee(emp.id)}
-                                  className="px-3 py-1.5 bg-purple-700 hover:bg-purple-800 text-white rounded-lg font-black text-[11px] cursor-pointer whitespace-nowrap shadow-xs"
-                                  title="صرف / قبض المتبقي للموظف (المدير العام فقط)"
-                                >
-                                  💰 قبض
-                                </button>
+                                summary.netRemaining > 0 ? (
+                                  <button
+                                    onClick={() => handleQuickPayForEmployee(emp.id, summary)}
+                                    className="px-3 py-1.5 bg-purple-700 hover:bg-purple-800 text-white rounded-lg font-black text-[11px] cursor-pointer whitespace-nowrap shadow-xs"
+                                    title="صرف / قبض المتبقي للموظف في هذه الفترة (المدير العام فقط)"
+                                  >
+                                    💰 قبض ({summary.netRemaining.toLocaleString()} ج)
+                                  </button>
+                                ) : (
+                                  <span className="px-2.5 py-1 bg-slate-100 text-slate-500 rounded-lg text-[10.5px] font-bold">
+                                    خالص ✓
+                                  </span>
+                                )
                               )}
                               <button
                                 onClick={() => setSelectedEmpForSlip(summary)}
                                 className="px-2 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold text-[11px] cursor-pointer"
-                                title="معاينة إيصال كشف الحساب"
+                                title="معاينة إيصال كشف الحساب لهذه الفترة"
                               >
                                 👁️
                               </button>
@@ -1458,7 +1890,7 @@ ${totalBonuses > 0 ? `🎁 *مكافآت:* +${totalBonuses.toLocaleString()} ج\
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="px-2 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold text-[11px]"
-                                title="إرسال كشف الحساب للموظف على واتساب"
+                                title="إرسال كشف الحساب للموظف على واتساب لهذه الفترة"
                               >
                                 📱
                               </a>
@@ -2365,6 +2797,11 @@ ${totalBonuses > 0 ? `🎁 *مكافآت:* +${totalBonuses.toLocaleString()} ج\
                 <div className="text-center border-b pb-2">
                   <p className="font-black text-base text-slate-900">مؤسسة كشك للأقمشة والستائر</p>
                   <p className="text-xs text-amber-800 font-bold">كشف حساب ومستحقات الموظف</p>
+                  {selectedEmpForSlip.periodLabel && (
+                    <div className="mt-1 text-[11px] font-bold text-slate-600 bg-amber-50 px-2.5 py-0.5 rounded-lg border border-amber-200 inline-block">
+                      🗓️ {selectedEmpForSlip.periodLabel}
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex justify-between font-bold text-slate-900">
@@ -2374,8 +2811,11 @@ ${totalBonuses > 0 ? `🎁 *مكافآت:* +${totalBonuses.toLocaleString()} ج\
 
                 <div className="space-y-1.5 border-t border-b py-2 text-slate-700">
                   <div className="flex justify-between">
-                    <span>أيام الحضور الفعلية:</span>
-                    <span className="font-mono font-bold">{selectedEmpForSlip.attendedDays} يوم × {selectedEmpForSlip.dailyWage}ج</span>
+                    <span>أيام الحضور المحتسبة:</span>
+                    <span className="font-mono font-bold">
+                      {selectedEmpForSlip.attendedDays} يوم × {selectedEmpForSlip.dailyWage}ج
+                      {selectedEmpForSlip.paidLeaveCount > 0 && ` (منها ${selectedEmpForSlip.paidLeaveCount} إجازة مدفوعة)`}
+                    </span>
                   </div>
                   <div className="flex justify-between font-bold text-slate-900">
                     <span>إجمالي الأجر المكتسب:</span>
@@ -2401,14 +2841,14 @@ ${totalBonuses > 0 ? `🎁 *مكافآت:* +${totalBonuses.toLocaleString()} ج\
                   )}
                   {selectedEmpForSlip.totalPaid > 0 && (
                     <div className="flex justify-between text-purple-800 font-bold">
-                      <span>مقبوض سابقاً:</span>
+                      <span>مقبوض سابقاً في الفترة:</span>
                       <span className="font-mono">-{selectedEmpForSlip.totalPaid.toLocaleString()} ج</span>
                     </div>
                   )}
                 </div>
 
                 <div className="flex justify-between items-center p-3 bg-emerald-50 rounded-xl border border-emerald-300 font-black text-emerald-950 text-sm">
-                  <span>صافي المتبقي للموظف:</span>
+                  <span>صافي متبقي الفترة للموظف:</span>
                   <span className="font-mono text-base">{selectedEmpForSlip.netRemaining.toLocaleString()} ج.م</span>
                 </div>
               </div>
