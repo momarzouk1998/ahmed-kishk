@@ -8,6 +8,7 @@ import { getStoredInspections, getStoredQuotations, normalizeQuotationStatus } f
 import { getStoredPipelineOrders, normalizeMasterStage } from '@/lib/pipelineStore';
 import { getTodayDateStr, getYesterdayDateStr } from '@/lib/dateUtils';
 import { ALL_SYSTEM_PAGES } from '@/lib/permissions';
+import { getProfile } from '@/lib/profileCache';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -16,8 +17,6 @@ export default function DashboardPage() {
   const [rawInspections, setRawInspections] = useState<any[]>([]);
   const [rawQuotations, setRawQuotations] = useState<any[]>([]);
   const [rawOrders, setRawOrders] = useState<any[]>([]);
-  const [rawInventory, setRawInventory] = useState<any[]>([]);
-  const [rawCustomers, setRawCustomers] = useState<any[]>([]);
   const [rawCollections, setRawCollections] = useState<any[]>([]);
   const [rawFabricSales, setRawFabricSales] = useState<any[]>([]);
 
@@ -25,9 +24,8 @@ export default function DashboardPage() {
   useEffect(() => {
     async function checkPermission() {
       try {
-        const userRes = await fetch('/api/auth/profile', { cache: 'no-store' });
-        if (!userRes.ok) return;
-        const userData = await userRes.json();
+        const userData = await getProfile();
+        if (!userData.status || userData.status >= 400) return;
         const user = userData.user;
         if (!user) {
           router.replace('/login');
@@ -63,24 +61,34 @@ export default function DashboardPage() {
     checkPermission();
   }, [router]);
 
+  // #PERF: الصفحة الرئيسية كانت بتنزّل كل الفواتير من أول يوم بتفاصيل أصنافها (2+ ميجا)
+  // + كل العملاء (1.5 ميجا) + المخزون كله — مع إن الأرقام المعروضة محتاجة بس فواتير
+  // الشهر الحالي (أو آخر 8 أيام) من غير الأصناف، وسندات التحصيل. "الكل" بيتحمّل لما يتختار بس.
+  const [salesLoadedAll, setSalesLoadedAll] = useState(false);
+  const recentFrom = (() => {
+    const today = getTodayDateStr();
+    const monthStart = `${today.substring(0, 7)}-01`;
+    const d = new Date(`${today}T12:00:00`);
+    d.setDate(d.getDate() - 8);
+    const weekAgo = getTodayDateStr(d);
+    return weekAgo < monthStart ? weekAgo : monthStart;
+  })();
+
   useEffect(() => {
     async function loadDashboardData() {
       try {
-        const [resIns, resQot, resOrd, resInv, resCust, resSales] = await Promise.all([
+        const [resIns, resQot, resOrd, resCol, resSales] = await Promise.all([
           fetch('/api/inspections', { cache: 'no-store' }).then(r => r.ok ? r.json() : { inspections: [] }).catch(() => ({ inspections: [] })),
           fetch('/api/pricing', { cache: 'no-store' }).then(r => r.ok ? r.json() : { quotations: [] }).catch(() => ({ quotations: [] })),
           fetch('/api/pipeline-orders', { cache: 'no-store' }).then(r => r.ok ? r.json() : { orders: [] }).catch(() => ({ orders: [] })),
-          fetch('/api/inventory', { cache: 'no-store' }).then(r => r.ok ? r.json() : { items: [] }).catch(() => ({ items: [] })),
-          fetch('/api/customers', { cache: 'no-store' }).then(r => r.ok ? r.json() : { customers: [], collections: [] }).catch(() => ({ customers: [], collections: [] })),
-          fetch('/api/fabric-sales', { cache: 'no-store' }).then(r => r.ok ? r.json() : { invoices: [] }).catch(() => ({ invoices: [] })),
+          fetch('/api/customer-collections', { cache: 'no-store' }).then(r => r.ok ? r.json() : { collections: [] }).catch(() => ({ collections: [] })),
+          fetch(`/api/fabric-sales?lite=1&from=${recentFrom}`, { cache: 'no-store' }).then(r => r.ok ? r.json() : { sales: [] }).catch(() => ({ sales: [] })),
         ]);
 
         const ins = (resIns.success && Array.isArray(resIns.inspections)) ? resIns.inspections : getStoredInspections();
         const qot = (resQot.success && Array.isArray(resQot.quotations)) ? resQot.quotations : getStoredQuotations();
         const orders = (resOrd.success && Array.isArray(resOrd.orders)) ? resOrd.orders : getStoredPipelineOrders();
-        const invItems = (resInv.success && Array.isArray(resInv.items)) ? resInv.items : [];
-        const customers = (resCust.success && Array.isArray(resCust.customers)) ? resCust.customers : [];
-        const collections = (resCust.success && Array.isArray(resCust.collections)) ? resCust.collections : [];
+        const collections = (resCol.success && Array.isArray(resCol.collections)) ? resCol.collections : [];
         const sales = (resSales.success && Array.isArray(resSales.sales)) ? resSales.sales : [];
 
         const qMap = new Map<string, any>();
@@ -101,8 +109,6 @@ export default function DashboardPage() {
         setRawInspections(ins || []);
         setRawQuotations(mergedQuotations);
         setRawOrders(orders || []);
-        setRawInventory(invItems || []);
-        setRawCustomers(customers || []);
         setRawCollections(collections || []);
         setRawFabricSales(sales || []);
       } catch (e) {
@@ -111,7 +117,18 @@ export default function DashboardPage() {
     }
 
     loadDashboardData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // "الكل" محتاج كل الفواتير — بتتحمّل (من غير الأصناف) أول مرة يتختار بس.
+  useEffect(() => {
+    if (timeRange !== 'ALL' || salesLoadedAll) return;
+    setSalesLoadedAll(true);
+    fetch('/api/fabric-sales?lite=1', { cache: 'no-store' })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.success && Array.isArray(d.sales)) setRawFabricSales(d.sales); })
+      .catch(() => {});
+  }, [timeRange, salesLoadedAll]);
 
   // Helper to filter data by timeRange (Cairo local time 12:00 AM boundary)
   const filterByRange = (items: any[], dateField = 'date') => {
@@ -338,8 +355,8 @@ export default function DashboardPage() {
     const bCollections = filterByRange(rawCollections, 'date').filter((c: any) => {
       const treasury = c.treasury || '';
       if (matchBranch(treasury, b.key)) return true;
-      const cust = rawCustomers.find(cust => cust.phone === c.phone || cust.name === c.customerName);
-      if (cust && (cust.branch || cust.city) && matchBranch(cust.branch || cust.city, b.key)) return true;
+      // فرع السند بقى متطابق مع خزنته (إصلاح 2026-10-15) — مفيش داعي ندوّر فى كل العملاء.
+      if (!treasury && c.branch && matchBranch(c.branch, b.key)) return true;
       return false;
     });
 

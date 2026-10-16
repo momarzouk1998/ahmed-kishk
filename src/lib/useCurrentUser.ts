@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { getProfile, peekProfile } from '@/lib/profileCache';
 
 export interface CurrentUser {
   id: string;
@@ -38,13 +39,14 @@ export function isSuperAdminUser(user: CurrentUser | null | undefined): boolean 
  * يوفر أعلامك للتحقق من الأدوار: isAdmin, isSuperAdmin, isBranchManager, canOverrideLocks.
  */
 export function useCurrentUser() {
-  const [user, setUser] = useState<CurrentUser | null>(null);
-  const [loading, setLoading] = useState(true);
+  // #PERF: لو بيانات المستخدم اتجابت قبل كده (من السايد منيو أو صفحة سابقة) بتظهر فورًا.
+  const initial = (peekProfile()?.user as CurrentUser | null | undefined) || null;
+  const [user, setUser] = useState<CurrentUser | null>(initial);
+  const [loading, setLoading] = useState(!initial);
 
   useEffect(() => {
     let alive = true;
-    fetch('/api/auth/profile')
-      .then(r => r.json())
+    getProfile()
       .then(d => {
         if (!alive) return;
         if (d?.user) setUser(d.user as CurrentUser);

@@ -13,9 +13,27 @@ export async function GET(request: Request) {
     if (!scope) {
       return NextResponse.json({ success: false, error: 'غير مصرح' }, { status: 401 });
     }
+    // #PERF: ?from=YYYY-MM-DD → فواتير من التاريخ ده وبعده بس (بدل كل الفواتير من أول يوم)،
+    // و ?lite=1 → من غير تفاصيل الأصناف (items) للصفحات اللي محتاجة الأرقام بس (الرئيسية مثلاً).
+    // من غير الباراميترات دي السلوك القديم زي ما هو بالظبط.
+    const { searchParams } = new URL(request.url);
+    const from = (searchParams.get('from') || '').trim();
+    const lite = searchParams.get('lite') === '1';
+    const where: any = { ...branchWhere(scope) };
+    if (/^\d{4}-\d{2}-\d{2}$/.test(from)) {
+      where.AND = [{ OR: [{ date: { gte: from } }, { createdAt: { gte: new Date(`${from}T00:00:00+03:00`) } }] }];
+    }
     const sales = await prisma.salesInvoice.findMany({
-      where: branchWhere(scope),
+      where,
       orderBy: { updatedAt: 'desc' },
+      ...(lite ? {
+        select: {
+          id: true, invoiceNumber: true, customerName: true, phone: true, branch: true,
+          totalAmount: true, paidAmount: true, remainingAmount: true, paymentType: true,
+          date: true, notes: true, isOnlineOrder: true, shippingFee: true, orderSource: true,
+          createdAt: true, updatedAt: true,
+        },
+      } : {}),
     });
     const normalizedSales = sales.map(s => {
       let splitPayments = (s as any).splitPayments || undefined;

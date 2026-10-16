@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getBranchScope, branchWhere, effectiveCreateBranch } from '@/lib/branchScope';
+import { getBranchScope, branchWhere, effectiveCreateBranch, getBranchVariants } from '@/lib/branchScope';
+import { normalizeBranchName } from '@/lib/branches';
 import { assertPagePermission } from '@/lib/permissionsServer';
 import { getTodayDateStr } from '@/lib/dateUtils';
 
@@ -45,15 +46,38 @@ export async function GET(request: Request) {
 
     // Auto-enrich shifts with real-time sales made during the shift timeframe
     try {
-      const [allInvoices, allQuotations, allExpenses, allAdvances, allCollections, allPurchases, allTransfers] = await Promise.all([
-        (prisma as any).salesInvoice.findMany().catch(() => []),
-        (prisma as any).quotationOrder.findMany().catch(() => []),
-        (prisma as any).expense.findMany().catch(() => []),
-        (prisma as any).employeeAdvance.findMany().catch(() => []),
-        (prisma as any).customerCollection.findMany().catch(() => []),
-        (prisma as any).purchaseInvoice.findMany().catch(() => []),
-        (prisma as any).branchTransfer.findMany({ where: { kind: 'تسوية نقدية' } }).catch(() => []),
-      ]);
+      // #PERF: بدل ما نقرا كل فواتير/مصروفات/تحصيلات كل الفروع من أول يوم، بنقرا بس
+      // فروع الورديات المعروضة ومن تاريخ أقدم وردية فيهم (ناقص يومين احتياطي). نفس
+      // فلترة matchBranch والوقت تحت لسه شغالة زي ما هي، ده تضييق للقراءة بس.
+      const shiftBranches = Array.from(new Set(shifts.map((sh: any) => String(sh.branch || '').trim()).filter(Boolean)));
+      const branchTerms = Array.from(new Set(shiftBranches.flatMap((b: string) => {
+        const variants = getBranchVariants(b);
+        const keyword = normalizeBranchName(b).replace(/^(ال)?فرع\s*/, '').trim();
+        return [...variants, keyword].filter(Boolean);
+      })));
+      const minStartMs = shifts.reduce((m: number, sh: any) => {
+        const t = sh.startTime ? new Date(sh.startTime).getTime() : NaN;
+        return Number.isFinite(t) && t < m ? t : m;
+      }, Date.now());
+      const sinceDate = new Date(minStartMs - 2 * 86400000);
+      const sinceDay = getTodayDateStr(sinceDate);
+      const timeWhere = { OR: [{ createdAt: { gte: sinceDate } }, { date: { gte: sinceDay } }] };
+      const branchCond = (field: string) => ({ OR: branchTerms.flatMap((t: string) => [{ [field]: t }, { [field]: { contains: t } }]) });
+      const scoped = (field: string) => (branchTerms.length ? { AND: [timeWhere, branchCond(field)] } : timeWhere);
+
+      const [allInvoices, allQuotations, allExpenses, allAdvances, allCollections, allPurchases, allTransfers] = shifts.length === 0
+        ? [[], [], [], [], [], [], []]
+        : await Promise.all([
+          (prisma as any).salesInvoice.findMany({ where: scoped('branch'), select: { branch: true, createdAt: true, date: true, notes: true, paymentType: true, paidAmount: true, totalAmount: true } }).catch(() =>
+            (prisma as any).salesInvoice.findMany({ where: scoped('branch') }).catch(() => [])),
+          (prisma as any).quotationOrder.findMany({ where: scoped('branch') }).catch(() => []),
+          (prisma as any).expense.findMany({ where: scoped('branch') }).catch(() => []),
+          (prisma as any).employeeAdvance.findMany({ where: scoped('branch') }).catch(() => []),
+          // السند ممكن يتسجل بخزنة الفرع مش بفرعه — فبنقرا التحصيلات من الوقت ده بس من غير قيد فرع.
+          (prisma as any).customerCollection.findMany({ where: timeWhere }).catch(() => []),
+          (prisma as any).purchaseInvoice.findMany({ where: scoped('branch') }).catch(() => []),
+          (prisma as any).branchTransfer.findMany({ where: { kind: 'تسوية نقدية', ...timeWhere } }).catch(() => []),
+        ]);
 
       // #PERF: كان كل عملية (≈3,000) بتتحسب أيامها من جديد لكل وردية (≈56) — حوالى
       // 176 ألف عملية تاريخ فى كل فتحة لصفحة الورديات، والذاكرة كانت بتوصل 900MB+.

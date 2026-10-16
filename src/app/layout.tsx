@@ -6,7 +6,9 @@ async function checkSubscription(): Promise<{ active: boolean; status?: string; 
   try {
     const res = await fetch(
       'https://admin.openappo.com/api/subscription/verify?system=' + encodeURIComponent('Ahmed Kishk'),
-      { cache: 'no-store' }
+      // #PERF: كان no-store — ده كان بيخلّي كل صفحات النظام ديناميكية (طلب خارجي مع كل
+      // فتح صفحة ومفيش تحميل مسبق للمنيو). حالة الاشتراك بتتحدث كل 10 دقايق كفاية.
+      { next: { revalidate: 600 } }
     );
     if (!res.ok) return { active: true };
     return await res.json();

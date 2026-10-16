@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { getProfile, clearProfileCache } from '@/lib/profileCache';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import Logo from '@/components/Logo';
@@ -21,6 +22,7 @@ export default function Sidebar() {
   const { isOpen, close, isCollapsed, toggleCollapse, expandedSections, toggleSection, hideBottomNav } = useSidebar();
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [allowedPageIds, setAllowedPageIds] = useState<string[] | null>(null);
+  const pathnameRef = React.useRef(pathname);
 
   // PWA & iOS install state
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -47,25 +49,25 @@ export default function Sidebar() {
     // بعض كل 3 ثوانى (حادثة 11-10-2026: الرام خلصت والسيرفر كله وقع).
     let inFlight = false;
 
-    async function loadUserAndPermissions() {
+    async function loadUserAndPermissions(force = false) {
       if (inFlight) return;
       inFlight = true;
       try {
-        await doLoadUserAndPermissions();
+        await doLoadUserAndPermissions(force);
       } finally {
         inFlight = false;
       }
     }
 
-    async function doLoadUserAndPermissions() {
+    async function doLoadUserAndPermissions(force: boolean) {
       try {
-        const r = await fetch('/api/auth/profile', { cache: 'no-store' });
+        // #PERF: نسخة مشتركة مع كل الصفحات (profileCache) — طلب واحد بدل طلب لكل صفحة.
+        const d = await getProfile(force ? 0 : 60_000);
         // 502/503/504 من nginx أو 520–524 من Cloudflare = السيرفر مش بيرد (بيتحدث)
-        if ([502, 503, 504, 520, 521, 522, 523, 524].includes(r.status)) {
+        if ([502, 503, 504, 520, 521, 522, 523, 524].includes(d.status || 0)) {
           if (!cancelled) setAppUpdate((prev) => (prev === 'updated' ? prev : 'updating'));
           return;
         }
-        const d = await r.json();
         const clientBuild = process.env.APP_BUILD_ID;
         if (!cancelled) {
           if (d.buildId && clientBuild && d.buildId !== clientBuild) setAppUpdate('updated');
@@ -97,6 +99,7 @@ export default function Sidebar() {
               try { localStorage.setItem(`user_perms_${d.user.phone}`, JSON.stringify(cleanPerms)); } catch {}
 
               // لو المستخدم العادي يقف على الصفحة الرئيسية أو صفحة محظورة، اطرد فوراً
+              const pathname = pathnameRef.current;
               const isHome = pathname === '/';
               const currentPage = ALL_SYSTEM_PAGES.find(p => pathname === p.href || (p.href !== '/' && pathname.startsWith(p.href + '/')));
               const isCurrentPageBlocked = isHome || (currentPage && !cleanPerms.includes(currentPage.id));
@@ -116,13 +119,16 @@ export default function Sidebar() {
     }
 
     loadUserAndPermissions();
+    // #PERF: الـ effect ده بقى بيشتغل مرة واحدة بس (مش مع كل تنقل) — قبل كده كل ضغطة فى
+    // المنيو كانت بتعيد طلب الحساب والصلاحيات. فحص الصفحة المحظورة عند التنقل بقى
+    // فى effect منفصل تحت من غير أي طلب للسيرفر.
     // كل 30 ثانية وبس لما الشاشة ظاهرة. تغيير الصلاحيات بيوصل فورًا برضه لما الموظف
     // يرجع للشاشة (visibilitychange / focus) أو من تاب تانى (storage).
     const interval = setInterval(() => {
-      if (document.visibilityState === 'visible') loadUserAndPermissions();
+      if (document.visibilityState === 'visible') loadUserAndPermissions(true);
     }, 30_000);
-    const onVisible = () => { if (document.visibilityState === 'visible') loadUserAndPermissions(); };
-    const onStorage = () => { loadUserAndPermissions(); };
+    const onVisible = () => { if (document.visibilityState === 'visible') loadUserAndPermissions(true); };
+    const onStorage = () => { loadUserAndPermissions(true); };
     document.addEventListener('visibilitychange', onVisible);
     window.addEventListener('focus', onVisible);
     window.addEventListener('storage', onStorage);
@@ -133,7 +139,22 @@ export default function Sidebar() {
       window.removeEventListener('focus', onVisible);
       window.removeEventListener('storage', onStorage);
     };
-  }, [pathname]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // فحص الصفحة المحظورة عند كل تنقل — من الصلاحيات المحفوظة، بدون طلب للسيرفر.
+  useEffect(() => {
+    pathnameRef.current = pathname;
+    if (!user || !allowedPageIds || isSuperAdminUser(user)) return;
+    const isHome = pathname === '/';
+    const currentPage = ALL_SYSTEM_PAGES.find(p => pathname === p.href || (p.href !== '/' && pathname.startsWith(p.href + '/')));
+    if (isHome || (currentPage && !allowedPageIds.includes(currentPage.id))) {
+      const firstAllowed = ALL_SYSTEM_PAGES.find(p => allowedPageIds.includes(p.id) && p.id !== 'p_dashboard');
+      const targetHref = firstAllowed ? firstAllowed.href : '/fabric-sales';
+      if (pathname !== targetHref) router.push(targetHref);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname, user, allowedPageIds]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -193,6 +214,7 @@ export default function Sidebar() {
 
   const handleLogout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
+    clearProfileCache();
     router.push('/login');
   };
 
