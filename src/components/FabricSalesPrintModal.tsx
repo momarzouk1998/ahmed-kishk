@@ -306,22 +306,22 @@ export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricS
           <div class="financial-card">
             <div style="display:flex; justify-content:space-between; align-items:center;">
               <span style="font-size:9pt; font-weight:800; color:#0f172a;">الملخص المالي للفاتورة:</span>
-              <span style="font-size:8pt; font-weight:700; color:#166534; background:#dcfce7; border:1px solid #bbf7d0; padding:2px 6px; border-radius:4px;">
-                ${data.status}
+              <span style="font-size:8pt; font-weight:700; color:#334155; background:#f1f5f9; border:1px solid #cbd5e1; padding:2px 6px; border-radius:4px;">
+                طريقة الدفع: ${data.paymentMethod || 'نقدي'}
               </span>
             </div>
             <div class="fin-grid">
               <div class="fin-box">
                 <span class="fin-label">إجمالي الفاتورة</span>
-                <span class="fin-val">${data.totalAmount.toLocaleString()}</span>
+                <span class="fin-val">${data.totalAmount.toLocaleString()} ج</span>
               </div>
               <div class="fin-box" style="background:#f0fdf4; border-color:#86efac;">
-                <span class="fin-label" style="color:#166534;">المسدد (المدفوع)</span>
-                <span class="fin-val" style="color:#14532d;">${data.paidAmount.toLocaleString()}</span>
+                <span class="fin-label" style="color:#166534;">المحصل عند البيع</span>
+                <span class="fin-val" style="color:#14532d;">${data.paidAmount.toLocaleString()} ج</span>
               </div>
-              <div class="fin-box" style="background:#fff1f2; border-color:#fca5a5;">
-                <span class="fin-label" style="color:#9f1239;">المتبقي</span>
-                <span class="fin-val" style="color:#881337;">${data.remainingAmount.toLocaleString()}</span>
+              <div class="fin-box" style="background:#f8fafc; border-color:#cbd5e1;">
+                <span class="fin-label" style="color:#475569;">حساب ومديونية العميل</span>
+                <span class="fin-val" style="color:#0f172a; font-size:9pt;">شاشة العملاء والديون</span>
               </div>
             </div>
           </div>
@@ -562,22 +562,22 @@ export default function FabricSalesPrintModal({ isOpen, onClose, data }: FabricS
           <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-2">
             <div className="flex justify-between items-center">
               <span className="font-black text-xs text-slate-900">الملخص المالي للفاتورة:</span>
-              <span className="text-[11px] font-bold text-emerald-800 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded">
-                {data.status}
+              <span className="text-[10px] font-bold text-slate-600 bg-slate-100 border border-slate-300 px-2 py-0.5 rounded">
+                طريقة الدفع: {data.paymentMethod || 'نقدي'}
               </span>
             </div>
             <div className="grid grid-cols-3 gap-2 text-center">
               <div className="bg-white border border-slate-200 p-2 rounded-lg">
                 <span className="text-[10px] text-slate-500 font-bold block mb-0.5">إجمالي الفاتورة</span>
-                <span className="font-mono font-black text-base text-slate-900 block">{data.totalAmount.toLocaleString()}</span>
+                <span className="font-mono font-black text-base text-slate-900 block">{data.totalAmount.toLocaleString()} ج</span>
               </div>
               <div className="bg-emerald-50/80 border border-emerald-200 p-2 rounded-lg">
-                <span className="text-[10px] text-emerald-800 font-bold block mb-0.5">المسدد (المدفوع)</span>
-                <span className="font-mono font-black text-base text-emerald-950 block">{data.paidAmount.toLocaleString()}</span>
+                <span className="text-[10px] text-emerald-800 font-bold block mb-0.5">المحصل عند البيع</span>
+                <span className="font-mono font-black text-base text-emerald-950 block">{data.paidAmount.toLocaleString()} ج</span>
               </div>
-              <div className="bg-rose-50/80 border border-rose-200 p-2 rounded-lg">
-                <span className="text-[10px] text-rose-800 font-bold block mb-0.5">المتبقي</span>
-                <span className="font-mono font-black text-base text-rose-950 block">{data.remainingAmount.toLocaleString()}</span>
+              <div className="bg-slate-100/80 border border-slate-200 p-2 rounded-lg flex flex-col justify-center">
+                <span className="text-[10px] text-slate-600 font-bold block mb-0.5">حساب ومديونية العميل</span>
+                <span className="font-black text-[11px] text-slate-800 block">شاشة العملاء والديون</span>
               </div>
             </div>
           </div>

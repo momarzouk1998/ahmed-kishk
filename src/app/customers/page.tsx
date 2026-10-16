@@ -139,6 +139,30 @@ export default function CustomersPage() {
     loadData();
   }, []);
 
+  // قراءة معلمات البحث من الرابط (لو جاي من شاشة فواتير المبيعات أو الشحن) وفتح كشف الحساب فوراً
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const q = params.get('search') || params.get('q') || '';
+      if (q) setSearch(q);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && customers.length > 0) {
+      const params = new URLSearchParams(window.location.search);
+      const autoOpen = params.get('autoOpen') === '1' || params.get('open') === '1';
+      const q = (params.get('search') || params.get('q') || '').trim().toLowerCase();
+      if (autoOpen && q) {
+        const found = customers.find(c =>
+          (c.phone && c.phone.includes(q)) ||
+          (c.name && c.name.toLowerCase().includes(q))
+        );
+        if (found) setSelectedCustomer(found);
+      }
+    }
+  }, [customers]);
+
   // ⚠️ #FIX: كانت بتبعت مصفوفة العملاء كاملة لـ /api/system-data (مسار قديم بديل)،
   // وده كارثي لأن `customers` هنا فيها حقل `balance` هو فى الحقيقة "الرصيد الحالي
   // المحسوب" (إجمالي المطلوب - إجمالي المدفوع) الراجع من GET /api/customers، مش

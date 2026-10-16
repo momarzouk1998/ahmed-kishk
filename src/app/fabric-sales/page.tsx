@@ -160,7 +160,6 @@ export default function FabricSalesPage() {
   const [branchFilter, setBranchFilter] = useState<string>('ALL');
   const [search, setSearch] = useState('');
   const [paymentFilter, setPaymentFilter] = useState<string>('all');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
   const [showFilterModal, setShowFilterModal] = useState<boolean>(false);
 
   // Pagination (30 فواتير لكل صفحة)
@@ -170,7 +169,7 @@ export default function FabricSalesPage() {
   // Reset page to 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [dateFilter, dateFrom, dateTo, branchFilter, search, paymentFilter, statusFilter]);
+  }, [dateFilter, dateFrom, dateTo, branchFilter, search, paymentFilter]);
 
   const { user: currentUser, isAdmin, isSuperAdmin } = useCurrentUser();
   const canViewOnlineTab = isAdmin || isSuperAdmin || normalizeBranchName(currentUser?.branch) === 'الفرع التجاري';
@@ -490,11 +489,10 @@ export default function FabricSalesPage() {
       (paymentFilter === 'بالآجل / دفعات' && (invMethod.includes('آجل') || invMethod.includes('دفعات'))) ||
       (paymentFilter === 'دفع متعدد / مزيج' && (invMethod.includes('متعدد') || invMethod.includes('مزيج')));
 
-    const matchStatus = statusFilter === 'all' || inv.status === statusFilter;
     const matchDate = matchesDate(inv.date);
     const matchBr = matchesBranch(inv.branch);
 
-    return matchSearch && matchPayment && matchStatus && matchDate && matchBr;
+    return matchSearch && matchPayment && matchDate && matchBr;
   });
 
   // Filtered Online Invoices (الفرع التجاري أو شحن أونلاين) — فلتر وبحث مستقلين
@@ -622,8 +620,8 @@ export default function FabricSalesPage() {
               </div>
 
               <div className="bg-rose-50/80 p-3.5 rounded-2xl border border-rose-200 text-center shadow-3xs">
-                <span className="text-rose-800 font-bold block text-[11px]">المتبقي بالآجل</span>
-                <strong className="text-lg font-black text-rose-950 mt-0.5 block font-mono">{totalSalesRemaining.toLocaleString()} ج</strong>
+                <span className="text-rose-800 font-bold block text-[11px]">مرتجعات المبيعات</span>
+                <strong className="text-lg font-black text-rose-950 mt-0.5 block font-mono">{totalReturnsAmount.toLocaleString()} ج</strong>
               </div>
 
               <div className="bg-amber-50/80 p-3.5 rounded-2xl border border-amber-200 text-center shadow-3xs">
@@ -670,16 +668,16 @@ export default function FabricSalesPage() {
                   type="button"
                   onClick={() => setShowFilterModal(true)}
                   className={`px-3.5 py-1.5 rounded-xl text-xs font-black border flex items-center gap-1.5 transition-all cursor-pointer ${
-                    (paymentFilter !== 'all' || statusFilter !== 'all' || (branchFilter !== 'ALL' && branchFilter !== 'الكل') || dateFrom || dateTo)
+                    (paymentFilter !== 'all' || (branchFilter !== 'ALL' && branchFilter !== 'الكل') || dateFrom || dateTo)
                       ? 'bg-amber-50 border-amber-400 text-amber-950 shadow-xs'
                       : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
                   }`}
                 >
                   <span className="material-symbols-outlined text-[16px]">tune</span>
                   <span>تصفية الفواتير المتقدمة</span>
-                  {(paymentFilter !== 'all' || statusFilter !== 'all' || (branchFilter !== 'ALL' && branchFilter !== 'الكل') || dateFrom || dateTo) && (
+                  {(paymentFilter !== 'all' || (branchFilter !== 'ALL' && branchFilter !== 'الكل') || dateFrom || dateTo) && (
                     <span className="bg-amber-500 text-white text-[10px] w-4 h-4 rounded-full inline-flex items-center justify-center font-bold font-mono">
-                      {(paymentFilter !== 'all' ? 1 : 0) + (statusFilter !== 'all' ? 1 : 0) + ((branchFilter !== 'ALL' && branchFilter !== 'الكل') ? 1 : 0) + (dateFrom || dateTo ? 1 : 0)}
+                      {(paymentFilter !== 'all' ? 1 : 0) + ((branchFilter !== 'ALL' && branchFilter !== 'الكل') ? 1 : 0) + (dateFrom || dateTo ? 1 : 0)}
                     </span>
                   )}
                 </button>
@@ -698,7 +696,7 @@ export default function FabricSalesPage() {
               </div>
 
               {/* Active Filter Badges Summary */}
-              {(paymentFilter !== 'all' || statusFilter !== 'all' || (branchFilter !== 'ALL' && branchFilter !== 'الكل') || dateFrom || dateTo) && (
+              {(paymentFilter !== 'all' || (branchFilter !== 'ALL' && branchFilter !== 'الكل') || dateFrom || dateTo) && (
                 <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[11px]">
                   <span className="text-slate-400 font-bold">فلاتر نشطة:</span>
                   {branchFilter !== 'ALL' && branchFilter !== 'الكل' && (
@@ -713,12 +711,6 @@ export default function FabricSalesPage() {
                       <button type="button" onClick={() => setPaymentFilter('all')} className="text-slate-400 hover:text-slate-700">✕</button>
                     </span>
                   )}
-                  {statusFilter !== 'all' && (
-                    <span className="bg-slate-100 text-slate-800 border border-slate-300 px-2 py-0.5 rounded-md font-bold flex items-center gap-1">
-                      الحالة: {statusFilter}
-                      <button type="button" onClick={() => setStatusFilter('all')} className="text-slate-400 hover:text-slate-700">✕</button>
-                    </span>
-                  )}
                   {(dateFrom || dateTo) && (
                     <span className="bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-md font-bold flex items-center gap-1">
                       التاريخ: {dateFrom || 'من البداية'} إلى {dateTo || 'الآن'}
@@ -729,7 +721,6 @@ export default function FabricSalesPage() {
                     type="button"
                     onClick={() => {
                       setPaymentFilter('all');
-                      setStatusFilter('all');
                       setBranchFilter('ALL');
                       setDateFrom('');
                       setDateTo('');
@@ -754,25 +745,21 @@ export default function FabricSalesPage() {
                       <th className="p-3.5 text-center">طريقة الدفع</th>
                       <th className="p-3.5 text-center font-mono">الخصم</th>
                       <th className="p-3.5 text-center font-mono">الإجمالي</th>
-                      <th className="p-3.5 text-center font-mono">المدفوع / المتبقي</th>
-                      <th className="p-3.5 text-center">الحالة</th>
+                      <th className="p-3.5 text-center font-mono">المدفوع كاشير</th>
                       <th className="p-3.5 text-center w-[70px]"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {paginatedInvoices.length === 0 ? (
                       <tr>
-                        <td colSpan={8} className="p-8 text-center text-slate-400 font-bold">
+                        <td colSpan={7} className="p-8 text-center text-slate-400 font-bold">
                           لا توجد فواتير مبيعات مطابقة للفلاتر
                         </td>
                       </tr>
                     ) : (
                       paginatedInvoices.map(inv => {
                         const paid = Number(inv.paidAmount) || 0;
-                        const remaining = Number(inv.remainingAmount) || 0;
                         const phone = inv.phone || inv.customerPhone || '';
-                        const isFullyPaid = remaining <= 0;
-                        const isPartial = paid > 0 && remaining > 0;
                         const pMethod = inv.paymentMethod || (inv as any).paymentType || 'نقدي';
 
                         return (
@@ -794,7 +781,7 @@ export default function FabricSalesPage() {
 
                             {/* Customer Name & Phone */}
                             <td className="p-3.5 text-slate-700">
-                              <div className="flex items-center gap-1.5">
+                              <div className="flex items-center gap-1.5 flex-wrap">
                                 <span className="font-bold text-slate-900 text-sm">{inv.customerName}</span>
                                 {inv.isOnlineOrder && (
                                   <span className="bg-blue-100 text-blue-900 border border-blue-300 text-[10px] px-1.5 py-0.2 rounded-md font-bold inline-flex items-center gap-0.5">
@@ -802,6 +789,18 @@ export default function FabricSalesPage() {
                                     <span>{inv.shippingCompany || 'أونلاين'}</span>
                                   </span>
                                 )}
+                                <button
+                                  type="button"
+                                  onClick={e => {
+                                    e.stopPropagation();
+                                    router.push(`/customers?search=${encodeURIComponent(phone || inv.customerName)}&autoOpen=1`);
+                                  }}
+                                  className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-1.5 py-0.5 rounded transition-colors cursor-pointer"
+                                  title="فتح كشف حساب العميل والمديونيات في شاشة العملاء"
+                                >
+                                  <span>👤</span>
+                                  <span>حساب العميل</span>
+                                </button>
                               </div>
                               <div className="text-[10px] text-slate-500 font-mono font-bold flex items-center gap-1.5 mt-0.5">
                                 <span className="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">{inv.branch}</span>
@@ -858,28 +857,12 @@ export default function FabricSalesPage() {
                               {(Number(inv.totalAmount) || 0).toLocaleString()} ج
                             </td>
 
-                            {/* Paid / Remaining */}
+                            {/* Cashier Paid */}
                             <td className="p-3.5 text-center font-mono text-[11px]">
-                              <div className="text-emerald-700 font-bold">مدفوع: {paid.toLocaleString()} ج</div>
-                              {remaining > 0 && (
-                                <div className="text-rose-700 font-bold">متبقي: {remaining.toLocaleString()} ج</div>
-                              )}
-                            </td>
-
-                            {/* Status Badge */}
-                            <td className="p-3.5 text-center">
-                              {isFullyPaid ? (
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-200 whitespace-nowrap">
-                                  مسدد بالكامل ✓
-                                </span>
-                              ) : isPartial ? (
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-900 border border-amber-200 whitespace-nowrap">
-                                  مسدد جزئياً
-                                </span>
+                              {paid > 0 ? (
+                                <span className="text-emerald-700 font-bold">{paid.toLocaleString()} ج</span>
                               ) : (
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-black bg-rose-100 text-rose-900 border border-rose-200 whitespace-nowrap">
-                                  آجل / غير مسدد
-                                </span>
+                                <span className="text-slate-400 font-bold">0 ج</span>
                               )}
                             </td>
 
@@ -965,9 +948,9 @@ export default function FabricSalesPage() {
                 <strong className="text-lg font-black text-emerald-950 mt-0.5 block font-mono">{totalOnlinePaid.toLocaleString()} ج</strong>
               </div>
 
-              <div className="bg-amber-50/80 p-3.5 rounded-2xl border border-amber-200 text-center shadow-3xs">
-                <span className="text-amber-900 font-bold block text-[11px]">متبقي للتحصيل عند الاستلام (COD)</span>
-                <strong className="text-lg font-black text-amber-950 mt-0.5 block font-mono">{totalOnlineCOD.toLocaleString()} ج</strong>
+              <div className="bg-indigo-50/80 p-3.5 rounded-2xl border border-indigo-200 text-center shadow-3xs">
+                <span className="text-indigo-900 font-bold block text-[11px]">عدد الشحنات والطلبات</span>
+                <strong className="text-lg font-black text-indigo-950 mt-0.5 block font-mono">{filteredOnlineInvoices.length} شحنة</strong>
               </div>
             </div>
 
@@ -1045,25 +1028,21 @@ export default function FabricSalesPage() {
                       <th className="p-3.5">عنوان التوصيل وشركة الشحن</th>
                       <th className="p-3.5 font-mono text-center">أصناف الطرد</th>
                       <th className="p-3.5 font-mono text-center">الإجمالي والشحن</th>
-                      <th className="p-3.5 font-mono text-center">التحصيل (COD)</th>
-                      <th className="p-3.5 text-center">حالة السداد</th>
+                      <th className="p-3.5 font-mono text-center">تحصيل الشحن (COD)</th>
                       <th className="p-3.5 text-center w-[120px]">الإجراءات</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {filteredOnlineInvoices.length === 0 ? (
                       <tr>
-                        <td colSpan={8} className="p-12 text-center text-slate-400 font-bold">
+                        <td colSpan={7} className="p-12 text-center text-slate-400 font-bold">
                           <span className="material-symbols-outlined text-4xl block mb-2 text-slate-300">local_shipping</span>
                           لا توجد شحنات أو فواتير أونلاين مسجلة بعد
                         </td>
                       </tr>
                     ) : (
                       filteredOnlineInvoices.map(inv => {
-                        const paid = Number(inv.paidAmount) || 0;
                         const remaining = Number(inv.remainingAmount) || 0;
-                        const isFullyPaid = remaining <= 0;
-                        const isPartial = paid > 0 && remaining > 0;
                         const shipFee = Number(inv.shippingFee) || 110;
 
                         return (
@@ -1086,7 +1065,21 @@ export default function FabricSalesPage() {
 
                             {/* Customer & Phone */}
                             <td className="p-3.5 text-slate-700">
-                              <div className="font-bold text-slate-900 text-sm">{inv.customerName}</div>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="font-bold text-slate-900 text-sm">{inv.customerName}</span>
+                                <button
+                                  type="button"
+                                  onClick={e => {
+                                    e.stopPropagation();
+                                    router.push(`/customers?search=${encodeURIComponent(inv.phone || inv.customerPhone || inv.customerName)}&autoOpen=1`);
+                                  }}
+                                  className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-900 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-1.5 py-0.5 rounded transition-colors cursor-pointer"
+                                  title="فتح كشف حساب العميل والمديونيات في شاشة العملاء"
+                                >
+                                  <span>👤</span>
+                                  <span>حساب العميل</span>
+                                </button>
+                              </div>
                               <div className="text-[10px] text-slate-500 font-mono font-bold mt-0.5" dir="ltr">
                                 {inv.phone || inv.customerPhone || '—'}
                               </div>
@@ -1126,33 +1119,16 @@ export default function FabricSalesPage() {
                               <div className="text-[10px] text-blue-700 font-bold">شحن: +{shipFee.toLocaleString()} ج</div>
                             </td>
 
-                            {/* Paid / COD */}
+                            {/* COD Shipping Collection */}
                             <td className="p-3.5 text-center font-mono text-xs">
                               {remaining > 0 ? (
                                 <div className="text-amber-900 bg-amber-50 px-2 py-1 rounded-lg border border-amber-200 font-black">
-                                  COD: {remaining.toLocaleString()} ج
+                                  مطلوب تحصيله: {remaining.toLocaleString()} ج
                                 </div>
                               ) : (
                                 <div className="text-emerald-800 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-200 font-bold">
-                                  مدفوع بالكامل
+                                  مدفوع مسبقاً (0 ج)
                                 </div>
-                              )}
-                            </td>
-
-                            {/* Status */}
-                            <td className="p-3.5 text-center">
-                              {isFullyPaid ? (
-                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-200 whitespace-nowrap">
-                                  مسدد بالكامل ✓
-                                </span>
-                              ) : isPartial ? (
-                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-200 whitespace-nowrap">
-                                  مسدد جزئياً
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-900 border border-rose-200 whitespace-nowrap">
-                                  تحصيل عند الاستلام
-                                </span>
                               )}
                             </td>
 
@@ -2010,21 +1986,6 @@ export default function FabricSalesPage() {
                 </select>
               </div>
 
-              {/* Payment Status */}
-              <div>
-                <label className="text-slate-700 font-bold block mb-1">حالة السداد:</label>
-                <select
-                  value={statusFilter}
-                  onChange={e => setStatusFilter(e.target.value)}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900 bg-slate-50 focus:outline-none focus:border-amber-500 cursor-pointer"
-                >
-                  <option value="all">كل حالات السداد</option>
-                  <option value="تم السداد بالكامل">تم السداد بالكامل</option>
-                  <option value="مسدد جزئياً">مسدد جزئياً</option>
-                  <option value="آجل / غير مسدد">آجل / غير مسدد</option>
-                </select>
-              </div>
-
               {/* Actions */}
               <div className="flex gap-2 pt-3 border-t border-slate-100">
                 <button
@@ -2038,7 +1999,6 @@ export default function FabricSalesPage() {
                   type="button"
                   onClick={() => {
                     setPaymentFilter('all');
-                    setStatusFilter('all');
                     setBranchFilter('ALL');
                     setDateFrom('');
                     setDateTo('');
