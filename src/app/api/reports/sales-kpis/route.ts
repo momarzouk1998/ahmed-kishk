@@ -3,6 +3,7 @@ import { getBranchScope } from '@/lib/branchScope';
 import { computeSalesKpis, mergeQuotationsWithOrders, salesFromForPeriod, cairoHoursOf, SalesReportPeriod } from '@/lib/salesReportCalc';
 import { GET as fabricSalesGET } from '@/app/api/fabric-sales/route';
 import { GET as customersGET } from '@/app/api/customers/route';
+import { GET as collectionsGET } from '@/app/api/customer-collections/route';
 import { GET as pricingGET } from '@/app/api/pricing/route';
 import { GET as pipelineOrdersGET } from '@/app/api/pipeline-orders/route';
 import { GET as shiftsGET } from '@/app/api/shifts/route';
@@ -43,23 +44,35 @@ export async function GET(request: Request) {
     };
 
     const from = salesFromForPeriod(period, customStartDate);
-    const [sales, cust, pri, ord, sh, exp, adv, pur, tr] = await Promise.all([
+    const [sales, cols, pri, ord, sh, exp, adv, pur, tr] = await Promise.all([
       load(fabricSalesGET, from ? `/api/fabric-sales?lite=1&from=${from}` : '/api/fabric-sales?lite=1'),
-      load(customersGET, '/api/customers?lite=1'),
+      // #PERF: السندات مباشرة (نفس استعلام /api/customers بالظبط) بدل حساب كل العملاء.
+      load(collectionsGET, '/api/customer-collections'),
       load(pricingGET, '/api/pricing'),
       load(pipelineOrdersGET, '/api/pipeline-orders'),
-      load(shiftsGET, '/api/shifts'),
+      // #PERF: ورديات الفترة بس (اليوم/الشهر…) — الكل لما الفترة "الكل".
+      load(shiftsGET, from ? `/api/shifts?from=${from}` : '/api/shifts'),
       load(expensesGET, '/api/expenses'),
       load(advancesGET, '/api/employee-advances'),
       load(purchasesGET, '/api/purchases'),
       load(transfersGET, '/api/branch-transfers'),
     ]);
 
-    const kpis = computeSalesKpis({
+    // /api/customers (للموظف المقيّد) بيرجّع السندات اللي ليها تليفون أو اسم بس — نفس الشرط هنا.
+    const normPhone = (p: string | null | undefined) => (p || '').replace(/\D/g, '').slice(-10);
+    const normName = (n: string | null | undefined) => (n || '').trim().toLowerCase();
+    let collections: any[] = Array.isArray(cols?.collections) ? cols.collections : [];
+    if (!scope.isAdmin) collections = collections.filter((c: any) => normPhone(c.phone) || normName(c.customerName));
+
+    // قايمة العملاء محتاجينها بس كاحتياطي نادر (سند خزنته مش متطابقة مع الفرع المختار).
+    // بنحسب الأول بقايمة "جاسوس" بتسجّل لو اتسألت؛ لو اتسألت نجيب العملاء فعلاً ونعيد الحساب
+    // — فالنتيجة دايمًا زي ما لو كنا جبناهم من الأول بالظبط.
+    let customersNeeded = false;
+    const customersSpy: any = { find: () => { customersNeeded = true; return undefined; } };
+    const base = {
       invoices: Array.isArray(sales?.sales) ? sales.sales : [],
       quotations: mergeQuotationsWithOrders(pri?.quotations, ord?.orders),
-      collections: Array.isArray(cust?.collections) ? cust.collections : [],
-      customers: Array.isArray(cust?.customers) ? cust.customers : [],
+      collections,
       shifts: Array.isArray(sh?.shifts) ? sh.shifts : [],
       expenses: Array.isArray(exp?.expenses) ? exp.expenses : [],
       advances: Array.isArray(adv?.advances) ? adv.advances : [],
@@ -70,9 +83,14 @@ export async function GET(request: Request) {
       customEndDate,
       selectedBranch,
       hoursOf: cairoHoursOf,
-    });
+    };
+    let kpis = computeSalesKpis({ ...base, customers: customersSpy });
+    if (customersNeeded) {
+      const cust = await load(customersGET, '/api/customers?lite=1');
+      kpis = computeSalesKpis({ ...base, customers: Array.isArray(cust?.customers) ? cust.customers : [] });
+    }
 
-    return NextResponse.json({ success: true, period, selectedBranch, kpis });
+    return NextResponse.json({ success: true, period, selectedBranch, kpis, usedCustomers: customersNeeded });
   } catch (error: any) {
     console.error('sales-kpis error:', error);
     return NextResponse.json({ success: false, error: 'حدث خطأ فى الخادم' }, { status: 500 });

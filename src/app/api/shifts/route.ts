@@ -44,6 +44,18 @@ export async function GET(request: Request) {
       } catch (e) {}
     }
 
+    // #PERF: ?from=YYYY-MM-DD → الورديات اللي بدأت من اليوم ده (ناقص يوم احتياطي) بس، عشان
+    // الحساب تحت (الأتقل) يتعمل لورديات الفترة المطلوبة مش لكل الورديات من أول يوم. حساب
+    // كل وردية معتمد على بياناتها هي بس + ورديات نفس يومها (اللي داخلة كلها) فالأرقام ماتتغيرش.
+    const fromParam = (searchParams.get('from') || '').trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(fromParam)) {
+      const minMs = new Date(`${fromParam}T00:00:00+03:00`).getTime() - 86400000;
+      shifts = shifts.filter((sh: any) => {
+        const t = sh?.startTime ? new Date(sh.startTime).getTime() : NaN;
+        return !Number.isFinite(t) || t >= minMs;
+      });
+    }
+
     // Auto-enrich shifts with real-time sales made during the shift timeframe
     try {
       // #PERF: بدل ما نقرا كل فواتير/مصروفات/تحصيلات كل الفروع من أول يوم، بنقرا بس
