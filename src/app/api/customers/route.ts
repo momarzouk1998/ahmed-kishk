@@ -31,7 +31,12 @@ export async function GET(request: Request) {
       prisma.inspectionRequest.findMany({ where: branchWhere(scope), orderBy: { createdAt: 'desc' } }),
       prisma.quotationOrder.findMany({ where: branchWhere(scope), orderBy: { createdAt: 'desc' } }),
       prisma.pipelineOrder.findMany({ where: branchWhere(scope), orderBy: { createdAt: 'desc' } }),
-      prisma.salesInvoice.findMany({ where: branchWhere(scope), orderBy: { createdAt: 'desc' } }),
+      // #PERF: كل الفواتير من غير مصفوفة الأصناف (items) — الحساب هنا محتاج عددها بس، وده
+      // اللي كان بيتقّل الطلب ده على السيرفر (قراءة وفك آلاف مصفوفات JSON مع كل فتح).
+      (restricted
+        ? prisma.$queryRaw<any[]>`SELECT "id","invoiceNumber","customerName","phone","branch","totalAmount","paidAmount","remainingAmount","paymentType","date","notes","isOnlineOrder","shippingFee","orderSource","createdAt","updatedAt", COALESCE(jsonb_array_length(CASE WHEN jsonb_typeof("items") = 'array' THEN "items" ELSE '[]'::jsonb END), 0)::int AS "itemCount" FROM "SalesInvoice" WHERE "branch" = ANY(${Array.from(branchVariantsSet)}::text[]) ORDER BY "createdAt" DESC`
+        : prisma.$queryRaw<any[]>`SELECT "id","invoiceNumber","customerName","phone","branch","totalAmount","paidAmount","remainingAmount","paymentType","date","notes","isOnlineOrder","shippingFee","orderSource","createdAt","updatedAt", COALESCE(jsonb_array_length(CASE WHEN jsonb_typeof("items") = 'array' THEN "items" ELSE '[]'::jsonb END), 0)::int AS "itemCount" FROM "SalesInvoice" ORDER BY "createdAt" DESC`
+      ).catch(() => prisma.salesInvoice.findMany({ where: branchWhere(scope), orderBy: { createdAt: 'desc' } })),
       prisma.customerCollection.findMany({ where: collectionBranchWhere(scope), orderBy: { createdAt: 'desc' } }),
       prisma.systemStore.findUnique({ where: { key: 'ahmed_kishk_quotations_data_v4' } }).catch(() => null),
       prisma.systemStore.findUnique({ where: { key: 'ahmed_kishk_pipeline_orders_v5' } }).catch(() => null),
@@ -322,7 +327,7 @@ export async function GET(request: Request) {
         const sTotal = Number(s.totalAmount) || 0;
         const sPaid = Number(s.paidAmount) || 0;
         const sDate = s.date || (s.createdAt ? s.createdAt.toISOString().split('T')[0] : c.createdAt);
-        const itemCount = Array.isArray(s.items) ? s.items.length : 0;
+        const itemCount = typeof (s as any).itemCount === 'number' ? (s as any).itemCount : (Array.isArray((s as any).items) ? (s as any).items.length : 0);
 
         if (sTotal > 0) {
           running += sTotal;

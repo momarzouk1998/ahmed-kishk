@@ -99,6 +99,34 @@ export default function ReportsPage() {
   }, [isAdmin, currentUser, reportType]);
 
   const [invoices, setInvoices] = useState<SalesInvoice[]>([]);
+  // أقدم تاريخ فواتير متحمّل فعلاً ('ALL' = كل الفواتير، '' = لسه محملش).
+  const [loadedSalesFrom, setLoadedSalesFrom] = useState<string>('');
+  const RECENT_FROM = useMemo(() => {
+    const today = getTodayDateStr();
+    const monthStart = `${today.substring(0, 7)}-01`;
+    const back = new Date(`${today}T12:00:00`);
+    back.setDate(back.getDate() - 8);
+    const weekAgo = getTodayDateStr(back);
+    return weekAgo < monthStart ? weekAgo : monthStart;
+  }, []);
+  // لو الفترة المختارة أقدم من اللي متحمّل (أو "الكل"/تقرير الحركة) نجيب الفواتير الناقصة بس.
+  useEffect(() => {
+    if (!loadedSalesFrom || loadedSalesFrom === 'ALL') return;
+    const needAll = period === 'all' || reportType === 'movement';
+    const neededFrom = needAll ? 'ALL' : (period === 'custom' ? (customStartDate || RECENT_FROM) : RECENT_FROM);
+    if (neededFrom !== 'ALL' && neededFrom >= loadedSalesFrom) return;
+    let alive = true;
+    const url = neededFrom === 'ALL' ? '/api/fabric-sales' : `/api/fabric-sales?from=${neededFrom}`;
+    fetch(url, { cache: 'no-store' })
+      .then(r => (r.ok ? r.json() : null))
+      .then(j => {
+        if (!alive || !Array.isArray(j?.sales)) return;
+        setInvoices(j.sales);
+        setLoadedSalesFrom(neededFrom);
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [period, reportType, customStartDate, loadedSalesFrom, RECENT_FROM]);
   const [purchases, setPurchases] = useState<PurchaseInvoice[]>([]);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [customers, setCustomers] = useState<CustomerLedger[]>([]);
@@ -118,15 +146,9 @@ export default function ReportsPage() {
       setLoading(true);
       try {
         const [salesRes, purRes, invRes, custRes, supRes, insRes, priRes, ordRes, shiftRes, expRes, advRes, transRes] = await Promise.all([
-          // #PERF: فواتير الشهر/آخر 8 أيام الأول (الفترة الافتراضية "اليوم")، والكل فى الخلفية تحت.
-          fetch(`/api/fabric-sales?from=${(() => {
-            const today = getTodayDateStr();
-            const monthStart = `${today.substring(0, 7)}-01`;
-            const back = new Date(`${today}T12:00:00`);
-            back.setDate(back.getDate() - 8);
-            const weekAgo = getTodayDateStr(back);
-            return weekAgo < monthStart ? weekAgo : monthStart;
-          })()}`, { cache: 'no-store' }).catch(() => null),
+          // #PERF: فواتير الفترة المطلوبة بس (الافتراضي: الشهر الحالي/آخر 8 أيام) — الفترات
+          // الأقدم و"الكل" وتقرير الحركة بيتحمّلوا لما يتختاروا (effect تحت).
+          fetch(`/api/fabric-sales?from=${RECENT_FROM}`, { cache: 'no-store' }).catch(() => null),
           fetch('/api/purchases', { cache: 'no-store' }).catch(() => null),
           fetch('/api/inventory', { cache: 'no-store' }).catch(() => null),
           fetch('/api/customers?lite=1', { cache: 'no-store' }).catch(() => null),
@@ -142,12 +164,8 @@ export default function ReportsPage() {
 
         if (salesRes?.ok) {
           const j = await salesRes.json();
-          if (Array.isArray(j?.sales)) setInvoices(j.sales);
+          if (Array.isArray(j?.sales)) { setInvoices(j.sales); setLoadedSalesFrom(RECENT_FROM); }
         }
-        fetch('/api/fabric-sales', { cache: 'no-store' })
-          .then(r => (r.ok ? r.json() : null))
-          .then(j => { if (Array.isArray(j?.sales)) setInvoices(j.sales); })
-          .catch(() => {});
         if (shiftRes?.ok) {
           const j = await shiftRes.json();
           if (Array.isArray(j?.shifts)) setShifts(j.shifts);

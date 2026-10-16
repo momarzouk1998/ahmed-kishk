@@ -160,6 +160,27 @@ export default function FabricSalesPage() {
   const [branchFilter, setBranchFilter] = useState<string>('ALL');
   const [search, setSearch] = useState('');
   const [paymentFilter, setPaymentFilter] = useState<string>('all');
+  // أقدم تاريخ فواتير متحمّل ('ALL' = كله). لو الفلتر/البحث محتاج أقدم من كده نجيب الكل مرة واحدة.
+  const [loadedFrom, setLoadedFrom] = useState<string>('');
+  const fullLoadingRef = React.useRef(false);
+  useEffect(() => {
+    if (!loadedFrom || loadedFrom === 'ALL') return;
+    const olderThanLoaded = (f: DateFilterType, from: string) => f === 'all' || (f === 'custom' && (!from || from < loadedFrom));
+    const needAll = olderThanLoaded(dateFilter, dateFrom) || olderThanLoaded(onlineDateFilter, onlineDateFrom)
+      || search.trim().length >= 2 || onlineSearch.trim().length >= 2;
+    if (!needAll || fullLoadingRef.current) return;
+    // طلب واحد بس حتى لو المستخدم بيكتب فى البحث حرف ورا حرف.
+    fullLoadingRef.current = true;
+    fetch('/api/fabric-sales', { cache: 'no-store' })
+      .then(r => (r.ok ? r.json() : null))
+      .then(json => {
+        if (!(json?.success && Array.isArray(json.sales))) return;
+        setInvoices(json.sales);
+        setLoadedFrom('ALL');
+      })
+      .catch(() => {})
+      .finally(() => { fullLoadingRef.current = false; });
+  }, [loadedFrom, dateFilter, dateFrom, onlineDateFilter, onlineDateFrom, search, onlineSearch]);
   const [showFilterModal, setShowFilterModal] = useState<boolean>(false);
 
   // Pagination (30 فواتير لكل صفحة)
@@ -207,8 +228,8 @@ export default function FabricSalesPage() {
   const loadData = async () => {
     try {
       setLoading(true);
-      // #PERF: فواتير الشهر الحالي/آخر 8 أيام الأول (الفلتر الافتراضي "اليوم") عشان القائمة
-      // تظهر فورًا، وبعدين كل الفواتير فى الخلفية (للبحث و"الكل" والفترات القديمة).
+      // #PERF: فواتير الشهر الحالي/آخر 8 أيام بس (الفلتر الافتراضي "اليوم"). كل الفواتير
+      // بتتحمّل لما يتختار "الكل" أو فترة أقدم أو يتكتب بحث (effect تحت) — مش مع كل فتحة.
       const today = getTodayDateStr();
       const monthStart = `${today.substring(0, 7)}-01`;
       const back = new Date(`${today}T12:00:00`);
@@ -222,10 +243,7 @@ export default function FabricSalesPage() {
           setInvoices(json.sales);
         }
       }
-      fetch('/api/fabric-sales', { cache: 'no-store' })
-        .then(r => (r.ok ? r.json() : null))
-        .then(json => { if (json?.success && Array.isArray(json.sales)) setInvoices(json.sales); })
-        .catch(() => {});
+      setLoadedFrom(recentFrom);
     } catch (e) {
       console.error(e);
     }
