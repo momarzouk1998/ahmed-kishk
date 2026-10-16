@@ -160,32 +160,45 @@ export default function FabricSalesPage() {
   const [branchFilter, setBranchFilter] = useState<string>('ALL');
   const [search, setSearch] = useState('');
   const [paymentFilter, setPaymentFilter] = useState<string>('all');
-  // أقدم تاريخ فواتير متحمّل ('ALL' = كله). لو الفلتر/البحث محتاج أقدم من كده نجيب الكل مرة واحدة.
-  const [loadedFrom, setLoadedFrom] = useState<string>('');
-  const fullLoadingRef = React.useRef(false);
-  useEffect(() => {
-    if (!loadedFrom || loadedFrom === 'ALL') return;
-    const olderThanLoaded = (f: DateFilterType, from: string) => f === 'all' || (f === 'custom' && (!from || from < loadedFrom));
-    const needAll = olderThanLoaded(dateFilter, dateFrom) || olderThanLoaded(onlineDateFilter, onlineDateFrom)
-      || search.trim().length >= 2 || onlineSearch.trim().length >= 2;
-    if (!needAll || fullLoadingRef.current) return;
-    // طلب واحد بس حتى لو المستخدم بيكتب فى البحث حرف ورا حرف.
-    fullLoadingRef.current = true;
-    fetch('/api/fabric-sales', { cache: 'no-store' })
-      .then(r => (r.ok ? r.json() : null))
-      .then(json => {
-        if (!(json?.success && Array.isArray(json.sales))) return;
-        setInvoices(json.sales);
-        setLoadedFrom('ALL');
-      })
-      .catch(() => {})
-      .finally(() => { fullLoadingRef.current = false; });
-  }, [loadedFrom, dateFilter, dateFrom, onlineDateFilter, onlineDateFrom, search, onlineSearch]);
   const [showFilterModal, setShowFilterModal] = useState<boolean>(false);
 
   // Pagination (30 فواتير لكل صفحة)
   const PAGE_SIZE = 30;
   const [currentPage, setCurrentPage] = useState<number>(1);
+
+  // #PERF: البحث والفلترة وتقسيم الصفحات على السيرفر (/api/fabric-sales/list) بنفس شروط
+  // الصفحة بالظبط (اتقارنت مع الفلترة القديمة فى 1,818 تركيبة فلاتر: صفر فروق) — الصفحة
+  // مبقتش بتنزّل كل الفواتير. البحث بيستنى 300ms بعد آخر حرف.
+  type ServerList = { items: SalesInvoice[]; total: number; page: number; totalPages: number; metrics: any; counts: { all: number; online: number } };
+  const EMPTY_LIST: ServerList = { items: [], total: 0, page: 1, totalPages: 1, metrics: {}, counts: { all: 0, online: 0 } };
+  const [listInv, setListInv] = useState<ServerList>(EMPTY_LIST);
+  const [listOnline, setListOnline] = useState<ServerList>(EMPTY_LIST);
+  const [listVersion, setListVersion] = useState(0);
+  const [listLoading, setListLoading] = useState(true);
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [debouncedOnlineSearch, setDebouncedOnlineSearch] = useState('');
+  useEffect(() => { const t = setTimeout(() => setDebouncedSearch(search), 300); return () => clearTimeout(t); }, [search]);
+  useEffect(() => { const t = setTimeout(() => setDebouncedOnlineSearch(onlineSearch), 300); return () => clearTimeout(t); }, [onlineSearch]);
+  useEffect(() => {
+    let alive = true;
+    setListLoading(true);
+    const qs = new URLSearchParams({ tab: 'invoices', dateFilter, from: dateFrom, to: dateTo, branch: branchFilter, payment: paymentFilter, search: debouncedSearch, page: String(currentPage), pageSize: String(PAGE_SIZE) });
+    fetch(`/api/fabric-sales/list?${qs.toString()}`, { cache: 'no-store' })
+      .then(r => (r.ok ? r.json() : null))
+      .then(j => { if (alive && j?.success) setListInv({ items: j.items, total: j.total, page: j.page, totalPages: j.totalPages, metrics: j.metrics, counts: j.counts }); })
+      .catch(() => {})
+      .finally(() => { if (alive) setListLoading(false); });
+    return () => { alive = false; };
+  }, [dateFilter, dateFrom, dateTo, branchFilter, paymentFilter, debouncedSearch, currentPage, listVersion]);
+  useEffect(() => {
+    let alive = true;
+    const qs = new URLSearchParams({ tab: 'online', dateFilter: onlineDateFilter, from: onlineDateFrom, to: onlineDateTo, search: debouncedOnlineSearch, page: '1', pageSize: '500' });
+    fetch(`/api/fabric-sales/list?${qs.toString()}`, { cache: 'no-store' })
+      .then(r => (r.ok ? r.json() : null))
+      .then(j => { if (alive && j?.success) setListOnline({ items: j.items, total: j.total, page: j.page, totalPages: j.totalPages, metrics: j.metrics, counts: j.counts }); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [onlineDateFilter, onlineDateFrom, onlineDateTo, debouncedOnlineSearch, listVersion]);
 
   // Reset page to 1 when filters change
   useEffect(() => {
@@ -228,22 +241,9 @@ export default function FabricSalesPage() {
   const loadData = async () => {
     try {
       setLoading(true);
-      // #PERF: فواتير الشهر الحالي/آخر 8 أيام بس (الفلتر الافتراضي "اليوم"). كل الفواتير
-      // بتتحمّل لما يتختار "الكل" أو فترة أقدم أو يتكتب بحث (effect تحت) — مش مع كل فتحة.
-      const today = getTodayDateStr();
-      const monthStart = `${today.substring(0, 7)}-01`;
-      const back = new Date(`${today}T12:00:00`);
-      back.setDate(back.getDate() - 8);
-      const weekAgo = getTodayDateStr(back);
-      const recentFrom = weekAgo < monthStart ? weekAgo : monthStart;
-      const res = await fetch(`/api/fabric-sales?from=${recentFrom}`, { cache: 'no-store' });
-      if (res.ok) {
-        const json = await res.json();
-        if (json.success && Array.isArray(json.sales)) {
-          setInvoices(json.sales);
-        }
-      }
-      setLoadedFrom(recentFrom);
+      // #PERF: الفواتير نفسها بقت بتتجاب صفحة صفحة من السيرفر (/api/fabric-sales/list — تحت)،
+      // هنا بس بنحدّثها بعد أي تعديل.
+      setListVersion(v => v + 1);
     } catch (e) {
       console.error(e);
     }
@@ -278,8 +278,6 @@ export default function FabricSalesPage() {
 
   const handleDeleteInvoice = async (id: string, num: string) => {
     if (!confirm(`هل أنت متأكد من حذف فاتورة المبيعات (${num})؟`)) return;
-    const updated = invoices.filter(i => i.id !== id);
-    await setInvoicesLocal(updated);
     if (selectedInvoice?.id === id) setSelectedInvoice(null);
     // #FIX: حذف حقيقى من قاعدة البيانات — كان يرجع بعد أى ريفريش
     try {
@@ -287,6 +285,7 @@ export default function FabricSalesPage() {
     } catch (err) {
       console.error('Failed to delete invoice from server:', err);
     }
+    setListVersion(v => v + 1);
   };
 
   const handleDeleteReturn = async (id: string, num: string) => {
@@ -308,8 +307,6 @@ export default function FabricSalesPage() {
       remaining === 0 ? 'تم السداد بالكامل' : editingInvoice.paidAmount > 0 ? 'مسدد جزئياً' : 'آجل / غير مسدد';
 
     const updatedObj = { ...editingInvoice, remainingAmount: remaining, status: statusLabel };
-    const updatedList = invoices.map(i => i.id === editingInvoice.id ? updatedObj : i);
-    setInvoices(updatedList);
 
     // #FIX: كان التعديل بيتحفظ فى blob مفتاحه مش متعرَّف عليه فى POST /api/system-data
     // فكان يرجع للحالة القديمة بعد أى ريفريش. دلوقتى بيتحفظ مباشرة فى جدول الفاتورة الحقيقى
@@ -323,6 +320,7 @@ export default function FabricSalesPage() {
     } catch (err) {
       console.error('Failed to save invoice update to server:', err);
     }
+    setListVersion(v => v + 1);
 
     setEditingInvoice(null);
     if (selectedInvoice?.id === editingInvoice.id) setSelectedInvoice(updatedObj);
@@ -496,52 +494,10 @@ export default function FabricSalesPage() {
     return normalizeBranchName(branchStr) === normalizeBranchName(branchFilter);
   };
 
-  // Filtered Invoices
-  const filteredInvoices = invoices.filter(inv => {
-    // طلبات الأونلاين ليها تابها الخاص (شحنات وفواتير الأونلاين) — متتكررش هنا كمان.
-    if (inv.isOnlineOrder) return false;
-
-    const custPhone = inv.phone || inv.customerPhone || '';
-    const matchSearch =
-      !search.trim() ||
-      (inv.customerName && inv.customerName.toLowerCase().includes(search.toLowerCase())) ||
-      (inv.invoiceNumber && inv.invoiceNumber.toLowerCase().includes(search.toLowerCase())) ||
-      custPhone.includes(search);
-
-    const invMethod: string = (inv.paymentMethod || (inv as any).paymentType || 'نقدي') as string;
-    const matchPayment =
-      paymentFilter === 'all' ||
-      invMethod === paymentFilter ||
-      (paymentFilter === 'نقدي' && (invMethod === 'نقدي' || invMethod === 'كاش' || invMethod === 'نقدي (كاش)')) ||
-      (paymentFilter === 'إنستاباي' && (invMethod.includes('إنستا') || invMethod.includes('انستا') || invMethod.toLowerCase().includes('insta'))) ||
-      (paymentFilter === 'فودافون كاش' && (invMethod.includes('فودافون') || invMethod.toLowerCase().includes('vodafone'))) ||
-      (paymentFilter === 'فيزا / كارت' && (invMethod.includes('فيزا') || invMethod.includes('كارت') || invMethod.toLowerCase().includes('visa'))) ||
-      (paymentFilter === 'بالآجل / دفعات' && (invMethod.includes('آجل') || invMethod.includes('دفعات'))) ||
-      (paymentFilter === 'دفع متعدد / مزيج' && (invMethod.includes('متعدد') || invMethod.includes('مزيج')));
-
-    const matchDate = matchesDate(inv.date);
-    const matchBr = matchesBranch(inv.branch);
-
-    return matchSearch && matchPayment && matchDate && matchBr;
-  });
-
-  // Filtered Online Invoices (الفرع التجاري أو شحن أونلاين) — فلتر وبحث مستقلين
-  const filteredOnlineInvoices = invoices.filter(inv => {
-    const isOnline = !!inv.isOnlineOrder;
-    if (!isOnline) return false;
-
-    const custPhone = inv.phone || inv.customerPhone || inv.receiverPhone || '';
-    const matchSearch =
-      !onlineSearch.trim() ||
-      (inv.customerName && inv.customerName.toLowerCase().includes(onlineSearch.toLowerCase())) ||
-      (inv.invoiceNumber && inv.invoiceNumber.toLowerCase().includes(onlineSearch.toLowerCase())) ||
-      (inv.trackingNumber && inv.trackingNumber.toLowerCase().includes(onlineSearch.toLowerCase())) ||
-      (inv.shippingAddress && inv.shippingAddress.toLowerCase().includes(onlineSearch.toLowerCase())) ||
-      custPhone.includes(onlineSearch);
-
-    const matchDate = matchesDateGeneric(inv.date, onlineDateFilter, onlineDateFrom, onlineDateTo);
-    return matchSearch && matchDate;
-  });
+  // الفواتير المفلترة جاية من السيرفر (فوق) — نفس الأسماء اللي الصفحة بتستخدمها.
+  const filteredInvoicesCount = listInv.total;
+  const filteredOnlineInvoices = listOnline.items;
+  const filteredOnlineCount = listOnline.total;
 
   // Filtered Returns
   const filteredReturns = returns.filter(ret => {
@@ -555,33 +511,18 @@ export default function FabricSalesPage() {
     return matchSearch && matchDate;
   });
 
-  // Metrics
-  const totalSalesRevenue = filteredInvoices.reduce((s, i) => s + (Number(i.totalAmount) || 0), 0);
-  const totalSalesPaid = filteredInvoices.reduce((s, i) => s + (Number(i.paidAmount) || 0), 0);
-  const totalSalesRemaining = filteredInvoices.reduce((s, i) => s + (Number(i.remainingAmount) || 0), 0);
+  // Metrics (من السيرفر — نفس الجمع بالظبط)
+  const totalSalesRevenue = Number(listInv.metrics?.revenue) || 0;
+  const totalSalesPaid = Number(listInv.metrics?.paid) || 0;
+  const totalSalesRemaining = Number(listInv.metrics?.remaining) || 0;
   const totalReturnsAmount = filteredReturns.reduce((s, r) => s + (Number(r.refundAmount) || 0), 0);
 
   // Online Metrics
-  const totalOnlineRevenue = filteredOnlineInvoices.reduce((s, i) => s + (Number(i.totalAmount) || 0), 0);
-  const totalOnlineShipping = filteredOnlineInvoices.reduce((s, i) => s + (Number(i.shippingFee) || (i.isOnlineOrder ? 110 : 0)), 0);
-  const totalOnlinePaid = filteredOnlineInvoices.reduce((s, i) => s + (Number(i.paidAmount) || 0), 0);
-  const totalOnlineCOD = filteredOnlineInvoices.reduce((s, i) => s + (Number(i.remainingAmount) || 0), 0);
-
-  // Order sources distribution for online invoices
-  const orderSourcesCount = useMemo(() => {
-    const counts: Record<string, number> = {};
-    filteredOnlineInvoices.forEach(inv => {
-      let src = (inv.orderSource || '').trim();
-      if (!src) src = 'غير محدد';
-      else if (src.includes('واتساب') || src.toLowerCase().includes('whatsapp')) src = 'واتساب';
-      else if (src.includes('فيس') || src.toLowerCase().includes('facebook')) src = 'فيسبوك';
-      else if (src.includes('انستا') || src.toLowerCase().includes('instagram')) src = 'إنستجرام';
-      else if (src.includes('تيك') || src.toLowerCase().includes('tiktok')) src = 'تيك توك';
-      else if (src.includes('موقع') || src.includes('أونلاين')) src = 'الموقع';
-      counts[src] = (counts[src] || 0) + 1;
-    });
-    return counts;
-  }, [filteredOnlineInvoices]);
+  const totalOnlineRevenue = Number(listOnline.metrics?.revenue) || 0;
+  const totalOnlineShipping = Number(listOnline.metrics?.shipping) || 0;
+  const totalOnlinePaid = Number(listOnline.metrics?.paid) || 0;
+  const totalOnlineCOD = Number(listOnline.metrics?.cod) || 0;
+  const orderSourcesCount: Record<string, number> = listOnline.metrics?.orderSources || {};
 
   // Customer balance map for quick lookup
   const customerBalanceMap = useMemo(() => {
@@ -607,10 +548,10 @@ export default function FabricSalesPage() {
     return { found: false, balance: 0 };
   };
 
-  // Pagination calculations
-  const totalPages = Math.max(1, Math.ceil(filteredInvoices.length / PAGE_SIZE));
-  const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
-  const paginatedInvoices = filteredInvoices.slice((safeCurrentPage - 1) * PAGE_SIZE, safeCurrentPage * PAGE_SIZE);
+  // Pagination (من السيرفر)
+  const totalPages = listInv.totalPages;
+  const safeCurrentPage = listInv.page;
+  const paginatedInvoices = listInv.items;
 
   return (
     <PageShell title="فواتير المبيعات ومردودات العملاء">
@@ -627,7 +568,7 @@ export default function FabricSalesPage() {
               }`}
             >
               <span>🛒 فواتير المبيعات</span>
-              <span className="bg-amber-100 text-amber-950 px-2 py-0.5 rounded-full text-[11px] font-mono font-bold">{invoices.length}</span>
+              <span className="bg-amber-100 text-amber-950 px-2 py-0.5 rounded-full text-[11px] font-mono font-bold">{listInv.counts.all}</span>
             </button>
 
             {canViewOnlineTab && (
@@ -640,7 +581,7 @@ export default function FabricSalesPage() {
               >
                 <span>📦 شحنات وفواتير الأونلاين</span>
                 <span className="bg-blue-100 text-blue-950 px-2 py-0.5 rounded-full text-[11px] font-mono font-bold">
-                  {invoices.filter(i => i.isOnlineOrder).length}
+                  {listInv.counts.online}
                 </span>
               </button>
             )}
@@ -696,7 +637,7 @@ export default function FabricSalesPage() {
 
               <div className="bg-amber-50/80 p-3.5 rounded-2xl border border-amber-200 text-center shadow-3xs">
                 <span className="text-amber-900 font-bold block text-[11px]">عدد الفواتير</span>
-                <strong className="text-lg font-black text-amber-950 mt-0.5 block font-mono">{filteredInvoices.length} فاتورة</strong>
+                <strong className="text-lg font-black text-amber-950 mt-0.5 block font-mono">{filteredInvoicesCount} فاتورة</strong>
               </div>
             </div>
 
@@ -989,7 +930,7 @@ export default function FabricSalesPage() {
               {/* Pagination Controls */}
               <Pagination
                 currentPage={safeCurrentPage}
-                totalItems={filteredInvoices.length}
+                totalItems={filteredInvoicesCount}
                 pageSize={PAGE_SIZE}
                 onPageChange={setCurrentPage}
                 itemName="فاتورة"
@@ -1020,7 +961,7 @@ export default function FabricSalesPage() {
 
               <div className="bg-indigo-50/80 p-3.5 rounded-2xl border border-indigo-200 text-center shadow-3xs">
                 <span className="text-indigo-900 font-bold block text-[11px]">عدد الشحنات والطلبات</span>
-                <strong className="text-lg font-black text-indigo-950 mt-0.5 block font-mono">{filteredOnlineInvoices.length} شحنة</strong>
+                <strong className="text-lg font-black text-indigo-950 mt-0.5 block font-mono">{filteredOnlineCount} شحنة</strong>
               </div>
 
               <div className="bg-purple-50/80 p-3 rounded-2xl border border-purple-200 text-center shadow-3xs flex flex-col justify-center col-span-2 sm:col-span-1">
@@ -2114,7 +2055,7 @@ export default function FabricSalesPage() {
                   onClick={() => setShowFilterModal(false)}
                   className="flex-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-2.5 rounded-xl cursor-pointer shadow-gold transition-colors text-center"
                 >
-                  تطبيق الفلاتر ({filteredInvoices.length} نتيجة) ✓
+                  تطبيق الفلاتر ({filteredInvoicesCount} نتيجة) ✓
                 </button>
                 <button
                   type="button"

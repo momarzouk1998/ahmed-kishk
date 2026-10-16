@@ -40,7 +40,7 @@ export async function GET(request: Request) {
       payment: q.get('payment') || 'all',
       search: q.get('search') || '',
     };
-    const pageSize = Math.min(200, Math.max(1, Number(q.get('pageSize')) || 30));
+    const pageSize = Math.min(500, Math.max(1, Number(q.get('pageSize')) || 30));
     const page = Math.max(1, Number(q.get('page')) || 1);
 
     const scopeWhere = branchWhere(scope);
