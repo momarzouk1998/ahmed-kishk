@@ -224,12 +224,17 @@ export default function EmployeesManagementPage() {
     
     const startStr = friday.toISOString().slice(0, 10);
     const endStr = thursday.toISOString().slice(0, 10);
-    
+
+    const fParts = startStr.split('-');
+    const tParts = endStr.split('-');
+    const shortDates = `${Number(fParts[2])}/${Number(fParts[1])} - ${Number(tParts[2])}/${Number(tParts[1])}`;
+
     return {
       startStr,
       endStr,
-      label: `من الجمعة ${formatDateOnly(startStr)} إلى الخميس ${formatDateOnly(endStr)}`,
-      shortLabel: `${startStr.slice(5)} ← ${endStr.slice(5)}`,
+      shortDates,
+      label: `${shortDates}`,
+      shortLabel: shortDates,
       isCurrentWeek: offsetWeeks === 0,
     };
   };
@@ -241,16 +246,11 @@ export default function EmployeesManagementPage() {
     const startStr = `${ym}-01`;
     const lastDay = new Date(year, month, 0).getDate();
     const endStr = `${ym}-${String(lastDay).padStart(2, '0')}`;
-    const arabicMonths = [
-      'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
-      'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'
-    ];
-    const monthName = arabicMonths[month - 1] || ym;
     return {
       startStr,
       endStr,
-      label: `شهر ${monthName} ${year}`,
-      shortLabel: ym,
+      label: `${month} ${year}`,
+      shortLabel: `${month} ${year}`,
     };
   };
 
@@ -264,7 +264,7 @@ export default function EmployeesManagementPage() {
       list.push({
         offset: i,
         ...range,
-        title: i === 0 ? `⭐ الأسبوع الحالي (${range.shortLabel})` : i === -1 ? `⏮️ الأسبوع السابق (${range.shortLabel})` : i === 1 ? `⏭️ الأسبوع القادم (${range.shortLabel})` : `أسبوع (${range.shortLabel})`,
+        title: i === 0 ? `الاسبوع الحالى ${range.shortDates}` : range.shortDates,
       });
     }
     return list;
@@ -273,11 +273,12 @@ export default function EmployeesManagementPage() {
   const recentMonthsList = useMemo(() => {
     const list = [];
     const today = new Date();
-    for (let i = 0; i < 6; i++) {
+    for (let i = -1; i <= 6; i++) {
       const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
-      const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      const range = getMonthRange(ym);
-      list.push({ ym, label: range.label });
+      const m = d.getMonth() + 1;
+      const y = d.getFullYear();
+      const ym = `${y}-${String(m).padStart(2, '0')}`;
+      list.push({ ym, label: `${m} ${y}` });
     }
     return list;
   }, []);
@@ -1010,6 +1011,17 @@ ${totalBonuses > 0 ? `🎁 *مكافآت:* +${totalBonuses.toLocaleString()} ج\
       ? { startDate: currentMonthRange.startStr, endDate: currentMonthRange.endStr, label: currentMonthRange.label }
       : { startDate: currentWeekRange.startStr, endDate: currentWeekRange.endStr, label: currentWeekRange.label }
   ) : null;
+  const handlePayTypeFilterChange = (pt: 'الكل' | 'أسبوعي' | 'شهري') => {
+    setStatementPayTypeFilter(pt);
+    if (pt === 'أسبوعي') {
+      setStatementPeriodMode('weekly');
+    } else if (pt === 'شهري') {
+      setStatementPeriodMode('monthly');
+    } else {
+      setStatementPeriodMode('weekly');
+    }
+  };
+
   const filteredStatementEmployees = useMemo(() => {
     return branchFilteredEmployees.filter(emp => {
       if (statementPayTypeFilter === 'أسبوعي' && emp.payType !== 'أسبوعي') return false;
@@ -1021,13 +1033,7 @@ ${totalBonuses > 0 ? `🎁 *مكافآت:* +${totalBonuses.toLocaleString()} ج\
   const statementSummaries = useMemo(() => {
     return filteredStatementEmployees.map(emp => {
       let filter;
-      if (statementPeriodMode === 'weekly') {
-        filter = {
-          startDate: currentWeekRange.startStr,
-          endDate: currentWeekRange.endStr,
-          label: currentWeekRange.label,
-        };
-      } else if (statementPeriodMode === 'monthly') {
+      if (statementPeriodMode === 'monthly' || (statementPayTypeFilter === 'الكل' && emp.payType === 'شهري')) {
         filter = {
           startDate: currentMonthRange.startStr,
           endDate: currentMonthRange.endStr,
@@ -1035,12 +1041,14 @@ ${totalBonuses > 0 ? `🎁 *مكافآت:* +${totalBonuses.toLocaleString()} ج\
         };
       } else {
         filter = {
-          label: 'إجمالي تراكمي شامل',
+          startDate: currentWeekRange.startStr,
+          endDate: currentWeekRange.endStr,
+          label: currentWeekRange.label,
         };
       }
       return getEmployeeFinancialSummary(emp.id, filter);
     }).filter(Boolean);
-  }, [filteredStatementEmployees, statementPeriodMode, currentWeekRange, currentMonthRange, attendanceByEmp, advancesByEmp, employees]);
+  }, [filteredStatementEmployees, statementPeriodMode, statementPayTypeFilter, currentWeekRange, currentMonthRange, attendanceByEmp, advancesByEmp, employees]);
 
   const statementKpis = useMemo(() => {
     let totalEarned = 0;
@@ -1607,63 +1615,24 @@ ${totalBonuses > 0 ? `🎁 *مكافآت:* +${totalBonuses.toLocaleString()} ج\
                 </p>
               </div>
 
-              {statementPeriodMode === 'weekly' && (
-                <div className="text-xs font-bold text-slate-600 bg-amber-50 border border-amber-200 px-3 py-1 rounded-xl">
-                  {statementWeekOffset === 0 ? '✨ أسبوع العمل الحالي' : `⏮️ أسبوع سابق (${statementWeekOffset * -1})`}
-                </div>
-              )}
             </div>
 
-            {/* أدوات التحكم بالفترة ونوع الراتب */}
-            <div className="bg-slate-50 p-3.5 sm:p-4 rounded-2xl border border-slate-200 space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                
-                {/* 1. Mode selector */}
-                <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200 shadow-2xs">
-                  <button
-                    type="button"
-                    onClick={() => setStatementPeriodMode('weekly')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1 ${
-                      statementPeriodMode === 'weekly' ? 'bg-amber-600 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100'
-                    }`}
-                  >
-                    <span>🗓️</span>
-                    <span>أسبوعي (جمعة ← خميس)</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setStatementPeriodMode('monthly')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1 ${
-                      statementPeriodMode === 'monthly' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100'
-                    }`}
-                  >
-                    <span>📅</span>
-                    <span>شهري</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setStatementPeriodMode('all')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1 ${
-                      statementPeriodMode === 'all' ? 'bg-slate-900 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100'
-                    }`}
-                  >
-                    <span>♾️</span>
-                    <span>تراكمي شامل</span>
-                  </button>
-                </div>
-
-                {/* 2. Pay type filter */}
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-bold text-slate-500">نوع الراتب:</span>
+            {/* شريط فلتر نوع الراتب والتنقل المبسّط */}
+            <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 flex flex-wrap items-center justify-between gap-3">
+              
+              {/* يمين: نوع الراتب فقط */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-black text-slate-700">نوع الراتب:</span>
+                <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-300 shadow-2xs">
                   {(['الكل', 'أسبوعي', 'شهري'] as const).map(pt => (
                     <button
                       key={pt}
                       type="button"
-                      onClick={() => setStatementPayTypeFilter(pt)}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition-colors cursor-pointer ${
+                      onClick={() => handlePayTypeFilterChange(pt)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
                         statementPayTypeFilter === pt
-                          ? 'bg-slate-900 text-white border-slate-900 shadow-2xs'
-                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                          ? 'bg-slate-900 text-white shadow-xs'
+                          : 'text-slate-600 hover:bg-slate-100'
                       }`}
                     >
                       {pt === 'الكل' ? 'الكل' : pt === 'أسبوعي' ? '🗓️ أسبوعي' : '📅 شهري'}
@@ -1672,87 +1641,63 @@ ${totalBonuses > 0 ? `🎁 *مكافآت:* +${totalBonuses.toLocaleString()} ج\
                 </div>
               </div>
 
-              {/* 3. Sub-controls for Weekly / Monthly */}
-              {statementPeriodMode === 'weekly' && (
-                <div className="flex flex-wrap items-center justify-between gap-3 pt-2.5 border-t border-slate-200/80">
-                  <div className="flex items-center gap-2 flex-wrap">
+              {/* يسار: التنقل والتقفيل (أسبوعي أو شهري) */}
+              {statementPayTypeFilter === 'شهري' ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-black text-slate-700">الشهر:</span>
+                  <select
+                    value={statementSelectedMonth}
+                    onChange={(e) => setStatementSelectedMonth(e.target.value)}
+                    className="py-1.5 px-3 bg-white border border-slate-300 rounded-xl text-xs font-black text-slate-900 shadow-2xs cursor-pointer focus:outline-none"
+                  >
+                    {recentMonthsList.map(m => (
+                      <option key={m.ym} value={m.ym}>{m.label}</option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => setStatementWeekOffset(prev => prev - 1)}
+                    className="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 rounded-xl text-xs font-black flex items-center gap-1 shadow-2xs cursor-pointer transition-colors"
+                    title="الرجوع للأسبوع السابق لتقفيل حساباته"
+                  >
+                    <span>▶</span>
+                    <span>السابق</span>
+                  </button>
+
+                  <select
+                    value={statementWeekOffset}
+                    onChange={(e) => setStatementWeekOffset(Number(e.target.value))}
+                    className="py-1.5 px-3 bg-white border border-slate-300 rounded-xl text-xs font-black text-slate-900 shadow-2xs cursor-pointer focus:outline-none"
+                  >
+                    {recentWeeksList.map(w => (
+                      <option key={w.offset} value={w.offset}>{w.title}</option>
+                    ))}
+                  </select>
+
+                  <button
+                    type="button"
+                    onClick={() => setStatementWeekOffset(prev => prev + 1)}
+                    className="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 rounded-xl text-xs font-black flex items-center gap-1 shadow-2xs cursor-pointer transition-colors"
+                    title="الأسبوع التالي"
+                  >
+                    <span>التالي</span>
+                    <span>◀</span>
+                  </button>
+
+                  {statementWeekOffset !== 0 && (
                     <button
                       type="button"
-                      onClick={() => setStatementWeekOffset(prev => prev - 1)}
-                      className="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 rounded-xl text-xs font-black flex items-center gap-1 shadow-2xs cursor-pointer"
-                      title="الرجوع للأسبوع السابق لتقفيل حساباته"
+                      onClick={() => setStatementWeekOffset(0)}
+                      className="px-2.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl text-xs font-black flex items-center gap-1 shadow-2xs cursor-pointer mr-1 transition-colors"
+                      title="العودة للأسبوع الحالي"
                     >
-                      <span>▶</span>
-                      <span>الأسبوع السابق</span>
+                      <span>🔄</span>
+                      <span>الحالي</span>
                     </button>
-
-                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-100/70 border border-amber-300 rounded-xl text-xs font-black text-amber-950">
-                      <span>🗓️</span>
-                      <span>{currentWeekRange.label}</span>
-                      {statementWeekOffset === 0 && (
-                        <span className="bg-emerald-600 text-white text-[10px] px-1.5 py-0.2 rounded-md font-bold">الحالي</span>
-                      )}
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => setStatementWeekOffset(prev => prev + 1)}
-                      className="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 rounded-xl text-xs font-black flex items-center gap-1 shadow-2xs cursor-pointer"
-                    >
-                      <span>الأسبوع التالي</span>
-                      <span>◀</span>
-                    </button>
-
-                    {statementWeekOffset !== 0 && (
-                      <button
-                        type="button"
-                        onClick={() => setStatementWeekOffset(0)}
-                        className="px-2.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-black flex items-center gap-1 shadow-2xs cursor-pointer"
-                      >
-                        <span>🔄</span>
-                        <span>العودة للأسبوع الحالي</span>
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-bold text-slate-500">اختر أسبوعاً:</span>
-                    <select
-                      value={statementWeekOffset}
-                      onChange={(e) => setStatementWeekOffset(Number(e.target.value))}
-                      className="py-1 px-2.5 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-800 shadow-2xs"
-                    >
-                      {recentWeeksList.map(w => (
-                        <option key={w.offset} value={w.offset}>{w.title}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              )}
-
-              {statementPeriodMode === 'monthly' && (
-                <div className="flex flex-wrap items-center justify-between gap-3 pt-2.5 border-t border-slate-200/80">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-slate-600">اختر الشهر:</span>
-                    <select
-                      value={statementSelectedMonth}
-                      onChange={(e) => setStatementSelectedMonth(e.target.value)}
-                      className="py-1.5 px-3 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-900 shadow-2xs"
-                    >
-                      {recentMonthsList.map(m => (
-                        <option key={m.ym} value={m.ym}>{m.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <span className="text-xs font-bold text-slate-500">
-                    💡 موظفو الشهر تُحسب لهم إجازاتهم الشهرية المعتمدة (يومين) كأيام عمل مدفوعة الأجر تلقائياً.
-                  </span>
-                </div>
-              )}
-
-              {statementPeriodMode === 'all' && (
-                <div className="pt-2 text-xs font-bold text-slate-500 border-t border-slate-200/80">
-                  ♾️ عرض تراكمي شامل لكافة سجلات الحضور والسلف من بداية النظام وحتى تاريخ اليوم.
+                  )}
                 </div>
               )}
             </div>
