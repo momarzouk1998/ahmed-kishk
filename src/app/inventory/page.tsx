@@ -268,8 +268,24 @@ export default function InventoryPage() {
   const branchCats = branchScopedItems.map(i => i.category).filter(Boolean);
   const dynamicCategories = ['الكل', ...Array.from(new Set([...persistentCats, ...branchCats]))];
 
+  // #PERF: الصفحة بتفتح على أول تصنيف بدل "الكل" (حساب الأدمن بيشوف أصناف كل الفروع
+  // فكانت أتقل صفحة). "الكل" لسه موجود فى الفلتر لو حد محتاجه. ولو الفرع اتغير
+  // والتصنيف المختار مش موجود فيه، بيرجع لأول تصنيف فى الفرع الجديد.
+  const categoryTouchedRef = React.useRef(false);
+  const firstCategory = dynamicCategories[1] || 'الكل';
+  useEffect(() => {
+    if (dynamicCategories.length <= 1) return;
+    if (!categoryTouchedRef.current && activeCategory === 'الكل') {
+      setActiveCategory(firstCategory);
+    } else if (activeCategory !== 'الكل' && !dynamicCategories.includes(activeCategory)) {
+      setActiveCategory(firstCategory);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [firstCategory, dynamicCategories.length, selectedBranch]);
+
   const filteredItems = items.filter((item) => {
-    const matchesCat = activeCategory === 'الكل' || item.category === activeCategory;
+    // البحث بيدوّر فى كل التصنيفات طالما المستخدم مااختارش تصنيف بنفسه (التصنيف الأول اتحط تلقائي).
+    const matchesCat = activeCategory === 'الكل' || item.category === activeCategory || (!!search.trim() && !categoryTouchedRef.current);
     const matchesSeason = activeSeason === 'الكل' || (activeSeason === 'كل السنة' ? (!item.season || item.season === 'كل السنة') : item.season === activeSeason);
     const matchesBranch = selectedBranch === 'الكل' || normalizeBranchName(item.branch) === normalizeBranchName(selectedBranch);
     const matchesSearch =
@@ -612,7 +628,7 @@ export default function InventoryPage() {
                   {dynamicCategories.map((cat) => (
                     <button
                       key={cat}
-                      onClick={() => setActiveCategory(cat)}
+                      onClick={() => { categoryTouchedRef.current = true; setActiveCategory(cat); }}
                       className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors ${
                         activeCategory === cat
                           ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
