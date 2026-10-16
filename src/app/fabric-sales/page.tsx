@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import PageShell from '@/components/PageShell';
 import { useRouter } from 'next/navigation';
@@ -537,6 +537,46 @@ export default function FabricSalesPage() {
   const totalOnlinePaid = filteredOnlineInvoices.reduce((s, i) => s + (Number(i.paidAmount) || 0), 0);
   const totalOnlineCOD = filteredOnlineInvoices.reduce((s, i) => s + (Number(i.remainingAmount) || 0), 0);
 
+  // Order sources distribution for online invoices
+  const orderSourcesCount = useMemo(() => {
+    const counts: Record<string, number> = {};
+    filteredOnlineInvoices.forEach(inv => {
+      let src = (inv.orderSource || '').trim();
+      if (!src) src = 'غير محدد';
+      else if (src.includes('واتساب') || src.toLowerCase().includes('whatsapp')) src = 'واتساب';
+      else if (src.includes('فيس') || src.toLowerCase().includes('facebook')) src = 'فيسبوك';
+      else if (src.includes('انستا') || src.toLowerCase().includes('instagram')) src = 'إنستجرام';
+      else if (src.includes('تيك') || src.toLowerCase().includes('tiktok')) src = 'تيك توك';
+      else if (src.includes('موقع') || src.includes('أونلاين')) src = 'الموقع';
+      counts[src] = (counts[src] || 0) + 1;
+    });
+    return counts;
+  }, [filteredOnlineInvoices]);
+
+  // Customer balance map for quick lookup
+  const customerBalanceMap = useMemo(() => {
+    const map = new Map<string, number>();
+    registeredCustomers.forEach(c => {
+      const bal = Number(c.balance) || 0;
+      const p = (c.phone || '').replace(/\D/g, '').slice(-10);
+      const n = (c.name || '').trim().toLowerCase();
+      if (p) map.set(p, bal);
+      if (n) map.set(n, bal);
+    });
+    return map;
+  }, [registeredCustomers]);
+
+  const getCustomerBalance = (inv: SalesInvoice): { found: boolean; balance: number } => {
+    const p1 = (inv.phone || '').replace(/\D/g, '').slice(-10);
+    const p2 = (inv.customerPhone || '').replace(/\D/g, '').slice(-10);
+    const n = (inv.customerName || '').trim().toLowerCase();
+
+    if (p1 && customerBalanceMap.has(p1)) return { found: true, balance: customerBalanceMap.get(p1)! };
+    if (p2 && customerBalanceMap.has(p2)) return { found: true, balance: customerBalanceMap.get(p2)! };
+    if (n && customerBalanceMap.has(n)) return { found: true, balance: customerBalanceMap.get(n)! };
+    return { found: false, balance: 0 };
+  };
+
   // Pagination calculations
   const totalPages = Math.max(1, Math.ceil(filteredInvoices.length / PAGE_SIZE));
   const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
@@ -932,7 +972,7 @@ export default function FabricSalesPage() {
         {activeTab === 'ONLINE' && canViewOnlineTab && (
           <div className="space-y-4">
             {/* Online Metrics */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 text-xs">
               <div className="bg-white p-3.5 rounded-2xl border border-slate-200 text-center shadow-3xs">
                 <span className="text-slate-500 font-bold block text-[11px]">إجمالي قيمة الشحنات والطلبات</span>
                 <strong className="text-lg font-black text-slate-900 mt-0.5 block font-mono">{totalOnlineRevenue.toLocaleString()} ج</strong>
@@ -951,6 +991,25 @@ export default function FabricSalesPage() {
               <div className="bg-indigo-50/80 p-3.5 rounded-2xl border border-indigo-200 text-center shadow-3xs">
                 <span className="text-indigo-900 font-bold block text-[11px]">عدد الشحنات والطلبات</span>
                 <strong className="text-lg font-black text-indigo-950 mt-0.5 block font-mono">{filteredOnlineInvoices.length} شحنة</strong>
+              </div>
+
+              <div className="bg-purple-50/80 p-3 rounded-2xl border border-purple-200 text-center shadow-3xs flex flex-col justify-center col-span-2 sm:col-span-1">
+                <span className="text-purple-900 font-bold block text-[11px] mb-1">مصادر الطلبات</span>
+                {Object.keys(orderSourcesCount).length === 0 ? (
+                  <span className="text-slate-400 font-bold text-xs">—</span>
+                ) : (
+                  <div className="flex flex-wrap items-center justify-center gap-1">
+                    {Object.entries(orderSourcesCount).map(([src, count]) => (
+                      <span
+                        key={src}
+                        className="inline-flex items-center gap-1 bg-white/95 border border-purple-200 text-purple-950 px-1.5 py-0.5 rounded-lg text-[10px] font-black font-mono shadow-3xs"
+                      >
+                        <span>{src}:</span>
+                        <span className="text-purple-700">{count}</span>
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1056,35 +1115,77 @@ export default function FabricSalesPage() {
                             <td className="p-3.5 pr-4 font-mono font-bold">
                               <div className="text-blue-900 font-black text-xs group-hover:text-blue-700">{inv.invoiceNumber}</div>
                               <div className="text-[10px] text-slate-400 font-mono">{inv.date ? formatDateOnly(inv.date) : 'اليوم'}</div>
-                              {inv.orderSource && (
-                                <span className="inline-block mt-0.5 px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 text-[9px] font-bold">
-                                  {inv.orderSource}
-                                </span>
-                              )}
                             </td>
 
                             {/* Customer & Phone */}
                             <td className="p-3.5 text-slate-700">
                               <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="font-bold text-slate-900 text-sm">{inv.customerName}</span>
                                 <button
                                   type="button"
                                   onClick={e => {
                                     e.stopPropagation();
                                     router.push(`/customers?search=${encodeURIComponent(inv.phone || inv.customerPhone || inv.customerName)}&autoOpen=1`);
                                   }}
-                                  className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-900 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-1.5 py-0.5 rounded transition-colors cursor-pointer"
-                                  title="فتح كشف حساب العميل والمديونيات في شاشة العملاء"
+                                  className="font-black text-blue-600 hover:text-blue-800 hover:underline cursor-pointer text-sm text-right transition-colors"
+                                  title="اضغط لفتح كشف حساب العميل والمديونيات"
                                 >
-                                  <span>👤</span>
-                                  <span>حساب العميل</span>
+                                  {inv.customerName}
                                 </button>
-                              </div>
-                              <div className="text-[10px] text-slate-500 font-mono font-bold mt-0.5" dir="ltr">
-                                {inv.phone || inv.customerPhone || '—'}
+
+                                {(() => {
+                                  const custInfo = getCustomerBalance(inv);
+                                  const bal = custInfo.balance;
+                                  const targetSearch = inv.phone || inv.customerPhone || inv.customerName;
+
+                                  if (bal > 0) {
+                                    return (
+                                      <button
+                                        type="button"
+                                        onClick={e => {
+                                          e.stopPropagation();
+                                          router.push(`/customers?search=${encodeURIComponent(targetSearch)}&autoOpen=1`);
+                                        }}
+                                        className="inline-flex items-center gap-0.5 text-[10px] font-black text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 px-1.5 py-0.5 rounded-md transition-colors cursor-pointer font-mono"
+                                        title="العميل عليه مديونية - اضغط لفتح كشف الحساب"
+                                      >
+                                        <span>عليه</span>
+                                        <span>{Math.round(bal).toLocaleString()}</span>
+                                      </button>
+                                    );
+                                  }
+                                  if (bal < 0) {
+                                    return (
+                                      <button
+                                        type="button"
+                                        onClick={e => {
+                                          e.stopPropagation();
+                                          router.push(`/customers?search=${encodeURIComponent(targetSearch)}&autoOpen=1`);
+                                        }}
+                                        className="inline-flex items-center gap-0.5 text-[10px] font-black text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-1.5 py-0.5 rounded-md transition-colors cursor-pointer font-mono"
+                                        title="العميل له رصيد دائن - اضغط لفتح كشف الحساب"
+                                      >
+                                        <span>له</span>
+                                        <span>{Math.round(Math.abs(bal)).toLocaleString()}</span>
+                                      </button>
+                                    );
+                                  }
+                                  return (
+                                    <button
+                                      type="button"
+                                      onClick={e => {
+                                        e.stopPropagation();
+                                        router.push(`/customers?search=${encodeURIComponent(targetSearch)}&autoOpen=1`);
+                                      }}
+                                      className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-200 px-1.5 py-0.5 rounded-md transition-colors cursor-pointer"
+                                      title="حساب خالص - اضغط لفتح كشف الحساب"
+                                    >
+                                      <span>حساب خالص ✓</span>
+                                    </button>
+                                  );
+                                })()}
                               </div>
                               {inv.receiverPhone && inv.receiverPhone !== inv.phone && (
-                                <div className="text-[10px] text-blue-700 font-mono font-bold" dir="ltr">
+                                <div className="text-[10px] text-blue-700 font-mono font-bold mt-0.5" dir="ltr">
                                   مستلم: {inv.receiverPhone}
                                 </div>
                               )}
@@ -1115,19 +1216,19 @@ export default function FabricSalesPage() {
 
                             {/* Total and shipping fee */}
                             <td className="p-3.5 text-center font-mono text-xs">
-                              <div className="font-black text-slate-950 text-sm">{(Number(inv.totalAmount) || 0).toLocaleString()} ج</div>
-                              <div className="text-[10px] text-blue-700 font-bold">شحن: +{shipFee.toLocaleString()} ج</div>
+                              <div className="font-black text-slate-950 text-sm">{(Number(inv.totalAmount) || 0).toLocaleString()}</div>
+                              <div className="text-[10px] text-blue-700 font-bold">شحن: +{shipFee.toLocaleString()}</div>
                             </td>
 
                             {/* COD Shipping Collection */}
                             <td className="p-3.5 text-center font-mono text-xs">
                               {remaining > 0 ? (
                                 <div className="text-amber-900 bg-amber-50 px-2 py-1 rounded-lg border border-amber-200 font-black">
-                                  مطلوب تحصيله: {remaining.toLocaleString()} ج
+                                  تحصيل {remaining.toLocaleString()}
                                 </div>
                               ) : (
                                 <div className="text-emerald-800 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-200 font-bold">
-                                  مدفوع مسبقاً (0 ج)
+                                  مدفوع مسبقاً
                                 </div>
                               )}
                             </td>
@@ -1138,38 +1239,28 @@ export default function FabricSalesPage() {
                                 <button
                                   type="button"
                                   onClick={() => setSelectedInvoice(inv)}
-                                  className="bg-blue-600 hover:bg-blue-500 text-white text-[11px] px-2 py-1 rounded-lg font-black flex items-center gap-1 shadow-3xs cursor-pointer"
-                                  title="طباعة بوليصة الشحن (Waybill)"
+                                  className="text-slate-500 hover:text-blue-700 p-1.5 rounded-lg hover:bg-blue-50 transition-colors cursor-pointer"
+                                  title="عرض وطباعة إيصال الفاتورة وبوليصة الشحن"
                                 >
-                                  <span>📦</span>
-                                  <span>بوليصة</span>
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={() => setSelectedInvoice(inv)}
-                                  className="text-slate-400 hover:text-slate-700 p-1 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
-                                  title="عرض وطباعة إيصال الفاتورة"
-                                >
-                                  <span className="material-symbols-outlined text-[18px]">receipt_long</span>
+                                  <span className="material-symbols-outlined text-[19px]">receipt_long</span>
                                 </button>
 
                                 <button
                                   type="button"
                                   onClick={() => setEditingInvoice(inv)}
-                                  className="text-amber-600 hover:text-amber-700 p-1 rounded-lg hover:bg-amber-50 transition-colors cursor-pointer"
+                                  className="text-amber-600 hover:text-amber-700 p-1.5 rounded-lg hover:bg-amber-50 transition-colors cursor-pointer"
                                   title="تعديل الفاتورة"
                                 >
-                                  <span className="material-symbols-outlined text-[18px]">edit</span>
+                                  <span className="material-symbols-outlined text-[19px]">edit</span>
                                 </button>
 
                                 <button
                                   type="button"
                                   onClick={() => handleDeleteInvoice(inv.id, inv.invoiceNumber)}
-                                  className="text-slate-300 hover:text-rose-600 p-1 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
+                                  className="text-slate-300 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
                                   title="حذف الفاتورة"
                                 >
-                                  <span className="material-symbols-outlined text-[18px]">delete</span>
+                                  <span className="material-symbols-outlined text-[19px]">delete</span>
                                 </button>
                               </div>
                             </td>
