@@ -118,7 +118,15 @@ export default function ReportsPage() {
       setLoading(true);
       try {
         const [salesRes, purRes, invRes, custRes, supRes, insRes, priRes, ordRes, shiftRes, expRes, advRes, transRes] = await Promise.all([
-          fetch('/api/fabric-sales', { cache: 'no-store' }).catch(() => null),
+          // #PERF: فواتير الشهر/آخر 8 أيام الأول (الفترة الافتراضية "اليوم")، والكل فى الخلفية تحت.
+          fetch(`/api/fabric-sales?from=${(() => {
+            const today = getTodayDateStr();
+            const monthStart = `${today.substring(0, 7)}-01`;
+            const back = new Date(`${today}T12:00:00`);
+            back.setDate(back.getDate() - 8);
+            const weekAgo = getTodayDateStr(back);
+            return weekAgo < monthStart ? weekAgo : monthStart;
+          })()}`, { cache: 'no-store' }).catch(() => null),
           fetch('/api/purchases', { cache: 'no-store' }).catch(() => null),
           fetch('/api/inventory', { cache: 'no-store' }).catch(() => null),
           fetch('/api/customers?lite=1', { cache: 'no-store' }).catch(() => null),
@@ -136,6 +144,10 @@ export default function ReportsPage() {
           const j = await salesRes.json();
           if (Array.isArray(j?.sales)) setInvoices(j.sales);
         }
+        fetch('/api/fabric-sales', { cache: 'no-store' })
+          .then(r => (r.ok ? r.json() : null))
+          .then(j => { if (Array.isArray(j?.sales)) setInvoices(j.sales); })
+          .catch(() => {});
         if (shiftRes?.ok) {
           const j = await shiftRes.json();
           if (Array.isArray(j?.shifts)) setShifts(j.shifts);

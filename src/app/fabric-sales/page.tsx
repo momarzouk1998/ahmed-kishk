@@ -207,13 +207,25 @@ export default function FabricSalesPage() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/fabric-sales', { cache: 'no-store' });
+      // #PERF: فواتير الشهر الحالي/آخر 8 أيام الأول (الفلتر الافتراضي "اليوم") عشان القائمة
+      // تظهر فورًا، وبعدين كل الفواتير فى الخلفية (للبحث و"الكل" والفترات القديمة).
+      const today = getTodayDateStr();
+      const monthStart = `${today.substring(0, 7)}-01`;
+      const back = new Date(`${today}T12:00:00`);
+      back.setDate(back.getDate() - 8);
+      const weekAgo = getTodayDateStr(back);
+      const recentFrom = weekAgo < monthStart ? weekAgo : monthStart;
+      const res = await fetch(`/api/fabric-sales?from=${recentFrom}`, { cache: 'no-store' });
       if (res.ok) {
         const json = await res.json();
         if (json.success && Array.isArray(json.sales)) {
           setInvoices(json.sales);
         }
       }
+      fetch('/api/fabric-sales', { cache: 'no-store' })
+        .then(r => (r.ok ? r.json() : null))
+        .then(json => { if (json?.success && Array.isArray(json.sales)) setInvoices(json.sales); })
+        .catch(() => {});
     } catch (e) {
       console.error(e);
     }
