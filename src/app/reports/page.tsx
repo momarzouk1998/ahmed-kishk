@@ -121,7 +121,7 @@ export default function ReportsPage() {
           fetch('/api/fabric-sales', { cache: 'no-store' }).catch(() => null),
           fetch('/api/purchases', { cache: 'no-store' }).catch(() => null),
           fetch('/api/inventory', { cache: 'no-store' }).catch(() => null),
-          fetch('/api/customers', { cache: 'no-store' }).catch(() => null),
+          fetch('/api/customers?lite=1', { cache: 'no-store' }).catch(() => null),
           fetch('/api/suppliers', { cache: 'no-store' }).catch(() => null),
           fetch('/api/inspections', { cache: 'no-store' }).catch(() => null),
           fetch('/api/pricing', { cache: 'no-store' }).catch(() => null),

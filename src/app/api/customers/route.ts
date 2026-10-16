@@ -400,9 +400,24 @@ export async function GET(request: Request) {
       };
     });
 
+    // #PERF: ?lite=1 → من غير كشف الحساب التفصيلي (ledger) لكل عميل — هو اللي كان بيخلّي
+    // الرد 1.5 ميجا. الصفحات اللي محتاجة أسماء/أرصدة بس (الكاشير، المعاينات، التقارير)
+    // بتستخدمه. ?id= → عميل واحد بكشف حسابه كامل (لصفحة تفاصيل العميل).
+    const { searchParams: qp } = new URL(request.url);
+    const onlyId = qp.get('id');
+    const lite = qp.get('lite') === '1';
+    let outCustomers: any[] = resultCustomers;
+    if (onlyId) {
+      const digits = onlyId.replace(/\D/g, '');
+      outCustomers = outCustomers.filter((c: any) =>
+        c.id === onlyId || c.phone === onlyId || c.name === onlyId ||
+        (digits && String(c.phone || '').replace(/\D/g, '') === digits));
+    }
+    if (lite) outCustomers = outCustomers.map(({ ledger, ...rest }: any) => rest);
+
     return NextResponse.json({
       success: true,
-      customers: resultCustomers,
+      customers: outCustomers,
       collections: restricted ? visibleCollections : rawCollections,
     });
   } catch (error: any) {

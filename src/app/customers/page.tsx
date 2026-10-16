@@ -61,6 +61,21 @@ export default function CustomersPage() {
 
   // Selected Customer for Full Details & Statement Modal
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  // كشف حساب العميل المفتوح بيتجاب لوحده (القائمة نفسها خفيفة من غير ledger).
+  useEffect(() => {
+    if (!selectedCustomer || selectedCustomer.ledger) return;
+    const id = selectedCustomer.id;
+    let alive = true;
+    fetch(`/api/customers?id=${encodeURIComponent(id)}`, { cache: 'no-store' })
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => {
+        const full = d?.customers?.[0];
+        if (!alive || !full) return;
+        setSelectedCustomer(prev => (prev && prev.id === id ? { ...prev, ledger: full.ledger || [] } : prev));
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [selectedCustomer]);
 
   // Inline Editing State for Collections Tab
   const [editingColId, setEditingColId] = useState<string | null>(null);
@@ -118,7 +133,8 @@ export default function CustomersPage() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/customers', { cache: 'no-store' });
+      // #PERF: القائمة من غير كشوف الحساب (كانت 1.5 ميجا) — كشف حساب العميل بيتجاب لما يتفتح بس.
+      const res = await fetch('/api/customers?lite=1', { cache: 'no-store' });
       if (res.ok) {
         const json = await res.json();
         if (json.success && Array.isArray(json.customers)) {

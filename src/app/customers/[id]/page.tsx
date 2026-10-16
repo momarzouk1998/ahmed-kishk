@@ -81,7 +81,8 @@ export default function CustomerDetailsPage() {
   const loadCustomerData = async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/customers', { cache: 'no-store' });
+      // #PERF: العميل ده بس بكشف حسابه — بدل كل العملاء بكشوف حساباتهم (1.5 ميجا).
+      const res = await fetch(`/api/customers?id=${encodeURIComponent(rawId)}`, { cache: 'no-store' });
       if (res.ok) {
         const json = await res.json();
         if (json.success && Array.isArray(json.customers)) {

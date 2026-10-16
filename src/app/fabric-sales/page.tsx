@@ -89,7 +89,7 @@ export default function FabricSalesPage() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch('/api/customers', { cache: 'no-store' });
+        const res = await fetch('/api/customers?lite=1', { cache: 'no-store' });
         if (res.ok) {
           const json = await res.json();
           if (json.success && Array.isArray(json.customers)) setRegisteredCustomers(json.customers);
