@@ -340,11 +340,9 @@ export default function EmployeesManagementPage() {
         absentCount += 1;
       } else if (a.status === 'إجازة') {
         leaveCount += 1;
-        // قاعدة الموظف الشهري: الإجازات المعتمدة (يومين بالشهر) مدفوعة الأجر
-        if (emp.payType === 'شهري') {
-          attendedDays += 1;
-          paidLeaveCount += 1;
-        }
+        // الإجازة مدفوعة الأجر بالكامل لكافة الموظفين (تُحتسب كيوم عمل مدفوع في القبض)
+        attendedDays += 1;
+        paidLeaveCount += 1;
       }
     });
 
@@ -1285,7 +1283,7 @@ ${totalBonuses > 0 ? `🎁 *مكافآت:* +${totalBonuses.toLocaleString()} ج\
                                 className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                                   status === 'إجازة' ? 'bg-blue-600 text-white shadow-xs' : 'bg-blue-50 text-blue-800 hover:bg-blue-100 border border-blue-200'
                                 }`}
-                                title="تسجيل إجازة رسمية"
+                                title="تسجيل إجازة مدفوعة الأجر"
                               >
                                 إجازة 🏖️
                               </button>
