@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getBranchScope } from '@/lib/branchScope';
+import { normalizeBranchName } from '@/lib/branches';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,7 +12,8 @@ export const dynamic = 'force-dynamic';
 // مطلوب عشان ميزة الدفع المتعدد فى المصروفات — الأدمن يشوف رصيد كل طريقة قبل
 // ما يحدد يخصم منها قد إيه.
 function matchesBranch(recordBranch: string | undefined | null, targetBranch: string): boolean {
-  if (!recordBranch) return false;
+  if (!recordBranch || !targetBranch) return false;
+  if (normalizeBranchName(recordBranch) === normalizeBranchName(targetBranch)) return true;
   const a = recordBranch.trim().toLowerCase();
   const b = targetBranch.trim().toLowerCase();
   if (a.includes(b) || b.includes(a)) return true;

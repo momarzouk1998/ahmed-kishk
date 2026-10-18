@@ -53,6 +53,7 @@ export async function POST(request: Request) {
           description: description !== undefined ? description : undefined,
           amount: amount !== undefined ? Number(amount) : undefined,
           paymentMethod: paymentMethod || undefined,
+          branch: (scope.isAdmin && branch) ? branch : undefined,
         },
       });
     } else {

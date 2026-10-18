@@ -235,11 +235,15 @@ const expenseDate = (e: any): string | undefined => e?.date || e?.createdAt;
       let bCount = 0;
 
       const matchB = (val: string) => {
+        if (!val) return false;
+        const normVal = normalizeBranchName(val);
+        const normTarget = normalizeBranchName(b.name);
+        if (normVal === normTarget) return true;
         const s = String(val || '').trim();
         if (b.key === 'الرئيسي') return s.includes('رئيسي') || s.includes('سعد زغلول') || s.includes('القاهرة');
         if (b.key === 'عرابي') return s.includes('عرابي') || s.includes('عدلي');
         if (b.key === 'عمر أفندي') return s.includes('عمر أفندي') || s.includes('عمر افندي') || s.includes('عمر');
-        if (b.key === 'الثلاثيني') return s.includes('الثلاثيني');
+        if (b.key === 'الثلاثيني') return s.includes('الثلاثيني') || s.includes('ثلاثيني') || s.includes('تلاتيني');
         if (b.key === 'التجاري') return s.includes('تجاري') || s.includes('تجارى') || s.includes('أونلاين') || s.includes('اونلاين');
         return false;
       };

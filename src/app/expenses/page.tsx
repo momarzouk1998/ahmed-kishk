@@ -37,8 +37,9 @@ export default function ExpensesPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 20;
 
-  // Add-expense form
+  // Add/Edit-expense form
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [formDate, setFormDate] = useState(() => getTodayDateStr());
   const [formBranch, setFormBranch] = useState('الفرع الرئيسي');
   const [formCategory, setFormCategory] = useState(EXPENSE_CATEGORIES[0]);
@@ -125,6 +126,34 @@ export default function ExpensesPage() {
   const totalAmount = filteredExpenses.reduce((s, e) => s + (Number(e.amount) || 0), 0);
   const paginatedExpenses = filteredExpenses.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
+  const handleOpenAddModal = () => {
+    setEditingExpense(null);
+    setFormDate(getTodayDateStr());
+    if (isAdminView) {
+      setFormBranch(branchFilter !== 'ALL' && branchFilter !== 'الكل' ? branchFilter : 'الفرع الرئيسي');
+    } else if (user?.branch) {
+      setFormBranch(user.branch);
+    }
+    setFormCategory(EXPENSE_CATEGORIES[0]);
+    setFormDescription('');
+    setFormAmount('');
+    setFormPaymentMethod(PAYMENT_METHODS[0]);
+    setSplitCash(''); setSplitInstapay(''); setSplitVodafone(''); setSplitVisa('');
+    setShowAddModal(true);
+  };
+
+  const handleOpenEditModal = (exp: Expense) => {
+    setEditingExpense(exp);
+    setFormDate(exp.date ? exp.date.split('T')[0] : getTodayDateStr());
+    setFormBranch(exp.branch);
+    setFormCategory(exp.category);
+    setFormDescription(exp.description);
+    setFormAmount(Number(exp.amount));
+    setFormPaymentMethod(exp.paymentMethod || PAYMENT_METHODS[0]);
+    setSplitCash(''); setSplitInstapay(''); setSplitVodafone(''); setSplitVisa('');
+    setShowAddModal(true);
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formAmount || Number(formAmount) <= 0) {
@@ -136,7 +165,7 @@ export default function ExpensesPage() {
       return;
     }
 
-    if (isMultiPayment) {
+    if (isMultiPayment && !editingExpense) {
       if (Math.abs(splitTotal - Number(formAmount)) > 0.01) {
         alert(`مجموع التوزيع (${splitTotal.toLocaleString()} ج) لازم يساوي مبلغ المصروف (${Number(formAmount).toLocaleString()} ج) بالظبط`);
         return;
@@ -175,6 +204,7 @@ export default function ExpensesPage() {
           }
         }
         setShowAddModal(false);
+        setEditingExpense(null);
         setFormDescription('');
         setFormAmount('');
         setSplitCash(''); setSplitInstapay(''); setSplitVodafone(''); setSplitVisa('');
@@ -193,6 +223,7 @@ export default function ExpensesPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          id: editingExpense?.id,
           date: formDate,
           branch: formBranch,
           category: formCategory,
@@ -207,6 +238,7 @@ export default function ExpensesPage() {
         return;
       }
       setShowAddModal(false);
+      setEditingExpense(null);
       setFormDescription('');
       setFormAmount('');
       await loadExpenses();
@@ -245,7 +277,7 @@ export default function ExpensesPage() {
           </div>
           <button
             type="button"
-            onClick={() => setShowAddModal(true)}
+            onClick={handleOpenAddModal}
             className="bg-brand-gold hover:bg-amber-400 text-slate-950 px-4 py-2.5 rounded-xl text-xs font-black shadow-gold flex items-center gap-1.5 cursor-pointer transition-all"
           >
             <span className="material-symbols-outlined text-[18px]">add_circle</span>
@@ -351,14 +383,24 @@ export default function ExpensesPage() {
                       <td className="p-3 text-center font-mono font-black text-rose-700 whitespace-nowrap">{Number(exp.amount).toLocaleString()} ج</td>
                       <td className="p-3 text-slate-500 whitespace-nowrap">{exp.createdByName || '—'}</td>
                       <td className="p-3 text-center">
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(exp.id, exp.description)}
-                          className="text-rose-500 hover:text-rose-700 p-1 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
-                          title="حذف المصروف"
-                        >
-                          <span className="material-symbols-outlined text-[18px]">delete</span>
-                        </button>
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEditModal(exp)}
+                            className="text-amber-600 hover:text-amber-700 p-1 rounded-lg hover:bg-amber-50 transition-colors cursor-pointer"
+                            title="تعديل المصروف"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">edit</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(exp.id, exp.description)}
+                            className="text-rose-500 hover:text-rose-700 p-1 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
+                            title="حذف المصروف"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">delete</span>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -383,12 +425,14 @@ export default function ExpensesPage() {
           <div className="bg-white rounded-3xl max-w-lg w-full p-5 sm:p-6 space-y-4 shadow-2xl border border-slate-200 my-auto">
             <div className="flex justify-between items-center pb-3 border-b border-slate-200">
               <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-                <span className="material-symbols-outlined text-amber-600 text-xl">payments</span>
-                تسجيل مصروف جديد
+                <span className="material-symbols-outlined text-amber-600 text-xl">
+                  {editingExpense ? 'edit_note' : 'payments'}
+                </span>
+                {editingExpense ? 'تعديل المصروف' : 'تسجيل مصروف جديد'}
               </h3>
               <button
                 type="button"
-                onClick={() => setShowAddModal(false)}
+                onClick={() => { setShowAddModal(false); setEditingExpense(null); }}
                 className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-xs cursor-pointer"
               >
                 ✕
@@ -437,7 +481,7 @@ export default function ExpensesPage() {
                     className="w-full border border-slate-200 rounded-xl px-2.5 py-1.5 font-bold text-slate-900 focus:outline-none"
                   >
                     {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
-                    {isAdminView && <option value={MULTI_PAYMENT_OPTION}>🔀 {MULTI_PAYMENT_OPTION}</option>}
+                    {isAdminView && !editingExpense && <option value={MULTI_PAYMENT_OPTION}>🔀 {MULTI_PAYMENT_OPTION}</option>}
                   </select>
                 </div>
               </div>
@@ -518,11 +562,11 @@ export default function ExpensesPage() {
                   disabled={saving}
                   className="flex-1 bg-brand-gold hover:bg-amber-400 disabled:opacity-50 text-slate-950 py-2.5 rounded-xl font-black shadow-gold cursor-pointer"
                 >
-                  {saving ? 'جارِ الحفظ...' : 'حفظ المصروف'}
+                  {saving ? 'جارِ الحفظ...' : editingExpense ? 'حفظ التعديلات' : 'حفظ المصروف'}
                 </button>
                 <button
                   type="button"
-                  onClick={() => setShowAddModal(false)}
+                  onClick={() => { setShowAddModal(false); setEditingExpense(null); }}
                   className="flex-1 border border-slate-200 text-slate-600 py-2.5 rounded-xl font-bold cursor-pointer"
                 >
                   إلغاء
