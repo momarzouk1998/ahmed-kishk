@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import PageShell from '@/components/PageShell';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -9,6 +9,15 @@ import { getStoredPipelineOrders, normalizeMasterStage } from '@/lib/pipelineSto
 import { getTodayDateStr, getYesterdayDateStr } from '@/lib/dateUtils';
 import { ALL_SYSTEM_PAGES } from '@/lib/permissions';
 import { getProfile } from '@/lib/profileCache';
+import { SalesReportPeriod } from '@/lib/salesReportCalc';
+
+const TIME_RANGE_TO_PERIOD: Record<'YESTERDAY' | 'TODAY' | 'WEEK' | 'MONTH' | 'ALL', SalesReportPeriod> = {
+  YESTERDAY: 'yesterday',
+  TODAY: 'today',
+  WEEK: 'thisWeek',
+  MONTH: 'thisMonth',
+  ALL: 'all',
+};
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -65,6 +74,30 @@ export default function DashboardPage() {
   // + كل العملاء (1.5 ميجا) + المخزون كله — مع إن الأرقام المعروضة محتاجة بس فواتير
   // الشهر الحالي (أو آخر 8 أيام) من غير الأصناف، وسندات التحصيل. "الكل" بيتحمّل لما يتختار بس.
   const [salesLoadedAll, setSalesLoadedAll] = useState(false);
+
+  // تقرير المبيعات والخزائن المحسوب على السيرفر (نفس حسابات صفحة التقارير بالمليم)
+  const [salesKpis, setSalesKpis] = useState<any>(null);
+  const [kpisLoading, setKpisLoading] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    setKpisLoading(true);
+    const period = TIME_RANGE_TO_PERIOD[timeRange] || 'today';
+    fetch(`/api/reports/sales-kpis?period=${period}&branch=ALL`, { cache: 'no-store' })
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => {
+        if (alive && d?.success && d.kpis) {
+          setSalesKpis(d.kpis);
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (alive) setKpisLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [timeRange]);
   const recentFrom = (() => {
     const today = getTodayDateStr();
     const monthStart = `${today.substring(0, 7)}-01`;
@@ -472,10 +505,38 @@ export default function DashboardPage() {
     };
   });
 
-  const displaySales = totalSales.toLocaleString();
-  const displayContracts = contractsSales.toLocaleString();
-  const displayPos = posSales.toLocaleString();
-  const displayRemaining = totalRemaining.toLocaleString();
+  const treasuryBranches = useMemo(() => {
+    if (salesKpis?.branchTreasuries && Array.isArray(salesKpis.branchTreasuries)) {
+      return salesKpis.branchTreasuries;
+    }
+    return dynamicBranchSales.map(b => ({
+      name: b.name,
+      treasury: b.treasuryName,
+      color: b.color,
+      total: b.treasuryTotal,
+      cash: b.treasuryCash,
+      instapay: b.treasuryInstapay,
+      vodafone: b.treasuryVodafone,
+      visa: b.treasuryVisa,
+      count: b.orders,
+      expensesTotal: 0,
+      advancesTotal: 0,
+      purchasesTotal: 0,
+      isShift: false,
+      shiftType: null,
+      employeeName: '',
+      shiftStatus: '',
+    }));
+  }, [salesKpis, dynamicBranchSales]);
+
+  const totalTreasuriesSum = useMemo(() => {
+    return treasuryBranches.reduce((s: number, b: any) => s + (Number(b.total) || 0), 0);
+  }, [treasuryBranches]);
+
+  const displaySales = salesKpis ? Number(salesKpis.grand || 0).toLocaleString() : totalSales.toLocaleString();
+  const displayContracts = salesKpis ? Number(salesKpis.curtainSalesGrand || 0).toLocaleString() : contractsSales.toLocaleString();
+  const displayPos = salesKpis ? Number(salesKpis.fabricSalesGrand || 0).toLocaleString() : posSales.toLocaleString();
+  const displayRemaining = salesKpis ? Number(salesKpis.remaining || 0).toLocaleString() : totalRemaining.toLocaleString();
 
   return (
     <PageShell title="الرئيسية والتقارير التنفيذية">
@@ -604,73 +665,106 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* 4 Branch Treasuries Live Balances (أرصدة خزن الفروع الأربعة) */}
+        {/* 4 Branch Treasuries Live Balances (أرصدة خزن وورديات الفروع النقدية والمحصلة) */}
         <div className="bg-white rounded-3xl border border-slate-200 p-5 sm:p-6 shadow-soft">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
             <div>
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-amber-500 text-xl">savings</span>
-                <h2 className="font-display font-black text-base text-slate-900">أرصدة خزن الفروع النقدية والتحصيل الحى</h2>
+                <h2 className="font-display font-black text-base text-slate-900">أرصدة خزن وورديات الفروع النقدية والمحصلة</h2>
+                {kpisLoading && (
+                  <span className="text-[10px] text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200 animate-pulse font-bold">
+                    جارِ التحديث...
+                  </span>
+                )}
               </div>
-              <p className="text-xs text-slate-500 mt-0.5">الرصيد الفعلى بالدرج/الخزينة لكل فرع مستقل (كاش، إنستاباي، فودافون، وفيزا)</p>
+              <p className="text-xs text-slate-500 mt-0.5">الرصيد الفعلى بالدرج بعد خصم المصروفات والسلف والمشتريات (مطابق تماماً لصفحة التقارير)</p>
             </div>
             <div className="text-xs font-mono font-black text-slate-700 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200 self-start sm:self-auto">
-              إجمالي خزن الفروع: <span className="text-emerald-700">{dynamicBranchSales.reduce((s, b) => s + b.treasuryTotal, 0).toLocaleString()} ج.م</span>
+              إجمالي خزن وورديات الفروع: <span className="text-emerald-700">{totalTreasuriesSum.toLocaleString()} ج.م</span>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-            {dynamicBranchSales.map((b, idx) => (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+            {treasuryBranches.map((b: any, idx: number) => (
               <div
                 key={idx}
-                className={`p-4 rounded-2xl border ${b.color} flex flex-col justify-between hover:shadow-md transition-all relative overflow-hidden`}
+                className={`p-3.5 rounded-2xl border ${b.color || 'border-slate-200 bg-slate-50/70'} flex flex-col justify-between hover:shadow-md transition-all relative overflow-hidden`}
               >
                 <div>
-                  <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center justify-between mb-1.5">
                     <span className="font-black text-xs text-slate-900 truncate">{b.name}</span>
-                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-white/80 border border-slate-200 text-slate-700">
-                      {b.orders} عملية
+                    <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full bg-white/90 border border-slate-200 text-slate-700">
+                      {b.count ?? b.orders ?? 0} عملية
                     </span>
                   </div>
-                  <div className="text-[11px] text-slate-500 font-bold mb-3 truncate">{b.treasuryName}</div>
+                  <div className="text-[10.5px] text-slate-600 font-bold mb-2 truncate">{b.treasury || b.treasuryName}</div>
 
-                  <div className="bg-white/90 p-3 rounded-xl border border-slate-200/80 mb-3 shadow-xs">
-                    <div className="text-[10px] text-slate-500 font-bold">الرصيد المحصل بالخزينة</div>
-                    <div className="font-display font-black text-xl text-emerald-700 tracking-tight mt-0.5">
-                      {b.treasuryTotal.toLocaleString()} <span className="text-xs font-bold text-emerald-900">ج.م</span>
+                  {b.isShift && (
+                    <div className="flex items-center justify-between text-[10px] mb-2 px-1.5 py-0.5 rounded bg-white/70 border border-slate-200/80 font-bold">
+                      <span className="text-slate-600">المسؤول: <strong className="text-slate-900">{b.employeeName || '—'}</strong></span>
+                      <span className="text-[9.5px]">{b.shiftStatus || ''}</span>
+                    </div>
+                  )}
+
+                  <div className="bg-white/95 p-2.5 rounded-xl border border-slate-200 mb-2.5 shadow-xs">
+                    <div className="text-[10px] text-slate-500 font-bold">المحصل بالخزينة فى الفترة</div>
+                    <div className="font-display font-black text-lg text-emerald-700 tracking-tight mt-0.5">
+                      {(Number(b.total) || 0).toLocaleString()} <span className="text-xs font-bold text-emerald-900">ج.م</span>
                     </div>
                   </div>
                 </div>
 
                 <div className="space-y-1.5 pt-2 border-t border-slate-200/60 text-[11px]">
-                  <div className="flex justify-between items-center text-slate-700 bg-white/60 px-2 py-1 rounded-lg border border-slate-200/50">
+                  <div className="flex justify-between items-center text-slate-800 bg-white/80 px-2 py-1 rounded-lg border border-slate-200/70 font-bold">
                     <span className="flex items-center gap-1 font-bold">💵 كاش (الدرج):</span>
-                    <span className="font-mono font-black text-slate-900">{b.treasuryCash.toLocaleString()} ج</span>
+                    <strong className="font-mono font-black text-slate-900">{(Number(b.cash) || 0).toLocaleString()} ج</strong>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-1 pt-1 text-[10px]">
+                  <div className="grid grid-cols-3 gap-1 pt-0.5 text-[10px]">
                     <div className="bg-purple-50/80 border border-purple-200/80 rounded-lg p-1 text-center">
                       <div className="text-purple-900 font-bold">⚡ إنستاباي</div>
-                      <div className="font-mono font-black text-purple-700">{b.treasuryInstapay.toLocaleString()}</div>
+                      <div className="font-mono font-black text-purple-700">{(Number(b.instapay) || 0).toLocaleString()}</div>
                     </div>
                     <div className="bg-rose-50/80 border border-rose-200/80 rounded-lg p-1 text-center">
                       <div className="text-rose-900 font-bold">📱 فودافون</div>
-                      <div className="font-mono font-black text-rose-700">{b.treasuryVodafone.toLocaleString()}</div>
+                      <div className="font-mono font-black text-rose-700">{(Number(b.vodafone) || 0).toLocaleString()}</div>
                     </div>
                     <div className="bg-blue-50/80 border border-blue-200/80 rounded-lg p-1 text-center">
                       <div className="text-blue-900 font-bold">💳 فيزا</div>
-                      <div className="font-mono font-black text-blue-700">{b.treasuryVisa.toLocaleString()}</div>
+                      <div className="font-mono font-black text-blue-700">{(Number(b.visa) || 0).toLocaleString()}</div>
                     </div>
                   </div>
 
-                  <div className="flex justify-between items-center text-slate-500 pt-1.5 text-[10px]">
-                    <span>معدل التحصيل: <strong className="text-amber-800 font-bold">{b.target}</strong></span>
-                    {b.directCollectionsCount > 0 && (
-                      <span className="text-purple-700 font-bold bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200">
-                        {b.directCollectionsCount} سند تحصيل
+                  {(Number(b.expensesTotal) || 0) > 0 && (
+                    <div className="flex justify-between items-center text-rose-800 bg-rose-50 px-2 py-1 rounded-lg border border-rose-200 font-bold text-[10px]">
+                      <span className="flex items-center gap-1">
+                        <span>🧾</span>
+                        <span>مصروفات مخصومة:</span>
                       </span>
-                    )}
-                  </div>
+                      <strong className="font-mono">-{Number(b.expensesTotal).toLocaleString()} ج</strong>
+                    </div>
+                  )}
+
+                  {(Number(b.advancesTotal) || 0) > 0 && (
+                    <div className="flex justify-between items-center text-rose-800 bg-rose-50 px-2 py-1 rounded-lg border border-rose-200 font-bold text-[10px]">
+                      <span className="flex items-center gap-1">
+                        <span>💸</span>
+                        <span>سلف موظفين مخصومة:</span>
+                      </span>
+                      <strong className="font-mono">-{Number(b.advancesTotal).toLocaleString()} ج</strong>
+                    </div>
+                  )}
+
+                  {(Number(b.purchasesTotal) || 0) > 0 && (
+                    <div className="flex justify-between items-center text-rose-800 bg-rose-50 px-2 py-1 rounded-lg border border-rose-200 font-bold text-[10px]">
+                      <span className="flex items-center gap-1">
+                        <span>🛒</span>
+                        <span>مشتريات مدفوعة فورًا:</span>
+                      </span>
+                      <strong className="font-mono">-{Number(b.purchasesTotal).toLocaleString()} ج</strong>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -775,7 +869,7 @@ export default function DashboardPage() {
                     <div className="font-mono font-black text-sm text-slate-900">{b.sales}</div>
                   </div>
                   <div className="text-right sm:text-left bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-200">
-                    <div className="text-[10px] text-emerald-800 font-bold">المحصَّل بالدرج</div>
+                    <div className="text-[10px] text-emerald-800 font-bold">إجمالي المحصَّل</div>
                     <div className="font-mono font-black text-xs text-emerald-700">{b.collected}</div>
                   </div>
                   <div className="text-right sm:text-left bg-amber-50 px-2.5 py-1 rounded-xl border border-amber-200">
