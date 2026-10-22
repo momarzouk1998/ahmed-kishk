@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import PageShell from '@/components/PageShell';
 import { useRouter } from 'next/navigation';
 import { formatDateOnly, getTodayDateStr } from '@/lib/dateUtils';
@@ -8,6 +8,7 @@ import PdfPrintButton from '@/components/PdfPrintButton';
 import { useCurrentUser } from '@/lib/useCurrentUser';
 import Pagination from '@/components/Pagination';
 import BranchSelect from '@/components/BranchSelect';
+import SearchableSelect, { SearchOption } from '@/components/SearchableSelect';
 import { BRANCHES_LIST, BRANCH_TREASURIES, getBranchTreasury, normalizeBranchName } from '@/lib/branches';
 import { printCollectionReceipt } from '@/lib/printCollectionReceipt';
 
@@ -126,6 +127,21 @@ export default function CustomersPage() {
   const [colTreasury, setColTreasury] = useState('خزينة الفرع الرئيسي (سعد زغلول)');
   const [colDate, setColDate] = useState(() => getTodayDateStr());
   const [colNotes, setColNotes] = useState('');
+
+  // قائمة العملاء للبحث السريع في مودال التحصيل (مرتبة بحيث يظهر من عليهم متبقي في البداية)
+  const customerOptions: SearchOption[] = useMemo(() => {
+    const sorted = [...customers].sort((a, b) => (Number(b.balance) || 0) - (Number(a.balance) || 0));
+    return sorted.map(c => {
+      const bal = Number(c.balance) || 0;
+      return {
+        id: c.id,
+        name: c.name,
+        sub: c.phone,
+        badge: bal <= 0 ? 'خالص' : undefined,
+        extra: bal > 0 ? `متبقي: ${bal.toLocaleString()} ج` : undefined,
+      };
+    });
+  }, [customers]);
 
   // #FIX: كان بيرجع لنسخة قديمة محفوظة على قرص الجهاز (localStorage) لو فشل الطلب —
   // ده اللي بيسبب ظهور بيانات قديمة/غلط. دلوقتى لو الطلب فشل، القائمة تفضل فاضية
@@ -439,7 +455,12 @@ export default function CustomersPage() {
             />
             <button
               type="button"
-              onClick={() => setShowAddCollectionModal(true)}
+              onClick={() => {
+                setColCustomerId('');
+                setColAmount(1000);
+                setColNotes('');
+                setShowAddCollectionModal(true);
+              }}
               className="bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2 rounded-xl text-xs font-black shadow-xs flex items-center gap-1.5 cursor-pointer transition-all"
             >
               <span className="material-symbols-outlined text-[17px]">payments</span>
@@ -1227,24 +1248,20 @@ export default function CustomersPage() {
 
             <form onSubmit={handleAddCollection} className="space-y-3 text-xs">
               <div>
-                <label className="text-slate-700 font-bold block mb-1">اختر العميل:</label>
-                <select
-                  required
+                <label className="text-slate-700 font-bold block mb-1">اختر العميل (بحث سريع بالاسم أو الهاتف):</label>
+                <SearchableSelect
+                  options={customerOptions}
                   value={colCustomerId}
-                  onChange={e => {
-                    setColCustomerId(e.target.value);
-                    const target = customers.find(c => c.id === e.target.value);
+                  onChange={(val) => {
+                    setColCustomerId(val);
+                    const target = customers.find(c => c.id === val);
                     if (target && target.balance > 0) setColAmount(target.balance);
                   }}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900 bg-slate-50 focus:outline-none"
-                >
-                  <option value="">-- اختر العميل من القائمة --</option>
-                  {customers.map(c => (
-                    <option key={c.id} value={c.id}>
-                      {c.name} ({c.phone}) — متبقي: {(Number(c.balance) || 0).toLocaleString()} ج
-                    </option>
-                  ))}
-                </select>
+                  placeholder="🔍 اكتب اسم العميل أو رقم الهاتف..."
+                  emptyLabel="-- اختر العميل من القائمة --"
+                  required
+                  autoFocus
+                />
               </div>
 
               {colCustomerId && (() => {
