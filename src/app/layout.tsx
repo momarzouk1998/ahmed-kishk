@@ -1,21 +1,8 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import AppShell from '@/components/AppShell';
-
-async function checkSubscription(): Promise<{ active: boolean; status?: string; message?: string }> {
-  try {
-    const res = await fetch(
-      'https://admin.openappo.com/api/subscription/verify?system=' + encodeURIComponent('Ahmed Kishk'),
-      // #PERF: كان no-store — ده كان بيخلّي كل صفحات النظام ديناميكية (طلب خارجي مع كل
-      // فتح صفحة ومفيش تحميل مسبق للمنيو). حالة الاشتراك بتتحدث كل 10 دقايق كفاية.
-      { next: { revalidate: 600 } }
-    );
-    if (!res.ok) return { active: true };
-    return await res.json();
-  } catch {
-    return { active: true };
-  }
-}
+import UpdateBanner from '@/components/UpdateBanner';
+import ErrorReporter from '@/components/ErrorReporter';
 
 export const metadata: Metadata = {
   title: 'أحمد كشك — للأقمشة والستائر',
@@ -40,16 +27,15 @@ export const viewport: Viewport = {
   viewportFit: 'cover',
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const subStatus = await checkSubscription();
-
   return (
-    <html lang="ar" dir="rtl">
+    <html lang="ar" dir="rtl" translate="no">
       <head>
+        <meta name="google" content="notranslate" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         {/* Google Fonts: Cairo (Arabic Primary) + JetBrains Mono */}
@@ -68,16 +54,8 @@ export default async function RootLayout({
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
       </head>
       <body className="bg-background font-body text-on-surface antialiased min-h-screen selection:bg-brand-gold selection:text-brand-dark">
-        {subStatus.status === 'expiring_soon' && (
-          <div className="no-print print:hidden bg-yellow-500 text-black px-4 py-2 text-center text-sm font-bold w-full shadow-sm">
-            {subStatus.message}
-          </div>
-        )}
-        {subStatus.status === 'grace_period' && (
-          <div className="no-print print:hidden bg-red-500 text-white px-4 py-2 text-center text-sm font-bold w-full shadow-sm">
-            {subStatus.message}
-          </div>
-        )}
+        <UpdateBanner />
+        <ErrorReporter />
         <AppShell>{children}</AppShell>
         <script
           dangerouslySetInnerHTML={{
@@ -97,4 +75,3 @@ export default async function RootLayout({
     </html>
   );
 }
-

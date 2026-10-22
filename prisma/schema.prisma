@@ -94,6 +94,9 @@ model CustomerCollection {
   source       String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  @@index([date])
+  @@index([branch, date])
 }
 
 model InspectionRequest {
@@ -287,6 +290,9 @@ model PurchaseInvoice {
   notes           String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+
+  @@index([date])
+  @@index([branch, date])
 }
 
 model SalesReturn {
@@ -365,6 +371,9 @@ model Shift {
   closingNotes         String?
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
+
+  @@index([startTime])
+  @@index([branch, startTime])
 }
 
 /// مصروفات كل فرع (إيجار، كهرباء، صيانة، مواصلات...) — بتتخصم من خزينة الفرع
@@ -380,6 +389,9 @@ model Expense {
   createdByName String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+
+  @@index([date])
+  @@index([branch, date])
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -420,6 +432,9 @@ model AttendanceRecord {
   recordedBy    String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+
+  @@index([date])
+  @@index([branch, date])
 }
 
 model EmployeeAdvance {
@@ -436,6 +451,9 @@ model EmployeeAdvance {
   recordedBy         String?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
+
+  @@index([date])
+  @@index([branch, date])
 }
 
 model PayrollSettlement {
@@ -460,6 +478,9 @@ model PayrollSettlement {
   payType          String?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+
+  @@index([settlementDate])
+  @@index([branch, settlementDate])
 }
 
 

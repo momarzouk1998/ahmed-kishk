@@ -607,7 +607,7 @@ export default function DashboardPage() {
             </div>
             <div>
               <div className="font-display font-black text-2xl tracking-tight">
-                {displaySales} <span className="text-sm font-normal">ج.م</span>
+                {displaySales}
               </div>
               <div className="text-[10px] text-emerald-100 font-bold mt-1.5">مبيعات نقدية وعقود معتمدة</div>
             </div>
@@ -624,7 +624,7 @@ export default function DashboardPage() {
             </div>
             <div>
               <div className="font-display font-black text-2xl tracking-tight text-white">
-                {displayContracts} <span className="text-sm font-normal">ج.م</span>
+                {displayContracts}
               </div>
               <div className="text-[10px] text-amber-100 font-bold mt-1.5">{rangedQuotations.length} عقود مسجلة بالنظام</div>
             </div>
@@ -641,7 +641,7 @@ export default function DashboardPage() {
             </div>
             <div>
               <div className="font-display font-black text-2xl tracking-tight">
-                {displayPos} <span className="text-sm font-normal">ج.م</span>
+                {displayPos}
               </div>
               <div className="text-[10px] text-sky-100 font-bold mt-1.5">فواتير بيع مباشر</div>
             </div>
@@ -658,7 +658,7 @@ export default function DashboardPage() {
             </div>
             <div>
               <div className="font-display font-black text-2xl tracking-tight">
-                {displayRemaining} <span className="text-sm font-normal">ج.م</span>
+                {displayRemaining}
               </div>
               <div className="text-[10px] text-rose-100 font-bold mt-1.5">مبالغ وعقود قيد التنفيذ والتحصيل</div>
             </div>

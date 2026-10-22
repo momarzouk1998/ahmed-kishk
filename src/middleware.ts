@@ -8,6 +8,11 @@ const PUBLIC_PATHS = ['/login'];
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // استثناء فوري وخفيف لمسار فحص النسخة وبلاغات المتصفح قبل فحص الاشتراك
+  if (pathname === '/api/version' || pathname === '/api/client-error') {
+    return NextResponse.next();
+  }
+
   // Subscription must be checked before anything else, including login
   const blocked = await checkSubscription(pathname);
   if (blocked) return blocked;
